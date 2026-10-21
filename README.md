@@ -26,8 +26,6 @@ This project builds on the research and open-source work below.
 
 ### Open-source projects
 
-- [basic-pitch-rs](https://github.com/AThevon/basic-pitch-rs) (Apache-2.0):
-  Basic Pitch transcription in Rust.
 - [node-serum2-preset-packager](https://github.com/CharlesBT/node-serum2-preset-packager)
   (MIT): `.SerumPreset` packing and unpacking.
 - [serum2gen](https://github.com/dougwithseismic/serum2gen) (MIT): Serum 2
@@ -36,5 +34,3 @@ This project builds on the research and open-source work below.
   (MIT): Serum 2 presets as plugin state.
 - [serum-mcp](https://github.com/Celian-mrc/serum-mcp) (MIT): Serum 2 preset
   generation driven by a language model.
-- [rust-vst3-host](https://github.com/HelgeSverre/rust-vst3-host) (MIT): VST3
-  hosting and offline rendering in Rust.

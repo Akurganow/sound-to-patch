@@ -104,6 +104,16 @@ retold in our own words, never copied.
 - GPL projects serve only as sources of facts, or run as a separate
   process.
 - Code without a license may be read, not copied.
+- Docs link to code only under a permissive license. Every project or
+  paper we studied may be credited as inspiration, whatever its license.
+- Crates we install are dependencies, not inspiration. They stay out of
+  the credits.
+
+## Dependencies
+
+- Every new dependency starts at its latest available version.
+- Open question: when to enable Renovate. Not at the start, only once the
+  project is mature enough.
 
 ## Out of scope now
 
