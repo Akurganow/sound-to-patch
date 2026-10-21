@@ -115,6 +115,12 @@ retold in our own words, never copied.
 - Open question: when to enable Renovate. Not at the start, only once the
   project is mature enough.
 
+## Maintenance
+
+- Later, once the project is mature enough: put the repository under
+  [Lawman](https://github.com/Akurganow/lawman) patrol by adding its
+  constitution file, `LAWMAN.md`.
+
 ## Out of scope now
 
 - Training neural networks.
