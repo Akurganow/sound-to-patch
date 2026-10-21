@@ -1,8 +1,8 @@
 # Sound to Serum
 
-Turn an audio stem into a Serum 2 starting point: synth settings, notes and BPM.
+Turn an audio stem into a Serum 2 starting point: a preset and the notes.
 
-The project is at the intent stage. See [INTENT.md](INTENT.md).
+The project is in the planning stage.
 
 ## Credits
 
