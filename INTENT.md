@@ -157,6 +157,28 @@ retold in our own words, never copied.
 - Release on push to `main`: `cog bump --auto` updates `CHANGELOG.md`, tags
   the version and publishes a GitHub Release with a macOS arm64 binary.
 
+### Strict code
+
+Strict types and strict lints are a hard requirement. Agents write most of
+the code, and agent output varies, so the compiler and linters must catch
+the typical mistakes.
+
+- Types carry units. Public APIs take newtypes such as `Hz`, `Seconds`,
+  `Semitones`, `Decibels` and `Normalized` (0..1), never a bare `f32`. The
+  research found unit mix-ups between sources, for example a filter cutoff
+  stored as 0..1 in one place and in Hz in another.
+- Parse, don't validate: values are checked once at the boundary (file,
+  CLI, JSON) and are valid by type afterwards.
+- Lints sit in `[lints]` in `Cargo.toml`, so every build applies them:
+  - rustc: `unsafe_code = "forbid"`, `missing_docs = "deny"`,
+    `unreachable_pub = "deny"`;
+  - Clippy: `all` and `pedantic` denied; `unwrap_used`, `expect_used`,
+    `panic`, `todo`, `unimplemented` and `dbg_macro` denied outside tests.
+- A future plugin-hosting module may need `unsafe` for FFI. It then gets a
+  narrow, documented exception in that module only.
+- CI fails on any warning: `cargo clippy --all-targets --all-features -- -D
+  warnings` and `RUSTDOCFLAGS="-D warnings" cargo doc --no-deps`.
+
 ## Risks
 
 - Suno stems carry bleed from other instruments and artifacts. Nobody has
