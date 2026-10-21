@@ -42,20 +42,49 @@ A folder next to the stem with:
 ## Approach
 
 A Rust command-line toolkit does the deterministic work. An agent session
-does the sound design.
+does the sound design. The project trains no models of its own.
 
-Commands:
+### `analyze`
 
-- `analyze`: writes audio features as JSON (pitch, amplitude envelope,
-  spectrum, modulation rate, stereo width, distortion) and a spectrogram
-  PNG for the agent to look at.
-- `notes`: transcribes the stem to MIDI with a pretrained model (Basic Pitch
-  through ONNX Runtime).
-- `preset`: reads and writes `.SerumPreset` files and builds a preset from
-  JSON. The format is XferJson header, CBOR, Zstandard. Existing open-source
-  packers document it.
+Writes audio features as JSON and a spectrogram PNG for the agent to look
+at. Features: pitch, amplitude envelope with attack time, spectral
+centroid, rolloff and flatness, modulation rate, stereo width (side/mid),
+distortion. Spectral centroid and attack time have the strongest published
+link to perceived timbre. The other features are a proposal to validate.
 
-Session loop:
+### `notes`
+
+Transcribes the stem to MIDI with the `basic-pitch-rs` crate. It bundles
+the pretrained Basic Pitch model and runs it on `tract`, so the binary
+needs no ONNX Runtime library. It also covers decoding, resampling and MIDI
+writing.
+
+- Pin the crate version: it is a young v0.1 port.
+- Use one profile per stem type: frequency range, onset threshold and
+  minimum note length. The profiles cut false notes from bleed.
+- Known limits: no notes below A0 (27.5 Hz), and pitch bends cover about
+  two semitones. Long 808 glides break into steps.
+
+### `preset`
+
+Reads and writes `.SerumPreset` files and builds a preset from JSON.
+
+- Layout: `XferJson\0`, JSON metadata length (u64 LE), JSON metadata,
+  uncompressed CBOR size (u32 LE), encoding flag (u32 LE, 2 = zstd), one
+  zstd frame of CBOR.
+- The metadata `hash` is the MD5 of the compressed bytes. Recompute it on
+  write.
+- Start every preset from an Init preset saved by Serum 2 itself. Change
+  only `plainParams`, because no public table of defaults exists.
+- Keep CBOR map order and write floats as float64. Check one written file
+  in Serum 2 before trusting the writer.
+- Reference factory wavetables by their relative path.
+- The open-source packers disagree on modulation source IDs. Verify them
+  against presets saved by Serum 2.
+- Crates: `zstd`, `ciborium`, `md-5`, `serde_json`. No Rust crate for
+  Serum 2 presets exists yet.
+
+### Agent session
 
 1. The producer hands a stem to the agent.
 2. The agent runs `analyze` and `notes`.
@@ -63,9 +92,18 @@ Session loop:
 4. The agent writes the preset with `preset`.
 5. The agent writes `explanation.md`.
 
-A Claude Code skill in this repository describes the loop.
+A Claude Code skill in this repository describes the loop. The skill
+carries style cards for reese, neuro, wobble, 808, pluck and pad sounds,
+each with a worked example preset. Few-shot examples are the most reliable
+published gain for LLM audio-parameter tasks. Recipes from articles are
+retold in our own words, never copied.
 
-Pretrained models are fine. The project trains no models of its own.
+## Licensing of reused work
+
+- Code from MIT or Apache-2.0 projects may be reused with attribution.
+- GPL projects serve only as sources of facts, or run as a separate
+  process.
+- Code without a license may be read, not copied.
 
 ## Out of scope now
 
@@ -77,17 +115,25 @@ Pretrained models are fine. The project trains no models of its own.
 
 ## Later
 
-- `render`: render a preset with MIDI to WAV through Serum 2, so the
-  producer can compare it with the stem by ear.
-- `compare`: score two WAV files with multi-scale spectral loss and MFCC
-  distance.
-- `refine`: tune preset parameters automatically through render and compare,
-  so the toolkit works from a terminal without an agent.
-- A test bench: render factory presets, run them through the toolkit and
-  compare the result with the source preset. Factory presets belong to Xfer
-  Records and stay out of the repository.
-- A labeled public dataset of audio and Serum presets as an extra test bench,
-  if one exists.
+- `render`: render a preset with MIDI to WAV through Serum 2.
+  - Serum 2 ships as VST3, AU and AAX, with no CLAP build.
+  - Load the preset through a VST3 processor state blob. Raw preset bytes
+    in the state fall back to the init patch.
+  - Try the native `vst3-host` crate first. A separate host process is the
+    fallback.
+  - Renders are not deterministic, so compare with tolerances.
+  - Rendering needs a Serum 2 authorized on the machine, so CI cannot do it.
+- `compare`: score two WAV files with a composite metric: MFCC distance,
+  multi-scale spectral loss and a CLAP embedding distance. MFCC tracks
+  human timbre ratings well. Spectral loss alone does not.
+- `refine`: tune preset parameters automatically with CMA-ES over render
+  and compare, so the toolkit works from a terminal without an agent.
+- A local test bench: render factory presets, run them through the toolkit
+  and compare the result with the source preset. Add a control run with the
+  features hidden from the agent, to measure what the features add. No
+  public dataset pairs Serum 2 presets with audio. Factory presets and
+  renders stay out of the repository.
+- A pitch tracker for bass glides, if Basic Pitch bends prove too coarse.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
@@ -103,24 +149,17 @@ Pretrained models are fine. The project trains no models of its own.
 
 ## Risks
 
-- Suno stems carry bleed from other instruments and artifacts. The MIDI
-  will contain errors and needs a quick manual pass.
-- Designing a preset from features and a spectrogram is unproven. Until the
-  render and compare commands exist, the producer judges the result by ear.
+- Suno stems carry bleed from other instruments and artifacts. Nobody has
+  measured transcription accuracy on such stems. The MIDI will contain
+  errors and needs a quick manual pass.
+- Designing a preset from features and a spectrogram is unproven. No
+  benchmark of LLMs writing synth presets from audio exists. Until render
+  and compare exist, the producer judges the result by ear.
 - The `.SerumPreset` format is reverse-engineered. A Serum 2 update can
-  break it.
+  break it. Whether Serum 2 accepts float16 values or unknown keys is
+  unknown.
+- `basic-pitch-rs` is new and self-benchmarked by its author.
 
 ## Prior work
 
-- Kevin Thor Hansen,
-  [Sound2Serum: Neural Sound Matching System for Serum 2](https://projekter.aau.dk/projekter/files/835339029/Master_Thesis_Kevin_Thor_Hansen.pdf),
-  master thesis, Aalborg University Copenhagen, 2026. It predicts 45
-  oscillator and envelope parameters from a single note with a neural
-  network. Listeners rated its matches below a 300 Hz low-pass anchor in
-  82% of trials. This project takes its preset-format and evaluation
-  lessons and skips the training.
-- [node-serum2-preset-packager](https://github.com/CharlesBT/node-serum2-preset-packager)
-  and [serum2gen](https://github.com/dougwithseismic/serum2gen): open-source
-  `.SerumPreset` readers and writers.
-- [Basic Pitch](https://github.com/spotify/basic-pitch): polyphonic
-  audio-to-MIDI transcription.
+The README credits lists the works this project builds on.

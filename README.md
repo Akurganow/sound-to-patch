@@ -6,6 +6,35 @@ The project is in the planning stage.
 
 ## Credits
 
-The idea builds on Kevin Thor Hansen's master thesis
-[Sound2Serum: Neural Sound Matching System for Serum 2](https://projekter.aau.dk/projekter/files/835339029/Master_Thesis_Kevin_Thor_Hansen.pdf)
-(Aalborg University Copenhagen, 2026, supervisor Cumhur Erkut).
+This project builds on the research and open-source work below.
+
+### Research
+
+- Kevin Thor Hansen,
+  [Sound2Serum: Neural Sound Matching System for Serum 2](https://projekter.aau.dk/projekter/files/835339029/Master_Thesis_Kevin_Thor_Hansen.pdf),
+  master thesis, Aalborg University Copenhagen, 2026, supervisor Cumhur
+  Erkut.
+- Rachel M. Bittner et al.,
+  [A Lightweight Instrument-Agnostic Model for Polyphonic Note Transcription and Multipitch Estimation](https://arxiv.org/abs/2203.09893),
+  ICASSP 2022. The Basic Pitch model.
+- Haokun Tian, Stefan Lattner and Charalampos Saitis,
+  [Assessing the Alignment of Audio Representations with Timbre Similarity Ratings](https://arxiv.org/abs/2507.07764),
+  ISMIR 2025.
+- Seungheon Doh et al.,
+  [Can Large Language Models Predict Audio Effects Parameters from Natural Language?](https://arxiv.org/abs/2505.20770),
+  WASPAA 2025.
+
+### Open-source projects
+
+- [basic-pitch-rs](https://github.com/AThevon/basic-pitch-rs) (Apache-2.0):
+  Basic Pitch transcription in Rust.
+- [node-serum2-preset-packager](https://github.com/CharlesBT/node-serum2-preset-packager)
+  (MIT): `.SerumPreset` packing and unpacking.
+- [serum2gen](https://github.com/dougwithseismic/serum2gen) (MIT): Serum 2
+  preset reading, writing and parameter aliases.
+- [serum2-preset-loader](https://github.com/wiillownet/serum2-preset-loader)
+  (MIT): Serum 2 presets as plugin state.
+- [serum-mcp](https://github.com/Celian-mrc/serum-mcp) (MIT): Serum 2 preset
+  generation driven by a language model.
+- [rust-vst3-host](https://github.com/HelgeSverre/rust-vst3-host) (MIT): VST3
+  hosting and offline rendering in Rust.
