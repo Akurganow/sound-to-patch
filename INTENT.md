@@ -236,9 +236,10 @@ not classify the stem into a style.
   not modify its files.
 - Weights under a non-commercial license (CC BY-NC) are inspiration only.
 - Code without a license may be read, not copied.
-- README and `docs/` may credit every project or paper we studied as
-  inspiration, whatever its license. They link to code only under a
-  permissive license.
+- README and `docs/` credit every project or paper we studied as
+  inspiration, whatever its license. A credit gives the name, a link to the
+  repository or paper, and the license. Projects under a non-permissive
+  license or with no license carry the note "inspiration only".
 - Crates we install are dependencies, not inspiration. They stay out of
   the credits.
 - License notices of the dependencies ship with the binary as
@@ -398,6 +399,15 @@ The first stage after the research is a decomposition into epics.
 
 ## Engineering
 
+- The project is an application, not a library for others. It is never
+  published to crates.io: `publish = false` in every `Cargo.toml`. The
+  binary ships through GitHub Releases, and the API docs go to GitHub Pages.
+- Golden numbers for metric tests come from a pinned, dev-only Python
+  script in `xtask/`. It runs once per reference change, and its numbers
+  are committed as JSON. CI never needs Python.
+- Agent-written changes follow `CONTRIBUTING.md`: the pull request says an
+  agent wrote it and shows the verification commands with their output.
+  The owner reviews every such pull request before merge.
 - Rust, edition 2024, MIT license. `rust-version` is the highest MSRV among
   the dependencies, dev-dependencies included (1.91 now).
 - The repository is public.
