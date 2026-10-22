@@ -190,6 +190,8 @@ preset.
   hex formatter, format bytes ourselves), `serde_json`.
 - Every format fact records the Serum build it was verified on. The
   metadata version changed between builds (4.0, 7.0, 9.0, 10.0).
+- Keep the version fields of the Init preset. A preset stamped by a newer
+  build than the installed one opens with its name but the Init sound.
 
 ### Agent session
 
@@ -306,6 +308,9 @@ not classify the stem into a style.
   - Pad the MIDI with release time: hosts cut the render at the requested
     length.
   - Rendering needs a Serum 2 authorized on the machine, so CI cannot do it.
+  - Fixes between Serum 2 builds changed the rendered sound. Every render
+    records the build and pins the quality setting (1x, 2x or 4x
+    oversampling).
 - Calibration set, the first use of `render`. Measured once per Serum build.
   It settles the knob laws and route depths that the layer report marks
   uncalibrated: cutoff law per filter type, resonance, key tracking, mod
