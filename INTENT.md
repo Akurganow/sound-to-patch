@@ -371,6 +371,11 @@ not classify the stem into a style.
   `research/serum2/`. The form is open: a page in `docs/`, a skill in this
   repository, or a separate plugin. It summarizes commercial material in
   our own words and links the sources.
+  - The reader has never used Serum, either version. The reference explains
+    Serum 2 on its own terms and assumes no prior synth knowledge.
+  - Serum 1 material and the changes from Serum 1 to Serum 2 are research
+    observations and inspiration only. The reference, the skill and the
+    explanation never compare versions or teach through Serum 1.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
