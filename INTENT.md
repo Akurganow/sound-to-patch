@@ -432,6 +432,15 @@ not classify the stem into a style.
   contract, the explanation template and the reference with the audio
   path. The agent cannot hear the result, so the explanation says what to
   listen for and which controls to turn next.
+  - Coverage is as wide as is achievable: every role and instrument that
+    preset libraries sort sounds into, and every sound word producers use
+    often. Each role gets a card that says what the sound is built from.
+    Each word gets a dictionary entry per meaning that says what it changes.
+  - Controls the description leaves open come from the role or style card,
+    then from the agent's own choice, marked as a guess with a tuning note.
+  - When a role or word yields several strongly different sounds, the skill
+    asks one short question with options. Otherwise it picks, says so and
+    names the alternatives.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
