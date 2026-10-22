@@ -174,6 +174,8 @@ preset.
   command tests. Tests against the user's real Init stay `#[ignore]`.
 - Never write a parameter at its default value. An absent key and an
   explicit default sound different. No official table of defaults exists.
+  The cutoff is the exception: it is always written, as 96 % of real
+  filters hold it.
 - Sort CBOR map keys bytewise, as Serum does. Write every `plainParams`
   number as float64, integers only for counts and ids. A native CBOR bool
   in `plainParams` crashed a DAW.
@@ -194,15 +196,22 @@ preset.
 - An uncalibrated value is still written, including from the no-agent
   baseline: a starting point that may be wrong beats a missing control.
   The explanation names each uncalibrated control, says how to tune it by
-  ear and what the producer should hear when it is right.
+  ear and what the producer should hear when it is right. Portamento and
+  envelope curves have no interim law yet: they stay at their default, and
+  the explanation says the curve is not set and how to tune it by ear.
 - Keys not yet known: unison blend, range, mode and stack, the
   per-oscillator ENV 1 button, DC bias in Distortion, the multiband
-  compressor controls and the extra reverb controls. Save one Serum-built
-  probe preset per control and diff the CBOR.
+  compressor controls, the extra reverb controls and reverb type names,
+  LEGATO and SCALED portamento, the LFO mode and its anchored pairing, LFO
+  9 and 10, the delay mode and its time ceiling, the Pre/Post values, and
+  the matrix destination ids of an oscillator's coarse pitch and of Main
+  Tuning. Save one Serum-built probe preset per control and diff the CBOR.
 - Crates: `zstd` 0.14 (BSD-3-Clause), `ciborium` (read only), `md-5` (no
   hex formatter, format bytes ourselves), `serde_json`.
 - Every format fact records the Serum build it was verified on. The
   metadata version changed between builds (4.0, 7.0, 9.0, 10.0).
+- The project pins one Serum build, 2.1.5, for probes, fixtures,
+  calibration and renders. Facts from other builds are observations.
 - Keep the version fields of the Init preset. A preset stamped by a newer
   build than the installed one opens with its name but the Init sound.
 
@@ -220,8 +229,10 @@ preset.
 5. The agent writes `explanation.md` from the reasons, one section per
    layer.
 
-A Claude Code skill in this repository describes the loop. The agent does
-not classify the stem into a style.
+A skill describes the loop. It ships as a plugin in this repository (see
+the Serum 2 reference below). The agent does not classify the stem into a
+style. Reading the report is enforced by the skill and its tools; no test
+checks whether the agent read it.
 
 - The edit list has typed records: a parameter value, a modulation route
   (source, destination, amount, polarity), and a menu or slot choice
@@ -234,8 +245,9 @@ not classify the stem into a style.
   numbers with the unit in the field name, such as `cutoff_hz`.
 - `explanation.md` comes from the agent on the agent path. On the
   no-agent path, Rust fills the same template from the report, the edits
-  and the dictionary's tuning notes. One validator checks both: sections,
-  fields, and that every number traces to the report or the edits.
+  and the tuning notes of the `preset` registry. One validator checks
+  both: sections, fields, and that every number traces to the report or
+  the edits.
 
 - The skill holds one file per layer: what the report fields mean, the
   Serum parameters the layer fills (name, unit, range), the rules for the
@@ -243,10 +255,13 @@ not classify the stem into a style.
   turn next. The agent loads a layer file when the layer is flagged,
   uncertain or ambiguous.
 - Style cards (reese, neuro, wobble, 808, pluck, lead, pad) are optional
-  priors. They give typical values for parameters that a layer cannot
-  identify, such as filter drive, distortion mode and effect order. The
-  report decides which blocks are on and which knobs `refine` searches. A
-  card never does.
+  priors. On the audio path they give typical values for parameters that a
+  layer cannot identify, such as filter drive, distortion mode and effect
+  order. The report decides which blocks are on and which knobs `refine`
+  searches; on the audio path a card never does. Each style card is a
+  subrole card of a role (lead, pad, bass and the others). The stem type
+  picks the role card, never a subrole card, and each role card carries
+  these audio-path priors too.
 - Each layer has two worked examples: a report excerpt, the resolved edits
   and the reasons. One of the two is an ambiguity case. Two full examples
   cover all eight layers.
@@ -338,18 +353,31 @@ not classify the stem into a style.
   - Fixes between Serum 2 builds changed the rendered sound. Every render
     records the build and pins the quality setting (1x, 2x or 4x
     oversampling).
+  - The render epic owns the render recipe and its version, the render
+    session (worker pool, restart, retry, flush) and the repeat-render
+    spread. The spread is measured per metric, build and quality and
+    stored in the render record; every later comparison cites it.
+  - Once per pinned Serum build, four or five presets of different kinds
+    are recorded by hand from a DAW and compared with the automatic render
+    by loudness, spectrum and envelope, within the spread.
 - Calibration set, the first use of `render`. Measured once per Serum build.
   It settles the knob laws and route depths that the layer report marks
   uncalibrated: cutoff law per filter type, resonance, key tracking, mod
   amount per octave, pitch-route depth, portamento time and curve, ENV 1
   curve shapes and sustain scale, unison detune in cents, blend and pan law,
-  reverb size to RT60, delay time scalar, compressor threshold, distortion
-  curves, and the probe-preset questions of the layer synthesis.
+  reverb size to RT60, delay time scalar, compressor threshold and
+  distortion curves. Missing keys and default conflicts belong to the
+  preset-format probes, not here. Each table has a residual limit set
+  before it is measured and tied to audibility (for example pitch within 5
+  cents, cutoff within 0.1 octave, times within 10 %). A table that misses
+  its limit stays uncalibrated.
 - `compare`: return named distances, not one scalar: MFCC (40 coefficients,
   cosine over the full frame map), multi-scale spectral loss, envelope
-  distance, descriptor deltas and pitch contour, with an optional CLAP
-  distance. On human timbre ratings MFCC is the best simple baseline
-  (triplet agreement 0.724, spectral loss 0.661, chance 0.5). No single loss
+  distance, descriptor deltas and pitch contour. A CLAP distance joins
+  later as its own task, once the test bench shows a gain, and stays out of
+  the `refine` objective. On human timbre ratings MFCC is the best simple
+  baseline (triplet agreement 0.724, spectral loss 0.661, chance 0.5); our
+  MFCC must reproduce 0.724 within 0.01 on that dataset at a pinned commit. No single loss
   wins on every synth, and within one system the metrics do not track
   listeners, so scores never replace listening. Exclude or level-match the
   first MFCC coefficient: it carries loudness.
@@ -382,6 +410,9 @@ not classify the stem into a style.
     only.
   - No public dataset pairs Serum 2 presets with audio. Factory presets and
     renders stay out of the repository.
+  - Before `refine` scores on two or three notes, the bench checks that
+    this ranks candidates like the full phrase: Spearman at least 0.9 over
+    200 T1 candidates.
 - Our own labelled dataset of Serum 2 presets and renders. No public one
   exists: a sweep of Hugging Face, GitHub, GitLab, Zenodo, Kaggle and paper
   data sections found none. It is built from generated presets and, for
@@ -407,9 +438,19 @@ not classify the stem into a style.
     harness installs it without the rest of the repository. Several
     skills and several plugins are fine: the Serum 2 reference, the audio
     path and text to preset can ship apart.
-  - The dictionary ships inside the reference skill as reference files
+  - The reference plugin holds the dictionary. The audio-path and
+    text-to-preset plugins depend on it and do not copy it. The first task
+    of the reference verifies that plugins load in local and cloud agent
+    sessions and that one plugin can depend on another. If either fails,
+    each plugin also ships as a committed project skill, with a generated,
+    checksum-checked copy of the dictionary.
+  - The release workflow packs each plugin folder.
+  - The dictionary ships inside the reference plugin as reference files
     while its size stays reasonable. If it grows to tens of megabytes, it
     moves to a versioned release asset that the skill fetches by checksum.
+  - Tuning notes live in the `preset` registry, one per control, and are
+    built into the binary. The dictionary takes them from there, so the
+    no-agent explanation and the dictionary never disagree.
   - The reference owns everything about Serum 2 controls. The agent's
     layer files describe the report fields and decision rules and link
     the reference.
@@ -478,20 +519,25 @@ The first stage after the research is a decomposition into epics.
   that adds a command also regenerates the CLI reference, man page and
   shell completions.
 - `docs/` is an mdBook. It holds the user guide, CLI reference, the
-  `.SerumPreset` format spec, architecture, per-layer method notes with
-  their formulas, and the testing guide.
+  `.SerumPreset` format spec, per-layer method notes with their formulas,
+  and the testing guide. `ARCHITECTURE.md` sits at the repository root.
 - Tracking lives on GitHub:
-  - an issue per epic, with sub-issues for tasks and subtasks;
+  - an issue per epic, with sub-issues for tasks and subtasks. A task
+    split into parts gets GitHub sub-issues: each holds scope and
+    acceptance, the facts stay in the parent;
+  - each quantity, field or rule has one owner task. Other tasks read it
+    and link the owner;
   - `blocked by` links for the order between epics;
   - a task that needs the result of a task in another epic gets a
     `blocked by` link to that task, not only to its epic. The issue body
     names the result it waits for;
   - an epic without tasks gets them once the tasks and decisions it
     depends on are closed, not when work on it starts and not earlier.
-    Until then the epic body holds the research and the open questions;
+    Until then the epic body holds the research, the open questions and a
+    "Planned tasks" draft list;
   - a milestone per epic;
-  - labels for kind, area and layer (issue types need an organization, so
-    they wait);
+  - labels for kind, area, layer and test layer (issue types need an
+    organization, so they wait);
   - a GitHub Project board across epics.
 
 ## Engineering
