@@ -263,7 +263,10 @@ The first stage after the research is a decomposition into epics.
   - dataset evaluations as a separate binary or `xtask`, outside CI when
     they need Serum 2 or large data.
 - Each epic closes with its documentation: crate and item rustdoc, README
-  sections, `CHANGELOG.md` through cog, examples.
+  sections, pages in `docs/`, `CHANGELOG.md` through cog, examples.
+- `docs/` holds the long-form documentation: user guide, CLI reference,
+  the `.SerumPreset` format spec, architecture, per-layer method notes with
+  their formulas, and the testing guide.
 - Tracking lives on GitHub:
   - an issue per epic, with sub-issues for tasks and subtasks;
   - a milestone per epic;
