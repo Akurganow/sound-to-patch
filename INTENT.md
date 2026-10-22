@@ -352,9 +352,15 @@ not classify the stem into a style.
     renders stay out of the repository.
 - Our own labelled dataset of Serum 2 presets and renders. No public one
   exists: a sweep of Hugging Face, GitHub, GitLab, Zenodo, Kaggle and paper
-  data sections found none. It is built locally from the owner's factory
-  presets plus generated presets, with the generation recipe and render
-  settings recorded. It is never redistributed.
+  data sections found none. It is built from generated presets and, for
+  local use, the owner's factory presets. The generation recipe and render
+  settings are recorded with it.
+  - The dataset may be public. It is published as a versioned package tied
+    to this repository, for example an OCI artifact on the GitHub Container
+    Registry, and `xtask` fetches it by version and checksum. The choice of
+    registry and its size limits need a check.
+  - Only the generated part is published by default. Factory presets and
+    their renders stay local until the Xfer license terms are checked.
 - Parser fixtures without audio: `RecklessSerum2Bank` (MIT, 250 generated
   `.SerumPreset` files) may enter `tests/fixtures/` with its license.
 - Several different sounds in one stem produce several presets.
