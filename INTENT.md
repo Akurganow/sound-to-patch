@@ -363,6 +363,14 @@ not classify the stem into a style.
     their renders stay local until the Xfer license terms are checked.
 - Parser fixtures without audio: `RecklessSerum2Bank` (MIT, 250 generated
   `.SerumPreset` files) may enter `tests/fixtures/` with its license.
+- A Serum 2 reference for the agent: how Serum 2 is laid out, what each
+  control does, its units and ranges, its quirks, and sound-design recipes,
+  so the agent finds its way in Serum 2 while it writes edits and the
+  explanation. The research collects manuals, guides, videos, courses,
+  forum knowledge, open preset banks and existing agent tooling in
+  `research/serum2/`. The form is open: a page in `docs/`, a skill in this
+  repository, or a separate plugin. It summarizes commercial material in
+  our own words and links the sources.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
