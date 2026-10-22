@@ -12,6 +12,11 @@ design experience, the second step is the hardest part.
 Give the producer a starting point for one stem: the notes and a Serum 2
 preset, plus an explanation of how the preset works.
 
+A second path needs no audio: the producer describes the sound in their
+own words, and the agent writes a Serum 2 preset and its explanation. It
+reuses the preset writer, the Serum 2 reference and the agent skill
+without the analysis, so it can ship before `analyze` does.
+
 ## Input
 
 One stem of one instrument exported from Suno, for example the whole Bass
@@ -159,10 +164,14 @@ preset.
 - Start every preset from an Init preset saved by Serum 2 itself. Change
   `plainParams`, mod slots, FX racks, wavetable fields, macro names and the
   name fields.
-- The Init preset may fall under the Xfer EULA, so it never enters the
-  repository. The tool reads it at run time from the user's local Serum 2
-  preset folder, or from a path given on the command line. If the file is
-  missing, the tool stops and says where it looked.
+- The Init preset may fall under the Xfer EULA, so the user's own Init
+  never enters the repository. The tool reads it at run time from the
+  user's local Serum 2 preset folder, or from a path given on the command
+  line. If the file is missing, the tool stops and says where it looked.
+- Init-like files saved by Serum 2 that MIT-licensed repositories already
+  publish may enter `tests/fixtures/` with their provenance: origin,
+  license, copyright line and SHA-256. CI uses them as the template for
+  command tests. Tests against the user's real Init stay `#[ignore]`.
 - Never write a parameter at its default value. An absent key and an
   explicit default sound different. No official table of defaults exists.
 - Sort CBOR map keys bytewise, as Serum does. Write every `plainParams`
@@ -182,6 +191,10 @@ preset.
   measured on a render. Until a table exists, the writer uses the interim
   law, marks the parameter uncalibrated, and offers no Hz constructor for a
   knob without a measured law.
+- An uncalibrated value is still written, including from the no-agent
+  baseline: a starting point that may be wrong beats a missing control.
+  The explanation names each uncalibrated control, says how to tune it by
+  ear and what the producer should hear when it is right.
 - Keys not yet known: unison blend, range, mode and stack, the
   per-oscillator ENV 1 button, DC bias in Distortion, the multiband
   compressor controls and the extra reverb controls. Save one Serum-built
@@ -209,6 +222,20 @@ preset.
 
 A Claude Code skill in this repository describes the loop. The agent does
 not classify the stem into a style.
+
+- The edit list has typed records: a parameter value, a modulation route
+  (source, destination, amount, polarity), and a menu or slot choice
+  (filter type, warp mode, an effect in an FX slot). A raw record sets a
+  preset key the registry does not cover yet. `preset` checks its wire
+  type and range where known, and the explanation lists it as raw. The
+  edit-list task owns the schema, `preset` owns parsing and writing.
+- The agent writes values as strings with units ("1.2 kHz", "350 ms"),
+  parsed into the unit types at the boundary. `layers.json` holds plain
+  numbers with the unit in the field name, such as `cutoff_hz`.
+- `explanation.md` comes from the agent on the agent path. On the
+  no-agent path, Rust fills the same template from the report, the edits
+  and the dictionary's tuning notes. One validator checks both: sections,
+  fields, and that every number traces to the report or the edits.
 
 - The skill holds one file per layer: what the report fields mean, the
   Serum parameters the layer fills (name, unit, range), the rules for the
@@ -373,14 +400,38 @@ not classify the stem into a style.
   so the agent finds its way in Serum 2 while it writes edits and the
   explanation. The research collects manuals, guides, videos, courses,
   forum knowledge, open preset banks and existing agent tooling in
-  `research/serum2/`. The form is open: a page in `docs/`, a skill in this
-  repository, or a separate plugin. It summarizes commercial material in
-  our own words and links the sources.
+  `research/serum2/`. It summarizes commercial material in our own words
+  and links the sources.
+  - Form: plugins and skills live in this repository, with a marketplace
+    file at its root. The release packs each plugin folder so an agent
+    harness installs it without the rest of the repository. Several
+    skills and several plugins are fine: the Serum 2 reference, the audio
+    path and text to preset can ship apart.
+  - The dictionary ships inside the reference skill as reference files
+    while its size stays reasonable. If it grows to tens of megabytes, it
+    moves to a versioned release asset that the skill fetches by checksum.
+  - The reference owns everything about Serum 2 controls. The agent's
+    layer files describe the report fields and decision rules and link
+    the reference.
+  - A human-readable book page of the dictionary comes later, generated
+    from the same registry.
   - The reader has never used Serum, either version. The reference explains
     Serum 2 on its own terms and assumes no prior synth knowledge.
   - Serum 1 material and the changes from Serum 1 to Serum 2 are research
     observations and inspiration only. The reference, the skill and the
     explanation never compare versions or teach through Serum 1.
+  - The reference includes a dictionary of every Serum 2 control and
+    parameter group: what it does, what it changes in the sound, its
+    unit, range and on-screen label, and which words producers use for
+    that change. The `preset` registry feeds its parameter part, so the
+    dictionary and the writer never disagree.
+- Text to preset: a skill that turns the producer's own description of a
+  sound into a Serum 2 preset and an `explanation.md`, with no audio. The
+  agent maps the words to controls through the dictionary, writes an edit
+  list, and `preset` validates and writes it. It shares the edit-list
+  contract, the explanation template and the reference with the audio
+  path. The agent cannot hear the result, so the explanation says what to
+  listen for and which controls to turn next.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
@@ -411,8 +462,8 @@ The first stage after the research is a decomposition into epics.
   fails loudly when its input is missing. Cargo features never gate tests.
 - Test data is generated in code first. Committed fixtures are small and
   listed with origin and license. `xtask` downloads datasets into an
-  ignored directory. Serum factory presets, the Init preset, their renders
-  and Suno stems never enter the repository.
+  ignored directory. Serum factory presets, the user's Init preset, their
+  renders and Suno stems never enter the repository.
 - Each epic closes with its documentation: crate and item rustdoc, README
   sections, pages in `docs/`, `CHANGELOG.md` through cog, examples. An epic
   that adds a command also regenerates the CLI reference, man page and
@@ -423,6 +474,12 @@ The first stage after the research is a decomposition into epics.
 - Tracking lives on GitHub:
   - an issue per epic, with sub-issues for tasks and subtasks;
   - `blocked by` links for the order between epics;
+  - a task that needs the result of a task in another epic gets a
+    `blocked by` link to that task, not only to its epic. The issue body
+    names the result it waits for;
+  - an epic without tasks gets them once the tasks and decisions it
+    depends on are closed, not when work on it starts and not earlier.
+    Until then the epic body holds the research and the open questions;
   - a milestone per epic;
   - labels for kind, area and layer (issue types need an organization, so
     they wait);
@@ -487,11 +544,19 @@ the code, and agent output varies, so the compiler and linters must catch
 the typical mistakes.
 
 - Types carry units. Public APIs take newtypes such as `Hz`, `Seconds`,
-  `Semitones`, `Cents`, `Octaves`, `Decibels`, `Percent` and `Normalized`
-  (0..1), never a bare `f32`. The research found unit traps: the
-  voice-filter cutoff is a 0..1 knob position, while FX frequencies are in
-  Hz. Every estimate carries a `Confidence` with its value, spread and
-  reason codes.
+  `Semitones`, `Cents`, `Octaves`, `Decibels`, `Percent`, `Normalized`
+  (0..1) and `MidiPitch` (fractional, 0..127), never a bare float. The
+  newtypes and the analysis math hold `f64` from intake on. `f32` appears
+  only at a boundary that demands it, such as the transcription model
+  input. The research found unit traps: the voice-filter cutoff and the
+  FX Distortion and FX Filter frequencies are 0..1 knob positions, while
+  the other FX frequencies are in Hz.
+- Every estimate carries a `Confidence`: a level (low, medium, high),
+  reason codes with the values of the signals behind them, an optional
+  spread in the value's own unit, and a state for "no estimate".
+- Quality and accuracy come first. Where two designs differ, take the one
+  less likely to worsen the result, even when it costs more code, memory
+  or time.
 - Parse, don't validate: values are checked once at the boundary (file,
   CLI, JSON) and are valid by type afterwards.
 - Lints sit in `[workspace.lints]` in the root `Cargo.toml`, and each member
