@@ -350,6 +350,13 @@ not classify the stem into a style.
     only.
   - No public dataset pairs Serum 2 presets with audio. Factory presets and
     renders stay out of the repository.
+- Our own labelled dataset of Serum 2 presets and renders. No public one
+  exists: a sweep of Hugging Face, GitHub, GitLab, Zenodo, Kaggle and paper
+  data sections found none. It is built locally from the owner's factory
+  presets plus generated presets, with the generation recipe and render
+  settings recorded. It is never redistributed.
+- Parser fixtures without audio: `RecklessSerum2Bank` (MIT, 250 generated
+  `.SerumPreset` files) may enter `tests/fixtures/` with its license.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
