@@ -247,6 +247,29 @@ lives in the common part.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
+## Delivery
+
+The first stage after the research is a decomposition into epics.
+
+- Each epic has a deliverable that can be tested on its own.
+- Each epic picks the test layers it needs, from unit tests up to labelled
+  datasets. Some epics need unit tests only, others the full stack.
+- Tests follow Rust community layout:
+  - unit tests in a `#[cfg(test)] mod tests` next to the code;
+  - integration tests in `tests/`, fixtures in `tests/fixtures/`;
+  - doc tests in rustdoc examples, runnable examples in `examples/`;
+  - property tests where an invariant exists (round trips, unit
+    conversions);
+  - dataset evaluations as a separate binary or `xtask`, outside CI when
+    they need Serum 2 or large data.
+- Each epic closes with its documentation: crate and item rustdoc, README
+  sections, `CHANGELOG.md` through cog, examples.
+- Tracking lives on GitHub:
+  - an issue per epic, with sub-issues for tasks and subtasks;
+  - a milestone per epic;
+  - labels and issue types for kind and layer;
+  - a GitHub Project board across epics.
+
 ## Engineering
 
 - Rust, edition 2024, MIT license. `rust-version` is the highest MSRV among
