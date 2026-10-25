@@ -1,0 +1,31 @@
+name: Set up lychee
+description: >
+  Installs the lychee link checker from its release and checks the archive
+  against the SHA-256 that GitHub records for the asset.
+runs:
+  using: composite
+  steps:
+    # The only GITHUB_PATH entry is a directory under RUNNER_TEMP.
+    - name: Install lychee
+      shell: bash
+      env:
+        LYCHEE_VERSION: 0.24.2
+      run: | # zizmor: ignore[github-env]
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          Linux-X64)
+            asset="lychee-x86_64-unknown-linux-musl.tar.gz"
+            sha256=73657a111819a30c47c08352896796f23d64e4eb2b3ed39b6d32149241566fc5 ;;
+          macOS-ARM64)
+            asset="lychee-aarch64-apple-darwin.tar.gz"
+            sha256=c9d3740ea2d891854d37116c9fba840f37b6e7c89d330e7db84ac333631c4977 ;;
+          *) echo "::error::no pinned lychee asset for $RUNNER_OS-$RUNNER_ARCH"; exit 1 ;;
+        esac
+        dir="$RUNNER_TEMP/lychee"
+        mkdir -p "$dir/bin"
+        curl --fail --location --silent --show-error --output "$dir/$asset" \
+          "https://github.com/lycheeverse/lychee/releases/download/lychee-v$LYCHEE_VERSION/$asset"
+        echo "$sha256  $dir/$asset" | shasum -a 256 -c -
+        tar -xzf "$dir/$asset" -C "$dir"
+        mv "$(find "$dir" -type f -name lychee -perm -u+x | head -n 1)" "$dir/bin/lychee"
+        echo "$dir/bin" >> "$GITHUB_PATH"
+        "$dir/bin/lychee" --version | grep -F "$LYCHEE_VERSION"

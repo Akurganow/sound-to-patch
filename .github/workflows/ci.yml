@@ -116,3 +116,53 @@ jobs:
         with:
           tool: cargo-about@0.9.2
       - run: cargo about generate --locked --fail -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
+
+  # Builds the book with the API docs under /api/, checks internal links,
+  # the code map, the credits and the Rust version named in the docs.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: mdbook@0.5.4
+      - uses: ./.github/actions/setup-lychee
+      # mdbook-katex publishes no binaries.
+      - run: cargo install --locked mdbook-katex@0.10.0
+      - run: cargo xtask check-architecture
+      - run: cargo xtask check-credits
+      - run: cargo xtask check-rust-version
+      - run: mdbook build docs
+      - run: cargo doc --no-deps
+      - run: cp -R target/doc docs/book/api
+      # rustdoc pages are generated and use script-built anchors; links into
+      # them from the book are still checked. 404.html links by absolute path.
+      - run: >-
+          lychee --offline --no-progress --include-fragments
+          --exclude-path docs/book/api --exclude-path docs/book/404.html docs/book
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          path: docs/book
+
+  # Deploys only from main and only after the tests pass.
+  pages:
+    needs: [docs, test, doc]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+

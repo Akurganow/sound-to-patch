@@ -1,6 +1,7 @@
-//! Writes the release version. `cog bump` calls this as a pre-bump hook, so
-//! the version commit carries the new number in `Cargo.toml` and
-//! `Cargo.lock`, and the released binary prints it.
+//! Version numbers outside the code. `cog bump` calls [`set`] as a pre-bump
+//! hook, so the version commit carries the new number in `Cargo.toml` and
+//! `Cargo.lock`, and the released binary prints it. [`check_rust_version`]
+//! keeps the docs on the manifest's `rust-version`.
 
 use std::fs;
 use std::path::Path;
@@ -57,9 +58,87 @@ fn with_version(manifest: &str, version: &str) -> crate::Result<String> {
     }
 }
 
+/// Fails when a doc names a Rust version, as `Rust 1.NN`, other than the
+/// `rust-version` of `[workspace.package]`.
+pub(crate) fn check_rust_version(root: &Path) -> crate::Result<()> {
+    let manifest = fs::read_to_string(root.join("Cargo.toml"))?;
+    let msrv = manifest
+        .lines()
+        .find_map(|line| line.strip_prefix("rust-version = \""))
+        .and_then(|rest| rest.strip_suffix('"'))
+        .ok_or("Cargo.toml has no `rust-version = \"...\"` line")?;
+    let mut docs = vec![root.join("README.md"), root.join("CONTRIBUTING.md")];
+    let mut dirs = vec![root.join("docs/src")];
+    while let Some(dir) = dirs.pop() {
+        for entry in fs::read_dir(&dir)? {
+            let path = entry?.path();
+            if path.is_dir() {
+                dirs.push(path);
+            } else if path.extension().is_some_and(|ext| ext == "md") {
+                docs.push(path);
+            }
+        }
+    }
+    let mut wrong = Vec::new();
+    for doc in docs {
+        let text = fs::read_to_string(&doc)?;
+        for named in rust_versions(&text) {
+            if named != msrv {
+                wrong.push(format!("{} names Rust {named}", doc.display()));
+            }
+        }
+    }
+    if wrong.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "rust-version is {msrv}, but {}. Update the docs or the manifest",
+            wrong.join(", ")
+        )
+        .into())
+    }
+}
+
+/// Every `1.NN` that follows the word `Rust `.
+fn rust_versions(text: &str) -> Vec<&str> {
+    text.match_indices("Rust 1.")
+        .map(|(at, _)| {
+            let version = &text[at + "Rust ".len()..];
+            let end = version
+                .char_indices()
+                .skip(2)
+                .find(|&(_, c)| !c.is_ascii_digit())
+                .map_or(version.len(), |(i, _)| i);
+            &version[..end]
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finds_rust_versions_in_prose() {
+        let text = "Install Rust 1.91 or newer. Rust 1.100 later. Rusty 1.2.";
+        assert_eq!(rust_versions(text), ["1.91", "1.100"]);
+    }
+
+    #[test]
+    fn rust_version_check_names_the_stale_doc() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("docs/src")).unwrap();
+        fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace.package]\nrust-version = \"1.91\"\n",
+        )
+        .unwrap();
+        fs::write(dir.path().join("README.md"), "Needs Rust 1.91.\n").unwrap();
+        fs::write(dir.path().join("CONTRIBUTING.md"), "Needs Rust 1.90.\n").unwrap();
+        let err = check_rust_version(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("CONTRIBUTING.md names Rust 1.90"), "{err}");
+        assert!(!err.contains("README"), "{err}");
+    }
 
     const MANIFEST: &str = "[package]\nversion.workspace = true\n\n\
         [workspace.package]\n# note\nversion = \"0.0.0\"\nedition = \"2024\"\n";

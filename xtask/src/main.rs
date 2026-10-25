@@ -4,6 +4,7 @@
 //! checks and fetch pinned datasets.
 
 mod architecture;
+mod credits;
 mod dist;
 mod fetch;
 mod pr;
@@ -50,6 +51,10 @@ enum Task {
     },
     /// Check that `ARCHITECTURE.md` names every top-level module of `src/`.
     CheckArchitecture,
+    /// Check that every cited source has a credit with a licence.
+    CheckCredits,
+    /// Check that the docs name the manifest's `rust-version`.
+    CheckRustVersion,
     /// Check a pull request description, read from the `PR_BODY` variable.
     CheckPrBody,
     /// Write a release version into the workspace manifest and the lock file.
@@ -64,6 +69,8 @@ fn main() -> ExitCode {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
         Task::CheckArchitecture => architecture::check(root()),
+        Task::CheckCredits => credits::check(root()),
+        Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())
             .and_then(|body| pr::check_body(&body)),
