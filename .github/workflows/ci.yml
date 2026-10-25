@@ -166,3 +166,61 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
+  # Bumps the version and tags it. publish.yml builds and publishes the
+  # release when the tag arrives. A GITHUB_TOKEN push would start no
+  # workflow and cannot pass the main ruleset, so the version commit and the
+  # tag go out with the release deploy key, the ruleset's bypass actor.
+  release:
+    needs: [fmt, clippy, test, doc, licenses, docs]
+    # The version commit itself starts this workflow again; the prefix guard
+    # stops the loop.
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      !startsWith(github.event.head_commit.message, 'chore(version)')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      # The tested commit, not the newest main: if main moved on, the push
+      # below fails and the run for the newer commit releases it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: ./.github/actions/setup-cog
+      # cog bumps only on the branch listed in cog.toml.
+      - run: git checkout -B main
+      # `cog bump --auto` exits 0 and changes nothing when no commit since the
+      # last tag is a feat, a fix or breaking. An unmoved HEAD means no release.
+      - name: Bump the version
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          before="$(git rev-parse HEAD)"
+          cog bump --auto
+          if [ "$(git rev-parse HEAD)" = "$before" ]; then
+            echo "No releasable commit since the last tag."
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "tag=$(git tag --points-at HEAD 'v*')" >> "$GITHUB_OUTPUT"
+      # Atomic: the commit and the tag land together or not at all. The host
+      # key is GitHub's published ed25519 key (https://api.github.com/meta).
+      - name: Push the version commit and the tag
+        if: steps.bump.outputs.tag != ''
+        env:
+          TAG: ${{ steps.bump.outputs.tag }}
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          GITHUB_HOST_KEY: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+        run: |
+          key="$RUNNER_TEMP/release-key"
+          known="$RUNNER_TEMP/known_hosts"
+          printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$key"
+          chmod 600 "$key"
+          printf '%s\n' "$GITHUB_HOST_KEY" > "$known"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known"
+          git push --atomic "git@github.com:${GITHUB_REPOSITORY}.git" HEAD:main "refs/tags/$TAG"
+          rm -f "$key"

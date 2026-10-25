@@ -1,0 +1,100 @@
+name: Publish
+
+# Builds and publishes the release of a version tag. The release job in
+# ci.yml pushes the tag. A failed run is re-run, or dispatched by hand with
+# the tag name; a release that already exists is left alone.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The version tag to publish, for example v0.1.0.
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  publish:
+    # Only the shipped target, and Apple targets build on Apple runners.
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          # cog changelog reads the history between tags.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: ./.github/actions/setup-cog
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-about@0.9.2
+
+      - name: Skip a release that already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the binary
+        if: steps.existing.outputs.exists != 'true'
+        run: cargo build --release --locked --target aarch64-apple-darwin
+
+      # The binary must print the version of the tag it was built from.
+      - name: Check the version
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          printed="$(target/aarch64-apple-darwin/release/sound-to-serum --version)"
+          echo "$printed"
+          [ "$printed" = "sound-to-serum ${TAG#v}" ]
+
+      - name: Pack the archive
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          name="sound-to-serum-$TAG-aarch64-apple-darwin"
+          stage="target/stage/$name"
+          mkdir -p "$stage"
+          cargo xtask dist --out-dir "$stage"
+          cargo about generate --locked --fail -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
+          cp target/aarch64-apple-darwin/release/sound-to-serum LICENSE "$stage/"
+          mkdir -p target/assets
+          tar -czf "target/assets/$name.tar.gz" -C target/stage "$name"
+          cp "$stage/THIRD-PARTY-LICENSES.html" target/assets/
+
+      # Each plugin folder ships alone, so an agent harness installs a
+      # plugin without the rest of the repository.
+      - name: Pack the plugins
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          for dir in plugins/*/; do
+            [ -d "$dir" ] || continue
+            plugin="$(basename "$dir")"
+            tar -czf "target/assets/$plugin-$TAG.tar.gz" -C plugins "$plugin"
+          done
+
+      - name: Publish the release
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          cog changelog --at "$TAG" > "$notes"
+          [ -s "$notes" ] || { echo "::error::no changelog section for $TAG"; exit 1; }
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$TAG" --notes-file "$notes" target/assets/*
