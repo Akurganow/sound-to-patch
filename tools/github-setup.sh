@@ -27,6 +27,13 @@ settings() {
   gh api -X PUT "repos/$repo/automated-security-fixes"
   gh api -X PUT "repos/$repo/private-vulnerability-reporting"
 
+  # Actions must be pinned by full commit SHA. Workflows from every
+  # external contributor's fork wait for approval.
+  gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true \
+    -f allowed_actions=all -F sha_pinning_required=true
+  gh api -X PUT "repos/$repo/actions/permissions/fork-pr-contributor-approval" \
+    -f approval_policy=all_external_contributors
+
   # Jobs ask for wider grants themselves.
   gh api -X PUT "repos/$repo/actions/permissions/workflow" \
     -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
@@ -44,14 +51,28 @@ settings() {
 
 deploy_key() {
   # The release job pushes the version commit and tag with this key; the
-  # main ruleset lists deploy keys as its only bypass actor. The private key
-  # exists only in the repository secret.
+  # main ruleset lists deploy keys as its only bypass actor, so exactly one
+  # key exists. Its private half lives only in the secret of the `release`
+  # environment, which deploys from main alone, so a workflow on another
+  # branch cannot read it.
+  title="release: pushes the version commit and tag"
+  gh api -X PUT "repos/$repo/environments/release" --input - >/dev/null <<'JSON'
+{"deployment_branch_policy": {"protected_branches": false, "custom_branch_policies": true}}
+JSON
+  if ! gh api "repos/$repo/environments/release/deployment-branch-policies" \
+    --jq '.branch_policies[].name' | grep -qx main; then
+    gh api -X POST "repos/$repo/environments/release/deployment-branch-policies" \
+      -f name=main -f type=branch >/dev/null
+  fi
+
+  for id in $(gh api "repos/$repo/keys" --jq ".[] | select(.title == \"$title\") | .id"); do
+    gh api -X DELETE "repos/$repo/keys/$id"
+  done
   dir="$(mktemp -d)"
   trap 'rm -rf "$dir"' EXIT
   ssh-keygen -q -t ed25519 -N '' -C "release deploy key" -f "$dir/key"
-  gh repo deploy-key add "$dir/key.pub" --repo "$repo" --allow-write \
-    --title "release: pushes the version commit and tag"
-  gh secret set RELEASE_DEPLOY_KEY --repo "$repo" < "$dir/key"
+  gh repo deploy-key add "$dir/key.pub" --repo "$repo" --allow-write --title "$title"
+  gh secret set RELEASE_DEPLOY_KEY --repo "$repo" --env release < "$dir/key"
 }
 
 rulesets() {

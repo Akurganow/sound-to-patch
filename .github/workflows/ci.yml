@@ -182,6 +182,9 @@ jobs:
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       !startsWith(github.event.head_commit.message, 'chore(version)')
     runs-on: ubuntu-latest
+    # The deploy key is a secret of this environment, which deploys from
+    # main only.
+    environment: release
     concurrency:
       group: release
       cancel-in-progress: false

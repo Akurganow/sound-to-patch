@@ -21,8 +21,11 @@ one tags or uploads by hand.
    commit `chore(version): vX.Y.Z` with the tag `vX.Y.Z`.
 4. The job pushes the commit and the tag in one atomic push with the
    release deploy key. The main ruleset lets only that key push to `main`
-   directly.
-5. The tag starts the publish workflow. It builds the macOS arm64 binary,
+   directly. The private key is a secret of the `release` environment,
+   which only `main` may deploy to, so a workflow on another branch cannot
+   read it.
+5. The tag starts the publish workflow. It stops unless the tag is
+   `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64 binary,
    the man page, the shell completions and `THIRD-PARTY-LICENSES.html`,
    checks that the binary prints the tag's version, packs each folder in
    `plugins/` as its own archive, and publishes a release with the
