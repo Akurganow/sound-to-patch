@@ -22,15 +22,6 @@
       }
     },
     {
-      "type": "commit_message_pattern",
-      "parameters": {
-        "name": "conventional commit",
-        "operator": "regex",
-        "negate": false,
-        "pattern": "^(feat|fix|perf|revert|docs|test|build|ci|refactor|chore|style)(\\([a-z0-9-]+\\))?!?: [^\\n]+"
-      }
-    },
-    {
       "type": "required_status_checks",
       "parameters": {
         "strict_required_status_checks_policy": false,
