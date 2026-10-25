@@ -1,0 +1,118 @@
+name: CI
+
+# Every job name is a required check name in the main ruleset, except
+# test-linux. No `paths:` filter: a skipped workflow never reports, and its
+# required check stays pending.
+on:
+  pull_request:
+    # `edited` re-runs `commits` when the title or description changes.
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned by commit SHA, because a tag can move; the comment
+      # names the release.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - run: cargo fmt --all --check
+
+  # Lints on the shipped target, so target-specific code is linted as built.
+  clippy:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-nextest@0.9.149
+      - run: cargo nextest run --workspace --profile ci
+      # nextest does not run doc tests.
+      - run: cargo test --workspace --doc
+
+  # Catches platform assumptions. Not a required check: numeric code may
+  # differ in the last bits between platforms, and only macOS ships.
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-nextest@0.9.149
+      - run: cargo nextest run --workspace --profile ci
+      - run: cargo test --workspace --doc
+
+  doc:
+    runs-on: macos-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      # The plain run catches private_intra_doc_links; the second catches
+      # broken links inside internal docs.
+      - run: cargo doc --workspace --no-deps
+      - run: cargo doc --workspace --no-deps --document-private-items
+
+  # The squash merge turns the title into the commit subject and the
+  # description into the commit body, so both are checked here.
+  commits:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cog
+      # The title is untrusted text: it reaches the script through env only.
+      - name: Check the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | cog verify --file -
+      # Dependabot writes its own description, so only the title applies.
+      - if: github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: ./.github/actions/setup-rust
+      - name: Check the description
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: cargo xtask check-pr-body
+
+  licenses:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-about@0.9.2
+      - run: cargo about generate --locked --fail -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html

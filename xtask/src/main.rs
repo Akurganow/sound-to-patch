@@ -6,6 +6,7 @@
 mod architecture;
 mod dist;
 mod fetch;
+mod pr;
 mod version;
 
 use std::path::{Path, PathBuf};
@@ -49,6 +50,8 @@ enum Task {
     },
     /// Check that `ARCHITECTURE.md` names every top-level module of `src/`.
     CheckArchitecture,
+    /// Check a pull request description, read from the `PR_BODY` variable.
+    CheckPrBody,
     /// Write a release version into the workspace manifest and the lock file.
     SetVersion {
         /// The new version, without a `v` prefix.
@@ -61,6 +64,9 @@ fn main() -> ExitCode {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
         Task::CheckArchitecture => architecture::check(root()),
+        Task::CheckPrBody => std::env::var("PR_BODY")
+            .map_err(|_| "set PR_BODY to the pull request description".into())
+            .and_then(|body| pr::check_body(&body)),
         Task::SetVersion { version } => version::set(root(), &version),
     };
     match result {
