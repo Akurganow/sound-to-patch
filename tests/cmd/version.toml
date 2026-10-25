@@ -1,0 +1,6 @@
+# `cog bump` changes the number on every release, so it is a wildcard.
+bin.name = "sound-to-serum"
+args = ["--version"]
+stdout = """
+sound-to-serum [..]
+"""
