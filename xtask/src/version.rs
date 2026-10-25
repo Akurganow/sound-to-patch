@@ -99,17 +99,18 @@ pub(crate) fn check_rust_version(root: &Path) -> crate::Result<()> {
     }
 }
 
-/// Every `1.NN` that follows the word `Rust `.
+/// Every `1.NN` that follows the word `Rust `, with at least one digit
+/// after the dot.
 fn rust_versions(text: &str) -> Vec<&str> {
     text.match_indices("Rust 1.")
-        .map(|(at, _)| {
+        .filter_map(|(at, _)| {
             let version = &text[at + "Rust ".len()..];
             let end = version
                 .char_indices()
                 .skip(2)
                 .find(|&(_, c)| !c.is_ascii_digit())
                 .map_or(version.len(), |(i, _)| i);
-            &version[..end]
+            (end > 2).then(|| &version[..end])
         })
         .collect()
 }
@@ -120,7 +121,7 @@ mod tests {
 
     #[test]
     fn finds_rust_versions_in_prose() {
-        let text = "Install Rust 1.91 or newer. Rust 1.100 later. Rusty 1.2.";
+        let text = "Install Rust 1.91 or newer. Rust 1.100 later. Rusty 1.2. Rust 1.x too.";
         assert_eq!(rust_versions(text), ["1.91", "1.100"]);
     }
 
