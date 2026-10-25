@@ -135,9 +135,34 @@ mod tests {
         .unwrap();
         fs::write(dir.path().join("README.md"), "Needs Rust 1.91.\n").unwrap();
         fs::write(dir.path().join("CONTRIBUTING.md"), "Needs Rust 1.90.\n").unwrap();
+        fs::write(dir.path().join("docs/src/install.md"), "Rust 1.89 works.\n").unwrap();
+        fs::write(dir.path().join("docs/src/notes.txt"), "Rust 1.80 is old.\n").unwrap();
         let err = check_rust_version(dir.path()).unwrap_err().to_string();
         assert!(err.contains("CONTRIBUTING.md names Rust 1.90"), "{err}");
+        assert!(err.contains("install.md names Rust 1.89"), "{err}");
         assert!(!err.contains("README"), "{err}");
+        assert!(!err.contains("notes.txt"), "{err}");
+    }
+
+    #[test]
+    fn set_writes_the_manifest_and_the_lock_file() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("src")).unwrap();
+        fs::write(dir.path().join("src/lib.rs"), "").unwrap();
+        fs::write(
+            dir.path().join("Cargo.toml"),
+            "[package]\nname = \"probe\"\nversion.workspace = true\nedition = \"2024\"\n\n\
+             [workspace]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
+        )
+        .unwrap();
+        set(dir.path(), "0.1.0").unwrap();
+        let manifest = fs::read_to_string(dir.path().join("Cargo.toml")).unwrap();
+        let lock = fs::read_to_string(dir.path().join("Cargo.lock")).unwrap();
+        assert!(manifest.contains("version = \"0.1.0\""), "{manifest}");
+        assert!(
+            lock.contains("name = \"probe\"\nversion = \"0.1.0\""),
+            "{lock}"
+        );
     }
 
     const MANIFEST: &str = "[package]\nversion.workspace = true\n\n\

@@ -64,6 +64,9 @@ mod tests {
         ] {
             fs::write(dir.path().join(file), "").unwrap();
         }
+        // Neither a directory without mod.rs nor a non-Rust file is a module.
+        fs::create_dir_all(dir.path().join("src/bin")).unwrap();
+        fs::write(dir.path().join("src/notes.txt"), "").unwrap();
         fs::write(dir.path().join("ARCHITECTURE.md"), map).unwrap();
         dir
     }

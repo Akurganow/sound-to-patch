@@ -217,6 +217,18 @@ mod tests {
     }
 
     #[test]
+    fn ignores_a_commented_allowlist_line() {
+        let page = "# Pitch\n\n## Sources\n\n- https://github.com/other/thing\n";
+        let dir = repo(README, page);
+        fs::write(
+            dir.path().join("docs/cited-references.txt"),
+            "# https://github.com/other/thing\n\nhttps://doc.rust-lang.org/\n",
+        )
+        .unwrap();
+        assert!(check(dir.path()).is_err());
+    }
+
+    #[test]
     fn does_not_match_a_sibling_repository_by_prefix() {
         let page = "# Pitch\n\n## Sources\n\n- https://github.com/owner/tool-extra\n";
         assert!(check(repo(README, page).path()).is_err());

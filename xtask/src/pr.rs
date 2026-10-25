@@ -92,6 +92,13 @@ mod tests {
     }
 
     #[test]
+    fn a_heading_marker_inside_a_line_does_not_end_the_section() {
+        let body = "## Authorship\n\n- [ ] A person, see ## below\n- [x] An agent\n\n\
+            ## Verification\n\nran it\n";
+        check_body(body).unwrap();
+    }
+
+    #[test]
     fn rejects_the_unfilled_template() {
         let err = check_body(TEMPLATE).unwrap_err().to_string();
         assert!(err.contains("0 checked boxes"), "{err}");

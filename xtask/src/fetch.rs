@@ -132,6 +132,15 @@ mod tests {
     }
 
     #[test]
+    fn fetch_replaces_a_stale_file_at_the_target() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("abc.txt");
+        fs::write(&out, "stale").unwrap();
+        fetch(&source(dir.path()), &ABC.parse().unwrap(), &out).unwrap();
+        assert_eq!(fs::read_to_string(&out).unwrap(), "abc");
+    }
+
+    #[test]
     fn fetch_rejects_and_deletes_a_file_with_another_digest() {
         let dir = tempfile::tempdir().unwrap();
         let out = dir.path().join("abc.txt");
