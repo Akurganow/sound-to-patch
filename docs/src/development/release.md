@@ -50,8 +50,9 @@ commit whose subject starts with `chore(version)`, so the loop stops there.
 
 Once a release is published, its tag and assets cannot change. The title
 and notes stay editable. A deleted release's tag can never be reused.
-The tags ruleset also forbids deleting or moving any `v*` tag, including
-one whose release failed.
+The tags ruleset covers every tag: only the release deploy key creates
+one, and no one deletes or moves one, including a tag whose release
+failed.
 
 ## When something fails
 
