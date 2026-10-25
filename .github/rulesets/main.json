@@ -27,14 +27,14 @@
         "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
-          { "context": "fmt" },
-          { "context": "clippy" },
-          { "context": "test" },
-          { "context": "doc" },
-          { "context": "commits" },
-          { "context": "licenses" },
-          { "context": "docs" },
-          { "context": "Analyze (rust)" }
+          { "context": "fmt", "integration_id": 15368 },
+          { "context": "clippy", "integration_id": 15368 },
+          { "context": "test", "integration_id": 15368 },
+          { "context": "doc", "integration_id": 15368 },
+          { "context": "commits", "integration_id": 15368 },
+          { "context": "licenses", "integration_id": 15368 },
+          { "context": "docs", "integration_id": 15368 },
+          { "context": "Analyze (rust)", "integration_id": 15368 }
         ]
       }
     }
