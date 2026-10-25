@@ -11,23 +11,47 @@ use std::path::{Path, PathBuf};
 const BEGIN: &str = "<!-- ANCHOR: credits -->";
 const END: &str = "<!-- ANCHOR_END: credits -->";
 
-/// Licence words that make a work non-permissive, so its entry must say
-/// "Inspiration only."
-const NOT_PERMISSIVE: [&str; 13] = [
-    "GPL",
-    "MPL",
-    "-NC",
-    "-ND",
-    "-SA",
-    "non-commercial",
-    "no license",
-    "no licence",
-    "not stated",
-    "not confirmed",
-    "in copyright",
-    "arXiv non-exclusive",
-    "unclear",
+/// Licence ids whose family is not permissive, matched as whole ids or
+/// with a version suffix (`GPL-3.0-or-later`).
+const COPYLEFT_IDS: [&str; 4] = ["gpl", "lgpl", "agpl", "mpl"];
+
+/// Creative Commons parts that restrict reuse (`BY-NC`, `BY-SA`).
+const CC_PARTS: [&str; 3] = ["nc", "nd", "sa"];
+
+/// Phrases for a missing or closed licence, matched as whole words.
+const PHRASES: [&[&str]; 8] = [
+    &["no", "license"],
+    &["no", "licence"],
+    &["not", "stated"],
+    &["not", "confirmed"],
+    &["in", "copyright"],
+    &["non-exclusive"],
+    &["non-commercial"],
+    &["unclear"],
 ];
+
+/// Whether a licence text names a non-permissive or unknown licence. Words
+/// are compared whole, so `Simplified` is not `MPL`.
+fn restricted(licence: &str) -> bool {
+    let words: Vec<String> = licence
+        .split(|c: char| c.is_whitespace() || matches!(c, ',' | ';' | '(' | ')' | '"'))
+        .filter(|word| !word.is_empty())
+        .map(str::to_lowercase)
+        .collect();
+    let copyleft = |word: &str| {
+        COPYLEFT_IDS.iter().any(|id| {
+            word == *id
+                || word
+                    .strip_prefix(id)
+                    .is_some_and(|rest| rest.starts_with('-'))
+        })
+    };
+    let cc = |word: &str| word.split('-').any(|part| CC_PARTS.contains(&part));
+    words.iter().any(|word| copyleft(word) || cc(word))
+        || PHRASES
+            .iter()
+            .any(|phrase| words.windows(phrase.len()).any(|window| window == *phrase))
+}
 
 /// Fails on a credit entry without a licence, on a non-permissive entry
 /// without "Inspiration only.", and on a cited source without a credit.
@@ -50,10 +74,7 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
                 "credit entry has no `[name](url) (licence)`: {entry}"
             )),
             Some((url, licence)) => {
-                let restricted = NOT_PERMISSIVE
-                    .iter()
-                    .any(|word| licence.to_lowercase().contains(&word.to_lowercase()));
-                if restricted && !entry.contains("Inspiration only.") {
+                if restricted(licence) && !entry.contains("Inspiration only.") {
                     problems.push(format!(
                         "credit entry under `{licence}` lacks \"Inspiration only.\": {entry}"
                     ));
@@ -96,6 +117,9 @@ fn entries(readme: &str) -> crate::Result<Vec<&str>> {
     let end = readme
         .find(END)
         .ok_or("README.md has no `<!-- ANCHOR_END: credits -->` line")?;
+    if end < start {
+        return Err("README.md has `ANCHOR_END: credits` before `ANCHOR: credits`".into());
+    }
     Ok(readme[start..end]
         .lines()
         .filter_map(|line| line.strip_prefix("- "))
@@ -214,6 +238,34 @@ mod tests {
         let err = check(repo(README, page).path()).unwrap_err().to_string();
         assert!(err.contains("github.com/other/thing"), "{err}");
         assert!(err.contains("methods/pitch.md"), "{err}");
+    }
+
+    #[test]
+    fn matches_licence_ids_as_whole_words() {
+        assert!(!restricted("BSD-2-Clause \"Simplified\""));
+        assert!(!restricted("MIT code, CC0 1.0 assets"));
+        assert!(!restricted("CC BY 4.0"));
+        for closed in [
+            "GPL-3.0-or-later",
+            "MPL-2.0",
+            "CC BY-NC-SA 4.0",
+            "CC BY-SA 4.0",
+            "MIT code, non-commercial weights",
+            "no license found",
+            "in copyright, free access",
+            "arXiv non-exclusive license",
+        ] {
+            assert!(restricted(closed), "{closed}");
+        }
+    }
+
+    #[test]
+    fn fails_on_anchors_in_the_wrong_order() {
+        let readme = "<!-- ANCHOR_END: credits -->\n- x\n<!-- ANCHOR: credits -->\n";
+        let err = check(repo(readme, "# Pitch\n").path())
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("before"), "{err}");
     }
 
     #[test]
