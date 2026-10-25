@@ -11,3 +11,7 @@
 //!   man page and completion generators.
 
 pub mod cli;
+
+/// Probe of [`DoesNotExist`].
+#[must_use]
+pub fn probe() -> u8 {   dbg!(1)  }
