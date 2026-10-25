@@ -482,6 +482,15 @@ checks whether the agent read it.
   - When a role or word yields several strongly different sounds, the skill
     asks one short question with options. Otherwise it picks, says so and
     names the alternatives.
+  - Text to notes: the same skill writes `notes.mid` when the description
+    asks for notes, a key, a scale, a rhythm, a progression or a pattern.
+    The agent writes a note list through a music dictionary, and a command
+    validates it and writes the MIDI file. Coverage of the music dictionary
+    is as wide as is achievable: scales and modes, keys and their notations,
+    chords, voicings, progressions, rhythm and groove words, playing
+    techniques and genre idioms, one entry per meaning.
+  - The music dictionary ships in the reference plugin next to the
+    dictionary of controls, so the audio path can use it too.
 - Several different sounds in one stem produce several presets.
 - Splitting a full Suno track into clean stems.
 
