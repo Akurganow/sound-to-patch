@@ -25,8 +25,9 @@ body:
     id: layer
     attributes:
       label: Synth layer
+      description: Leave empty when the task touches no synth layer.
       multiple: true
-      options: [none, pitch, oscillator, unison, filter, envelope, modulation, distortion, space]
+      options: [pitch, oscillator, unison, filter, envelope, modulation, distortion, space]
   - type: dropdown
     id: tests
     attributes:
