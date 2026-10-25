@@ -71,7 +71,8 @@ doc tests, hence the second command. CI uses the `ci` profile from
 - Do not use `#[should_panic]`. Return or match an `Err` and assert on it.
 - `clippy::float_cmp` denies `==` on floats. Compare with a tolerance.
 - Always pass both `epsilon` and `max_relative` to `approx`: its default
-  tolerance, about `1.2e-7`, is too tight for signal processing.
+  tolerance is machine epsilon (`f32::EPSILON`, about `1.2e-7`, and
+  `f64::EPSILON`, about `2.2e-16`), too tight for signal processing.
 - Clippy allows `unwrap`, `expect` and `panic` inside `#[test]` functions and
   `#[cfg(test)]` modules only. A helper module of `tests/it/` is declared
   with `#[cfg(test)] mod support;` and its items are `pub(crate)`, because

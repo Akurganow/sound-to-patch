@@ -1,7 +1,8 @@
 name: CI
 
-# Every job name is a required check name in the main ruleset, except
-# test-linux. No `paths:` filter: a skipped workflow never reports, and its
+# The job names fmt, clippy, test, doc, commits, licenses and docs are
+# required checks in the main ruleset; test-linux, pages and release are
+# not. No `paths:` filter: a skipped workflow never reports, and its
 # required check stays pending.
 on:
   pull_request:
