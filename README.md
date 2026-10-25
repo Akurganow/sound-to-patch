@@ -293,3 +293,4 @@ and ideas, from which we copy no code, text or data.
 - [timbremetrics timbre ratings (Thoret et al., Vahidi et al.)](https://github.com/tiianhk/timbremetrics) (no license): 21 human timbre-rating sets as the compare benchmark. Inspiration only.
 
 <!-- ANCHOR_END: credits -->
+
