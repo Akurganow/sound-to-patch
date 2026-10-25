@@ -25,7 +25,9 @@ members = ["xtask"]
 # `cargo xtask set-version` rewrites this line in the version commit.
 version = "0.0.0"
 edition = "2024"
-# The highest MSRV among the dependencies, dev-dependencies included.
+# Set for the transcription crates of a later release, which need 1.91.
+# Never below the highest MSRV among the dependencies, dev-dependencies
+# included.
 rust-version = "1.91"
 license = "MIT"
 repository = "https://github.com/Akurganow/sound-to-serum"
