@@ -22,7 +22,8 @@ impl FromStr for Sha256Digest {
 
     fn from_str(hex: &str) -> std::result::Result<Self, Self::Err> {
         let invalid = || format!("`{hex}` is not a SHA-256: give 64 hex digits");
-        if hex.len() != 64 || !hex.is_ascii() {
+        // from_str_radix alone would accept a sign such as `+f`.
+        if hex.len() != 64 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
             return Err(invalid());
         }
         let mut bytes = [0; 32];
@@ -118,6 +119,8 @@ mod tests {
     fn digest_rejects_wrong_length_and_non_hex() {
         assert!("abc".parse::<Sha256Digest>().is_err());
         assert!(ABC.replace('b', "g").parse::<Sha256Digest>().is_err());
+        let signed = format!("+f{}", "a".repeat(62));
+        assert!(signed.parse::<Sha256Digest>().is_err());
     }
 
     #[test]
