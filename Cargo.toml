@@ -1,0 +1,56 @@
+[package]
+name = "sound-to-serum"
+description = "Turn an audio stem or a written sound description into a Serum 2 starting point."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation = "https://akurganow.github.io/sound-to-serum/api/sound_to_serum/"
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+
+[dev-dependencies]
+trycmd = "1.2.1"
+
+[workspace]
+members = ["xtask"]
+
+[workspace.package]
+# `cargo xtask set-version` rewrites this line in the version commit.
+version = "0.0.0"
+edition = "2024"
+# Set for the transcription crates of a later release, which need 1.91.
+# Never below the highest MSRV among the dependencies, dev-dependencies
+# included.
+rust-version = "1.91"
+license = "MIT"
+repository = "https://github.com/Akurganow/sound-to-serum"
+publish = false
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unreachable_pub = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+missing_crate_level_docs = "deny"
+
+[workspace.lints.clippy]
+# A group needs a lower priority than the single lints in the same table.
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+too_long_first_doc_paragraph = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"

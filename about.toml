@@ -1,0 +1,11 @@
+# cargo-about configuration: https://embarkstudios.github.io/cargo-about/
+# Only what ships in the binary needs a notice.
+targets = ["aarch64-apple-darwin"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+# For an `A OR B` expression the first accepted license wins.
+accepted = ["MIT", "Apache-2.0", "Unicode-3.0"]
+
+# Our own crate is not a third party.
+[private]
+ignore = true

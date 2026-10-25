@@ -1,0 +1,13 @@
+name: Set up Rust
+description: >
+  Installs the latest stable toolchain with rustfmt and clippy. The hosted
+  runners ship rustup, so no third-party action is needed.
+runs:
+  using: composite
+  steps:
+    - name: Install stable Rust
+      shell: bash
+      run: |
+        rustup toolchain install stable --profile minimal --component rustfmt,clippy --no-self-update
+        rustup default stable
+        rustc --version

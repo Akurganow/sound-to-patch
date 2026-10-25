@@ -1,0 +1,10 @@
+# Reference documentation that book pages and ARCHITECTURE.md may cite under
+# a Sources heading without a credit entry: language, platform, format and
+# tool documentation. A studied project, paper or dataset needs a credit
+# entry in the README instead. One URL prefix per line.
+https://doc.rust-lang.org/
+https://rust-lang.github.io/
+https://docs.github.com/
+https://nexte.st/
+https://docs.cocogitto.io/
+https://docs.rs/

@@ -1,0 +1,17 @@
+[book]
+title = "sound-to-serum"
+authors = ["Alexander Kurganov"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+# Formulas use $...$ and $$...$$ and render at build time. A literal dollar
+# sign in prose is written \$.
+[preprocessor.katex]
+after = ["links"]
+
+[output.html]
+site-url = "/sound-to-serum/"
+git-repository-url = "https://github.com/Akurganow/sound-to-serum"

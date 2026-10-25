@@ -1,0 +1,55 @@
+name: Epic
+description: A deliverable that can be tested on its own, split into task sub-issues.
+title: "Epic: "
+labels: ["kind:epic"]
+body:
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Deliverable
+      description: What a user or a later epic can run or read when this epic closes.
+    validations:
+      required: true
+  - type: textarea
+    id: test-layers
+    attributes:
+      label: Test layers
+      description: The layers from the testing guide that this epic needs, for example "L1 unit, L3 CLI cases".
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Docs to ship
+      description: Rustdoc, README sections, book pages and other docs this epic writes.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] All sub-issues are closed.
+        - [ ] `cargo nextest run --workspace` and `cargo test --workspace --doc` pass.
+        - [ ] The mutation report for new modules is read and surviving mutants are triaged.
+        - [ ] The coverage report is attached to the closing pull request.
+        - [ ] Ignored tests are listed here with their reasons.
+        - [ ] New fixtures have entries in `tests/fixtures/PROVENANCE.md`.
+        - [ ] Golden vectors carry recipe, generator, tool versions and tolerance.
+        - [ ] Every new public item has rustdoc, and crate docs list the new modules.
+        - [ ] The doc pages above are updated and linked here.
+        - [ ] New dependencies are reviewed in `about.toml`, and notices regenerate.
+    validations:
+      required: true
+  - type: textarea
+    id: facts
+    attributes:
+      label: Facts
+      description: Research the tasks rely on, with sources.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: Checks that prove the deliverable works.
+    validations:
+      required: true
