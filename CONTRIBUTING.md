@@ -47,7 +47,9 @@ cargo xtask check-rust-version
 ```
 
 The `commits` check also runs `cargo xtask check-pr-body`, which reads the
-pull request description from the `PR_BODY` variable:
+pull request description from the `PR_BODY` variable. The description
+becomes the squash commit body, so the check also rejects the markers that
+make GitHub skip workflows, such as the bracketed "skip ci":
 
 ```sh
 PR_BODY="$(cat description.md)" cargo xtask check-pr-body
