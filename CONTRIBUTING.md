@@ -14,7 +14,8 @@ detection, drums and running the toolkit in the cloud.
 ## Setup
 
 1. Install Rust 1.91 or newer with rustup.
-2. Install the tools CI uses: `cargo install --locked cargo-nextest cocogitto`.
+2. Install the tools CI uses: `cargo install --locked cargo-nextest cocogitto`
+   and `cargo install --locked --features cli cargo-about`.
 3. Clone the repository and run `cog install-hook commit-msg` once in it.
 
 The hook checks each local commit message. It lives in `.git/hooks`, so
@@ -32,14 +33,24 @@ RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-it
 cargo about generate --locked --fail -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
 ```
 
-The book check needs `mdbook`, `mdbook-katex` and `lychee`:
+The book check needs mdBook, its KaTeX preprocessor and lychee:
 
 ```sh
+cargo install --locked mdbook@0.5.4 mdbook-katex@0.10.0 lychee
 mdbook build docs
-lychee --offline --no-progress --include-fragments --exclude-path docs/book/404.html docs/book
+cargo doc --no-deps
+cp -R target/doc docs/book/api
+lychee --offline --no-progress --include-fragments --exclude-path docs/book/api --exclude-path docs/book/404.html docs/book
 cargo xtask check-architecture
 cargo xtask check-credits
 cargo xtask check-rust-version
+```
+
+The `commits` check also runs `cargo xtask check-pr-body`, which reads the
+pull request description from the `PR_BODY` variable:
+
+```sh
+PR_BODY="$(cat description.md)" cargo xtask check-pr-body
 ```
 
 `cargo xtask` lists every development task.
