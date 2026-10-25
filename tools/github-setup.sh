@@ -27,10 +27,7 @@ settings() {
   gh api -X PUT "repos/$repo/automated-security-fixes"
   gh api -X PUT "repos/$repo/private-vulnerability-reporting"
 
-  # Actions must be pinned by full commit SHA. Workflows from every
-  # external contributor's fork wait for approval.
-  gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true \
-    -f allowed_actions=all -F sha_pinning_required=true
+  # Workflows from every external contributor's fork wait for approval.
   gh api -X PUT "repos/$repo/actions/permissions/fork-pr-contributor-approval" \
     -f approval_policy=all_external_contributors
 
