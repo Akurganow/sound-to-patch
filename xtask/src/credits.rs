@@ -168,7 +168,11 @@ fn source_links(page: &str) -> Vec<String> {
             continue;
         }
         let mut rest = line;
-        while let Some(at) = rest.find("https://").or_else(|| rest.find("http://")) {
+        while let Some(at) = ["https://", "http://"]
+            .iter()
+            .filter_map(|scheme| rest.find(scheme))
+            .min()
+        {
             let url = &rest[at..];
             let end = url
                 .find(|c: char| c.is_whitespace() || matches!(c, ')' | '>' | ']' | '`' | ','))
@@ -230,6 +234,14 @@ mod tests {
             - [Paper](https://arxiv.org/abs/2401.00001)\n\
             - Book, https://doc.rust-lang.org/book/\n";
         check(repo(README, page).path()).unwrap();
+    }
+
+    #[test]
+    fn checks_an_http_link_before_an_https_one_on_the_same_line() {
+        let page = "# Pitch\n\n## Sources\n\n\
+            - Old, http://example.com/a, mirror https://doc.rust-lang.org/book/\n";
+        let err = check(repo(README, page).path()).unwrap_err().to_string();
+        assert!(err.contains("example.com/a"), "{err}");
     }
 
     #[test]
