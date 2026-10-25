@@ -108,6 +108,7 @@ jobs:
         if: github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: cargo xtask check-pr-body
 
   licenses:

@@ -55,7 +55,8 @@ enum Task {
     CheckCredits,
     /// Check that the docs name the manifest's `rust-version`.
     CheckRustVersion,
-    /// Check a pull request description, read from the `PR_BODY` variable.
+    /// Check a pull request description and title, read from the `PR_BODY`
+    /// and `PR_TITLE` variables.
     CheckPrBody,
     /// Write a release version into the workspace manifest and the lock file.
     SetVersion {
@@ -73,7 +74,12 @@ fn main() -> ExitCode {
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())
-            .and_then(|body| pr::check_body(&body)),
+            .and_then(|body| pr::check_body(&body))
+            .and_then(|()| {
+                std::env::var("PR_TITLE")
+                    .map_err(|_| "set PR_TITLE to the pull request title".into())
+            })
+            .and_then(|title| pr::check_title(&title)),
         Task::SetVersion { version } => version::set(root(), &version),
     };
     match result {

@@ -4,9 +4,48 @@
 //! The squash merge keeps the description as the commit body, so the
 //! authorship disclosure and the verification output stay in history.
 
-/// Fails unless exactly one authorship box is checked and the verification
-/// section holds something besides comments.
+/// Markers that make GitHub skip every workflow of the push that carries
+/// them, matched without case. The squash commit is the title and the
+/// description, so one of them in either stops the release run on `main`.
+const SKIP_MARKERS: [&str; 7] = [
+    "[skip ci]",
+    "[ci skip]",
+    "[no ci]",
+    "[skip actions]",
+    "[actions skip]",
+    "skip-checks:true",
+    "skip-checks: true",
+];
+
+fn skip_marker(text: &str) -> Option<&'static str> {
+    let lower = text.to_lowercase();
+    SKIP_MARKERS
+        .into_iter()
+        .find(|marker| lower.contains(marker))
+}
+
+/// Fails on a workflow skip marker in the title.
+pub(crate) fn check_title(title: &str) -> crate::Result<()> {
+    match skip_marker(title) {
+        Some(marker) => Err(format!(
+            "the title contains `{marker}`: the squash commit would skip \
+             the workflows on main, so reword it"
+        )
+        .into()),
+        None => Ok(()),
+    }
+}
+
+/// Fails on a workflow skip marker, on any count of checked authorship boxes
+/// but one, and on a verification section that holds only comments.
 pub(crate) fn check_body(body: &str) -> crate::Result<()> {
+    if let Some(marker) = skip_marker(body) {
+        return Err(format!(
+            "the description contains `{marker}`: the squash commit would skip \
+             the workflows on main, so reword it"
+        )
+        .into());
+    }
     let authorship = section(body, "Authorship")
         .ok_or("the description has no `## Authorship` section: restore it from the template")?;
     let checked = authorship
@@ -116,6 +155,26 @@ mod tests {
     fn rejects_an_empty_verification() {
         let err = check_body(&filled("x", " ", "")).unwrap_err().to_string();
         assert!(err.contains("Verification"), "{err}");
+    }
+
+    #[test]
+    fn rejects_a_skip_marker_in_any_case() {
+        let err = check_body(&filled(" ", "x", "no [Skip CI] here"))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("[skip ci]"), "{err}");
+    }
+
+    #[test]
+    fn accepts_a_false_skip_checks_trailer() {
+        check_body(&filled(" ", "x", "skip-checks: false")).unwrap();
+    }
+
+    #[test]
+    fn rejects_a_skip_marker_in_the_title() {
+        let err = check_title("fix: x [ci skip]").unwrap_err().to_string();
+        assert!(err.contains("title"), "{err}");
+        check_title("fix: skip the ci step").unwrap();
     }
 
     #[test]
