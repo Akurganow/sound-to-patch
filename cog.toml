@@ -13,11 +13,12 @@ scopes = ["analyze", "notes", "preset", "units", "docs", "ci", "deps", "version"
 
 # `cog install-hook commit-msg` installs this hook into a clone.
 [git_hooks.commit-msg]
-# `git commit --fixup` messages pass; autosquash removes them before a push.
+# `git commit --fixup` messages pass, since autosquash removes them before a
+# push, and so do git's default revert and local merge messages.
 script = """#!/bin/sh
 set -e
 case "$(head -n 1 "$1")" in
-  "fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+  "fixup! "*|"squash! "*|"amend! "*|'Revert "'*|"Merge "*) exit 0 ;;
 esac
 cog verify --file "$1"
 """
