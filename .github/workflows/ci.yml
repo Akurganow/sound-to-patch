@@ -92,10 +92,14 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-cog
       # The title is untrusted text: it reaches the script through env only.
+      # cog verify reads the git author, which a fresh runner lacks.
       - name: Check the title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: printf '%s\n' "$PR_TITLE" | cog verify --file -
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '%s\n' "$PR_TITLE" | cog verify --file -
       # Dependabot writes its own description, so only the title applies.
       - if: github.event.pull_request.user.login != 'dependabot[bot]'
         uses: ./.github/actions/setup-rust
