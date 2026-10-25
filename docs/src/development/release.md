@@ -21,15 +21,18 @@ one tags or uploads by hand.
    commit `chore(version): vX.Y.Z` with the tag `vX.Y.Z`.
 4. The job pushes the commit and the tag in one atomic push with the
    release deploy key. The main ruleset lets only that key push to `main`
-   directly. The private key is a secret of the `release` environment,
+   directly, and the tags ruleset lets only that key create a tag. The
+   private key is a secret of the `release` environment,
    which only `main` may deploy to, so a workflow on another branch cannot
    read it.
-5. The tag starts the publish workflow. It stops unless the tag is
-   `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64 binary,
-   the man page, the shell completions and `THIRD-PARTY-LICENSES.html`,
-   checks that the binary prints the tag's version, packs each folder in
-   `plugins/` as its own archive, and publishes a release with the
-   changelog section as its notes.
+5. The `publish` job of the same run checks out the tag, builds the macOS
+   arm64 binary, the man page, the shell completions and
+   `THIRD-PARTY-LICENSES.html`, checks that the binary prints the tag's
+   version, packs each folder in `plugins/` as its own archive, and
+   publishes a release on the tag with the changelog section as its notes.
+
+No workflow runs on a tag push. The tag and its release come from one CI
+run on `main`.
 
 The version commit starts the CI workflow again. The `release` job skips a
 commit whose subject starts with `chore(version)`, so the loop stops there.
@@ -59,10 +62,11 @@ failed.
 - **A check fails on `main`.** The `release` job does not run. Fix the
   problem in a new pull request; its merge releases everything since the
   last tag.
-- **The publish workflow fails.** The tag exists and no later merge bumps
-  it again. Fix the cause on `main` if needed, then re-run the failed
-  publish run, or start the publish workflow by hand with the tag name.
-  It skips a release that already exists. Never delete and re-create a
-  tag.
+- **The `publish` job fails.** The tag exists and no later merge bumps it
+  again. Choose "Re-run failed jobs" on that CI run: the job reuses the tag
+  of the finished `release` job, replaces a draft left by a failed upload
+  and skips a release that is already published. If the cause is in the
+  workflow itself, fix it on `main` first; the re-run still builds the
+  tagged commit. Never delete or move a tag; the tags ruleset forbids it.
 - **The push of the version commit fails** because `main` moved on. The
   run of the newer commit releases both.
