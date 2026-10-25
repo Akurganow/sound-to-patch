@@ -1,0 +1,37 @@
+# cocogitto configuration: https://docs.cocogitto.io/reference/config
+# The release job runs `cog bump --auto` on main.
+
+tag_prefix = "v"
+branch_whitelist = ["main"]
+# The version commit carries the new number in Cargo.toml and Cargo.lock, so
+# the released binary prints it.
+pre_bump_hooks = ["cargo xtask set-version {{version}}"]
+# The scope is optional; a commit with a scope must use one of these.
+# `version` is the scope of cog's own version commit, `deps` the scope of
+# Dependabot's pull requests.
+scopes = ["analyze", "notes", "preset", "units", "docs", "ci", "deps", "version"]
+
+# `cog install-hook commit-msg` installs this hook into a clone.
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+cog verify --file "$1"
+"""
+
+[changelog]
+path = "CHANGELOG.md"
+template = "remote"
+remote = "github.com"
+owner = "Akurganow"
+repository = "sound-to-serum"
+authors = [{ signature = "Alexander Kurganov", username = "Akurganow" }]
+
+# The changelog describes the program. Book changes reach Pages on merge.
+[commit_types]
+docs = { omit_from_changelog = true }
+chore = { omit_from_changelog = true }
+test = { omit_from_changelog = true }
+ci = { omit_from_changelog = true }
+style = { omit_from_changelog = true }
+build = { omit_from_changelog = true }
+refactor = { omit_from_changelog = true }
