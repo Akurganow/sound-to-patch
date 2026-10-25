@@ -1,0 +1,52 @@
+name: Task
+description: One piece of an epic, with its scope and acceptance cases.
+labels: ["kind:task"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        Add the task as a sub-issue of its epic. The maintainer sets the
+        `area:`, `layer:` and `test:` labels from the values you give below.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What the task builds or decides, in one or two sentences.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [core, preset, analyze, notes, skill, render, compare, refine, bench, dataset, ci, docs]
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Synth layer
+      multiple: true
+      options: [none, pitch, oscillator, unison, filter, envelope, modulation, distortion, space]
+  - type: dropdown
+    id: tests
+    attributes:
+      label: Test kinds
+      multiple: true
+      options: [unit, integration, cli, doctest, snapshot, property, golden, fuzz, bench, quality, dataset]
+  - type: textarea
+    id: facts
+    attributes:
+      label: Facts
+      description: What the task relies on, each fact with its source.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: The checks that pass when the task is done.
+    validations:
+      required: true
+  - type: textarea
+    id: blocked-by
+    attributes:
+      label: Blocked by
+      description: Tasks whose result this one needs, and which result.
