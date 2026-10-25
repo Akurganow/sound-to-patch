@@ -62,14 +62,17 @@ JSON
       -f name=main -f type=branch >/dev/null
   fi
 
-  for id in $(gh api "repos/$repo/keys" --jq ".[] | select(.title == \"$title\") | .id"); do
-    gh api -X DELETE "repos/$repo/keys/$id"
-  done
+  # The old keys go only after the new key and its secret are in place, so
+  # a failed step never leaves the release without a key.
+  old_ids="$(gh api "repos/$repo/keys" --jq ".[] | select(.title == \"$title\") | .id")"
   dir="$(mktemp -d)"
   trap 'rm -rf "$dir"' EXIT
   ssh-keygen -q -t ed25519 -N '' -C "release deploy key" -f "$dir/key"
   gh repo deploy-key add "$dir/key.pub" --repo "$repo" --allow-write --title "$title"
   gh secret set RELEASE_DEPLOY_KEY --repo "$repo" --env release < "$dir/key"
+  for id in $old_ids; do
+    gh api -X DELETE "repos/$repo/keys/$id"
+  done
 }
 
 rulesets() {
