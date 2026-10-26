@@ -9,6 +9,7 @@ mod dist;
 mod fetch;
 mod pr;
 mod version;
+mod vital;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -58,6 +59,16 @@ enum Task {
     /// Check a pull request description and title, read from the `PR_BODY`
     /// and `PR_TITLE` variables.
     CheckPrBody,
+    /// Write `src/preset/vital/registry.json` from a Vital source checkout, or
+    /// with `--check` fail when the committed file differs.
+    VitalRegistry {
+        /// The root of a local Vital checkout. Its text is read, never run.
+        #[arg(long)]
+        source: PathBuf,
+        /// Write nothing and fail when the committed file is stale.
+        #[arg(long)]
+        check: bool,
+    },
     /// Write a release version into the workspace manifest and the lock file.
     SetVersion {
         /// The new version, without a `v` prefix.
@@ -80,6 +91,7 @@ fn main() -> ExitCode {
                     .map_err(|_| "set PR_TITLE to the pull request title".into())
             })
             .and_then(|title| pr::check_title(&title)),
+        Task::VitalRegistry { source, check } => vital::run(root(), &source, check),
         Task::SetVersion { version } => version::set(root(), &version),
     };
     match result {

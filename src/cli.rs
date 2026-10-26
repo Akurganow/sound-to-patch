@@ -1,9 +1,14 @@
 //! The command-line definition.
 //!
 //! The binary parses it, and `cargo xtask` renders the man page and the shell
-//! completions from the same tree, so the three never disagree.
+//! completions from the same tree, so the three never disagree. Each command
+//! keeps its arguments in a module of its own.
 
-use clap::Parser;
+use std::error::Error;
+
+use clap::{Parser, Subcommand};
+
+pub mod preset;
 
 /// Arguments of the `sound-to-patch` command.
 ///
@@ -25,4 +30,35 @@ use clap::Parser;
     long_about = None,
     arg_required_else_help = true
 )]
-pub struct Cli {}
+pub struct Cli {
+    /// The command to run.
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+/// The commands, one variant per line.
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Read and inspect synth presets.
+    Preset(preset::PresetArgs),
+}
+
+impl Command {
+    /// Runs the command and returns the text to print.
+    ///
+    /// # Errors
+    ///
+    /// The error of the command; its message names what failed, the cause
+    /// and the fix.
+    pub fn run(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
+        match self {
+            Self::Preset(args) => match &args.command {
+                preset::PresetCommand::Inspect(inspect) => Ok(crate::preset::inspect(
+                    &inspect.file,
+                    &inspect.synth,
+                    &inspect.describe_options(),
+                )?),
+            },
+        }
+    }
+}

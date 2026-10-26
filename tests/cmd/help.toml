@@ -2,9 +2,13 @@
 bin.name = "sound-to-patch"
 args = ["--help"]
 stdout = """
-Turn an audio stem or a written sound description into a Serum 2 starting point.
+Turn an audio stem or a written sound description into a starting point in Vital or Serum 2.
 
-Usage: sound-to-patch
+Usage: sound-to-patch <COMMAND>
+
+Commands:
+  preset  Read and inspect synth presets
+  help    Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
