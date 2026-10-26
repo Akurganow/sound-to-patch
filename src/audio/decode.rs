@@ -105,8 +105,9 @@ impl fmt::Display for SkippedPacket {
     }
 }
 
-/// Decodes the first audio track of a file at its native rate, with every
-/// channel kept.
+/// Decodes the default audio track of a file at its native rate, with every
+/// channel kept: the audio track the container flags as default, else the
+/// first one with a known codec.
 ///
 /// A packet that fails to decode becomes silence and is listed in
 /// [`Decoded::skipped`]; see [`MAX_SKIPPED_PACKETS`].

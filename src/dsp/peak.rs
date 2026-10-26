@@ -74,7 +74,9 @@ pub fn interpolate(magnitudes: &[f64], bin: usize, span: usize) -> Option<Peak> 
     };
     let log_magnitude = b - 0.25 * (a - c) * offset;
     let lo = bin.saturating_sub(span);
-    let hi = (bin + span).min(magnitudes.len().saturating_sub(1));
+    let hi = bin
+        .saturating_add(span)
+        .min(magnitudes.len().saturating_sub(1));
     let neighbour = (lo..=hi)
         .filter(|&k| k != bin && is_local_max(magnitudes, k))
         .map(|k| magnitudes[k])
@@ -134,6 +136,15 @@ mod tests {
         assert_eq!(peak.position(), 1.0);
         assert!((peak.magnitude() - 4.0).abs() < 1e-12);
         assert_eq!(peak.neighbour_ratio(), None);
+    }
+
+    #[test]
+    fn an_unbounded_span_searches_the_whole_spectrum() {
+        let mags = [1.0, 4.0, 1.0, 1.0, 2.0, 1.0];
+        let peak = interpolate(&mags, 1, usize::MAX).unwrap();
+        // The neighbour at bin 4 lies 6 dB below the peak.
+        let ratio = peak.neighbour_ratio().unwrap().get();
+        assert!((ratio - 20.0 * 2f64.log10()).abs() < 1e-12, "{ratio}");
     }
 
     #[test]
