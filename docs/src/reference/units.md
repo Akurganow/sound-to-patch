@@ -29,8 +29,8 @@ type states its exact range.
 | [`MidiPitch`](../api/sound_to_serum/units/struct.MidiPitch.html) | a fractional MIDI note |
 
 `Percent` has two ranges, fixed by its type parameter.
-`Percent<Unipolar>` is for controls that go one way from zero, such as a
-drive amount. `Percent<Bipolar>` is for controls that go both ways, such as
+`Percent<Unipolar>` is for controls that go one way from zero.
+`Percent<Bipolar>` is for controls that go both ways, such as
 a modulation amount. A unipolar value widens to a bipolar one; the reverse
 is checked.
 
@@ -62,8 +62,18 @@ $$g = 10^{\mathrm{dB}/20} \qquad \mathrm{dB} = 20 \log_{10} g \qquad p = 10^{\ma
 
 A gain or a ratio of zero has no decibel or cent value, so the inverse
 conversions return an error for it. The forward conversions return an error
-for inputs so large that the ratio would leave the normal `f64` range,
-such as more than 1000 octaves.
+beyond a conservative cap, such as 1000 octaves, that keeps the ratio
+finite and nonzero.
+
+The conversion methods are
+[`Cents::to_ratio`](../api/sound_to_serum/units/struct.Cents.html#method.to_ratio),
+[`Cents::from_ratio`](../api/sound_to_serum/units/struct.Cents.html#method.from_ratio),
+[`Semitones::to_ratio`](../api/sound_to_serum/units/struct.Semitones.html#method.to_ratio),
+[`Octaves::to_ratio`](../api/sound_to_serum/units/struct.Octaves.html#method.to_ratio),
+[`Decibels::to_amplitude_gain`](../api/sound_to_serum/units/struct.Decibels.html#method.to_amplitude_gain),
+[`Decibels::from_amplitude_gain`](../api/sound_to_serum/units/struct.Decibels.html#method.from_amplitude_gain),
+[`Decibels::to_power_ratio`](../api/sound_to_serum/units/struct.Decibels.html#method.to_power_ratio)
+and [`Decibels::from_power_ratio`](../api/sound_to_serum/units/struct.Decibels.html#method.from_power_ratio).
 
 ```rust,ignore
 {{#include ../../../examples/units.rs:convert}}
@@ -111,7 +121,8 @@ same range checks:
   float field. A string in a number field fails with the parser's type
   message.
 - The agent's edit list holds unit strings, such as `"value": "410 Hz"`.
-  The edit-list contract, written with the preset-format epic, documents
+  The edit-list contract
+  ([#94](https://github.com/Akurganow/sound-to-serum/issues/94)) documents
   where each string goes.
 
 A value outside its range fails with the type's message, and the JSON
@@ -123,10 +134,12 @@ because no unit type can hold them.
 Every estimate in the layer report carries a
 [`Confidence`](../api/sound_to_serum/confidence/struct.Confidence.html):
 
-- a level: `low`, `medium` or `high`. The estimator stores it from its own
+- a [level](../api/sound_to_serum/confidence/enum.Level.html): `low`, `medium` or `high`. The estimator stores it from its own
   signals; the type does not derive it;
-- one or more reasons. Each pairs a stable code, such as `active_frames`,
-  with the value of the signal behind it: a count, a number or a bool;
+- one or more reasons. Each pairs a stable
+  [code](../api/sound_to_serum/confidence/enum.ReasonCode.html), such as `active_frames`, with the
+  [value](../api/sound_to_serum/confidence/enum.Signal.html) of the signal behind it: a count, a number
+  or a bool;
 - an optional spread, never negative, in the unit the type parameter
   names. A cutoff is a frequency, but its spread is in octaves, so its
   confidence is a `Confidence<Octaves>`. An estimate without a spread, such
@@ -153,11 +166,12 @@ unknown field or code are errors.
 ## Unit traps
 
 Some Serum 2 controls store a knob position where a reader expects a
-physical unit. Such a control takes a `Normalized` value. No `Hz` or
-`Cents` constructor exists for it, because the law from knob to unit is not
-measured yet. A cutoff in Hz therefore has no unit type: the preset writer
-maps it through the interim law of the parameter registry
-([#107](https://github.com/Akurganow/sound-to-serum/issues/107)) and marks
+physical unit. Such a control takes a `Normalized` value. No conversion
+from `Normalized` to `Hz` or `Cents` exists, because the law from knob to
+unit is not measured yet. A cutoff in Hz therefore has no unit type for its
+knob: the preset writer will map it through the interim law of the
+parameter registry
+([#107](https://github.com/Akurganow/sound-to-serum/issues/107)) and mark
 the value uncalibrated.
 
 Each claim below has a build column and a status: `verified` in a

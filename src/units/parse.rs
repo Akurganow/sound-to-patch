@@ -56,14 +56,14 @@ impl Error for ParseUnitError {
     }
 }
 
-/// A suffix and the constructor that scales the number into the type.
-type Suffix<T> = (&'static str, fn(f64) -> Result<T, RangeError>);
+/// A suffix, the power of ten it scales the number by, and the constructor.
+type Suffix<T> = (&'static str, i32, fn(f64) -> Result<T, RangeError>);
 
 fn parse<T>(input: &str, unit: &'static str, suffixes: &[Suffix<T>]) -> Result<T, ParseUnitError> {
     let error = |cause| ParseUnitError {
         input: input.to_owned(),
         unit,
-        accepted: suffixes.iter().map(|(suffix, _)| *suffix).collect(),
+        accepted: suffixes.iter().map(|(suffix, _, _)| *suffix).collect(),
         cause,
     };
     let trimmed = input.trim();
@@ -81,22 +81,37 @@ fn parse<T>(input: &str, unit: &'static str, suffixes: &[Suffix<T>]) -> Result<T
     if suffix.is_empty() {
         return Err(error(Cause::NoSuffix));
     }
-    let Some((_, build)) = suffixes.iter().find(|(name, _)| *name == suffix) else {
+    let Some((_, shift, build)) = suffixes.iter().find(|(name, _, _)| *name == suffix) else {
         return Err(error(Cause::UnknownSuffix(suffix.to_owned())));
     };
-    let value = f64::from_str(number).map_err(|_| error(Cause::BadNumber(number.to_owned())))?;
+    let value =
+        parse_scaled(number, *shift).ok_or_else(|| error(Cause::BadNumber(number.to_owned())))?;
     build(value).map_err(|range| error(Cause::Range(range)))
+}
+
+/// Parses `number * 10^shift` by moving the decimal exponent in the text,
+/// so the value rounds once: `"1.001 kHz"` equals `"1001 Hz"`, where
+/// `1.001 * 1000.0` would be one ulp off.
+fn parse_scaled(number: &str, shift: i32) -> Option<f64> {
+    if shift == 0 {
+        return f64::from_str(number).ok();
+    }
+    let (mantissa, exponent) = match number.split_once(['e', 'E']) {
+        Some((mantissa, exponent)) => (mantissa, exponent.parse::<i32>().ok()?),
+        None => (number, 0),
+    };
+    f64::from_str(&format!("{mantissa}e{}", exponent.checked_add(shift)?)).ok()
 }
 
 /// Implements `FromStr` from a suffix table and `Display` with the first
 /// suffix of the table.
 macro_rules! unit_string {
-    ($name:ident, $separator:literal, [$(($suffix:literal, $build:expr)),+ $(,)?]) => {
+    ($name:ident, $separator:literal, [$(($suffix:literal, $shift:literal, $build:expr)),+ $(,)?]) => {
         impl FromStr for $name {
             type Err = ParseUnitError;
 
             fn from_str(input: &str) -> Result<Self, ParseUnitError> {
-                parse(input, stringify!($name), &[$(($suffix, $build)),+])
+                parse(input, stringify!($name), &[$(($suffix, $shift, $build)),+])
             }
         }
 
@@ -105,32 +120,28 @@ macro_rules! unit_string {
             /// value, then the first suffix.
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 let suffixes: &[&str] = &[$($suffix),+];
-                write!(f, "{}{}{}", self.get(), $separator, suffixes[0])
+                f.pad(&format!("{}{}{}", self.get(), $separator, suffixes[0]))
             }
         }
     };
 }
 
-unit_string!(
-    Hz,
-    " ",
-    [("Hz", Hz::new), ("kHz", |khz| Hz::new(khz * 1000.0))]
-);
+unit_string!(Hz, " ", [("Hz", 0, Hz::new), ("kHz", 3, Hz::new)]);
 unit_string!(
     Seconds,
     " ",
-    [("s", Seconds::new), ("ms", Seconds::from_millis)]
+    [("s", 0, Seconds::new), ("ms", -3, Seconds::new)]
 );
-unit_string!(Cents, " ", [("ct", Cents::new)]);
-unit_string!(Semitones, " ", [("st", Semitones::new)]);
-unit_string!(Octaves, " ", [("oct", Octaves::new)]);
-unit_string!(Decibels, " ", [("dB", Decibels::new)]);
+unit_string!(Cents, " ", [("ct", 0, Cents::new)]);
+unit_string!(Semitones, " ", [("st", 0, Semitones::new)]);
+unit_string!(Octaves, " ", [("oct", 0, Octaves::new)]);
+unit_string!(Decibels, " ", [("dB", 0, Decibels::new)]);
 
 impl<P: Polarity> FromStr for Percent<P> {
     type Err = ParseUnitError;
 
     fn from_str(input: &str) -> Result<Self, ParseUnitError> {
-        parse(input, "Percent", &[("%", Self::new)])
+        parse(input, "Percent", &[("%", 0, Self::new)])
     }
 }
 
@@ -138,7 +149,7 @@ impl<P: Polarity> fmt::Display for Percent<P> {
     /// Prints the shortest number that parses back to the same value, then
     /// `%`.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}%", self.get())
+        f.pad(&format!("{}%", self.get()))
     }
 }
 
@@ -158,6 +169,26 @@ mod tests {
         assert_eq!("440Hz".parse::<Hz>().unwrap().get(), 440.0);
         assert_eq!("  440 Hz ".parse::<Hz>().unwrap().get(), 440.0);
         assert_eq!("1e3 Hz".parse::<Hz>().unwrap().get(), 1000.0);
+    }
+
+    #[test]
+    fn scaled_suffixes_round_once_like_the_base_unit() {
+        let khz: Hz = "1.001 kHz".parse().unwrap();
+        let hz: Hz = "1001 Hz".parse().unwrap();
+        assert_eq!(khz, hz);
+        assert_eq!(
+            "1.2e-3 kHz".parse::<Hz>().unwrap(),
+            "1.2 Hz".parse().unwrap()
+        );
+        assert_eq!(
+            "1.2E1 kHz".parse::<Hz>().unwrap(),
+            "12000 Hz".parse().unwrap()
+        );
+        let ms: Seconds = "1.001 ms".parse().unwrap();
+        let s: Seconds = "0.001001 s".parse().unwrap();
+        assert_eq!(ms, s);
+        assert!("1e Hz".parse::<Hz>().is_err());
+        assert!("1e2147483647 kHz".parse::<Hz>().is_err());
     }
 
     #[test]
@@ -234,6 +265,7 @@ mod tests {
         );
         assert!(error.source().is_some());
         assert!("NaN Hz".parse::<Hz>().is_err());
+        assert!("inf Hz".parse::<Hz>().unwrap_err().source().is_some());
         assert!("inf dB".parse::<Decibels>().is_err());
         assert!("-40%".parse::<Percent<Unipolar>>().is_err());
         assert!("101%".parse::<Percent<Bipolar>>().is_err());
@@ -254,6 +286,15 @@ mod tests {
         assert_eq!(Octaves::new(-1.0).unwrap().to_string(), "-1 oct");
         assert_eq!(Decibels::new(-6.0).unwrap().to_string(), "-6 dB");
         assert_eq!(Percent::<Unipolar>::new(25.0).unwrap().to_string(), "25%");
+    }
+
+    #[test]
+    fn display_honours_width_and_alignment() {
+        assert_eq!(format!("{:>10}", Hz::new(440.0).unwrap()), "    440 Hz");
+        assert_eq!(
+            format!("{:<6}|", Percent::<Bipolar>::new(-5.0).unwrap()),
+            "-5%   |"
+        );
     }
 
     fn reparses<T>(value: T) -> Result<(), TestCaseError>

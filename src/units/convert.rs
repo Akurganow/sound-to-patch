@@ -12,8 +12,9 @@ use super::{Cents, Decibels, Hz, MidiPitch, Octaves, Range, RangeError, Semitone
 const A4_MIDI: f64 = 69.0;
 const A4_HZ: f64 = 440.0;
 
-/// Keeps `2^octaves` and `10^(dB / 10)` between `1e-300` and `1e300`, well
-/// inside the normal `f64` range.
+/// Conservative caps on the input of the forward conversions. They keep
+/// `2^octaves` and `10^(dB / 10)` finite and nonzero; overflow would start
+/// near 1024 octaves and 3083 dB.
 const MAX_OCTAVES: f64 = 1000.0;
 const MAX_POWER_DB: f64 = 3000.0;
 
@@ -67,15 +68,17 @@ impl Cents {
     ///
     /// # Errors
     ///
-    /// Returns a [`RangeError`] beyond ±1 200 000 cents, where the ratio
-    /// would leave the normal `f64` range.
+    /// Returns a [`RangeError`] beyond ±1 200 000 cents, a conservative cap
+    /// that keeps the ratio finite and nonzero.
     pub fn to_ratio(self) -> Result<f64, RangeError> {
         let cents = Range::Closed(-MAX_OCTAVES * 1200.0, MAX_OCTAVES * 1200.0)
             .check("Cents to ratio", self.get())?;
         Ok((cents / 1200.0).exp2())
     }
 
-    /// Converts a frequency ratio: `c = 1200 * log2(ratio)`.
+    /// Converts a frequency ratio: `c = 1200 * log2(ratio)`. The result can
+    /// lie beyond the cap of [`Cents::to_ratio`]: `f64::MAX` gives about
+    /// 1 228 800 cents.
     ///
     /// # Errors
     ///
@@ -92,8 +95,8 @@ impl Semitones {
     ///
     /// # Errors
     ///
-    /// Returns a [`RangeError`] beyond ±12 000 semitones, where the ratio
-    /// would leave the normal `f64` range.
+    /// Returns a [`RangeError`] beyond ±12 000 semitones, a conservative cap
+    /// that keeps the ratio finite and nonzero.
     pub fn to_ratio(self) -> Result<f64, RangeError> {
         let semitones = Range::Closed(-MAX_OCTAVES * 12.0, MAX_OCTAVES * 12.0)
             .check("Semitones to ratio", self.get())?;
@@ -106,8 +109,8 @@ impl Octaves {
     ///
     /// # Errors
     ///
-    /// Returns a [`RangeError`] beyond ±1000 octaves, where the ratio would
-    /// leave the normal `f64` range.
+    /// Returns a [`RangeError`] beyond ±1000 octaves, a conservative cap
+    /// that keeps the ratio finite and nonzero.
     pub fn to_ratio(self) -> Result<f64, RangeError> {
         let octaves =
             Range::Closed(-MAX_OCTAVES, MAX_OCTAVES).check("Octaves to ratio", self.get())?;
@@ -129,15 +132,16 @@ impl Decibels {
     ///
     /// # Errors
     ///
-    /// Returns a [`RangeError`] beyond ±6000 dB, where the gain would leave
-    /// the normal `f64` range.
+    /// Returns a [`RangeError`] beyond ±6000 dB, a conservative cap that
+    /// keeps the gain finite and nonzero.
     pub fn to_amplitude_gain(self) -> Result<f64, RangeError> {
         let db = Range::Closed(-2.0 * MAX_POWER_DB, 2.0 * MAX_POWER_DB)
             .check("Decibels to amplitude gain", self.get())?;
         Ok(10_f64.powf(db / 20.0))
     }
 
-    /// Converts an amplitude gain: `dB = 20 * log10(gain)`.
+    /// Converts an amplitude gain: `dB = 20 * log10(gain)`. The result can
+    /// lie beyond the cap of [`Decibels::to_amplitude_gain`].
     ///
     /// # Errors
     ///
@@ -153,15 +157,16 @@ impl Decibels {
     ///
     /// # Errors
     ///
-    /// Returns a [`RangeError`] beyond ±3000 dB, where the ratio would leave
-    /// the normal `f64` range.
+    /// Returns a [`RangeError`] beyond ±3000 dB, a conservative cap that
+    /// keeps the ratio finite and nonzero.
     pub fn to_power_ratio(self) -> Result<f64, RangeError> {
         let db = Range::Closed(-MAX_POWER_DB, MAX_POWER_DB)
             .check("Decibels to power ratio", self.get())?;
         Ok(10_f64.powf(db / 10.0))
     }
 
-    /// Converts a power ratio: `dB = 10 * log10(ratio)`.
+    /// Converts a power ratio: `dB = 10 * log10(ratio)`. The result can lie
+    /// beyond the cap of [`Decibels::to_power_ratio`].
     ///
     /// # Errors
     ///
@@ -271,6 +276,13 @@ mod tests {
     }
 
     #[test]
+    fn largest_ratio_converts_beyond_the_to_ratio_cap() {
+        let cents = Cents::from_ratio(f64::MAX).unwrap();
+        assert!(cents.get() > 1_200_000.0);
+        assert!(cents.to_ratio().is_err());
+    }
+
+    #[test]
     fn ratio_of_zero_or_less_has_no_cents() {
         assert_eq!(
             Cents::from_ratio(0.0).unwrap_err().to_string(),
@@ -281,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn ratios_stay_inside_the_normal_range() {
+    fn ratios_stay_finite_and_nonzero_up_to_the_caps() {
         assert!(
             Cents::new(1_200_000.0)
                 .unwrap()
@@ -368,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn gains_stay_inside_the_normal_range() {
+    fn gains_stay_finite_and_nonzero_up_to_the_caps() {
         assert!(
             Decibels::new(6000.0)
                 .unwrap()

@@ -263,7 +263,7 @@ impl Spread for NoSpread {}
 ///
 /// A "no estimate" state takes no level:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0061
 /// use sound_to_serum::confidence::{Confidence, Level, NoSpread};
 ///
 /// let _ = Confidence::<NoSpread>::no_estimate(Level::High, Vec::new());
