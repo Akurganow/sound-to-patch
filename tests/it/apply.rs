@@ -6,8 +6,8 @@ use serde_json::Value;
 use sound_to_patch::preset::apply::apply;
 use sound_to_patch::preset::edits::Resolved;
 use sound_to_patch::preset::format::{Stored, format_for};
-use sound_to_patch::preset::inspect;
 use sound_to_patch::preset::registry::{ParamKind, registry_for};
+use sound_to_patch::preset::{ApplyRequest, apply_file, inspect};
 use sound_to_patch::synth::{Synth, SynthArg};
 
 use crate::support::apply::{TWO_EDITS, changed_keys, run, settings, template, write};
@@ -76,6 +76,61 @@ fn one_parameter_edit_changes_one_key_and_a_route_changes_its_slot() {
         changed,
         ["modulation_1_amount", "modulation_1_bipolar", "modulations"]
     );
+}
+
+#[test]
+fn editing_a_route_keeps_its_slot_data() {
+    let synth = Synth::Vital;
+    let format = format_for(synth).unwrap();
+    let registry = registry_for(synth).unwrap();
+    // A slot as Vital saves it: a drawn curve in the entry, a curve power,
+    // stereo on and a bipolar source.
+    let mut root: Value =
+        serde_json::from_slice(&format.write(template(synth).as_ref()).unwrap()).unwrap();
+    let curve = serde_json::json!({"num_points": 2, "points": [0.0, 1.0, 1.0, 0.0], "powers": [0.0, 0.0], "smooth": false});
+    root["settings"]["modulations"][0] = serde_json::json!({
+        "source": "lfo_1", "destination": "filter_1_cutoff", "line_mapping": curve
+    });
+    for (key, value) in [
+        ("modulation_1_amount", 0.25),
+        ("modulation_1_bipolar", 1.0),
+        ("modulation_1_power", -2.0),
+        ("modulation_1_stereo", 1.0),
+    ] {
+        root["settings"][key] = value.into();
+    }
+    let mut model = format.read(&serde_json::to_vec(&root).unwrap()).unwrap();
+    let route = |amount| Resolved::Route {
+        source: "lfo_1".into(),
+        destination: "filter_1_cutoff".into(),
+        amount,
+        polarity: None,
+        reason: None,
+    };
+    let report = apply(format, registry, model.as_mut(), &[route(0.5)]).unwrap();
+    assert_eq!(report.changes.len(), 1);
+    let after = settings(model.as_ref(), synth);
+    assert_eq!(after["modulations"][0]["line_mapping"], curve);
+    assert_eq!(after["modulation_1_amount"], 0.5);
+    assert_eq!(after["modulation_1_bipolar"], 1.0);
+    assert_eq!(after["modulation_1_power"], -2.0);
+    assert_eq!(after["modulation_1_stereo"], 1.0);
+    // The same route again is skipped.
+    let report = apply(format, registry, model.as_mut(), &[route(0.5)]).unwrap();
+    assert_eq!(report.changes, []);
+    assert_eq!(report.skipped[0].why, "equals the template");
+    // A new route in a free slot starts from the defaults.
+    let other = Resolved::Route {
+        source: "env_2".into(),
+        destination: "osc_1_level".into(),
+        amount: 0.5,
+        polarity: None,
+        reason: None,
+    };
+    apply(format, registry, model.as_mut(), &[other]).unwrap();
+    let after = settings(model.as_ref(), synth);
+    assert!(after["modulations"][1].get("line_mapping").is_none());
+    assert_eq!(after["modulation_2_power"], 0.0);
 }
 
 #[test]
@@ -193,7 +248,16 @@ fn the_output_keeps_the_template_stamp() {
         .replacen("\"1.0.6\"", "\"1.5.5\"", 1);
     let template = write(dir.path(), "mine.vital", &text);
     let out = dir.path().join("Out.vital");
-    run(&edits, &out, Some(&template)).unwrap();
+    let summary = run(&edits, &out, Some(&template)).unwrap();
+    assert!(
+        summary.contains("\n  build 1.5.5, kept from the template\n"),
+        "{summary}"
+    );
+    assert!(
+        summary
+            .contains("warning: the template is stamped 1.5.5, newer than the stable build 1.0.7"),
+        "{summary}"
+    );
     let root: Value = serde_json::from_slice(&fs::read(&out).unwrap()).unwrap();
     assert_eq!(root["synth_version"], "1.5.5");
     assert_eq!(root["preset_name"], "Out");
@@ -233,22 +297,56 @@ fn the_template_and_the_edit_list_are_never_overwritten() {
     let message = run(&edits, &template, Some(&template)).unwrap_err();
     assert!(message.contains("edit list or the template"), "{message}");
     assert_eq!(fs::read(&template).unwrap(), builtin);
-    let factory = dir.path().join("Factory");
-    fs::create_dir(&factory).unwrap();
+    // Only the Factory folder inside the synth's data folder is refused.
+    let own = dir.path().join("Factory");
+    fs::create_dir(&own).unwrap();
+    run(&edits, &own.join("x.vital"), None).unwrap();
+    let factory = dir.path().join("vital").join("Factory");
+    fs::create_dir_all(&factory).unwrap();
     let message = run(&edits, &factory.join("x.vital"), None).unwrap_err();
-    assert!(message.contains("Factory folder"), "{message}");
+    assert!(
+        message.contains("inside Vital/Factory, the factory folder of Vital"),
+        "{message}"
+    );
     // A link into the factory folder lands there too.
     #[cfg(unix)]
     {
         let link = dir.path().join("Mine");
         std::os::unix::fs::symlink(&factory, &link).unwrap();
         let message = run(&edits, &link.join("x.vital"), None).unwrap_err();
-        assert!(message.contains("Factory folder"), "{message}");
+        assert!(message.contains("factory folder"), "{message}");
     }
     // A path that leaves the factory folder again is allowed.
     let out = factory.join("..").join("Back.vital");
     run(&edits, &out, None).unwrap();
-    assert!(dir.path().join("Back.vital").exists());
+    assert!(dir.path().join("vital").join("Back.vital").exists());
+}
+
+#[test]
+fn an_existing_output_is_replaced_only_with_force() {
+    let dir = tempfile::tempdir().unwrap();
+    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let out = write(dir.path(), "Mine.vital", "keep me");
+    let message = run(&edits, &out, None).unwrap_err();
+    assert!(
+        message.contains("the file exists. Pass --force to replace it"),
+        "{message}"
+    );
+    assert_eq!(fs::read_to_string(&out).unwrap(), "keep me");
+    apply_file(&ApplyRequest {
+        edits: &edits,
+        out: &out,
+        template: None,
+        synth: &SynthArg::default(),
+        name: None,
+        force: true,
+    })
+    .unwrap();
+    assert!(
+        fs::read_to_string(&out)
+            .unwrap()
+            .contains("\"synth_version\"")
+    );
 }
 
 #[test]

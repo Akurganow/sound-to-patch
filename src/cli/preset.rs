@@ -72,6 +72,9 @@ pub struct ApplyArgs {
     /// The preset name. Without it, the name of the output file.
     #[arg(long)]
     pub name: Option<String>,
+    /// Replace the output file if it exists.
+    #[arg(long)]
+    pub force: bool,
     /// The target synth.
     #[command(flatten)]
     pub synth: SynthArg,

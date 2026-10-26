@@ -23,6 +23,9 @@ Options:
       --name <NAME>
           The preset name. Without it, the name of the output file
 
+      --force
+          Replace the output file if it exists
+
       --synth <SYNTH>
           The target synth [default: the extension of the preset file, else vital]
 

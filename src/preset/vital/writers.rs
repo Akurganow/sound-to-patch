@@ -103,8 +103,9 @@ pub struct Wavetable {
 pub struct LfoShape {
     /// The shape name.
     pub name: String,
-    /// `(x, y)` points, x strictly increasing from 0 to 1, y from 0 to 1.
-    /// The synth draws `1 - y`, so `y = 0` is the top.
+    /// `(x, y)` points, x non-decreasing from 0 to 1, y from 0 to 1. Two
+    /// points with the same x draw a vertical step. The synth draws
+    /// `1 - y`, so `y = 0` is the top.
     pub points: Vec<(f64, f64)>,
     /// One curve power per point.
     pub powers: Vec<f64>,
@@ -391,8 +392,8 @@ impl VitalModel {
     /// # Errors
     ///
     /// A [`FormatError`] for an index above 7, fewer than 2 or more than
-    /// 100 points, a power count that differs from the point count, x not
-    /// strictly increasing within 0 to 1, y outside 0 to 1, or a value
+    /// 100 points, a power count that differs from the point count, x that
+    /// falls or leaves 0 to 1, y outside 0 to 1, or a value
     /// that is not finite.
     pub fn set_lfo_shape(&mut self, index: usize, shape: &LfoShape) -> Result<(), FormatError> {
         if index > 7 {
@@ -415,11 +416,11 @@ impl VitalModel {
             ));
         }
         for (i, &(x, y)) in shape.points.iter().enumerate() {
-            let rising = i == 0 || shape.points[i - 1].0 < x;
-            if !(0.0..=1.0).contains(&x) || !(0.0..=1.0).contains(&y) || !rising {
+            let ordered = i == 0 || shape.points[i - 1].0 <= x;
+            if !(0.0..=1.0).contains(&x) || !(0.0..=1.0).contains(&y) || !ordered {
                 return Err(write_error(
                     format!("point {} is ({x}, {y})", i + 1),
-                    "Keep x strictly increasing within 0 to 1 and y within 0 to 1",
+                    "Keep x non-decreasing within 0 to 1 and y within 0 to 1",
                 ));
             }
         }
@@ -548,13 +549,14 @@ fn module_switch(key: &str) -> Option<String> {
 }
 
 /// Checks a model after edits and returns its warnings.
-pub(crate) fn scan(model: &VitalModel) -> Result<Vec<String>, FormatError> {
+pub(crate) fn scan(model: &VitalModel, edited: &[&str]) -> Result<Vec<String>, FormatError> {
     let registry = registry().map_err(|error| write_error(error.to_string(), "Report this"))?;
     let settings = model
         .root()
         .get("settings")
         .and_then(Value::as_object)
         .ok_or_else(|| write_error("the model has no settings", "Read the preset again"))?;
+    let mut out_of_range = Vec::new();
     for (key, value) in settings {
         let Some(spec) = registry.get(key) else {
             continue;
@@ -565,7 +567,9 @@ pub(crate) fn scan(model: &VitalModel) -> Result<Vec<String>, FormatError> {
                 "Vital throws on load; write a number",
             ));
         };
-        if !spec.accepts(number) {
+        // An edited control must be in range. One the edits left keeps
+        // the template's value, which Vital loads as it is.
+        if edited.contains(&key.as_str()) && !spec.accepts(number) {
             return Err(write_error(
                 format!(
                     "control {key} holds {number}, outside {}",
@@ -574,8 +578,14 @@ pub(crate) fn scan(model: &VitalModel) -> Result<Vec<String>, FormatError> {
                 "Vital applies it unclamped; write a value inside the range",
             ));
         }
+        if !spec.accepts_saved(number) {
+            out_of_range.push(format!(
+                "control {key} keeps the template's {number}, outside {}; Vital applies it as it is",
+                spec.range_text()
+            ));
+        }
     }
-    let mut warnings = Vec::new();
+    let mut warnings = out_of_range;
     for (slot, route) in model.routes().iter().enumerate() {
         let Some(route) = route else { continue };
         if let Some(switch) = module_switch(&route.destination)
@@ -677,7 +687,11 @@ mod tests {
         let registry = registry().unwrap();
         let keys: Vec<&str> = registry
             .iter()
-            .filter(|spec| !spec.legacy && spec.key.ends_with("_amount"))
+            .filter(|spec| {
+                !spec.legacy
+                    && spec.kind == crate::preset::registry::ParamKind::Float
+                    && !spec.key.starts_with("modulation_")
+            })
             .map(|spec| spec.key.as_str())
             .take(65)
             .collect();
@@ -900,6 +914,10 @@ mod tests {
         let mut falling = shape(3);
         falling.points[2].0 = 0.2;
         assert!(model.set_lfo_shape(0, &falling).is_err());
+        let mut step = shape(4);
+        step.points[2] = (step.points[1].0, 1.0);
+        model.set_lfo_shape(0, &step).unwrap();
+        assert_eq!(model.root()["settings"]["lfos"][0]["num_points"], json!(4));
         let mut uneven = shape(3);
         uneven.powers.pop();
         assert!(model.set_lfo_shape(0, &uneven).is_err());
@@ -931,19 +949,19 @@ mod tests {
     #[test]
     fn the_scan_warns_about_dead_routes_and_unfed_filters() {
         let mut model = template();
-        assert_eq!(scan(&model).unwrap(), Vec::<String>::new());
+        assert_eq!(scan(&model, &[]).unwrap(), Vec::<String>::new());
         model
             .route("lfo_1", "filter_2_cutoff", 0.25, None, None)
             .unwrap();
         model
             .route("lfo_1", "reverb_size", 0.25, None, None)
             .unwrap();
-        let warnings = scan(&model).unwrap();
+        let warnings = scan(&model, &[]).unwrap();
         assert_eq!(warnings.len(), 2, "{warnings:?}");
         assert!(warnings[0].contains("filter_2_on = 0"));
         assert!(warnings[1].contains("reverb_on = 0"));
         model.set("filter_2_on", Stored::Float(1.0)).unwrap();
-        let warnings = scan(&model).unwrap();
+        let warnings = scan(&model, &[]).unwrap();
         assert!(
             warnings
                 .iter()
@@ -952,17 +970,44 @@ mod tests {
         );
         model.set("filter_1_on", Stored::Float(1.0)).unwrap();
         assert!(
-            !scan(&model)
+            !scan(&model, &[])
                 .unwrap()
                 .iter()
                 .any(|w| w.contains("filter 1 is on"))
         );
+        // An edited control out of range is an error; the same value left
+        // from the template is a warning, since Vital loads it as it is.
         model.set("filter_1_cutoff", Stored::Float(200.0)).unwrap();
         assert!(
-            scan(&model)
+            scan(&model, &["filter_1_cutoff"])
                 .unwrap_err()
                 .to_string()
                 .contains("outside 8.0 to 136.0")
+        );
+        let warnings = scan(&model, &[]).unwrap();
+        assert!(
+            warnings
+                .iter()
+                .any(|w| w.contains("filter_1_cutoff keeps the template's 200")),
+            "{warnings:?}"
+        );
+        // The 32-bit form of a bound is in range.
+        // The top of `chorus_delay_1` is -5.64386; saved as a 32-bit float
+        // it reads -5.64385986328125, just above.
+        let bound = registry()
+            .unwrap()
+            .get("chorus_delay_1")
+            .unwrap()
+            .stored_max;
+        let narrow = f64::from(crate::cast::f64_to_f32(bound));
+        assert!(narrow > bound);
+        model.set("filter_1_cutoff", Stored::Float(72.0)).unwrap();
+        model.set("chorus_delay_1", Stored::Float(narrow)).unwrap();
+        assert!(
+            !scan(&model, &[])
+                .unwrap()
+                .iter()
+                .any(|w| w.contains("chorus_delay_1"))
         );
     }
 
@@ -1003,6 +1048,6 @@ mod tests {
             64
         );
         let read = read.as_any().downcast_ref::<VitalModel>().unwrap();
-        scan(read).unwrap();
+        scan(read, &[]).unwrap();
     }
 }

@@ -65,6 +65,7 @@ impl Command {
                         template: apply.template.as_deref(),
                         synth: &apply.synth,
                         name: apply.name.as_deref(),
+                        force: apply.force,
                     })?)
                 }
             },

@@ -208,7 +208,7 @@ impl PresetFormat for VitalFormat {
         Ok(())
     }
 
-    fn scan(&self, model: &dyn PresetModel) -> Result<Vec<String>, FormatError> {
+    fn scan(&self, model: &dyn PresetModel, edited: &[&str]) -> Result<Vec<String>, FormatError> {
         let model = model.as_any().downcast_ref::<VitalModel>().ok_or_else(|| {
             FormatError::new(
                 "cannot check the .vital preset",
@@ -217,11 +217,11 @@ impl PresetFormat for VitalFormat {
             )
         })?;
         validate(&model.root)?;
-        writers::scan(model)
+        writers::scan(model, edited)
     }
 
-    fn factory_folders(&self) -> &'static [&'static str] {
-        &["Factory"]
+    fn factory_folder(&self) -> &'static [&'static str] {
+        &["Vital", "Factory"]
     }
 }
 
@@ -536,6 +536,43 @@ fn edit_error(cause: impl Into<String>, fix: impl Into<String>) -> FormatError {
     FormatError::new("cannot edit the .vital preset", cause, fix)
 }
 
+/// Refuses a route without a source or a destination, and one into a
+/// switch, a menu or a control of the modulation matrix: none of them
+/// takes modulation.
+fn check_route(slot: usize, route: &Route) -> Result<(), FormatError> {
+    if route.source.is_empty() || route.destination.is_empty() {
+        return Err(edit_error(
+            format!(
+                "slot {}: a route needs a source and a destination",
+                slot + 1
+            ),
+            "Name both, or clear the slot",
+        ));
+    }
+    let target = registry()
+        .ok()
+        .and_then(|registry| registry.get(&route.destination));
+    let Some(spec) = target.filter(|spec| {
+        matches!(spec.kind, ParamKind::Flag | ParamKind::Choice)
+            || spec.key.starts_with("modulation_")
+    }) else {
+        return Ok(());
+    };
+    let kind = match spec.kind {
+        ParamKind::Flag => "switch",
+        ParamKind::Choice => "menu",
+        ParamKind::Float | ParamKind::Count => "control of the modulation matrix",
+    };
+    Err(edit_error(
+        format!(
+            "slot {}: `{}` is a {kind} and takes no modulation",
+            slot + 1,
+            spec.key
+        ),
+        "Route into a number or count control outside the modulation matrix",
+    ))
+}
+
 /// A JSON number for a finite control value.
 fn number_value(key: &str, value: &Stored) -> Result<Value, FormatError> {
     match value {
@@ -625,6 +662,13 @@ impl PresetModel for VitalModel {
             ));
         }
         let control = |name: &str| format!("modulation_{}_{name}", slot + 1);
+        // The same source and destination edit the slot in place: its
+        // controls and the extra fields of its entry, such as a drawn
+        // `line_mapping` curve, stay. Any other route starts from the
+        // defaults, so a new route never inherits a muted or curved slot.
+        let current = self.routes().get(slot).cloned().flatten();
+        let in_place = matches!((&current, &route), (Some(have), Some(new))
+            if have.source == new.source && have.destination == new.destination);
         // Every slot control is written, so a cleared slot holds its
         // defaults and the bipolar flag never relies on the GUI rule.
         let mut numbers: Vec<(String, Value)> = SLOT_CONTROLS
@@ -635,7 +679,8 @@ impl PresetModel for VitalModel {
                     .ok()
                     .and_then(|registry| registry.get(&key))
                     .map_or(0.0, |spec| spec.default);
-                (key, Value::from(default))
+                let kept = in_place.then(|| self.number(&key)).flatten();
+                (key, Value::from(kept.unwrap_or(default)))
             })
             .collect();
         let mut put = |key: String, value: Value| {
@@ -645,15 +690,7 @@ impl PresetModel for VitalModel {
         };
         let (source, destination) = match &route {
             Some(route) => {
-                if route.source.is_empty() || route.destination.is_empty() {
-                    return Err(edit_error(
-                        format!(
-                            "slot {}: a route needs a source and a destination",
-                            slot + 1
-                        ),
-                        "Name both, or clear the slot",
-                    ));
-                }
+                check_route(slot, route)?;
                 put(
                     control("amount"),
                     number_value(&control("amount"), &Stored::Float(route.amount))?,
@@ -700,10 +737,18 @@ impl PresetModel for VitalModel {
         while modulations.len() < SLOTS {
             modulations.push(serde_json::json!({"source": "", "destination": ""}));
         }
-        let mut entry = Map::new();
-        entry.insert("source".to_owned(), Value::String(source));
-        entry.insert("destination".to_owned(), Value::String(destination));
-        modulations[slot] = Value::Object(entry);
+        match (&mut modulations[slot], in_place) {
+            (Value::Object(entry), true) => {
+                entry.insert("source".to_owned(), Value::String(source));
+                entry.insert("destination".to_owned(), Value::String(destination));
+            }
+            (entry, _) => {
+                let mut fresh = Map::new();
+                fresh.insert("source".to_owned(), Value::String(source));
+                fresh.insert("destination".to_owned(), Value::String(destination));
+                *entry = Value::Object(fresh);
+            }
+        }
         for (key, value) in numbers {
             settings.insert(key, value);
         }
@@ -809,7 +854,7 @@ fn control_mark(
     let Some(number) = value.as_f64() else {
         return Some("not a number; Vital throws on load".to_owned());
     };
-    if !spec.accepts(number) {
+    if !spec.accepts_saved(number) {
         let whole = if spec.kind == ParamKind::Float {
             ""
         } else {
@@ -1303,6 +1348,28 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn a_route_into_a_switch_menu_or_slot_control_is_refused() {
+        let mut model = model(MINIMAL);
+        for (destination, kind) in [
+            ("osc_1_on", "switch"),
+            ("filter_1_model", "menu"),
+            ("modulation_1_amount", "control of the modulation matrix"),
+        ] {
+            let route = Route {
+                source: "lfo_1".into(),
+                destination: destination.into(),
+                amount: 0.5,
+                polarity: RoutePolarity::Unipolar,
+                extras: Vec::new(),
+            };
+            let error = model.set_route(0, Some(route)).unwrap_err().to_string();
+            assert!(error.contains(&format!("is a {kind}")), "{error}");
+            assert!(error.contains("number or count control"), "{error}");
+        }
+        assert!(model.routes()[0].is_none());
     }
 
     #[test]

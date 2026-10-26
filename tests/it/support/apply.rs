@@ -51,6 +51,7 @@ pub(crate) fn run(edits: &Path, out: &Path, template: Option<&Path>) -> Result<S
         template,
         synth: &SynthArg::default(),
         name: None,
+        force: false,
     })
     .map_err(|error| error.to_string())
 }

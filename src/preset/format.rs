@@ -74,11 +74,12 @@ pub trait PresetFormat: Send + Sync {
     /// # Errors
     ///
     /// A [`FormatError`] for a value the synth would refuse or misread.
-    fn scan(&self, model: &dyn PresetModel) -> Result<Vec<String>, FormatError>;
+    fn scan(&self, model: &dyn PresetModel, edited: &[&str]) -> Result<Vec<String>, FormatError>;
 
-    /// Folder names that hold the synth's factory presets. The writer
-    /// refuses to write into them.
-    fn factory_folders(&self) -> &'static [&'static str];
+    /// The trailing folder names of the synth's factory preset folder,
+    /// outermost first, such as the data folder and then `Factory`. The
+    /// writer refuses to write into it. Empty when the synth has none.
+    fn factory_folder(&self) -> &'static [&'static str];
 }
 
 /// A decoded preset.

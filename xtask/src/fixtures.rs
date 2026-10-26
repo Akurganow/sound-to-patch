@@ -132,11 +132,23 @@ fn sha256(bytes: &[u8]) -> String {
     Sha256Digest(Sha256::digest(bytes).into()).to_string()
 }
 
-/// Writes the fixtures, or with `check` compares the committed ones.
+/// Writes the fixtures, or with `check` compares the committed ones and
+/// refuses a committed file the generator does not produce.
 pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
     let dir = root.join(DIR);
+    let generated = generate()?;
+    if check {
+        let extra = orphans(&dir, &generated)?;
+        if !extra.is_empty() {
+            return Err(format!(
+                "the generator does not produce these fixtures: {}. Add them to `generate` or remove them",
+                extra.join(", ")
+            )
+            .into());
+        }
+    }
     let mut stale = Vec::new();
-    for (name, bytes) in generate()? {
+    for (name, bytes) in generated {
         let path = dir.join(&name);
         if check {
             if fs::read(&path).ok().as_deref() != Some(bytes.as_slice()) {
@@ -230,6 +242,14 @@ pub(crate) fn check_folder(folder: &Path) -> crate::Result<()> {
         )
         .into())
     }
+}
+
+/// The files under `dir` that are not in `generated`.
+fn orphans(dir: &Path, generated: &[(String, Vec<u8>)]) -> crate::Result<Vec<String>> {
+    let mut files = Vec::new();
+    list(dir, dir, &mut files)?;
+    files.retain(|file| !generated.iter().any(|(name, _)| name == file));
+    Ok(files)
 }
 
 /// Every file under `dir` except `PROVENANCE.md`, as a path relative to
@@ -330,6 +350,30 @@ mod tests {
     #[test]
     fn the_committed_folder_passes() {
         check_folder(&crate::root().join("tests/fixtures")).unwrap();
+    }
+
+    #[test]
+    fn a_fixture_the_generator_does_not_produce_fails() {
+        let dir = folder_copy();
+        let vital = dir.path().join("vital");
+        assert_eq!(
+            orphans(&vital, &generate().unwrap()).unwrap(),
+            Vec::<String>::new()
+        );
+        fs::write(vital.join("stamps/9.9.9.vital"), MINIMAL).unwrap();
+        assert_eq!(
+            orphans(&vital, &generate().unwrap()).unwrap(),
+            ["stamps/9.9.9.vital"]
+        );
+        let root = tempfile::tempdir().unwrap();
+        let fixtures = root.path().join("tests");
+        fs::create_dir_all(&fixtures).unwrap();
+        fs::rename(dir.path(), fixtures.join("fixtures")).unwrap();
+        let error = run(root.path(), true).unwrap_err().to_string();
+        assert!(
+            error.contains("the generator does not produce these fixtures: stamps/9.9.9.vital"),
+            "{error}"
+        );
     }
 
     #[test]

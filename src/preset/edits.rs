@@ -659,9 +659,13 @@ fn param_stored(spec: &ParamSpec, value: &ParamValue) -> Result<f64, Problem> {
         )),
         (_, Some(unit), ParamValue::Text(text)) => {
             let physical = Physical::parse(unit, text).map_err(|error| {
+                let example = example(unit);
                 (
-                    format!("{key}: {error}"),
-                    format!("Write a value such as {}", example(unit)),
+                    format!("{key}: {}", error.reason()),
+                    error.hint().map_or_else(
+                        || format!("Write a value such as {example}"),
+                        |hint| format!("{hint}, such as {example}"),
+                    ),
                 )
             })?;
             spec.stored(&physical).map_err(|error| {
@@ -925,6 +929,33 @@ mod tests {
         let error =
             resolve_one(r#"{"param":"filter_1_cutoff","value":"1 GHz","reason":"r"}"#).unwrap_err();
         assert!(error.contains("Hz, kHz"), "{error}");
+        let text = list(r#"{"param":"filter_1_cutoff","value":"1 GHz","reason":"r"}"#);
+        let errors = resolve(&parse(&text, Path::Agent).unwrap(), vital()).unwrap_err();
+        assert_eq!(
+            errors.0[0].cause,
+            "filter_1_cutoff: cannot read \"1 GHz\" as Hz: unknown suffix \"GHz\""
+        );
+        assert!(
+            errors.0[0]
+                .fix
+                .starts_with("Write a number followed by one of: Hz, kHz, such as"),
+            "{}",
+            errors.0[0].fix
+        );
+    }
+
+    #[test]
+    fn a_route_depth_in_semitones_divides_by_the_destination_span() {
+        // Vital 1.0.7 stored 0.5 for a depth of 64 typed into a route to
+        // the cutoff, whose stored range 8 to 136 spans 128 semitones.
+        match resolve_one(
+            r#"{"route":{"source":"lfo_1","dest":"filter_1_cutoff","amount":"+64 st"},"reason":"r"}"#,
+        )
+        .unwrap()
+        {
+            Resolved::Route { amount, .. } => assert_eq!(amount, 0.5),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

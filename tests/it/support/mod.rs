@@ -168,7 +168,7 @@ pub(crate) fn format_contract(format: &dyn PresetFormat, samples: &[&[u8]]) -> R
         rejects(format, &sample[..sample.len() / 2])?;
         rejects(format, &sample[..sample.len() - 1])?;
     }
-    let template = locate_template(format.template(), None)
+    let template = locate_template(format.template(), None, format.max_bytes())
         .map_err(|error| format!("no template: {error}"))?;
     let model = format
         .read(&template.bytes)

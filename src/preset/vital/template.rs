@@ -18,7 +18,7 @@ use crate::preset::registry::ParamRegistry;
 use crate::preset::template::{Severity, TemplateCheck, TemplateHelp, TemplateSource};
 use crate::preset::vital::codec::VitalModel;
 use crate::preset::vital::writers::FRAME_SAMPLES;
-use crate::preset::vital::{DEFAULT_STAMP, RETAIL_ONLY_KEYS, VitalVersion, registry};
+use crate::preset::vital::{DEFAULT_STAMP, RETAIL_BUILD, RETAIL_ONLY_KEYS, VitalVersion, registry};
 
 /// Samples in the default sample: one second at 44.1 kHz.
 const NOISE_SAMPLES: usize = 44_100;
@@ -89,6 +89,18 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
     }
     let stamp = root.get("synth_version").and_then(Value::as_str);
     match stamp.map(str::parse::<VitalVersion>) {
+        Some(Ok(version))
+            if RETAIL_BUILD
+                .parse::<VitalVersion>()
+                .is_ok_and(|retail| version > retail) =>
+        {
+            checks.push(warning(
+                format!("the template is stamped {version}, newer than the stable build {RETAIL_BUILD}"),
+                format!(
+                    "The output keeps the stamp, and Vital {RETAIL_BUILD} refuses a newer major or minor; pass a template saved by the build that loads the file"
+                ),
+            ));
+        }
         Some(Ok(version)) if version.major >= 1 => {}
         Some(Ok(version)) => checks.push(error(
             format!("the template was saved by Vital {version}, older than 1.0.0"),
@@ -122,12 +134,14 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
                     format!("control `{key}` holds {value}, not a number"),
                     "Vital throws on load; save the template again from Vital",
                 )),
-                Some(number) if !spec.accepts(number) => checks.push(error(
+                // Vital loads such a value as it is, and factory presets
+                // hold some; the edits leave it unless one names the key.
+                Some(number) if !spec.accepts_saved(number) => checks.push(warning(
                     format!(
                         "control `{key}` holds {number}, outside {}",
                         spec.range_text()
                     ),
-                    "Vital applies it unclamped; save the template again from Vital",
+                    "Vital applies it unclamped; edit the control to bring it into the range",
                 )),
                 Some(_) => {}
             }
@@ -399,10 +413,19 @@ mod tests {
         );
         assert_eq!(
             texts(checks(&retail)),
-            [(
-                Severity::Warning,
-                "the template holds retail-only keys: custom_warps".to_owned()
-            )]
+            [
+                (
+                    Severity::Warning,
+                    "the template is stamped 1.5.5, newer than the stable build 1.0.7".to_owned()
+                ),
+                (
+                    Severity::Warning,
+                    "the template holds retail-only keys: custom_warps".to_owned()
+                )
+            ]
         );
+        let stable =
+            format!(r#"{{"synth_version":"1.0.7","settings":{{"sample":{{}},{full_shapes}}}}}"#);
+        assert_eq!(texts(checks(&stable)), []);
     }
 }

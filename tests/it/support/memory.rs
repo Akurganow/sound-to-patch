@@ -171,11 +171,11 @@ impl PresetFormat for MemoryFormat {
         Ok(())
     }
 
-    fn scan(&self, _model: &dyn PresetModel) -> Result<Vec<String>, FormatError> {
+    fn scan(&self, _model: &dyn PresetModel, _edited: &[&str]) -> Result<Vec<String>, FormatError> {
         Ok(Vec::new())
     }
 
-    fn factory_folders(&self) -> &'static [&'static str] {
+    fn factory_folder(&self) -> &'static [&'static str] {
         &[]
     }
 }

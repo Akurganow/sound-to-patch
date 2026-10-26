@@ -130,18 +130,22 @@ pub fn inspect(
     Ok(format!("{}\n{}", model.header(), model.describe(opts)))
 }
 
+/// Reads at most `max + 1` bytes of a file, so a caller can refuse an
+/// oversized file without loading it.
+pub(crate) fn read_prefix(path: &Path, max: usize) -> io::Result<Vec<u8>> {
+    let limit = u64::try_from(max).map_or(u64::MAX, |max| max.saturating_add(1));
+    let mut bytes = Vec::new();
+    fs::File::open(path).and_then(|file| file.take(limit).read_to_end(&mut bytes))?;
+    Ok(bytes)
+}
+
 /// Reads at most `max` bytes of a file, so an oversized file is refused
 /// without loading it.
 fn read_capped(path: &Path, max: usize) -> Result<Vec<u8>, PresetError> {
-    let read_error = |cause| PresetError::Read {
+    let bytes = read_prefix(path, max).map_err(|cause| PresetError::Read {
         path: path.to_owned(),
         cause,
-    };
-    let limit = u64::try_from(max).map_or(u64::MAX, |max| max.saturating_add(1));
-    let mut bytes = Vec::new();
-    fs::File::open(path)
-        .and_then(|file| file.take(limit).read_to_end(&mut bytes))
-        .map_err(read_error)?;
+    })?;
     if bytes.len() > max {
         return Err(PresetError::Format {
             path: path.to_owned(),
@@ -168,6 +172,8 @@ pub struct ApplyRequest<'a> {
     pub synth: &'a SynthArg,
     /// The preset name, or `None` for the output file stem.
     pub name: Option<&'a str>,
+    /// Whether an existing output file may be replaced.
+    pub force: bool,
 }
 
 /// Whether two paths name the same file. Paths that do not exist yet are
@@ -180,7 +186,8 @@ fn same_file(a: &Path, b: &Path) -> bool {
 }
 
 /// Refuses an output path with the wrong extension, one that is an input,
-/// or one inside a factory folder of the synth.
+/// an existing file without `force`, or one inside the factory folder of
+/// the synth.
 fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result<(), PresetError> {
     let out = request.out;
     let synth = format.synth();
@@ -210,6 +217,12 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
             "Write to a new file; the inputs stay as they are".to_owned(),
         ));
     }
+    if !request.force && fs::symlink_metadata(out).is_ok() {
+        return Err(refuse(
+            "the file exists".to_owned(),
+            "Pass --force to replace it, or write to a new file".to_owned(),
+        ));
+    }
     // The folder as the system resolves it: `-o x.vital` inside a factory
     // folder, a link into one and `Factory/../x.vital` all count by where
     // the file lands. A folder that does not resolve is taken as written.
@@ -218,15 +231,23 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
     let parent = fs::canonicalize(parent).unwrap_or_else(|_| parent.to_owned());
-    if let Some(folder) = parent.ancestors().find_map(|dir| {
-        let name = dir.file_name()?.to_str()?;
-        format
-            .factory_folders()
-            .iter()
-            .find(|factory| factory.eq_ignore_ascii_case(name))
-    }) {
+    let factory = format.factory_folder();
+    let inside = !factory.is_empty()
+        && parent.ancestors().any(|dir| {
+            let tail: Vec<_> = dir.iter().rev().take(factory.len()).collect();
+            tail.len() == factory.len()
+                && tail.iter().zip(factory.iter().rev()).all(|(have, want)| {
+                    have.to_str()
+                        .is_some_and(|have| have.eq_ignore_ascii_case(want))
+                })
+        });
+    if inside {
         return Err(refuse(
-            format!("it is inside a {folder} folder of {}", synth.name()),
+            format!(
+                "it is inside {}, the factory folder of {}",
+                factory.join("/"),
+                synth.name()
+            ),
             "Write into your own preset folder; factory presets stay untouched".to_owned(),
         ));
     }
@@ -237,7 +258,8 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
 /// the edits and writes the preset. Returns the report to print.
 ///
 /// The output must carry the extension of the synth, and must not be the
-/// edit list, the template or a file in a factory folder of the synth. The
+/// edit list, the template or a file in the factory folder of the synth,
+/// and must not exist unless the request sets `force`. The
 /// file is written to a temporary file next to it and renamed, so a failed
 /// run leaves no partial file.
 ///
@@ -258,8 +280,8 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
             }
         })?;
     let list = edits::parse(&text, edits::Path::Agent).map_err(PresetError::Edits)?;
-    let template =
-        locate_template(format.template(), request.template).map_err(PresetError::Template)?;
+    let template = locate_template(format.template(), request.template, format.max_bytes())
+        .map_err(PresetError::Template)?;
     let template_path = match &template.origin {
         template::Origin::CommandLine(path) | template::Origin::Candidate(path) => path.clone(),
         template::Origin::Builtin => PathBuf::from("built-in template"),
@@ -304,10 +326,17 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
     let bytes = format.write(model.as_ref()).map_err(write_error)?;
     format.read(&bytes).map_err(write_error)?;
     write_atomically(out, format.extension(), &bytes)?;
+    let stamp = model
+        .header()
+        .fields
+        .into_iter()
+        .find(|field| field.label == "build")
+        .map(|field| field.value);
     Ok(apply_summary(
         out,
         &template.origin,
         &name,
+        stamp.as_deref(),
         &report,
         &checks,
     ))
@@ -334,11 +363,15 @@ fn apply_summary(
     out: &Path,
     origin: &template::Origin,
     name: &str,
+    stamp: Option<&str>,
     report: &apply::ApplyReport,
     checks: &[template::TemplateCheck],
 ) -> String {
     use std::fmt::Write as _;
     let mut text = format!("wrote {} ({name:?}) from {origin}\n", out.display());
+    if let Some(stamp) = stamp {
+        let _ = writeln!(text, "  build {stamp}, kept from the template");
+    }
     for change in &report.changes {
         let mut notes = Vec::new();
         if change.uncalibrated {

@@ -123,13 +123,19 @@ pub fn apply(
                 polarity,
                 reason,
             } => apply_route(format, model, source, destination, *amount, *polarity).map(|slot| {
-                report.changes.push(Change {
-                    target: format!("slot {}", slot + 1),
-                    value: format!("{source} -> {destination}, amount {amount:?}"),
-                    uncalibrated: false,
-                    raw: false,
-                    reason: reason.clone(),
-                });
+                match slot {
+                    Some(slot) => report.changes.push(Change {
+                        target: format!("slot {}", slot + 1),
+                        value: format!("{source} -> {destination}, amount {amount:?}"),
+                        uncalibrated: false,
+                        raw: false,
+                        reason: reason.clone(),
+                    }),
+                    None => report.skipped.push(Skipped {
+                        target: format!("{source} -> {destination}"),
+                        why: "equals the template".to_owned(),
+                    }),
+                }
             }),
             Resolved::Raw { key, value, reason } => model.set(key, value.clone()).map(|()| {
                 report.changes.push(Change {
@@ -152,7 +158,15 @@ pub fn apply(
     if !errors.is_empty() {
         return Err(EditErrors(errors));
     }
-    report.warnings = format.scan(model).map_err(|error| {
+    let edited: Vec<String> = resolved
+        .iter()
+        .filter_map(|edit| match edit {
+            Resolved::Param { key, .. } | Resolved::Raw { key, .. } => Some(key.clone()),
+            Resolved::Route { .. } => None,
+        })
+        .collect();
+    let edited: Vec<&str> = edited.iter().map(String::as_str).collect();
+    report.warnings = format.scan(model, &edited).map_err(|error| {
         EditErrors(vec![EditError {
             place: "the edited preset".to_owned(),
             cause: format!("{}: {}", error.what, error.cause),
@@ -224,7 +238,7 @@ fn apply_route(
     destination: &str,
     amount: f64,
     polarity: Option<RoutePolarity>,
-) -> Result<usize, FormatError> {
+) -> Result<Option<usize>, FormatError> {
     if !format.route_sources().contains(&source) {
         return Err(FormatError::new(
             "cannot add the route",
@@ -232,14 +246,31 @@ fn apply_route(
             format!("Use one of: {}", format.route_sources().join(", ")),
         ));
     }
+    // An existing route keeps its polarity and extra controls unless the
+    // edit sets them, and an identical one changes nothing.
+    let existing = model
+        .routes()
+        .into_iter()
+        .flatten()
+        .find(|have| have.source == source && have.destination == destination);
+    let polarity = polarity
+        .or(existing.as_ref().map(|have| have.polarity))
+        .unwrap_or_else(|| format.default_polarity(source));
+    if existing
+        .as_ref()
+        .is_some_and(|have| have.amount.to_bits() == amount.to_bits() && have.polarity == polarity)
+    {
+        return Ok(None);
+    }
     place_route(
         model,
         Route {
             source: source.to_owned(),
             destination: destination.to_owned(),
             amount,
-            polarity: polarity.unwrap_or_else(|| format.default_polarity(source)),
-            extras: Vec::new(),
+            polarity,
+            extras: existing.map(|have| have.extras).unwrap_or_default(),
         },
     )
+    .map(Some)
 }

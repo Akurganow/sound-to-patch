@@ -51,9 +51,11 @@ jobs:
             mkdir -p "fuzz/corpus/$target"
             find tests/fixtures/vital -name '*.vital' -exec cp {} "fuzz/corpus/$target/" \;
           done
+          mkdir -p fuzz/corpus/edits_apply
+          cp tests/cmd/data/*.json fuzz/corpus/edits_apply/
       - working-directory: fuzz
         run: |
-          for target in vital_read vital_roundtrip vital_write; do
+          for target in vital_read vital_roundtrip vital_write edits_apply; do
             cargo fuzz run --fuzz-dir . "$target" -- -max_total_time=300
           done
       - if: failure()

@@ -119,7 +119,9 @@ cp tests/fixtures/vital/*.vital fuzz/corpus/vital_read/
 cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
 ```
 
-The corpus and the crash artifacts stay out of git. A crash becomes a
+Seed `edits_apply`, which runs edit lists through `preset apply` on the
+routes fixture, from `tests/cmd/data/*.json`. The corpus and the crash
+artifacts stay out of git. A crash becomes a
 unit test with the input bytes inline, next to the code it broke.
 
 ## Golden numbers

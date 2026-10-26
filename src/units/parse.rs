@@ -34,22 +34,11 @@ enum Cause {
 
 impl fmt::Display for ParseUnitError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "cannot read {:?} as {}: ", self.input, self.unit)?;
-        match &self.cause {
-            Cause::NoNumber => write!(f, "no number before the suffix")?,
-            Cause::NoSuffix => write!(f, "no unit suffix")?,
-            Cause::UnknownSuffix(suffix) => write!(f, "unknown suffix {suffix:?}")?,
-            Cause::BadNumber(number) => write!(f, "{number:?} is not a number")?,
-            Cause::Range(error) => return write!(f, "{error}"),
-            Cause::NoUnitString => {
-                return write!(f, "{} has no unit string", self.unit);
-            }
+        write!(f, "{}", self.reason())?;
+        match self.hint() {
+            Some(hint) => write!(f, ". {hint}"),
+            None => Ok(()),
         }
-        write!(
-            f,
-            ". Write a number followed by one of: {}",
-            self.accepted.join(", ")
-        )
     }
 }
 
@@ -63,6 +52,36 @@ impl Error for ParseUnitError {
 }
 
 impl ParseUnitError {
+    /// What went wrong, without the hint:
+    /// `cannot read "1.2 s" as Hz: unknown suffix "s"`.
+    #[must_use]
+    pub fn reason(&self) -> String {
+        let cause = match &self.cause {
+            Cause::NoNumber => "no number before the suffix".to_owned(),
+            Cause::NoSuffix => "no unit suffix".to_owned(),
+            Cause::UnknownSuffix(suffix) => format!("unknown suffix {suffix:?}"),
+            Cause::BadNumber(number) => format!("{number:?} is not a number"),
+            Cause::Range(error) => error.to_string(),
+            Cause::NoUnitString => format!("{} has no unit string", self.unit),
+        };
+        format!("cannot read {:?} as {}: {cause}", self.input, self.unit)
+    }
+
+    /// The accepted suffixes, for a text that does not read as a number
+    /// and a suffix: `Write a number followed by one of: Hz, kHz`.
+    #[must_use]
+    pub fn hint(&self) -> Option<String> {
+        match self.cause {
+            Cause::NoNumber | Cause::NoSuffix | Cause::UnknownSuffix(_) | Cause::BadNumber(_) => {
+                Some(format!(
+                    "Write a number followed by one of: {}",
+                    self.accepted.join(", ")
+                ))
+            }
+            Cause::Range(_) | Cause::NoUnitString => None,
+        }
+    }
+
     /// The error for a unit type that has no unit string, such as
     /// `Normalized`.
     pub(crate) fn no_unit_string(input: &str, unit: &'static str) -> Self {
@@ -273,6 +292,26 @@ mod tests {
              Write a number followed by one of: Hz, kHz"
         );
         assert!("1.2 k Hz".parse::<Hz>().is_err());
+    }
+
+    #[test]
+    fn the_reason_and_the_hint_split_the_message() {
+        let error = "1.2 s".parse::<Hz>().unwrap_err();
+        assert_eq!(
+            error.reason(),
+            "cannot read \"1.2 s\" as Hz: unknown suffix \"s\""
+        );
+        assert_eq!(
+            error.hint().as_deref(),
+            Some("Write a number followed by one of: Hz, kHz")
+        );
+        assert_eq!(
+            error.to_string(),
+            format!("{}. {}", error.reason(), error.hint().unwrap())
+        );
+        let range = "-5 Hz".parse::<Hz>().unwrap_err();
+        assert_eq!(range.hint(), None);
+        assert_eq!(range.to_string(), range.reason());
     }
 
     #[test]

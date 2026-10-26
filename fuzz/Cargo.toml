@@ -53,3 +53,10 @@ path = "fuzz_targets/vital_write.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "edits_apply"
+path = "fuzz_targets/edits_apply.rs"
+test = false
+doc = false
+bench = false

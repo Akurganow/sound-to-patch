@@ -37,6 +37,9 @@ pub use writers::{
 /// the final stamp.
 pub const DEFAULT_STAMP: &str = "1.0.6";
 
+/// The stable retail build that written files are checked against.
+pub const RETAIL_BUILD: &str = "1.0.7";
+
 /// Keys that retail builds from 1.5 on write and the open source cannot
 /// read. A rewrite keeps them.
 pub const RETAIL_ONLY_KEYS: [&str; 5] = [
