@@ -66,7 +66,7 @@ PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-b
 - Every public item has rustdoc. Changed behaviour has a test. The testing
   guide in `docs/src/development/testing.md` says which test goes where.
 - Expected test values never come from an AI. Take them from a file saved
-  by Serum 2 or from an independent reference.
+  by the target synth or from an independent reference.
 - An epic closes with its docs and the checklist in its issue.
 
 ## Commits and pull requests
@@ -115,8 +115,10 @@ license.
 - Crates we depend on are not credits. Their notices ship in
   `THIRD-PARTY-LICENSES.html`. A new dependency adds its license to
   `about.toml` when the license is new to the tree.
-- Docs name no third-party brands except Serum. A credit is not a brand
-  mention.
+- Docs name no third-party brands except Serum and Vital. A credit is not
+  a brand mention.
+- Vital is GPL-3.0, so we use its facts only, in our own words, and `vita`
+  runs only as a separate process.
 - Committed test fixtures have a row in `tests/fixtures/PROVENANCE.md`.
 
 ## Security

@@ -4,18 +4,25 @@
 
 Suno turns an idea into a draft track and exports stems. Rebuilding a stem
 by hand in a DAW is slow. The producer has to transcribe the notes by ear.
-Then they have to design a similar sound in Serum 2. Without years of sound
-design experience, the second step is the hardest part.
+Then they have to design a similar sound in a synth, Vital or Serum 2.
+Without years of sound design experience, the second step is the hardest
+part.
 
 ## Goal
 
-Give the producer a starting point for one stem: the notes and a Serum 2
-preset, plus an explanation of how the preset works.
+Give the producer a starting point for one stem: the notes and a preset
+for the target synth, plus an explanation of how the preset works.
+
+Two synths are equal targets: Vital and Serum 2. The producer picks one
+with `--synth vital|serum2`. Neither is a fallback for the other. Vital
+comes first, because its file is plain JSON and its parameter laws can be
+read from facts. Serum 2 follows once a Serum 2 license is at hand for
+probes and renders.
 
 A second path needs no audio: the producer describes the sound in their
-own words, and the agent writes a Serum 2 preset and its explanation. It
-reuses the preset writer, the Serum 2 reference and the agent skill
-without the analysis, so it can ship before `analyze` does.
+own words, and the agent writes a preset for the target synth and its
+explanation. It reuses the preset writer, the synth reference and the agent
+skill without the analysis, so it can ship before `analyze` does.
 
 ## Input
 
@@ -35,7 +42,9 @@ A folder next to the stem with:
   estimated note-off. A glide is two overlapping notes. Pitch drops and
   vibrato are left to the preset. Pitch bends are written only for motion
   the preset cannot model, with a range of two semitones.
-- `preset.SerumPreset`: a Serum 2 preset that starts close to the sound.
+- `preset.<ext>`: a preset for the target synth that starts close to the
+  sound. The extension follows the synth: `.vital` for Vital and
+  `.SerumPreset` for Serum 2.
 - `explanation.md`: one section per synth layer. It states what was
   measured, what the preset sets, how sure the estimate is, which controls
   to turn next and what the tool could not tell.
@@ -66,10 +75,21 @@ oscillator, filter, modulation, distortion and space follow. Each layer
 reports values with units, a confidence, and the parameters that only a
 render can calibrate.
 
+Estimators speak physical units, and adapters speak synth parameters.
+- The neutral core holds stem intake, notes, the estimators, `layers.json`,
+  compare and refine. It reports measured values in units with a
+  `Confidence` and never rounds them to what one synth offers.
+- Each synth has one adapter behind traits: the preset format, the
+  parameter registry with its laws, the mapper from layers to edits, the
+  render state and the agent reference. `ARCHITECTURE.md` names the traits.
+- Build order: the seam and Vital first, then Serum 2. A contract test
+  suite runs once per adapter, so both synths meet the same rules.
+
 The fact base behind every decision below lives in `research/`, outside
 git: one fact file per studied project or paper, one research file per
 layer, plus syntheses with the contradictions and how to settle them. The
-layer synthesis is `research/synthesis/layers.md`.
+layer synthesis is `research/synthesis/layers.md`. The Vital facts are in
+`research/vital/`.
 
 ### `analyze`
 
@@ -78,6 +98,8 @@ Estimates the eight synth layers. Writes the layer report as JSON
 
 - Each layer writes values with units, a confidence, flags, the parameters
   that need a render to calibrate, and a suggested edit in display units.
+  `--synth` picks the synth whose display units the suggested edits use.
+  The layer names and the estimates stay the same for both synths.
 - Pitch and glide: f0 track, glides, pitch envelope, vibrato, mono or poly.
 - Oscillator source: waveform family, noise, sub, sync and FM flags, table
   candidates.
@@ -151,8 +173,99 @@ Runtime library.
 
 ### `preset`
 
-Reads and writes `.SerumPreset` files and applies an edit list to an Init
-preset.
+Reads and writes preset files and applies an edit list to a template
+preset. `--synth vital|serum2` picks the adapter. The generic part below
+holds for both synths. Each adapter owns its file format, its parameter
+registry and its facts.
+
+#### Generic part
+
+- Each synth has one adapter behind these traits: `PresetFormat` and
+  `PresetModel` (read, write, header fields, template), `ParamRegistry` and
+  `ParamLaw` (key, range, unit, label, tuning note, the law between the
+  stored value and the physical unit) and `SynthMapper` (layers to edits).
+  `SynthCapabilities` holds what differs in structure: the oscillator
+  layout, the effect set, the LFO kinds, the glide and velocity rules and
+  the bend range. One contract test suite runs once per adapter.
+- The registry feeds edit-list validation, the writer, the tuning notes and
+  the dictionary of the agent reference. They never disagree.
+- Every preset starts from a template that a `TemplateSource` supplies.
+  Whether the template may enter the repository depends on the synth.
+- Layer estimates arrive in physical units (Hz, cents, octaves, ms). The
+  writer converts them to the stored values of the synth through the law of
+  each parameter. A law carries a provenance tag: `from facts` (read from
+  a source we may use), `measured` (a calibration table from a render) or
+  `interim`. Until a law is `from facts` or `measured`, the writer uses the
+  interim law, marks the parameter uncalibrated, and offers no Hz
+  constructor for a stored value without a known law.
+- An uncalibrated value is still written, including from the no-agent
+  baseline: a starting point that may be wrong beats a missing control.
+  The explanation names each uncalibrated control, says how to tune it by
+  ear and what the producer should hear when it is right.
+- A mapper never rounds an estimate to what one synth offers. It returns the
+  nearest edit plus an `unrepresentable` list with the residual for what
+  the synth cannot reach.
+- Every format fact records the synth build it was verified on. The
+  project pins one build per synth for probes, fixtures, calibration and
+  renders. Facts from other builds are observations.
+
+#### Vital adapter
+
+Vital comes first. Its facts live in `research/vital/`, outside git, in our
+own words. The code follows those fact files and never the Vital source.
+
+- The file is one JSON text with no compression. The top-level keys are
+  `synth_version`, `preset_name`, `author`, `comments`, `preset_style`,
+  `macro1` to `macro4` and `settings`. `synth_version` and `settings` are
+  required.
+- `settings` holds one number per control, under the parameter name, as the
+  stored value and not as the display value. It also holds the structured
+  keys `modulations`, `wavetables`, `lfos` and `sample`.
+- A missing numeric key falls back to the control's default, and an unknown
+  key is ignored. A value out of range is applied as it is, so the writer
+  checks the range.
+- A modulation slot is an object with a `source` and a `destination` name.
+  Its amount, power, bipolar flag, stereo flag and bypass flag are numeric
+  controls of the slot in `settings`. The writer sets the bipolar flag
+  itself.
+- Wavetables are embedded as base64 keyframes, so a table fitted to the
+  stem can be written into the preset. An LFO shape is a list of points
+  with a power per segment.
+- The parameter table has 794 names. The open source gives most laws as
+  formulas in the stored value s: cutoff Hz = 8.1758 * 2^(s/12),
+  envelope seconds = s^4, LFO Hz = 2^s, oscillator gain = s^2 and the
+  outer unison voice offset in cents = `detune_range` * s^2. Many effect
+  laws are closed too: delay and reverb times are powers of two in
+  seconds, and the drives and EQ gains are linear in dB.
+- These laws are read from the 1.0.6 source and tagged `from facts`. A few
+  probes confirm them against audio before they count as checked. The
+  unison voice spread and the squared amplitude envelope stay `interim`
+  until a render confirms them.
+- Filter resonance has no closed law: its map differs for each filter
+  model. It takes the interim law until a render measures it, as does the
+  drive response inside each model. Far fewer probes are needed than for
+  Serum 2.
+- The open source is a 2021 snapshot (1.0.6). The retail app is at 1.5.5,
+  and 1.6.x builds are reported. Presets saved by 1.5.x carry keys that the
+  open source does not know. Retail and open
+  versions drift, so a key set that one reads may lose features in the
+  other.
+- The open source rejects a preset whose `synth_version` has a newer
+  major.minor than its own build, and a forum report says retail does too.
+  As plugin state, such a preset loads nothing and shows no message. One
+  stamp must satisfy both the open engine that `vita` runs and the retail
+  plugin. The load check and a `vita` probe decide it.
+- Test renders use `vita`, which runs the open engine in a separate process.
+  It makes renders possible in tests and in CI with no plugin license. A test
+  that needs it is `#[ignore]` locally and runs in a dedicated CI job that
+  installs it. The retail plugin through VST3 is the final check, because the
+  engines differ in version.
+- The template is a file that we make ourselves. Factory presets, samples
+  and wavetables of the vendor never enter the repository.
+- The project pins one retail build for the load check and the probes. The
+  build is named when the first load check runs.
+
+#### Serum 2 adapter
 
 - Layout: `XferJson\0`, JSON metadata length (u64 LE), JSON metadata,
   uncompressed CBOR size (u32 LE), encoding flag (u32 LE, always 2 = zstd;
@@ -188,17 +301,9 @@ preset.
   serum-mcp agree (Mod Wheel 1, Env 1-4 = 2-5, Velocity 16, Note 17).
   Re-verify one probe preset on the current Serum 2.
 - The voice-filter cutoff is a 0..1 knob position, not Hz.
-- Layer estimates arrive in physical units (Hz, cents, octaves, ms). The
-  writer converts them to knob positions through calibration tables
-  measured on a render. Until a table exists, the writer uses the interim
-  law, marks the parameter uncalibrated, and offers no Hz constructor for a
-  knob without a measured law.
-- An uncalibrated value is still written, including from the no-agent
-  baseline: a starting point that may be wrong beats a missing control.
-  The explanation names each uncalibrated control, says how to tune it by
-  ear and what the producer should hear when it is right. Portamento and
-  envelope curves have no interim law yet: they stay at their default, and
-  the explanation says the curve is not set and how to tune it by ear.
+- Portamento and envelope curves have no interim law yet: they stay at
+  their default, and the explanation says the curve is not set and how to
+  tune it by ear.
 - Keys not yet known: unison blend, range, mode and stack, the
   per-oscillator ENV 1 button, DC bias in Distortion, the multiband
   compressor controls, the extra reverb controls and reverb type names,
@@ -208,8 +313,7 @@ preset.
   Tuning. Save one Serum-built probe preset per control and diff the CBOR.
 - Crates: `zstd` 0.14 (BSD-3-Clause), `ciborium` (read only), `md-5` (no
   hex formatter, format bytes ourselves), `serde_json`.
-- Every format fact records the Serum build it was verified on. The
-  metadata version changed between builds (4.0, 7.0, 9.0, 10.0).
+- The metadata version changed between builds (4.0, 7.0, 9.0, 10.0).
 - The project pins one Serum build, 2.1.5, for probes, fixtures,
   calibration and renders. Facts from other builds are observations.
 - Keep the version fields of the Init preset. A preset stamped by a newer
@@ -223,14 +327,14 @@ preset.
    for coarse shape. It settles each flagged ambiguity, accepts or
    overrides the suggested edits of each layer, and writes an edit list in
    display units with a reason per edit.
-4. `preset` validates the edit list against the Init preset and writes the
-   preset. An unknown name or an out-of-range value returns a message with
-   the fix.
+4. `preset --synth ...` validates the edit list against the template
+   preset and writes the preset. An unknown name or an out-of-range value
+   returns a message with the fix.
 5. The agent writes `explanation.md` from the reasons, one section per
    layer.
 
 A skill describes the loop. It ships as a plugin in this repository (see
-the Serum 2 reference below). The agent does not classify the stem into a
+the agent reference below). The agent does not classify the stem into a
 style. Reading the report is enforced by the skill and its tools; no test
 checks whether the agent read it.
 
@@ -250,18 +354,19 @@ checks whether the agent read it.
   the edits.
 
 - The skill holds one file per layer: what the report fields mean, the
-  Serum parameters the layer fills (name, unit, range), the rules for the
+  parameters of the target synth that the layer fills (name, unit, range,
+  taken from that synth's reference), the rules for the
   layer's ambiguities, the defaults for low confidence and the controls to
   turn next. The agent loads a layer file when the layer is flagged,
   uncertain or ambiguous.
 - Style cards (reese, neuro, wobble, 808, pluck, lead, pad) are optional
-  priors. On the audio path they give typical values for parameters that a
-  layer cannot identify, such as filter drive, distortion mode and effect
-  order. The report decides which blocks are on and which knobs `refine`
-  searches; on the audio path a card never does. Each style card is a
-  subrole card of a role (lead, pad, bass and the others). The stem type
-  picks the role card, never a subrole card, and each role card carries
-  these audio-path priors too.
+  priors. Each synth adds an overlay with its own parameter values. On the
+  audio path they give typical values for parameters that a layer cannot
+  identify, such as filter drive, distortion mode and effect order. The report
+  decides which blocks are on and which knobs `refine` searches; on the audio
+  path a card never does. Each style card is a subrole card of a role (lead,
+  pad, bass and the others). The stem type picks the role card, never a
+  subrole card, and each role card carries these audio-path priors too.
 - Each layer has two worked examples: a report excerpt, the resolved edits
   and the reasons. One of the two is an ambiguity case. Two full examples
   cover all eight layers.
@@ -278,6 +383,26 @@ checks whether the agent read it.
 - GPL, LGPL, AGPL and MPL-2.0 projects serve only as sources of facts, or
   run as a separate process. An MPL-2.0 crate may be a dependency if we do
   not modify its files.
+- Vital is GPL-3.0. We use its facts only: names, ranges, laws and
+  structure, written in our own words in `research/vital/`. We copy no
+  code or comment. The registry restates names, ranges, defaults and laws
+  as facts in our own layout and never ships a mechanical dump of the
+  source table. The implementation follows the fact files, not the Vital
+  source. A cited law or range with its source file is fine.
+- Vita, the Python binding of the Vital engine, is GPL-3.0 too. It runs
+  only as a separate process for test renders. No Rust code links it.
+- The retail Vital app falls under the vendor EULA. As summarised from the
+  public EULA page, it bars the redistribution of factory presets, samples
+  and wavetables, so none of them enters the repository. It bars reverse
+  engineering of the app except where law allows, so we read the open
+  source and the files that the app saves and never decompile the app. The
+  summary finds no clause on local scripted rendering. It bars automated
+  use of the vendor web services, so we use none of them, text-to-wavetable
+  included. It allows commercial and non-commercial productions made with
+  the software. A maintainer reads the EULA page itself before the first
+  release.
+- The docs say that the project has no affiliation with the makers of
+  Vital or Serum 2.
 - Weights under a non-commercial license (CC BY-NC) are inspiration only.
 - Code without a license may be read, not copied.
 - README and `docs/` credit every project or paper we studied as
@@ -334,7 +459,14 @@ checks whether the agent read it.
 
 ## Later
 
-- `render`: render a preset with MIDI to WAV through Serum 2.
+- `render`: render a preset with MIDI to WAV through the target synth.
+  Each synth has its own render state adapter.
+  - Vital: `vita` runs the open 1.0.x engine as a separate process and
+    returns the audio as NumPy arrays. It has wheels for Apple silicon.
+    It serves tests and CI without a plugin license. The retail plugin
+    through VST3 is the final check. The retail state is the preset JSON, and
+    whether a bare JSON loads is a probe. Render the same preset in both and
+    compare within the spread, since the engines differ in version.
   - Serum 2 ships as VST3, AU and AAX, with no CLAP build.
   - Load the preset through a VST3 processor state: the preset CBOR with
     the preset-only keys removed, `"default"` sentinels replaced by `{}`,
@@ -360,25 +492,27 @@ checks whether the agent read it.
   - Once per pinned Serum build, four or five presets of different kinds
     are recorded by hand from a DAW and compared with the automatic render
     by loudness, spectrum and envelope, within the spread.
-- Calibration set, the first use of `render`. Measured once per Serum build.
-  It settles the knob laws and route depths that the layer report marks
+- Calibration set, the first use of `render`. Measured once per synth build.
+  For Vital most laws are formulas from the open source, so its set confirms
+  them with a few probes and measures the resonance per filter model, the
+  drive response inside each model and the unison spread. For Serum 2 it
+  settles the knob laws and route depths that the layer report marks
   uncalibrated: cutoff law per filter type, resonance, key tracking, mod
-  amount per octave, pitch-route depth, portamento time and curve, ENV 1
-  curve shapes and sustain scale, unison detune in cents, blend and pan law,
-  reverb size to RT60, delay time scalar, compressor threshold and
-  distortion curves. Missing keys and default conflicts belong to the
-  preset-format probes, not here. Each table has a residual limit set
-  before it is measured and tied to audibility (for example pitch within 5
-  cents, cutoff within 0.1 octave, times within 10 %). A table that misses
-  its limit stays uncalibrated.
+  amount per octave, pitch-route depth, portamento time and curve, ENV 1 curve
+  shapes and sustain scale, unison detune in cents, blend and pan law, reverb
+  size to RT60, delay time scalar, compressor threshold and distortion curves.
+  Missing keys and default conflicts belong to the preset-format probes, not
+  here. Each table has a residual limit set before it is measured and tied to
+  audibility (for example pitch within 5 cents, cutoff within 0.1 octave,
+  times within 10 %). A table that misses its limit stays uncalibrated.
 - `compare`: return named distances, not one scalar: MFCC (40 coefficients,
   cosine over the full frame map), multi-scale spectral loss, envelope
-  distance, descriptor deltas and pitch contour. A CLAP distance joins
-  later as its own task, once the test bench shows a gain, and stays out of
-  the `refine` objective. On human timbre ratings MFCC is the best simple
-  baseline (triplet agreement 0.724, spectral loss 0.661, chance 0.5); our
-  MFCC must reproduce 0.724 within 0.01 on that dataset at a pinned commit. No single loss
-  wins on every synth, and within one system the metrics do not track
+  distance, descriptor deltas and pitch contour. A CLAP distance joins later
+  as its own task, once the test bench shows a gain, and stays out of the
+  `refine` objective. On human timbre ratings MFCC is the best simple baseline
+  (triplet agreement 0.724, spectral loss 0.661, chance 0.5); our MFCC must
+  reproduce 0.724 within 0.01 on that dataset at a pinned commit. No single
+  loss wins on every synth, and within one system the metrics do not track
   listeners, so scores never replace listening. Exclude or level-match the
   first MFCC coefficient: it carries loudness.
 - `compare` also runs the layer estimators on the target and on the render
@@ -397,9 +531,9 @@ checks whether the agent read it.
 - A local test bench in four tiers. It compares audio rendered from the
   result with the target, never parameters.
   - T0: render determinism, the noise floor and the calibration set.
-  - T1: Serum 2 factory presets and random perturbations of them, where a
-    perfect answer exists. The perturbation log is the ground truth. Each
-    layer estimator also reports its own metric here.
+  - T1: factory presets of the target synth and random perturbations of them,
+    where a perfect answer exists. The perturbation log is the ground truth.
+    Each layer estimator also reports its own metric here.
   - T2: audio from other synths (the Surge and NSynth sets), where no
     perfect answer exists.
   - T3: real Suno stems, judged by metric and by ear.
@@ -408,16 +542,17 @@ checks whether the agent read it.
     examples, a no-agent baseline built from the suggested edits, and floor
     baselines. The layers-hidden arm gives the stem type and the priors
     only.
-  - No public dataset pairs Serum 2 presets with audio. Factory presets and
-    renders stay out of the repository.
+  - No public dataset pairs Serum 2 presets with audio. The same check for
+    Vital comes at the dataset epic. Factory presets and renders stay out of
+    the repository.
   - Before `refine` scores on two or three notes, the bench checks that
     this ranks candidates like the full phrase: Spearman at least 0.9 over
     200 T1 candidates.
-- Our own labelled dataset of Serum 2 presets and renders. No public one
-  exists: a sweep of Hugging Face, GitHub, GitLab, Zenodo, Kaggle and paper
-  data sections found none. It is built from generated presets and, for
-  local use, the owner's factory presets. The generation recipe and render
-  settings are recorded with it.
+- Our own labelled dataset of presets and renders, one per synth, Vital first.
+  No public one exists for Serum 2: a sweep of Hugging Face, GitHub, GitLab,
+  Zenodo, Kaggle and paper data sections found none. It is built from
+  generated presets and, for local use, the owner's factory presets. The
+  generation recipe and render settings are recorded with it.
   - The dataset may be public. It is published as a versioned package tied
     to this repository, for example an OCI artifact on the GitHub Container
     Registry, and `xtask` fetches it by version and checksum. The choice of
@@ -425,11 +560,15 @@ checks whether the agent read it.
   - Only the generated part is published by default. Factory presets and
     their renders stay local until the Xfer license terms are checked.
 - Parser fixtures without audio: `RecklessSerum2Bank` (MIT, 250 generated
-  `.SerumPreset` files) may enter `tests/fixtures/` with its license.
-- A Serum 2 reference for the agent: how Serum 2 is laid out, what each
-  control does, its units and ranges, its quirks, and sound-design recipes,
-  so the agent finds its way in Serum 2 while it writes edits and the
-  explanation. The research collects manuals, guides, videos, courses,
+  `.SerumPreset` files) may enter `tests/fixtures/` with its license. For
+  Vital, only a bank under a permissive license (CC0 or MIT) enters, with
+  its provenance. Many Vital banks have no license.
+- A reference for the agent, with a shared core and one part per synth:
+  how the synth is laid out, what each control does, its units and ranges,
+  its quirks, and sound-design recipes, so the agent finds its way in the
+  synth while it writes edits and the explanation. The shared core holds
+  the music dictionary, the router and the word lexicon. The Vital part
+  comes first. The research collects manuals, guides, videos, courses,
   forum knowledge, open preset banks and existing agent tooling in
   `research/serum2/`. It summarizes commercial material in our own words
   and links the sources.
@@ -438,7 +577,7 @@ checks whether the agent read it.
     harness installs it without the rest of the repository. Several
     skills and several plugins are fine: the Serum 2 reference, the audio
     path and text to preset can ship apart.
-  - The reference plugin holds the dictionary. The audio-path and
+  - The reference plugin holds the dictionaries. The audio-path and
     text-to-preset plugins depend on it and do not copy it. The first task
     of the reference verifies that plugins load in local and cloud agent
     sessions and that one plugin can depend on another. If either fails,
@@ -456,18 +595,20 @@ checks whether the agent read it.
     the reference.
   - A human-readable book page of the dictionary comes later, generated
     from the same registry.
-  - The reader has never used Serum, either version. The reference explains
-    Serum 2 on its own terms and assumes no prior synth knowledge.
+  - The reader has never used Serum, either version, and may not know
+    Vital. The reference explains each synth on its own terms and assumes
+    no prior synth knowledge.
   - Serum 1 material and the changes from Serum 1 to Serum 2 are research
     observations and inspiration only. The reference, the skill and the
     explanation never compare versions or teach through Serum 1.
-  - The reference includes a dictionary of every Serum 2 control and
-    parameter group: what it does, what it changes in the sound, its
+  - The reference includes a dictionary of every control and parameter
+    group of each synth: what it does, what it changes in the sound, its
     unit, range and on-screen label, and which words producers use for
     that change. The `preset` registry feeds its parameter part, so the
     dictionary and the writer never disagree.
 - Text to preset: a skill that turns the producer's own description of a
-  sound into a Serum 2 preset and an `explanation.md`, with no audio. The
+  sound into a preset for the target synth and an `explanation.md`, with no
+  audio. The first runnable target is Vital. The
   agent maps the words to controls through the dictionary, writes an edit
   list, and `preset` validates and writes it. It shares the edit-list
   contract, the explanation template and the reference with the audio
@@ -515,21 +656,25 @@ The first stage after the research is a decomposition into epics.
     match an outside reference;
   - fuzz targets in `fuzz/` for code that reads untrusted bytes;
   - benchmarks in `benches/`;
-  - dataset evaluations in `xtask/`, outside CI when they need Serum 2 or
-    large data.
-- A test that needs Serum 2 or a dataset is `#[ignore]` with a reason and
-  fails loudly when its input is missing. Cargo features never gate tests.
+  - dataset evaluations in `xtask/`, outside CI when they need a synth
+    plugin or large data.
+- A test that needs a synth plugin (Vital or Serum 2) or a dataset is
+  `#[ignore]` with a reason and fails loudly when its input is missing. A
+  test that needs a synth is per synth and names it. Cargo features never
+  gate tests.
 - Test data is generated in code first. Committed fixtures are small and
   listed with origin and license. `xtask` downloads datasets into an
-  ignored directory. Serum factory presets, the user's Init preset, their
-  renders and Suno stems never enter the repository.
+  ignored directory. Factory presets, samples and wavetables of both synths,
+  the user's Serum Init preset, their renders and Suno stems never enter
+  the repository.
 - Each epic closes with its documentation: crate and item rustdoc, README
   sections, pages in `docs/`, `CHANGELOG.md` through cog, examples. An epic
   that adds a command also regenerates the CLI reference, man page and
   shell completions.
-- `docs/` is an mdBook. It holds the user guide, CLI reference, the
-  `.SerumPreset` format spec, per-layer method notes with their formulas,
-  and the testing guide. `ARCHITECTURE.md` sits at the repository root.
+- `docs/` is an mdBook. It holds the user guide, CLI reference, one preset
+  format spec per synth (`.vital` and `.SerumPreset`), per-layer method notes
+  with their formulas, and the testing guide. `ARCHITECTURE.md` sits at the
+  repository root.
 - Tracking lives on GitHub:
   - an issue per epic, with sub-issues for tasks and subtasks. A task
     split into parts gets GitHub sub-issues: each holds scope and
@@ -595,7 +740,7 @@ The first stage after the research is a decomposition into epics.
 ### Documentation rules
 
 - README, `docs/`, rustdoc, code comments, commit messages and pull request
-  descriptions name no third-party brands except Serum.
+  descriptions name no third-party brands except Serum and Vital.
 - Credits name the projects and papers that inspired the work, as the
   Licensing section allows. A credit is not a brand mention.
 - `INTENT.md` is the only file that names Suno. It is deleted when the work
@@ -612,9 +757,13 @@ the typical mistakes.
   (0..1) and `MidiPitch` (fractional, 0..127), never a bare float. The
   newtypes and the analysis math hold `f64` from intake on. `f32` appears
   only at a boundary that demands it, such as the transcription model
-  input. The research found unit traps: the voice-filter cutoff and the
-  FX Distortion and FX Filter frequencies are 0..1 knob positions, while
-  the other FX frequencies are in Hz.
+  input. The research found unit traps in Serum 2: the voice-filter cutoff
+  and the FX Distortion and FX Filter frequencies are 0..1 knob positions,
+  while the other FX frequencies are in Hz. Vital has a different trap: it
+  stores physical quantities on non-linear scales (a cutoff as a note
+  number, a time whose fourth power is the seconds, a rate whose power of
+  two is the Hz), so the conversion lives in the registry law and nowhere
+  else.
 - Every estimate carries a `Confidence`: a level (low, medium, high),
   reason codes with the values of the signals behind them, an optional
   spread in the value's own unit, and a state for "no estimate".
@@ -673,7 +822,38 @@ the typical mistakes.
   The CREPE weights, if used, carry only an implied MIT grant.
 - A paid plugin already offers audio-to-preset for Serum 2 with stem
   splitting. Its method and quality are not public.
+- Vital's retail format drifts from its open source. The source is a 2021
+  snapshot (1.0.6), the retail app is at 1.5.5 (1.6.x reported), and 1.5.x
+  presets add keys such as `custom_warps`, `random_values` and the
+  spectral-morph phase. Writing the 1.0.6 key set may lose retail-only
+  features. It is unknown whether the retail app loads a file stamped 1.0.x
+  and whether a bare JSON loads as VST3 state. The load check in the retail
+  plugin decides the `synth_version` stamp.
+- The Vital EULA, as summarised, bars reverse engineering of the app
+  except where law allows, and the summary finds no clause on local
+  scripted rendering. We read only the open
+  source and files that the app saves, and the use of automated renders
+  stays a point to re-check at each release.
+- The retail Vital may be Intel-only on some builds, and a host on Apple
+  silicon cannot load such a build. `vita` ships arm64 wheels. Check the
+  bundle with `lipo -archs` before relying on a plugin render.
+- The two synths differ in structure, and one generic layer can lose
+  accuracy on either.
+  - Vital has 8 filter models. Most offer a continuous low-pass,
+    band-pass and high-pass blend, whose meaning changes by model and
+    style. The estimator returns a discrete family and a slope.
+    The mapper picks the nearest model and reports the residual.
+  - Vital has 3 wavetable oscillators and a sample. Serum 2 has two main
+    oscillators, a sub and noise. Estimators stay warp-agnostic, and the
+    warp vocabulary lives in each registry.
+  - The LFO modes and the effect sets differ. The estimator reports phase
+    locks, shape and period, and the adapter picks the mode. Effects use
+    neutral family names in the report.
+  - Thresholds tuned on Vital renders may not hold for Serum 2. Set them on
+    synth-neutral generated signals first.
 
 ## Prior work
 
-The README credits list the works this project builds on.
+The README credits list the works this project builds on. Vital is credited
+as a target and as a source of facts, and Vita as the engine for test
+renders.
