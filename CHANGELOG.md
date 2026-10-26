@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.3.0](https://github.com/Akurganow/sound-to-patch/compare/d3ebab3766153bf2e1349507ee01f7ddc10d8c78..v0.3.0) - 2026-10-26
+#### Features
+- rename the program to sound-to-patch - ([d3ebab3](https://github.com/Akurganow/sound-to-patch/commit/d3ebab3766153bf2e1349507ee01f7ddc10d8c78)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.2.0](https://github.com/Akurganow/sound-to-serum/compare/215579fe007e78a91841cc23bf7390ea8eefce5f..v0.2.0) - 2026-10-26
 #### Features
 - (**units**) add unit types, conversions, unit strings and Confidence (#165) - ([cadea5d](https://github.com/Akurganow/sound-to-serum/commit/cadea5d4111dd3e5e3bcd5a62f51fde3dc980b43)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
