@@ -747,7 +747,7 @@ dependencies = [
 
 [[package]]
 name = "sound-to-serum"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "approx",
  "clap",
@@ -921,7 +921,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "clap_complete",

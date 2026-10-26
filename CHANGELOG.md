@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.2.0](https://github.com/Akurganow/sound-to-serum/compare/215579fe007e78a91841cc23bf7390ea8eefce5f..v0.2.0) - 2026-10-26
+#### Features
+- (**units**) add unit types, conversions, unit strings and Confidence (#165) - ([cadea5d](https://github.com/Akurganow/sound-to-serum/commit/cadea5d4111dd3e5e3bcd5a62f51fde3dc980b43)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.1.0](https://github.com/Akurganow/sound-to-serum/compare/d7a8b95862af9c074a0f76b263297f391a52406e..v0.1.0) - 2026-10-25
 #### Features
 - add the sound-to-serum command with its help and version (#160) - ([a20efc7](https://github.com/Akurganow/sound-to-serum/commit/a20efc759807e8174f75ab0860a98931f05956d6)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
