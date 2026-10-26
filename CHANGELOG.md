@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.6.0](https://github.com/Akurganow/sound-to-patch/compare/78147273d99bb76d62c17c466dcb3284be1cb6c2..v0.6.0) - 2026-10-26
+#### Features
+- (**preset**) write Vital presets with preset apply (#232) - ([7814727](https://github.com/Akurganow/sound-to-patch/commit/78147273d99bb76d62c17c466dcb3284be1cb6c2)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.5.0](https://github.com/Akurganow/sound-to-patch/compare/a7cf4cc5ba0af89a26ab99f155e74c251d72a85f..v0.5.0) - 2026-10-26
 #### Features
 - (**analyze**) add stem intake, note masks and the signal core - ([a7cf4cc](https://github.com/Akurganow/sound-to-patch/commit/a7cf4cc5ba0af89a26ab99f155e74c251d72a85f)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
