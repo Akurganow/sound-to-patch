@@ -548,6 +548,18 @@ mod tests {
     }
 
     #[test]
+    fn spread_in_percent_serializes_as_a_number() {
+        let spread = Percent::<crate::units::Unipolar>::new(12.5).unwrap();
+        let confidence = Confidence::estimate(Level::Low, Some(spread), vec![frames(3)]).unwrap();
+        let value = serde_json::to_value(&confidence).unwrap();
+        assert_eq!(value["spread"], json!(12.5));
+        assert_eq!(
+            serde_json::from_value::<Confidence<_>>(value).unwrap(),
+            confidence
+        );
+    }
+
+    #[test]
     fn negative_spread_is_rejected() {
         let error =
             Confidence::estimate(Level::High, Some(octaves(-0.3)), vec![frames(1)]).unwrap_err();
@@ -656,7 +668,12 @@ mod tests {
         assert_eq!(read(json!(2.5)), Signal::Number(2.5));
         assert_eq!(read(json!(true)), Signal::Flag(true));
         assert!(serde_json::from_value::<Signal>(json!(i64::MIN)).is_err());
-        assert!(serde_json::from_value::<Signal>(json!("412")).is_err());
+        assert_eq!(
+            serde_json::from_value::<Signal>(json!("412"))
+                .unwrap_err()
+                .to_string(),
+            "invalid type: string \"412\", expected a count, a finite number or a bool"
+        );
         assert!(serde_json::from_str::<Signal>("1e999").is_err());
     }
 

@@ -305,6 +305,13 @@ mod tests {
             "Cents to ratio out of range: got 1200001.0, expected -1200000.0 to 1200000.0"
         );
         assert!(Semitones::new(12_000.0).unwrap().to_ratio().is_ok());
+        assert!(
+            Semitones::new(-12_000.0)
+                .unwrap()
+                .to_ratio()
+                .unwrap()
+                .is_normal()
+        );
         assert!(Semitones::new(12_001.0).unwrap().to_ratio().is_err());
         assert!(Semitones::new(-12_001.0).unwrap().to_ratio().is_err());
         assert!(Octaves::new(1000.0).unwrap().to_ratio().is_ok());
