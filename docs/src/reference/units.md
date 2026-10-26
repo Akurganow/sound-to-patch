@@ -27,12 +27,19 @@ type states its exact range.
 | [`Percent`](../api/sound_to_patch/units/struct.Percent.html) | a percentage of a unipolar or a bipolar control |
 | [`Normalized`](../api/sound_to_patch/units/struct.Normalized.html) | a knob position |
 | [`MidiPitch`](../api/sound_to_patch/units/struct.MidiPitch.html) | a fractional MIDI note |
+| [`Correlation`](../api/sound_to_patch/units/struct.Correlation.html) | a Pearson correlation, -1 to 1 |
+| [`Degrees`](../api/sound_to_patch/units/struct.Degrees.html) | an angle, such as a phase difference, either sign |
+| [`Bpm`](../api/sound_to_patch/units/struct.Bpm.html) | a tempo, 4 to 1000 beats per minute |
+| [`Ratio`](../api/sound_to_patch/units/struct.Ratio.html) | a ratio of two values of one unit, zero or more |
 
 `Percent` has two ranges, fixed by its type parameter.
 `Percent<Unipolar>` is for controls that go one way from zero.
 `Percent<Bipolar>` is for controls that go both ways, such as
 a modulation amount. A unipolar value widens to a bipolar one; the reverse
 is checked.
+
+`Bpm` cannot be the spread of a confidence, because its range excludes
+zero; a tempo spread would be given in `Ratio` or `Percent`.
 
 No milliseconds type exists. A value in milliseconds converts to `Seconds`
 where it enters, with `Seconds::from_millis` or the `ms` suffix.

@@ -7,7 +7,7 @@ use sound_to_patch::units::Seconds;
 use crate::support::cast::round_to_usize;
 use crate::support::golden::{Golden, float};
 use crate::support::rng::gaussian;
-use crate::support::signals::times;
+use crate::support::signals::{convolve, times};
 
 const RATE: f64 = 16_000.0;
 const LN_1000: f64 = 6.907_755_278_982_137;
@@ -129,32 +129,6 @@ fn a_floor_at_minus_30_db_fails_both() {
         let (t20, t30) = fits(rt60, Some(-30.0));
         assert!(t20.is_err() && t30.is_err(), "RT60 {rt60}: {t20:?} {t30:?}");
     }
-}
-
-/// Linear convolution by FFT, cut to the length of `x`.
-fn convolve(x: &[f64], h: &[f64]) -> Vec<f64> {
-    use realfft::RealFftPlanner;
-    let len = (x.len() + h.len()).next_power_of_two();
-    let mut planner = RealFftPlanner::<f64>::new();
-    let forward = planner.plan_fft_forward(len);
-    let inverse = planner.plan_fft_inverse(len);
-    let spectrum = |signal: &[f64]| {
-        let mut input = vec![0.0; len];
-        input[..signal.len()].copy_from_slice(signal);
-        let mut output = forward.make_output_vec();
-        forward.process(&mut input, &mut output).unwrap();
-        output
-    };
-    let mut product: Vec<_> = spectrum(x)
-        .iter()
-        .zip(spectrum(h))
-        .map(|(a, b)| a * b)
-        .collect();
-    let mut out = vec![0.0; len];
-    inverse.process(&mut product, &mut out).unwrap();
-    let scale = f64::from(u32::try_from(len).unwrap());
-    out.truncate(x.len());
-    out.iter().map(|v| v / scale).collect()
 }
 
 /// The 53-release-reverb recipe: a noise note gated for 0.5 s, an

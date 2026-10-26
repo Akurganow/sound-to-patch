@@ -9,13 +9,23 @@ mod cli;
 mod decay;
 #[cfg(test)]
 mod decode;
+#[cfg(test)]
+mod descriptors;
 mod fixtures;
 #[cfg(test)]
 mod golden;
+#[cfg(test)]
+mod lomb;
 mod mapper;
 #[cfg(test)]
 mod masks;
+#[cfg(test)]
+mod modulation;
 mod preset;
+#[cfg(test)]
+mod stem;
+#[cfg(test)]
+mod stereo;
 #[cfg(test)]
 mod stft;
 #[cfg(test)]

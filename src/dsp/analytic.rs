@@ -320,11 +320,37 @@ fn zero_phase(
     Ok(out)
 }
 
-/// A fourth-order Butterworth low-pass as two biquad sections.
+/// Band-passes a signal with a fourth-order Butterworth high-pass at `lo`
+/// and low-pass at `hi`, each run forward and backward, so the band has no
+/// delay.
+///
+/// Both edges get the ends of [`low_pass_zero_phase`]: an odd reflection of
+/// three periods of `lo` and steady-state starts.
+///
+/// # Errors
+///
+/// Returns a [`FilterError`] when an edge is zero or not below the Nyquist
+/// frequency.
+pub fn band_pass_zero_phase(
+    samples: &[f64],
+    rate: SampleRate,
+    lo: Hz,
+    hi: Hz,
+) -> Result<Vec<f64>, FilterError> {
+    let pad = cast::ceil_to_usize(3.0 * rate.hz().get() / lo.get()).unwrap_or(0);
+    let high = zero_phase(samples, pad, || LowPass::of(Type::HighPass, rate, lo))?;
+    zero_phase(&high, pad, || LowPass::new(rate, hi))
+}
+
+/// A fourth-order Butterworth low-pass or high-pass as two biquad sections.
 struct LowPass([(DirectForm2Transposed<f64>, Coefficients<f64>); 2]);
 
 impl LowPass {
     fn new(rate: SampleRate, cutoff: Hz) -> Result<Self, FilterError> {
+        Self::of(Type::LowPass, rate, cutoff)
+    }
+
+    fn of(kind: Type<f64>, rate: SampleRate, cutoff: Hz) -> Result<Self, FilterError> {
         let fail = || FilterError { cutoff, rate };
         if cutoff.get() <= 0.0 || cutoff.get() >= rate.nyquist().get() {
             return Err(fail());
@@ -332,7 +358,7 @@ impl LowPass {
         let fs = rate.hz().get().hz();
         let f0 = cutoff.get().hz();
         let section = |q| {
-            Coefficients::<f64>::from_params(Type::LowPass, fs, f0, q)
+            Coefficients::<f64>::from_params(kind, fs, f0, q)
                 .map(|c| (DirectForm2Transposed::<f64>::new(c), c))
                 .map_err(|_| fail())
         };
@@ -371,7 +397,7 @@ impl fmt::Display for FilterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "a low-pass at {} cannot run at {}: the cutoff must lie above 0 Hz and below {}",
+            "a filter edge at {} cannot run at {}: it must lie above 0 Hz and below {}",
             self.cutoff,
             self.rate,
             self.rate.nyquist()
@@ -425,7 +451,7 @@ mod tests {
         let error = low_pass_zero_phase(&[0.0], rate(), Hz::new(4000.0).unwrap()).unwrap_err();
         assert_eq!(
             error.to_string(),
-            "a low-pass at 4000 Hz cannot run at 8000 Hz: the cutoff must lie above 0 Hz and below 4000 Hz"
+            "a filter edge at 4000 Hz cannot run at 8000 Hz: it must lie above 0 Hz and below 4000 Hz"
         );
     }
 

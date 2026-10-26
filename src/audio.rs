@@ -1,5 +1,8 @@
-//! Stem intake: decode an audio file at its native rate, mix it to mono and
-//! resample it for a consumer that needs another rate.
+//! Stem intake: decoding, mono, resampling and the [`Stem`].
+//!
+//! A file decodes at its native rate. A consumer that needs another rate
+//! resamples. The [`Stem`] adds the beat grid, the band edge, the flat-top
+//! flag and the stereo screen.
 //!
 //! Samples are `f64` from the decoder on. Every channel is kept, because the
 //! stereo statistics need both. Mono is the channel mean, with no gain
@@ -25,9 +28,20 @@ use crate::units::{Hz, Seconds};
 
 mod decode;
 mod resample;
+mod stem;
+mod stereo;
 
 pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
 pub use resample::{ResampleError, resample};
+pub use stem::{
+    BAND_EDGE_CONVENTION, BAND_EDGE_MARGIN_DB, BAND_EDGE_STEEP_DROP_DB, BeatGrid,
+    CEILING_TOLERANCE, Division, FLAT_TOP_MIN_RUN_S, FLAT_TOP_MIN_SHARE, Feel,
+    HARD_LIMITED_CONVENTION, LONG_FRAME_BELOW_HZ, NoteValue, Stem, band_edge, is_flat_topped,
+};
+pub use stereo::{
+    Band, HIGH_EDGE_HZ, SCREEN_FRAME_LEN, SCREEN_HARMONICS, STEREO_CONVENTION, SUB_EDGE_HZ,
+    StereoScreen, StereoStats, stereo_screen,
+};
 
 /// A sample rate in samples per second: a whole number above zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

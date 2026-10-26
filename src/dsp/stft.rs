@@ -62,6 +62,18 @@ impl StftParams {
         })
     }
 
+    /// The defaults of [`StftParams::new`] for a frame length that the code
+    /// fixes as a constant of at least 4 samples.
+    pub(crate) const fn fixed(frame_len: usize) -> Self {
+        Self {
+            frame_len,
+            hop: frame_len / 4,
+            window: Window::Hann,
+            padding: Padding::Zero,
+            oversample: 1,
+        }
+    }
+
     /// Sets the hop in samples.
     ///
     /// # Errors

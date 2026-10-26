@@ -1,0 +1,31 @@
+{
+ "description": "Closed forms of the stereo screen: rho of equal and opposite channels, the phase of a pure delay, and side over mid against rho for channels of equal RMS.",
+ "generator": "xtask/golden/generate.py:stereo_closed_forms",
+ "issue": 47,
+ "name": "stereo",
+ "recipe": {
+  "kind": "closed_form"
+ },
+ "tolerance": {
+  "abs": 1e-09,
+  "rel": 1e-06
+ },
+ "tools": {
+  "python": "3.14.7"
+ },
+ "values": {
+  "equal_channels": {
+   "ipd_deg": 0.0,
+   "rho": 1.0
+  },
+  "equal_rms_identity": "(rms_S / rms_M)^2 = (1 - rho) / (1 + rho)",
+  "opposite_channels": {
+   "rho": -1.0
+  },
+  "pure_delay": {
+   "delay_s": 0.001,
+   "frequency_hz": 200.0,
+   "ipd_deg": 72.0
+  }
+ }
+}

@@ -28,8 +28,8 @@ use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::units::{
-    Cents, Decibels, Hz, MidiPitch, Normalized, Octaves, Percent, Polarity, RangeError, Seconds,
-    Semitones,
+    Cents, Correlation, Decibels, Degrees, Hz, MidiPitch, Normalized, Octaves, Percent, Polarity,
+    RangeError, Ratio, Seconds, Semitones,
 };
 
 /// How far an estimator trusts its value. The order is `Low < Medium <
@@ -74,6 +74,25 @@ reason_codes! {
     TooFewNotes,
     /// The pitch may be an octave off.
     OctaveUncertain,
+    /// The stem is digital silence.
+    SilentStem,
+    /// The file has one channel, so no stereo value exists.
+    OneChannel,
+    /// No note list was given, so a value that needs the f0 has none.
+    NoNoteList,
+    /// The span holds fewer than two cycles of the rate; the value is the
+    /// number of cycles.
+    TooFewCycles,
+    /// The stem is flat-topped at its peak, so its level and crest are
+    /// capped by a limiter or by clipping.
+    HardLimited,
+    /// The stereo screen cannot see an anti-phase stereo chorus or a light
+    /// reverb.
+    StereoBlindSpot,
+    /// The steepest fall of the smoothed spectrum over one semitone above
+    /// 2 kHz, in dB. Below the steep-drop threshold the band edge comes from
+    /// the margin rule.
+    BandEdgeDrop,
 }
 
 /// The value of the signal behind a [`ReasonCode`].
@@ -193,7 +212,8 @@ impl Visitor<'_> for SignalVisitor {
     }
 }
 
-/// A unit a spread can be given in: every unit type, or [`NoSpread`].
+/// A unit a spread can be given in: every unit type except
+/// [`Bpm`](crate::units::Bpm), whose range excludes zero, or [`NoSpread`].
 ///
 /// The trait is sealed.
 pub trait Spread: Copy + fmt::Debug + PartialEq + sealed::Spread {}
@@ -230,7 +250,17 @@ macro_rules! spread {
 }
 
 spread!(
-    Hz, Seconds, Semitones, Cents, Octaves, Decibels, Normalized, MidiPitch
+    Hz,
+    Seconds,
+    Semitones,
+    Cents,
+    Octaves,
+    Decibels,
+    Normalized,
+    MidiPitch,
+    Correlation,
+    Degrees,
+    Ratio
 );
 
 impl<P: Polarity> sealed::Spread for Percent<P> {
@@ -477,6 +507,71 @@ impl Error for ConfidenceError {
             Kind::Spread(error) | Kind::Signal(error) => Some(error),
             _ => None,
         }
+    }
+}
+
+/// A value with its confidence. The value is present exactly when the
+/// confidence is an estimate.
+///
+/// ```
+/// use sound_to_patch::confidence::{Estimate, Level, Reason, ReasonCode, Signal};
+/// use sound_to_patch::units::Hz;
+///
+/// let frames = Reason::new(ReasonCode::ActiveFrames, Signal::Count(412))?;
+/// let centroid = Estimate::new(Hz::new(1520.0)?, Level::High, Some(Hz::new(310.0)?), vec![frames])?;
+/// assert_eq!(centroid.value().map(|hz| hz.get()), Some(1520.0));
+///
+/// let silent = Reason::new(ReasonCode::SilentStem, Signal::Flag(true))?;
+/// let none = Estimate::<Hz, Hz>::none(vec![silent])?;
+/// assert!(none.value().is_none());
+/// # Ok::<(), Box<dyn std::error::Error>>(())
+/// ```
+#[derive(Clone, Debug, PartialEq)]
+pub struct Estimate<V, S: Spread> {
+    value: Option<V>,
+    confidence: Confidence<S>,
+}
+
+impl<V, S: Spread> Estimate<V, S> {
+    /// A value with the confidence of an estimate.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ConfidenceError`] as [`Confidence::estimate`] does.
+    pub fn new(
+        value: V,
+        level: Level,
+        spread: Option<S>,
+        reasons: Vec<Reason>,
+    ) -> Result<Self, ConfidenceError> {
+        Ok(Self {
+            value: Some(value),
+            confidence: Confidence::estimate(level, spread, reasons)?,
+        })
+    }
+
+    /// No value, and the reasons why.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`ConfidenceError`] as [`Confidence::no_estimate`] does.
+    pub fn none(reasons: Vec<Reason>) -> Result<Self, ConfidenceError> {
+        Ok(Self {
+            value: None,
+            confidence: Confidence::no_estimate(reasons)?,
+        })
+    }
+
+    /// Returns the value, or `None` for no estimate.
+    #[must_use]
+    pub fn value(&self) -> Option<&V> {
+        self.value.as_ref()
+    }
+
+    /// Returns the confidence.
+    #[must_use]
+    pub fn confidence(&self) -> &Confidence<S> {
+        &self.confidence
     }
 }
 

@@ -10,6 +10,10 @@
 //! - [`Semitones`], [`Cents`], [`Octaves`] and [`Decibels`]: any finite value.
 //! - [`Normalized`]: a knob position, 0.0 to 1.0.
 //! - [`MidiPitch`]: a fractional MIDI note, 0.0 to 127.0.
+//! - [`Correlation`]: -1.0 to 1.0.
+//! - [`Degrees`]: any finite angle.
+//! - [`Bpm`]: a tempo, 4 to 1000.
+//! - [`Ratio`]: zero or more.
 //! - [`Percent`]: 0 to 100 as `Percent<Unipolar>`, -100 to 100 as
 //!   `Percent<Bipolar>`.
 //!
@@ -342,6 +346,65 @@ unit!(
     Range::Closed(0.0, 127.0)
 );
 
+unit!(
+    /// A Pearson correlation from -1.0 to 1.0 inclusive, such as the
+    /// correlation of two stereo channels.
+    ///
+    /// ```
+    /// use sound_to_patch::units::Correlation;
+    ///
+    /// let mono = Correlation::new(1.0)?;
+    /// assert!(Correlation::new(-1.5).is_err());
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
+    /// ```
+    Correlation,
+    Range::Closed(-1.0, 1.0)
+);
+
+unit!(
+    /// An angle in degrees, such as a phase difference: any finite value,
+    /// sign allowed.
+    ///
+    /// ```
+    /// use sound_to_patch::units::Degrees;
+    ///
+    /// let quarter_turn = Degrees::new(90.0)?;
+    /// assert!(Degrees::new(f64::NAN).is_err());
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
+    /// ```
+    Degrees,
+    Range::Finite
+);
+
+unit!(
+    /// A tempo in beats per minute, from 4 to 1000 inclusive.
+    ///
+    /// ```
+    /// use sound_to_patch::units::Bpm;
+    ///
+    /// let tempo = Bpm::new(140.0)?;
+    /// assert!(Bpm::new(2.0).is_err());
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
+    /// ```
+    Bpm,
+    Range::Closed(4.0, 1000.0)
+);
+
+unit!(
+    /// A ratio of two values of the same unit, zero or more, such as a
+    /// spectral centroid over the fundamental.
+    ///
+    /// ```
+    /// use sound_to_patch::units::Ratio;
+    ///
+    /// let harmonic_rank = Ratio::new(6.5)?;
+    /// assert!(Ratio::new(-1.0).is_err());
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
+    /// ```
+    Ratio,
+    Range::AtLeast(0.0)
+);
+
 impl Seconds {
     /// Converts milliseconds, such as a reverb pre-delay, to seconds.
     ///
@@ -512,7 +575,7 @@ pub(crate) mod tests {
 
     const NON_FINITE: [f64; 3] = [f64::NAN, f64::INFINITY, f64::NEG_INFINITY];
 
-    fn all_reject(value: f64) -> [bool; 10] {
+    fn all_reject(value: f64) -> [bool; 14] {
         [
             Hz::new(value).is_err(),
             Seconds::new(value).is_err(),
@@ -524,19 +587,38 @@ pub(crate) mod tests {
             MidiPitch::new(value).is_err(),
             Percent::<Unipolar>::new(value).is_err(),
             Percent::<Bipolar>::new(value).is_err(),
+            Correlation::new(value).is_err(),
+            Degrees::new(value).is_err(),
+            Bpm::new(value).is_err(),
+            Ratio::new(value).is_err(),
         ]
     }
 
     #[test]
     fn every_type_rejects_nan_and_both_infinities() {
         for value in NON_FINITE {
-            assert_eq!(all_reject(value), [true; 10], "{value:?}");
+            assert_eq!(all_reject(value), [true; 14], "{value:?}");
         }
     }
 
     #[test]
-    fn every_type_accepts_zero() {
-        assert_eq!(all_reject(0.0), [false; 10]);
+    fn every_type_but_bpm_accepts_zero() {
+        let mut expected = [false; 14];
+        expected[12] = true;
+        assert_eq!(all_reject(0.0), expected);
+    }
+
+    #[test]
+    fn correlation_bpm_and_ratio_keep_their_ranges() {
+        assert!(Correlation::new(-1.0).is_ok() && Correlation::new(1.0).is_ok());
+        assert!(Correlation::new(1.000_000_1).is_err());
+        assert!(Bpm::new(4.0).is_ok() && Bpm::new(1000.0).is_ok());
+        assert_eq!(
+            Bpm::new(1000.5).unwrap_err().to_string(),
+            "Bpm out of range: got 1000.5, expected 4.0 to 1000.0"
+        );
+        assert!(Ratio::new(0.0).is_ok() && Ratio::new(-0.1).is_err());
+        assert!(Degrees::new(-720.0).is_ok());
     }
 
     #[test]
@@ -753,6 +835,10 @@ pub(crate) mod tests {
             round_trips(MidiPitch::new(midi).unwrap())?;
             round_trips(Percent::<Unipolar>::new(unipolar).unwrap())?;
             round_trips(Percent::<Bipolar>::new(bipolar).unwrap())?;
+            round_trips(Correlation::new(unit * 2.0 - 1.0).unwrap())?;
+            round_trips(Degrees::new(any).unwrap())?;
+            round_trips(Bpm::new(4.0 + unit * 996.0).unwrap())?;
+            round_trips(Ratio::new(magnitude).unwrap())?;
         }
     }
 }
