@@ -9,19 +9,21 @@ use crate::cast::usize_to_f64;
 use crate::preset::registry::Provenance;
 use crate::units::{Cents, Hz, MidiPitch, RangeError, Semitones};
 
-/// The provenance of each law in this module, by function name. A law
-/// that joins several facts by a reading stays interim until a probe or a
-/// render confirms it.
+/// The provenance of each law in this module, by function name.
+///
+/// A law that joins several facts by a reading stays interim until a probe
+/// or a render confirms it. `Measured` rows were confirmed by renders on
+/// the [`OPEN_ENGINE`](crate::preset::vital::OPEN_ENGINE), not on retail.
 pub const PROVENANCE: [(&str, Provenance); 9] = [
     ("power_scale", Provenance::FromFacts),
-    ("unison_outer_offset", Provenance::FromFacts),
-    ("unison_offsets", Provenance::Interim),
-    ("unison_gains", Provenance::Interim),
+    ("unison_outer_offset", Provenance::Measured),
+    ("unison_offsets", Provenance::Measured),
+    ("unison_gains", Provenance::Measured),
     ("lfo_tempo_rate", Provenance::FromFacts),
     ("lfo_keytrack_rate", Provenance::FromFacts),
     ("pan_gains", Provenance::FromFacts),
     ("modulation_delta", Provenance::FromFacts),
-    ("amp_gain", Provenance::Interim),
+    ("amp_gain", Provenance::Measured),
 ];
 
 /// The note-number frequency law: `8.1757989156 * 2^(note / 12)` Hz.
@@ -55,8 +57,9 @@ pub fn unison_outer_offset(detune_range: f64, detune: f64) -> Result<Cents, Rang
 /// Position `i` of `ceil(voices / 2)` sits at
 /// `t = (2i + bump) / max(1, voices - 1)`, with `bump` 1 for an even count.
 /// Its offset is `power_scale(t, power)`, one voice up and one down; an odd
-/// count puts one voice at the centre. The pairing and the centre voice
-/// are a reading of the source; probe 4 of the probe list confirms them.
+/// count puts one voice at the centre. Renders on the open engine confirm
+/// the offsets for 2, 3, 4 and 8 voices at powers 0 and 1.5 within 0.02
+/// cents.
 #[must_use]
 pub fn unison_offsets(voices: u8, power: f64) -> Vec<f64> {
     let n = usize::from(voices.max(1));
@@ -78,9 +81,10 @@ pub fn unison_offsets(voices: u8, power: f64) -> Vec<f64> {
 /// The gains of the centre and the detuned unison voices.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UnisonGains {
-    /// Gain of the centre voice.
+    /// Gain of the centre voice, or of the innermost pair, whose two voices
+    /// share it equally.
     pub centre: f64,
-    /// Gain of each detuned voice.
+    /// Gain of each other pair, shared equally by its two voices.
     pub detuned: f64,
     /// The pair count the normalisation uses.
     pub pairs: usize,
@@ -91,8 +95,11 @@ pub struct UnisonGains {
 /// Up to 2 voices the centre has gain 1 and the rest 0. Above that the
 /// centre is `lerp(1, 0.4, blend)` and each detuned voice
 /// `lerp(0.6, 0, (1 - blend)^2)`, both scaled so that
-/// `centre^2 + detuned^2 * (pairs - 1) = 1`. `pairs` is half the active
-/// voices; taking it as `ceil(voices / 2)` is a reading of the source.
+/// `centre^2 + detuned^2 * (pairs - 1) = 1`, with `pairs` the count
+/// `ceil(voices / 2)`. A gain belongs to a pair of voices, which share it
+/// equally; the centre gain goes to the centre voice of an odd count, or to
+/// the innermost pair of an even one. Renders on the open engine confirm
+/// this for 2 to 8 voices within 0.05 %.
 #[must_use]
 pub fn unison_gains(voices: u8, blend: f64) -> UnisonGains {
     let pairs = usize::from(voices).div_ceil(2);
@@ -188,7 +195,8 @@ pub fn modulation_delta(source: f64, amount: f64, bipolar: bool, stored_span: f6
 /// `(envelope * lerp(1, velocity, velocity_track) * voice_amplitude)^2`.
 ///
 /// The square means that a measured RMS contour maps to the square root of
-/// the envelope level. That reading is a probe target, not a checked fact.
+/// the envelope level. Renders on the open engine confirm the square for
+/// the sustain level, the velocity and `voice_amplitude`.
 #[must_use]
 pub fn amp_gain(envelope: f64, velocity: f64, velocity_track: f64, voice_amplitude: f64) -> f64 {
     let velocity_mix = 1.0 + (velocity - 1.0) * velocity_track;
@@ -201,19 +209,103 @@ mod tests {
     use approx::assert_relative_eq;
 
     #[test]
-    fn readings_are_interim() {
-        let interim: Vec<&str> = PROVENANCE
+    fn every_law_has_a_provenance() {
+        let measured: Vec<&str> = PROVENANCE
             .iter()
-            .filter(|(_, provenance)| *provenance == Provenance::Interim)
+            .filter(|(_, provenance)| *provenance == Provenance::Measured)
             .map(|(name, _)| *name)
             .collect();
-        assert_eq!(interim, ["unison_offsets", "unison_gains", "amp_gain"]);
+        assert_eq!(
+            measured,
+            [
+                "unison_outer_offset",
+                "unison_offsets",
+                "unison_gains",
+                "amp_gain"
+            ]
+        );
         let source = include_str!("laws.rs");
         let public = source.matches("\npub fn ").count();
         assert_eq!(public, PROVENANCE.len(), "every public law has a row");
         for (name, _) in PROVENANCE {
             assert!(source.contains(&format!("pub fn {name}(")), "{name}");
         }
+    }
+
+    // Voice offsets in cents, measured by rendering note 72 with
+    // `osc_1_detune_range` 2 and `osc_1_unison_detune` 10 on the open
+    // engine (vita 0.1.0), peaks found with parabolic interpolation.
+    const RENDERED_OFFSETS: [(u8, f64, &[f64]); 4] = [
+        (4, 0.0, &[-200.01, -66.67, 66.68, 200.01]),
+        (
+            8,
+            0.0,
+            &[
+                -200.01, -142.84, -85.72, -28.58, 28.56, 85.73, 142.86, 200.01,
+            ],
+        ),
+        (4, 1.5, &[-200.01, -37.26, 37.26, 200.01]),
+        (
+            8,
+            1.5,
+            &[-200.01, -110.27, -51.8, -13.72, 13.71, 51.8, 110.25, 200.01],
+        ),
+    ];
+
+    #[test]
+    fn offsets_match_the_render() {
+        let outer = unison_outer_offset(2.0, 10.0).unwrap().get();
+        assert_relative_eq!(outer, 200.0);
+        for (voices, power, rendered) in RENDERED_OFFSETS {
+            let computed = unison_offsets(voices, power);
+            for (fraction, cents) in computed.iter().zip(rendered) {
+                assert!(
+                    (fraction * outer - cents).abs() < 0.03,
+                    "{voices} voices, power {power}: {computed:?}"
+                );
+            }
+        }
+    }
+
+    // Per-voice amplitudes over the single-voice amplitude, measured with a
+    // flat-top window on the same renders: (voices, blend, centre voice or
+    // inner-pair voice, outer voice).
+    const RENDERED_GAINS: [(u8, f64, f64, f64); 4] = [
+        (3, 0.5, 0.8412, 0.2704),
+        (4, 0.8, 0.3351, 0.3712),
+        (5, 1.0, 0.4264, 0.3199),
+        (8, 0.5, 0.3342, 0.2148),
+    ];
+
+    #[test]
+    fn gains_match_the_render() {
+        for (voices, blend, centre, outer) in RENDERED_GAINS {
+            let gains = unison_gains(voices, blend);
+            let centre_voice = if voices % 2 == 1 {
+                gains.centre
+            } else {
+                gains.centre / 2.0
+            };
+            assert!((centre_voice - centre).abs() < 1e-3, "{voices} at {blend}");
+            assert!(
+                (gains.detuned / 2.0 - outer).abs() < 1e-3,
+                "{voices} at {blend}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_amp_gain_squares_like_the_render() {
+        // Renders: sustain 0.5 gives 0.25 of the amplitude at sustain 1, and
+        // velocity 0.5 at track 0.5 gives 0.5625 of velocity 1.
+        assert_relative_eq!(
+            amp_gain(0.5, 1.0, 0.0, 1.0) / amp_gain(1.0, 1.0, 0.0, 1.0),
+            0.25
+        );
+        assert_relative_eq!(
+            amp_gain(1.0, 0.5, 0.5, 1.0) / amp_gain(1.0, 1.0, 0.5, 1.0),
+            0.5625
+        );
     }
 
     /// `(e^(1.5 t) - 1) / (e^1.5 - 1)`, the default power curve.

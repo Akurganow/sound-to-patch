@@ -106,6 +106,27 @@ doc tests, hence the second command. CI uses the `ci` profile from
   a changed snapshot like code; record one locally with
   `INSTA_UPDATE=always` or `TRYCMD=overwrite`.
 
+## The open Vital engine
+
+Two ignored tests check written presets against Vital. They need tools
+that CI does not install by default:
+
+- `written_presets_load_in_the_open_engine` writes the load-check variants
+  and loads each in the open Vital engine through
+  `tools/vita/load_check.py`. It needs `VITA_PYTHON`, a Python with the
+  GPL-3.0 `vita` package, made outside the repository:
+
+  ```sh
+  python3 -m venv /tmp/vita-env
+  /tmp/vita-env/bin/pip install vita numpy
+  VITA_PYTHON=/tmp/vita-env/bin/python cargo nextest run --run-ignored only -E 'test(written_presets)'
+  ```
+
+  `vita` runs only as a separate process. No crate of ours depends on it.
+  The scheduled workflow runs this test in a job of its own.
+- `a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
+  saved after loading a written preset, from `VITAL_SAVED_PRESET`.
+
 ## Fuzzing
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated

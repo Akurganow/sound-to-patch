@@ -190,9 +190,15 @@ fn shown_value(spec: &crate::preset::registry::ParamSpec, stored: f64) -> Option
                 .find(|(_, i)| (f64::from(*i) - index).abs() < 0.5)
                 .map(|(label, _)| label.clone())
         }
-        ParamKind::Float | ParamKind::Count => {
-            spec.physical(stored).ok().map(|value| value.to_string())
-        }
+        ParamKind::Float | ParamKind::Count => spec.physical(stored).ok().map(|value| {
+            // The law round trip leaves noise in the last digits, such as
+            // 400.00000000000017 Hz; 12 significant digits drop it.
+            let tidy = format!("{:.11e}", value.get())
+                .parse()
+                .unwrap_or(value.get());
+            crate::preset::registry::Physical::new(value.kind(), tidy)
+                .map_or_else(|_| value.to_string(), |tidy| tidy.to_string())
+        }),
     }
 }
 

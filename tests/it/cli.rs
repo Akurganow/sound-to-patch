@@ -2,7 +2,11 @@
 
 #[test]
 fn cli_cases() {
-    trycmd::TestCases::new().case("tests/cmd/*.toml");
+    trycmd::TestCases::new()
+        .case("tests/cmd/*.toml")
+        .case("README.md")
+        .case("docs/src/guide/preset.md")
+        .case("docs/src/reference/cli.md");
 }
 
 /// A failed write of the output fails the command. `/dev/full` exists on

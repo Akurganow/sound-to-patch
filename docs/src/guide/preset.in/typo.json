@@ -1,0 +1,6 @@
+{
+  "synth": "vital",
+  "edits": [
+    { "param": "env_1_attack", "value": "5 Hz", "reason": "a quick attack" }
+  ]
+}

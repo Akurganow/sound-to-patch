@@ -25,7 +25,7 @@ mod template;
 mod writers;
 
 pub use codec::{VitalFormat, VitalModel};
-pub use registry::EngineScale;
+pub use registry::{EngineScale, OPEN_ENGINE};
 pub use template::VitalTemplate;
 pub use writers::{
     FRAME_BASE64_CHARS, FRAME_SAMPLES, Keyframe, LfoShape, MAX_LFO_POINTS, MAX_POSITION,
@@ -111,7 +111,7 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
     velocity: VelocityRule {
         default_track: Percent::from_const(0.0),
         amp_path_power: 2,
-        provenance: Provenance::Interim,
+        provenance: Provenance::Measured,
     },
     bend_range_default: Semitones::from_const(2.0),
 };

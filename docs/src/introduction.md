@@ -13,8 +13,10 @@ paths:
   notes when the description asks for them.
 
 The project is at an early release. `sound-to-patch preset inspect` prints
-the header and the decoded settings of a Vital preset; the commands of both
-paths arrive in later releases.
+the header and the decoded settings of a Vital preset, and
+`sound-to-patch preset apply` writes one from an edit list, as the
+[preset guide](guide/preset.md) shows. The analysis and the text path
+arrive in later releases.
 
 Vital and Serum 2 are trademarks of their owners. This project is not
 affiliated with or endorsed by them.
