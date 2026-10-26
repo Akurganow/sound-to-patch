@@ -476,6 +476,69 @@ mod tests {
         );
     }
 
+    /// Breaks one rule of a capabilities value.
+    type Break = fn(&mut SynthCapabilities);
+
+    /// A test-only value that meets every rule.
+    fn sample() -> SynthCapabilities {
+        SynthCapabilities {
+            oscillators: OscillatorLayout {
+                wavetable: 2,
+                sample: false,
+                sub: true,
+                noise: true,
+            },
+            voice_filters: 1,
+            fx_filter: false,
+            envelopes: 4,
+            lfos: 4,
+            random_lfos: 0,
+            macros: 8,
+            mod_slots: 16,
+            unison_voices: (1, 8),
+            polyphony_max: 16,
+            effects: &[EffectFamily::Delay, EffectFamily::Reverb],
+            effect_order_free: true,
+            effect_repeats: false,
+            lfo_sync: &[LfoSync::Free, LfoSync::Tempo],
+            glide: GlideRule {
+                min: Seconds::new(0.0).unwrap(),
+                max: Seconds::new(10.0).unwrap(),
+                scaling: GlideScaling::PerNote,
+            },
+            velocity: VelocityRule {
+                default_track: Percent::new(100.0).unwrap(),
+                amp_path_power: 1,
+            },
+            bend_range_default: Semitones::new(2.0).unwrap(),
+        }
+    }
+
+    #[test]
+    fn each_broken_capability_rule_is_rejected() {
+        sample().check().unwrap();
+        let broken: [(&str, Break); 6] = [
+            ("voice_filters", |c| c.voice_filters = 0),
+            ("mod_slots", |c| c.mod_slots = 0),
+            ("unison_voices", |c| c.unison_voices = (9, 8)),
+            ("glide", |c| c.glide.max = c.glide.min),
+            ("effects must not be empty", |c| c.effects = &[]),
+            ("appears twice", |c| {
+                c.effects = &[EffectFamily::Delay, EffectFamily::Delay];
+            }),
+        ];
+        for (needle, breaks) in broken {
+            let mut value = sample();
+            breaks(&mut value);
+            let message = value.check().unwrap_err();
+            assert!(message.contains(needle), "{needle}: {message}");
+        }
+        let mut repeats = sample();
+        repeats.effects = &[EffectFamily::Delay, EffectFamily::Delay];
+        repeats.effect_repeats = true;
+        repeats.check().unwrap();
+    }
+
     #[test]
     fn capabilities_exist_only_for_ready_synths() {
         for synth in Synth::READY {
