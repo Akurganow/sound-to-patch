@@ -1,8 +1,9 @@
 # Sound to Patch
 
-Turn an audio stem into a Serum 2 starting point, a preset and the notes, or
-turn a written description of a sound into a Serum 2 preset. The project is
-MIT-licensed, see [LICENSE](LICENSE).
+Turn an audio stem into a synth starting point, a preset and the notes, or
+turn a written description of a sound into a preset. Vital and Serum 2 are
+the target synths, and Vital comes first. The project is MIT-licensed, see
+[LICENSE](LICENSE).
 
 The project is at its first release: the `sound-to-patch` command prints its
 help and its version. The commands of both paths arrive in later releases.
@@ -269,7 +270,8 @@ and ideas, from which we copy no code, text or data.
 - [torchlpc](https://github.com/DiffAPF/torchlpc) (MIT): differentiable linear-prediction filter, read for time-varying filters.
 - [torchsynth](https://github.com/torchsynth/torchsynth) (Apache-2.0): seeded random-parameter synthesizer idea for optimizer tests.
 - [u-he Preset Randomizer](https://github.com/Fannon/u-he-preset-randomizer) (MIT): per-synth statistical guides and clamp-and-blend variation.
-- [Vital](https://github.com/mtytel/vital) (GPL-3.0): unison, filter and modulation mechanisms, described in our own words. Inspiration only.
+- [Vita](https://github.com/DBraun/Vita) (GPL-3.0): Python bindings over the open Vital engine, run as a separate process for test renders. Inspiration only.
+- [Vital](https://github.com/mtytel/vital) (GPL-3.0): preset file structure, parameter laws, unison, filter and modulation mechanisms, described in our own words. Inspiration only.
 - [vital-mcp](https://github.com/mard4/vital-mcp) (GPL-3.0): render-measure-fix loop and its descriptor set. Inspiration only.
 - [vital_discord_preset_archive](https://github.com/ArcerionDev/vital_discord_preset_archive) (no license found): preset role and macro-label counts; no files copied. Inspiration only.
 - [WildFX](https://github.com/IsaacYQH/WildFX) (no license): DAW-hosted plugin pipeline for effect-estimation data. Inspiration only.

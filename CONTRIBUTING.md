@@ -115,8 +115,10 @@ license.
 - Crates we depend on are not credits. Their notices ship in
   `THIRD-PARTY-LICENSES.html`. A new dependency adds its license to
   `about.toml` when the license is new to the tree.
-- Docs name no third-party brands except Serum. A credit is not a brand
-  mention.
+- Docs name no third-party brands except Serum and Vital. A credit is not
+  a brand mention.
+- Vital is GPL-3.0, so we use its facts only, in our own words, and `vita`
+  runs only as a separate process.
 - Committed test fixtures have a row in `tests/fixtures/PROVENANCE.md`.
 
 ## Security

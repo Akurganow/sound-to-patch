@@ -1,10 +1,12 @@
 # Introduction
 
-sound-to-patch gives a producer a starting point in Serum 2 for one sound.
-It has two paths:
+sound-to-patch gives a producer a starting point in a synth for one sound.
+Vital and Serum 2 are the target synths, and Vital comes first. It has two
+paths:
 
 - **Audio path.** One stem of one instrument and its BPM go in. The notes as
-  `notes.mid` and a `preset.SerumPreset` come out, with an `explanation.md`
+  `notes.mid` and a preset for the target synth come out (`preset.vital` or
+  `preset.SerumPreset`), with an `explanation.md`
   that says how the preset works and which controls to turn next.
 - **Text path.** The producer describes the sound in their own words. An
   agent turns the description into a preset and its explanation, and into
