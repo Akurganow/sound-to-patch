@@ -220,3 +220,17 @@ fn the_tail_follows_the_slower_of_release_and_reverb() {
         );
     }
 }
+
+#[test]
+fn leading_silence_shifts_the_truncation_and_keeps_the_decay_time() {
+    let tail = with_floor(0.4, Some(-70.0), 9400);
+    let lead = samples(0.2);
+    let late: Vec<f64> = std::iter::repeat_n(0.0, lead)
+        .chain(tail.iter().copied())
+        .collect();
+    let (direct, delayed) = (Decay::of(&tail, rate()), Decay::of(&late, rate()));
+    assert_eq!(delayed.t20(), direct.t20());
+    assert_eq!(delayed.t30(), direct.t30());
+    let shift = delayed.truncation().get() - direct.truncation().get();
+    assert!((shift - 0.2).abs() < 1e-9, "{shift}");
+}

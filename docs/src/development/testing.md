@@ -106,9 +106,19 @@ doc tests, hence the second command. CI uses the `ci` profile from
   `cargo xtask golden` installs them with uv into `target/golden-venv` and
   rewrites every vector. A second run with the same pins writes
   byte-identical files.
+- `requirements.in` lists the direct packages. To change a pin, edit it and
+  regenerate the lock from the repository root:
+
+  ```bash
+  uv pip compile xtask/golden/requirements.in --generate-hashes --python-version 3.14.7 --output-file xtask/golden/requirements.txt
+  ```
+
+  Add `--upgrade` to move every package to its latest release. The command
+  also stands in the header of `requirements.txt`.
 - CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
-  fails when a vector lacks a field, names a version other than the pin, or
-  when a prototype table has no recipe file.
+  fails when a vector lacks a field, lacks the Python version in `tools`,
+  names a version other than the pin, or when a prototype table has no
+  recipe file.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

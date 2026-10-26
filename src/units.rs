@@ -189,6 +189,14 @@ macro_rules! unit {
                 self.0
             }
 
+            /// Builds a value in a `const` item without the check. Every
+            /// caller passes a literal that a test also builds through
+            /// [`Self::new`].
+            #[allow(dead_code, reason = "not every unit type has a constant yet")]
+            pub(crate) const fn from_const(value: f64) -> Self {
+                Self(value)
+            }
+
             /// Builds a value that the computation guarantees to be in
             /// range, such as a bin frequency `k fs / N`. The clamp only
             /// guards against a bug; it never acts on a valid input.

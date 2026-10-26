@@ -19,7 +19,7 @@ use crate::units::{Hz, Normalized};
 
 /// The default low-pass for an attack envelope. A 5 Hz smoother smears any
 /// attack shorter than tens of milliseconds; 100 to 200 Hz keeps it.
-pub const ATTACK_LOW_PASS_HZ: f64 = 150.0;
+pub const ATTACK_LOW_PASS_HZ: Hz = Hz::from_const(150.0);
 
 /// Q values of the two sections of a fourth-order Butterworth low-pass:
 /// `1 / (2 cos(pi / 8))` and `1 / (2 cos(3 pi / 8))`.
@@ -43,6 +43,12 @@ impl AnalyticSignal {
     /// about `fs / (2 pi^2 f d)` for a sine of frequency `f`: 0.1 % needs
     /// some 4000 samples at 123 Hz and 8 kHz. Mirroring the signal instead
     /// of zeros is worse, because a reversed partial runs backwards in phase.
+    ///
+    /// It is meant for note-sized segments. The transform holds the padded
+    /// signal as complex values, 16 bytes a sample, and an FFT of a length
+    /// that is not a power of two needs several times that in scratch: a
+    /// whole 10-minute stem at 48 kHz peaks near 2 GB. Heterodyne a long
+    /// signal instead.
     #[must_use]
     pub fn new(samples: &[f64], rate: SampleRate, pad: usize) -> Self {
         let mut buffer: Vec<Complex64> = std::iter::repeat_n(0.0, pad)
@@ -67,8 +73,10 @@ impl AnalyticSignal {
             }
             planner.plan_fft_inverse(len).process(&mut buffer);
         }
+        buffer.truncate(pad + samples.len());
+        buffer.drain(..pad);
         Self {
-            z: buffer[pad..pad + samples.len()].to_vec(),
+            z: buffer,
             rate: rate.hz(),
         }
     }
@@ -93,7 +101,9 @@ impl AnalyticSignal {
 
     /// Returns the instantaneous frequency in hertz between consecutive
     /// samples, `f[n] = (fs / 2 pi) arg(z[n+1] conj(z[n]))`. Avoids
-    /// differentiating a noisy phase. One value fewer than samples.
+    /// differentiating a noisy phase. One value fewer than samples. The
+    /// per-sample track stays bare `f64` hertz: a value can be negative,
+    /// which [`Hz`] rejects.
     #[must_use]
     pub fn instantaneous_frequency(&self) -> Vec<f64> {
         instantaneous_frequency(&self.z, self.rate)
@@ -201,7 +211,7 @@ impl Baseband {
     }
 
     /// Returns the instantaneous frequency offset from the centre in hertz;
-    /// negative below the centre.
+    /// negative below the centre, so the per-sample track is bare `f64`.
     #[must_use]
     pub fn instantaneous_frequency(&self) -> Vec<f64> {
         instantaneous_frequency(&self.z, self.rate)
@@ -211,10 +221,11 @@ impl Baseband {
 /// Moves the band around `centre` to baseband, so a tone at `f_c + d`
 /// comes out at `d`.
 ///
-/// It multiplies the signal by `exp(-j 2 pi f_c t)`, low-passes the product
-/// with a fourth-order Butterworth at `cutoff`, and keeps every
-/// `decimation`-th sample. The first samples carry the filter's start-up
-/// transient.
+/// It multiplies the signal by `2 exp(-j 2 pi f_c t)`, low-passes the
+/// product with a fourth-order Butterworth at `cutoff`, and keeps every
+/// `decimation`-th sample. A partial `A cos(2 pi f t + phi)` comes out as
+/// `A exp(j (2 pi (f - f_c) t + phi))`, so the envelope reads `A`. The
+/// first samples carry the filter's start-up transient.
 ///
 /// # Errors
 ///
@@ -235,7 +246,9 @@ pub fn heterodyne(
         .map(|(n, &x)| {
             // Reduce the phase per sample so it stays exact on long stems.
             let phase = (step * cast::usize_to_f64(n)) % TAU;
-            Complex64::new(re.run(x * phase.cos()), im.run(-x * phase.sin()))
+            // The factor 2 restores the amplitude that the mixing halves.
+            let mixed = 2.0 * x;
+            Complex64::new(re.run(mixed * phase.cos()), im.run(-mixed * phase.sin()))
         })
         .step_by(decimation)
         .collect();
@@ -249,6 +262,13 @@ pub fn heterodyne(
 /// Butterworth, so the result has no delay: an attack stays where it is.
 /// For attack envelopes use [`ATTACK_LOW_PASS_HZ`].
 ///
+/// The two passes square the magnitude response, so the gain at `cutoff` is
+/// -6 dB, not -3 dB, and the slope is 48 dB per octave. As `filtfilt` does,
+/// each end is extended by an odd reflection, `2 x[0] - x[k]`, of three cutoff
+/// periods, and each pass starts in the steady state of its first input. A
+/// constant or a ramp then passes without a start-up or an end transient,
+/// so a release at the end of a stem keeps its level.
+///
 /// # Errors
 ///
 /// Returns a [`FilterError`] when the cutoff is zero or not below the
@@ -258,17 +278,50 @@ pub fn low_pass_zero_phase(
     rate: SampleRate,
     cutoff: Hz,
 ) -> Result<Vec<f64>, FilterError> {
-    let mut forward = LowPass::new(rate, cutoff)?;
-    let mut backward = LowPass::new(rate, cutoff)?;
-    let mut out: Vec<f64> = samples.iter().map(|&x| forward.run(x)).collect();
-    for value in out.iter_mut().rev() {
-        *value = backward.run(*value);
+    let pad = cast::ceil_to_usize(3.0 * rate.hz().get() / cutoff.get()).unwrap_or(0);
+    zero_phase(samples, pad, || LowPass::new(rate, cutoff))
+}
+
+/// Runs a filter forward and backward over `samples` extended at each end
+/// by an odd reflection of up to `pad` samples.
+fn zero_phase(
+    samples: &[f64],
+    pad: usize,
+    filter: impl Fn() -> Result<LowPass, FilterError>,
+) -> Result<Vec<f64>, FilterError> {
+    let (mut forward, mut backward) = (filter()?, filter()?);
+    let (Some(&first), Some(&last)) = (samples.first(), samples.last()) else {
+        return Ok(Vec::new());
+    };
+    let pad = pad.min(samples.len() - 1);
+    let mut out: Vec<f64> = samples[1..=pad]
+        .iter()
+        .rev()
+        .map(|&x| 2.0 * first - x)
+        .chain(samples.iter().copied())
+        .chain(
+            samples[samples.len() - 1 - pad..samples.len() - 1]
+                .iter()
+                .rev()
+                .map(|&x| 2.0 * last - x),
+        )
+        .collect();
+    for pass in [&mut forward, &mut backward] {
+        if let Some(&start) = out.first() {
+            pass.settle(start);
+        }
+        for value in &mut out {
+            *value = pass.run(*value);
+        }
+        out.reverse();
     }
+    out.truncate(out.len() - pad);
+    out.drain(..pad);
     Ok(out)
 }
 
 /// A fourth-order Butterworth low-pass as two biquad sections.
-struct LowPass([DirectForm2Transposed<f64>; 2]);
+struct LowPass([(DirectForm2Transposed<f64>, Coefficients<f64>); 2]);
 
 impl LowPass {
     fn new(rate: SampleRate, cutoff: Hz) -> Result<Self, FilterError> {
@@ -280,7 +333,7 @@ impl LowPass {
         let f0 = cutoff.get().hz();
         let section = |q| {
             Coefficients::<f64>::from_params(Type::LowPass, fs, f0, q)
-                .map(DirectForm2Transposed::<f64>::new)
+                .map(|c| (DirectForm2Transposed::<f64>::new(c), c))
                 .map_err(|_| fail())
         };
         Ok(Self([
@@ -289,8 +342,20 @@ impl LowPass {
         ]))
     }
 
+    /// Sets the state that a constant input `x` holds forever, as
+    /// `lfilter_zi` does.
+    fn settle(&mut self, x: f64) {
+        let mut input = x;
+        for (section, c) in &mut self.0 {
+            let output = input * (c.b0 + c.b1 + c.b2) / (1.0 + c.a1 + c.a2);
+            section.s2 = c.b2 * input - c.a2 * output;
+            section.s1 = section.s2 + c.b1 * input - c.a1 * output;
+            input = output;
+        }
+    }
+
     fn run(&mut self, x: f64) -> f64 {
-        let [first, second] = &mut self.0;
+        let [(first, _), (second, _)] = &mut self.0;
         second.run(first.run(x))
     }
 }
@@ -319,6 +384,11 @@ impl Error for FilterError {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_attack_low_pass_constant_passes_the_unit_check() {
+        assert_eq!(ATTACK_LOW_PASS_HZ, Hz::new(150.0).unwrap());
+    }
 
     fn rate() -> SampleRate {
         SampleRate::new(8_000).unwrap()
@@ -364,6 +434,29 @@ mod tests {
         let out = low_pass_zero_phase(&vec![1.0; 4000], rate(), Hz::new(150.0).unwrap()).unwrap();
         assert_eq!(out.len(), 4000);
         assert!((out[2000] - 1.0).abs() < 1e-9, "{}", out[2000]);
+    }
+
+    #[test]
+    fn the_zero_phase_low_pass_keeps_a_constant_and_a_ramp_at_both_ends() {
+        let cutoff = Hz::new(150.0).unwrap();
+        let ones = low_pass_zero_phase(&vec![1.0; 4000], rate(), cutoff).unwrap();
+        assert!(ones.iter().all(|v| (v - 1.0).abs() < 1e-9), "{ones:?}");
+        let ramp: Vec<f64> = (0..4000).map(|n| f64::from(n) / 4000.0).collect();
+        let out = low_pass_zero_phase(&ramp, rate(), cutoff).unwrap();
+        for (x, y) in ramp.iter().zip(&out) {
+            assert!((x - y).abs() < 1e-5, "{x} {y}");
+        }
+    }
+
+    #[test]
+    fn the_zero_phase_low_pass_takes_one_or_no_sample() {
+        let cutoff = Hz::new(150.0).unwrap();
+        assert_eq!(
+            low_pass_zero_phase(&[], rate(), cutoff).unwrap(),
+            Vec::<f64>::new()
+        );
+        let one = low_pass_zero_phase(&[0.5], rate(), cutoff).unwrap();
+        assert!((one[0] - 0.5).abs() < 1e-12);
     }
 
     #[test]

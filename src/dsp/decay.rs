@@ -31,13 +31,14 @@ pub enum FitRange {
 }
 
 impl FitRange {
-    /// Returns the top and the bottom of the range in decibels.
+    /// Returns the top and the bottom of the range.
     #[must_use]
-    pub fn limits(self) -> (f64, f64) {
-        match self {
+    pub fn limits(self) -> (Decibels, Decibels) {
+        let (top, bottom) = match self {
             Self::T20 => (-5.0, -25.0),
             Self::T30 => (-5.0, -35.0),
-        }
+        };
+        (Decibels::from_const(top), Decibels::from_const(bottom))
     }
 }
 
@@ -90,8 +91,12 @@ pub struct Decay {
 impl Decay {
     /// Analyses the samples of a tail that starts at a stop.
     ///
+    /// The analysis starts at the loudest 10 ms block, which is the first
+    /// block unless the tail opens with silence or a pre-delay. That block
+    /// is the reference level.
+    ///
     /// 1. The noise floor is the mean power of the last 10 % of the tail,
-    ///    relative to the power of the first 10 ms.
+    ///    relative to the power of the reference block.
     /// 2. A line fitted to the 10 ms block levels down to 10 dB above the
     ///    floor gives the time where the decay meets the floor.
     /// 3. The Schroeder integral runs from each sample to that time, plus
@@ -117,6 +122,31 @@ impl Decay {
     fn analyse(tail: &[f64], rate: SampleRate) -> Result<Self, DecayFailure> {
         let fs = rate.hz().get();
         let block = cast::round_to_usize(BLOCK_SECONDS * fs).unwrap_or(1).max(1);
+        if tail.iter().all(|&x| x == 0.0) {
+            return Err(DecayFailure::Silent);
+        }
+        let loudest = tail
+            .chunks_exact(block)
+            .map(|chunk| chunk.iter().map(|x| x * x).sum::<f64>())
+            .enumerate()
+            .fold(
+                (0, 0.0),
+                |best, (index, sum)| if sum > best.1 { (index, sum) } else { best },
+            )
+            .0;
+        let offset = loudest * block;
+        Self::analyse_from(&tail[offset..], rate, block, offset)
+    }
+
+    /// Analyses a tail whose first block is the reference and that starts
+    /// `offset` samples after the stop.
+    fn analyse_from(
+        tail: &[f64],
+        rate: SampleRate,
+        block: usize,
+        offset: usize,
+    ) -> Result<Self, DecayFailure> {
+        let fs = rate.hz().get();
         let energy: Vec<f64> = tail.iter().map(|x| x * x).collect();
         if energy.len() < 3 * block {
             return Err(DecayFailure::TooShort);
@@ -127,11 +157,7 @@ impl Decay {
             .collect();
         let reference = levels[0];
         if reference <= 0.0 {
-            return Err(if energy.iter().all(|&e| e == 0.0) {
-                DecayFailure::Silent
-            } else {
-                DecayFailure::TooShort
-            });
+            return Err(DecayFailure::Silent);
         }
         let floor_start = energy.len()
             - cast::ceil_to_usize(FLOOR_SHARE * cast::usize_to_f64(energy.len()))
@@ -184,7 +210,7 @@ impl Decay {
         }
         Ok(Self {
             floor: floor.map(Decibels::clamped),
-            truncation: rate.seconds(cut_index),
+            truncation: rate.seconds(offset + cut_index),
             t20: fit_range(&curve, fs, floor, FitRange::T20),
             t30: fit_range(&curve, fs, floor, FitRange::T30),
         })
@@ -246,6 +272,7 @@ fn fit_range(
     range: FitRange,
 ) -> Result<Seconds, DecayFailure> {
     let (top, bottom) = range.limits();
+    let (top, bottom) = (top.get(), bottom.get());
     if let Some(floor) = floor
         && floor > bottom - FLOOR_MARGIN_DB
     {
@@ -295,6 +322,13 @@ fn fit_line(points: &[(f64, f64)]) -> Option<(f64, f64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fit_limits_pass_the_unit_check() {
+        let db = |v| Decibels::new(v).unwrap();
+        assert_eq!(FitRange::T20.limits(), (db(-5.0), db(-25.0)));
+        assert_eq!(FitRange::T30.limits(), (db(-5.0), db(-35.0)));
+    }
 
     fn rate() -> SampleRate {
         SampleRate::new(16_000).unwrap()

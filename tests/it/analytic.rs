@@ -50,6 +50,23 @@ fn a_noiseless_sine_has_a_flat_envelope_and_its_own_frequency() {
 }
 
 #[test]
+fn an_unfaded_sine_keeps_the_edge_error_of_its_cut() {
+    // The literal case of #49. The FFT sees a gated sine, whose step at each
+    // cut leaks an error decaying as 1 / d. At d = 8000 samples, the edge of
+    // the middle half, the envelope error is about fs / (2 pi^2 f d) = 4.1e-4
+    // and the frequency error 0.046 Hz, so the 1e-3 Hz of #49 holds only for
+    // a faded sine, above.
+    let x = sine(123.4, 0.3, f64::from(RATE), 32_000);
+    let z = AnalyticSignal::new(&x, rate(), 8000);
+    for a in middle(&z.envelope()) {
+        assert!((a - 1.0).abs() < 5e-4, "envelope {a}");
+    }
+    for f in middle(&z.instantaneous_frequency()) {
+        assert!((f - 123.4).abs() < 0.06, "frequency {f}");
+    }
+}
+
+#[test]
 fn a_half_depth_am_tone_returns_depth_one_half() {
     let t = times(f64::from(RATE), 16_000);
     let x: Vec<f64> = t
@@ -70,6 +87,19 @@ fn a_tone_beside_the_centre_comes_out_at_its_offset() {
     // Skip the first second, where the low-pass settles.
     for f in &baseband.instantaneous_frequency()[40..] {
         assert!((f - 3.0).abs() < 1e-3, "offset {f}");
+    }
+}
+
+#[test]
+fn the_baseband_envelope_reads_the_partial_amplitude() {
+    let x: Vec<f64> = sine(1003.0, 0.0, f64::from(RATE), 32_000)
+        .iter()
+        .map(|v| 0.3 * v)
+        .collect();
+    let params = HeterodyneParams::new(Hz::new(1000.0).unwrap(), Hz::new(10.0).unwrap());
+    let baseband = heterodyne(&x, rate(), params).unwrap();
+    for a in &baseband.envelope()[40..] {
+        assert!((a - 0.3).abs() < 1e-4, "amplitude {a}");
     }
 }
 

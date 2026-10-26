@@ -156,6 +156,9 @@ fn vector_problems(vector: &Value, pins: &BTreeMap<String, String>) -> Vec<Strin
         .collect();
     if let Some(tools) = vector.get("tools") {
         match tools.as_object() {
+            Some(tools) if !tools.contains_key("python") => {
+                problems.push("`tools` lacks the python version".to_owned());
+            }
             Some(tools) => {
                 for (tool, version) in tools {
                     match (pins.get(tool), version.as_str()) {
@@ -225,6 +228,18 @@ mod tests {
             err.contains("stft.json: made with numpy 2.5.3, but the pin is 2.5.4"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn fails_on_tools_without_the_python_version() {
+        for tools in ["{}", r#"{"numpy": "2.5.4"}"#] {
+            let dir = tree(&VECTOR.replace(r#"{"python": "3.14.7", "numpy": "2.5.4"}"#, tools));
+            let err = check(dir.path()).unwrap_err().to_string();
+            assert!(
+                err.contains("stft.json: `tools` lacks the python version"),
+                "{err}"
+            );
+        }
     }
 
     #[test]

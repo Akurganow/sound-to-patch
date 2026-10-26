@@ -7,7 +7,7 @@ use crate::units::Decibels;
 
 /// The gate of the project's convention: a frame is active when its RMS
 /// lies within 40 dB of the loudest frame.
-pub const ACTIVE_GATE_DB: f64 = 40.0;
+pub const ACTIVE_GATE_DB: Decibels = Decibels::from_const(40.0);
 
 /// Returns the RMS of each centred frame of an STFT layout, over the raw
 /// samples (no window) with the layout's padding. Frame `m` lines up with
@@ -58,10 +58,7 @@ impl ActiveFrames {
     /// [`ACTIVE_GATE_DB`].
     #[must_use]
     pub fn of(samples: &[f64], params: StftParams) -> Self {
-        Self::from_rms(
-            &frame_rms(samples, params),
-            Decibels::clamped(ACTIVE_GATE_DB),
-        )
+        Self::from_rms(&frame_rms(samples, params), ACTIVE_GATE_DB)
     }
 
     /// Returns whether frame `m` is active; a frame past the end is not.
@@ -147,6 +144,11 @@ fn quantile(sorted: &[f64], q: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_gate_constant_passes_the_unit_check() {
+        assert_eq!(ACTIVE_GATE_DB, Decibels::new(40.0).unwrap());
+    }
 
     #[test]
     fn quantiles_interpolate_linearly() {

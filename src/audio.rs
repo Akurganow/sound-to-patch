@@ -9,7 +9,7 @@
 //! ```no_run
 //! use sound_to_patch::audio::{self, SampleRate};
 //!
-//! let stem = audio::decode("bass.wav".as_ref())?;
+//! let stem = audio::decode("bass.wav".as_ref())?.into_audio();
 //! let mono = stem.mono();
 //! let model_rate = SampleRate::new(22_050)?;
 //! let resampled = audio::resample(&mono, stem.sample_rate(), model_rate)?;
@@ -26,7 +26,7 @@ use crate::units::{Hz, Seconds};
 mod decode;
 mod resample;
 
-pub use decode::{DecodeError, decode};
+pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
 pub use resample::{ResampleError, resample};
 
 /// A sample rate in samples per second: a whole number above zero.

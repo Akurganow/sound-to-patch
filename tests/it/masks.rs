@@ -79,6 +79,24 @@ fn a_two_note_chord_leaves_under_one_percent_outside_its_masks() {
 }
 
 #[test]
+fn zero_padding_keeps_a_steady_tone_inside_its_mask() {
+    // Padding narrows the bins but not the Hann lobe, so the default sigma
+    // must not shrink with it.
+    let tone = steady(110.0);
+    let notes = NoteList::new(vec![whole(45.0)]);
+    for factor in [1, 2, 4, 16] {
+        let stft = StftParams::new(4096)
+            .unwrap()
+            .with_oversample(factor)
+            .unwrap();
+        let outside = out_of_mask_fraction(&tone, rate(), stft, &notes, MaskParams::new())
+            .unwrap()
+            .get();
+        assert!(outside < 0.01, "x{factor}: {outside}");
+    }
+}
+
+#[test]
 fn an_inharmonic_tone_raises_the_fraction_by_its_energy_share() {
     let chord = mix(&steady(110.0), &steady(164.813_778_456_434_9));
     let notes = NoteList::new(vec![whole(45.0), whole(52.0)]);

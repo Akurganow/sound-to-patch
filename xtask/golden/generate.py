@@ -215,7 +215,7 @@ def decay_closed_forms():
         "Closed forms: an amplitude decay exp(-ln(1000) t / RT60) falls 60 dB per RT60, "
         "and a release exp(-t / tau) has RT60 = ln(1000) tau, about 6.9 tau.",
         "decay_closed_forms",
-        [],
+        ["python"],
         {"kind": "closed_form"},
         {
             "slope_db_per_s": [{"rt60_s": r, "slope": -60.0 / r} for r in rt60],

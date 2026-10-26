@@ -270,14 +270,22 @@ impl NoteList {
     /// during part of it.
     #[must_use]
     pub fn with_overlaps(self) -> Self {
+        // The notes are sorted by onset, so an earlier note overlaps when its
+        // offset passes this onset, and a later one when the next onset comes
+        // before this offset.
+        let mut latest_offset = f64::NEG_INFINITY;
         let flags: Vec<bool> = self
             .notes
             .iter()
             .enumerate()
             .map(|(i, note)| {
-                self.notes.iter().enumerate().any(|(j, other)| {
-                    i != j && other.onset < note.offset && note.onset < other.offset
-                })
+                let before = latest_offset > note.onset.get();
+                let after = self
+                    .notes
+                    .get(i + 1)
+                    .is_some_and(|next| next.onset < note.offset);
+                latest_offset = latest_offset.max(note.offset.get());
+                before || after
             })
             .collect();
         Self {
@@ -341,6 +349,31 @@ mod tests {
 
     fn note(onset: f64, offset: f64, pitch: f64) -> Note {
         Note::new(s(onset), s(offset), MidiPitch::new(pitch).unwrap()).unwrap()
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn overlap_flags_match_every_pair(
+            spans in proptest::collection::vec((0u8..40, 1u8..10), 0..30)
+        ) {
+            let list = NoteList::new(
+                spans
+                    .iter()
+                    .map(|&(start, len)| {
+                        let onset = f64::from(start) / 4.0;
+                        note(onset, onset + f64::from(len) / 4.0, 60.0)
+                    })
+                    .collect(),
+            )
+            .with_overlaps();
+            let notes = list.notes();
+            for (i, a) in notes.iter().enumerate() {
+                let expected = notes.iter().enumerate().any(|(j, b)| {
+                    i != j && b.onset() < a.offset() && a.onset() < b.offset()
+                });
+                proptest::prop_assert_eq!(a.overlap(), Some(expected));
+            }
+        }
     }
 
     #[test]

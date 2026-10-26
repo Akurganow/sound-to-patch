@@ -21,9 +21,10 @@ pub struct MaskParams {
 }
 
 impl MaskParams {
-    /// 20 harmonics, `sigma` of one bin, and a threshold of `exp(-2)`, the
-    /// mask value two `sigma` from a harmonic. With one-bin `sigma` that
-    /// covers the 4-bin main lobe of a Hann window.
+    /// 20 harmonics, `sigma` of one unpadded bin, `fs / frame_len`, and a
+    /// threshold of `exp(-2)`, the mask value two `sigma` from a harmonic.
+    /// That covers the 4-bin main lobe of a Hann window. Zero padding narrows
+    /// the bins but not the lobe, so `sigma` ignores the padding.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -134,11 +135,12 @@ impl<'a> Masker<'a> {
         rate: SampleRate,
     ) -> Self {
         let bin_hz = stft.bin_width(rate).get();
+        let lobe_bin = rate.hz().get() / cast::usize_to_f64(stft.frame_len());
         Self {
             notes,
             harmonics: params.harmonics,
             threshold: params.threshold,
-            sigma: params.sigma.map_or(bin_hz, Hz::get),
+            sigma: params.sigma.map_or(lobe_bin, Hz::get),
             bin_hz,
             nyquist: rate.nyquist().get(),
             scratch: vec![0.0; stft.bins()],

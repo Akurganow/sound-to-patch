@@ -36,6 +36,8 @@ fn a_stereo_wav_decodes_at_its_rate_with_both_channels() {
         .collect();
     write_wav16(&path, 48_000, &[left.clone(), right.clone()]);
     let decoded = audio::decode(&path).unwrap();
+    assert_eq!(decoded.skipped(), []);
+    let decoded = decoded.into_audio();
     assert_eq!(decoded.sample_rate().get(), 48_000);
     assert_eq!(decoded.channels().len(), 2);
     assert_eq!(decoded.frames(), 48_000);
@@ -122,5 +124,56 @@ fn an_unknown_container_and_a_missing_file_fail_with_a_fix() {
     assert!(
         missing.to_string().contains("cannot open the file"),
         "{missing}"
+    );
+}
+
+/// MPEG-1 layer III frames, 128 kbit/s at 44.1 kHz, of silence. A frame in
+/// `bad` declares 511 big values in its side information, more than the 288
+/// a granule holds, so symphonia rejects that packet and decodes the next.
+fn mp3_with_bad_frames(path: &Path, frames: usize, bad: &[usize]) {
+    let mut bytes = Vec::new();
+    for index in 0..frames {
+        let mut frame = vec![0u8; 417];
+        frame[..4].copy_from_slice(&[0xFF, 0xFB, 0x90, 0x04]);
+        if bad.contains(&index) {
+            frame[8] = 0xFF;
+            frame[9] = 0x80;
+        }
+        bytes.extend(frame);
+    }
+    fs::write(path, bytes).unwrap();
+}
+
+#[test]
+fn a_corrupt_packet_becomes_silence_of_its_length() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("glitch.mp3");
+    mp3_with_bad_frames(&path, 20, &[0, 5]);
+    let decoded = audio::decode(&path).unwrap();
+    // 20 frames of 1152 samples: the lost packets keep their place.
+    assert_eq!(decoded.audio().frames(), 20 * 1152);
+    let skipped = decoded.skipped();
+    assert_eq!(skipped.len(), 2);
+    assert_eq!((skipped[0].index(), skipped[0].frames()), (0, 1152));
+    assert_eq!(skipped[1].index(), 5);
+    assert_eq!(skipped[1].start().get(), 5.0 * 1152.0 / 44_100.0);
+    assert!(
+        skipped[1].message().contains("big_values"),
+        "{}",
+        skipped[1].message()
+    );
+}
+
+#[test]
+fn too_many_corrupt_packets_fail_and_name_the_first() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("damaged.mp3");
+    let bad: Vec<usize> = (3..=3 + audio::MAX_SKIPPED_PACKETS).collect();
+    mp3_with_bad_frames(&path, 20, &bad);
+    let message = audio::decode(&path).unwrap_err().to_string();
+    assert!(message.contains("damaged.mp3"), "{message}");
+    assert!(
+        message.contains("more than 4 packets do not decode, the first packet 3 at"),
+        "{message}"
     );
 }
