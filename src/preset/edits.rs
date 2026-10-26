@@ -642,9 +642,15 @@ fn param_stored(spec: &ParamSpec, value: &ParamValue) -> Result<f64, Problem> {
     let key = &spec.key;
     match (spec.kind, spec.unit(), value) {
         (ParamKind::Choice, _, ParamValue::Text(label)) => choice_stored(spec, label),
+        // A stored index selects a choice whose label repeats.
+        (ParamKind::Choice, _, ParamValue::Number(number)) if spec.accepts(*number) => Ok(*number),
         (ParamKind::Choice, _, _) => Err((
-            format!("{key} is a menu, and {value} is not one of its labels"),
-            format!("Write one of: {}", spec.choices.join(", ")),
+            format!("{key} is a menu, and {value} is not one of its labels or indices"),
+            format!(
+                "Write one of: {}, or a whole stored index from {}",
+                spec.choices.join(", "),
+                spec.range_text()
+            ),
         )),
         (ParamKind::Flag, _, ParamValue::Flag(flag)) => Ok(if *flag { 1.0 } else { 0.0 }),
         (ParamKind::Flag, _, _) => Err((
@@ -674,6 +680,12 @@ fn param_stored(spec: &ParamSpec, value: &ParamValue) -> Result<f64, Problem> {
                 return Ok(*number);
             }
             let whole = spec.kind != ParamKind::Float;
+            if whole && (spec.stored_min..=spec.stored_max).contains(number) {
+                return Err((
+                    format!("{key}: {number} is not a whole number"),
+                    format!("Use a whole number; the nearest is {:?}", number.round()),
+                ));
+            }
             let nearest = number.clamp(spec.stored_min, spec.stored_max);
             let nearest = if whole { nearest.round() } else { nearest };
             Err((
@@ -1020,6 +1032,38 @@ mod tests {
             resolve_one(r#"{"menu":"osc_1_distortion_type","choice":"FM <- Osc","reason":"r"}"#)
                 .unwrap_err();
         assert!(repeated.contains("several choices"), "{repeated}");
+    }
+
+    #[test]
+    fn a_stored_index_selects_a_repeated_label() {
+        let spec = vital().get("osc_1_distortion_type").unwrap();
+        let index = spec
+            .choices
+            .iter()
+            .position(|label| label == "FM <- Osc")
+            .unwrap();
+        let stored = spec.stored_min + crate::cast::usize_to_f64(index);
+        let resolved = resolve_one(&format!(
+            r#"{{"param":"osc_1_distortion_type","value":{stored},"reason":"r"}}"#
+        ))
+        .unwrap();
+        assert!(
+            matches!(resolved, Resolved::Param { stored: got, .. } if got.to_bits() == stored.to_bits())
+        );
+        let outside = resolve_one(r#"{"param":"osc_1_distortion_type","value":99,"reason":"r"}"#)
+            .unwrap_err();
+        assert!(outside.contains("whole stored index"), "{outside}");
+    }
+
+    #[test]
+    fn a_count_between_steps_is_not_whole() {
+        let error =
+            resolve_one(r#"{"param":"osc_1_unison_voices","value":5.5,"reason":"r"}"#).unwrap_err();
+        assert!(error.contains("5.5 is not a whole number"), "{error}");
+        assert!(error.contains("the nearest is 6.0"), "{error}");
+        let error =
+            resolve_one(r#"{"param":"osc_1_unison_voices","value":20,"reason":"r"}"#).unwrap_err();
+        assert!(error.contains("outside the stored range"), "{error}");
     }
 
     #[test]

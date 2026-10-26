@@ -210,7 +210,15 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
             "Write to a new file; the inputs stay as they are".to_owned(),
         ));
     }
-    if let Some(folder) = out.ancestors().skip(1).find_map(|dir| {
+    // The folder as the system resolves it: `-o x.vital` inside a factory
+    // folder, a link into one and `Factory/../x.vital` all count by where
+    // the file lands. A folder that does not resolve is taken as written.
+    let parent = out
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
+    let parent = fs::canonicalize(parent).unwrap_or_else(|_| parent.to_owned());
+    if let Some(folder) = parent.ancestors().find_map(|dir| {
         let name = dir.file_name()?.to_str()?;
         format
             .factory_folders()
@@ -309,15 +317,17 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
 /// write leaves no partial file.
 fn write_atomically(out: &Path, extension: &str, bytes: &[u8]) -> Result<(), PresetError> {
     let temporary = out.with_extension(format!("{extension}.partial"));
-    let io_error = |cause| PresetError::Read {
-        path: out.to_owned(),
-        cause,
-    };
-    fs::write(&temporary, bytes).map_err(io_error)?;
-    fs::rename(&temporary, out).map_err(|cause| {
+    let failed = |cause: io::Error| {
+        // The temporary file may not exist; either way nothing is left.
         let _ = fs::remove_file(&temporary);
-        io_error(cause)
-    })
+        PresetError::Output {
+            path: out.to_owned(),
+            cause: cause.to_string(),
+            fix: "Check that the folder exists, is writable and has free space".to_owned(),
+        }
+    };
+    fs::write(&temporary, bytes).map_err(failed)?;
+    fs::rename(&temporary, out).map_err(failed)
 }
 
 fn apply_summary(

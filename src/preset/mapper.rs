@@ -229,17 +229,16 @@ pub fn fit_param(
         .stored(&wanted)
         .is_ok_and(|exact| exact.to_bits() == stored.to_bits());
     if !exact {
-        let reason = if stored >= spec.stored_max && wanted.get() > physical.get() {
+        // The physical range is the span between the values at both stored
+        // bounds, so a falling law needs no special case.
+        let ends = [spec.stored_min, spec.stored_max]
+            .map(|bound| spec.physical(bound).map_or(physical.get(), Physical::get));
+        let reason = if wanted.get() > ends[0].max(ends[1]) {
             UnrepresentableReason::AboveRange
-        } else if stored <= spec.stored_min && wanted.get() < physical.get() {
+        } else if wanted.get() < ends[0].min(ends[1]) {
             UnrepresentableReason::BelowRange
         } else {
             UnrepresentableReason::NoSuchChoice
-        };
-        let reason = match (rising(spec), reason) {
-            (false, UnrepresentableReason::AboveRange) => UnrepresentableReason::BelowRange,
-            (false, UnrepresentableReason::BelowRange) => UnrepresentableReason::AboveRange,
-            (_, other) => other,
         };
         mapped.unrepresentable.push(Unrepresentable {
             field: field.to_owned(),
@@ -252,17 +251,6 @@ pub fn fit_param(
         });
     }
     mapped
-}
-
-/// Whether the physical value grows with the stored value.
-fn rising(spec: &ParamSpec) -> bool {
-    match (
-        spec.physical(spec.stored_min),
-        spec.physical(spec.stored_max),
-    ) {
-        (Ok(low), Ok(high)) => high.get() >= low.get(),
-        _ => true,
-    }
 }
 
 /// The stored value nearest to a wanted physical value: through the law
@@ -405,6 +393,30 @@ mod tests {
         assert!((miss.residual().unwrap() - (top - 25_000.0)).abs() < 1e-6);
         let item = resolved(&mapped).remove(0);
         assert!(matches!(item, Resolved::Param { stored, .. } if (stored - 136.0).abs() < 1e-12));
+    }
+
+    #[test]
+    fn a_falling_law_names_the_side_it_misses() {
+        use crate::preset::registry::Registry;
+        use crate::preset::registry::tests::{law_cases, spec};
+        let (_, law, min, max, unit) = law_cases()
+            .into_iter()
+            .find(|(name, ..)| *name == "falling table")
+            .unwrap();
+        let registry = Registry::new(
+            crate::synth::Synth::Vital,
+            vec![spec("level", law, min, max, unit)],
+        )
+        .unwrap();
+        // The table falls from 6 dB at stored 0 to -30 dB at stored 1.
+        for (wanted, side) in [
+            (10.0, UnrepresentableReason::AboveRange),
+            (-40.0, UnrepresentableReason::BelowRange),
+        ] {
+            let wanted = Physical::new(UnitKind::Decibels, wanted).unwrap();
+            let mapped = fit_param(&registry, "level", "level", wanted, "level", Level::Low);
+            assert_eq!(mapped.unrepresentable[0].reason, side);
+        }
     }
 
     #[test]

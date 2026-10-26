@@ -1113,7 +1113,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn spec(key: &str, law: Law, min: f64, max: f64, unit: UnitKind) -> ParamSpec {
+    pub(crate) fn spec(key: &str, law: Law, min: f64, max: f64, unit: UnitKind) -> ParamSpec {
         ParamSpec {
             key: key.to_owned(),
             kind: ParamKind::Float,

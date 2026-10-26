@@ -237,6 +237,32 @@ fn the_template_and_the_edit_list_are_never_overwritten() {
     fs::create_dir(&factory).unwrap();
     let message = run(&edits, &factory.join("x.vital"), None).unwrap_err();
     assert!(message.contains("Factory folder"), "{message}");
+    // A link into the factory folder lands there too.
+    #[cfg(unix)]
+    {
+        let link = dir.path().join("Mine");
+        std::os::unix::fs::symlink(&factory, &link).unwrap();
+        let message = run(&edits, &link.join("x.vital"), None).unwrap_err();
+        assert!(message.contains("Factory folder"), "{message}");
+    }
+    // A path that leaves the factory folder again is allowed.
+    let out = factory.join("..").join("Back.vital");
+    run(&edits, &out, None).unwrap();
+    assert!(dir.path().join("Back.vital").exists());
+}
+
+#[test]
+fn a_failed_write_is_an_output_error_and_leaves_no_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let out = dir.path().join("missing").join("Out.vital");
+    let message = run(&edits, &out, None).unwrap_err();
+    assert!(message.starts_with("cannot write "), "{message}");
+    assert!(
+        message.contains("Check that the folder exists"),
+        "{message}"
+    );
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
 }
 
 #[test]
