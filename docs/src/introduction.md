@@ -1,6 +1,6 @@
 # Introduction
 
-sound-to-serum gives a producer a starting point in Serum 2 for one sound.
+sound-to-patch gives a producer a starting point in Serum 2 for one sound.
 It has two paths:
 
 - **Audio path.** One stem of one instrument and its BPM go in. The notes as
@@ -10,8 +10,8 @@ It has two paths:
   agent turns the description into a preset and its explanation, and into
   notes when the description asks for them.
 
-The project is at its first release. The `sound-to-serum` command prints
+The project is at its first release. The `sound-to-patch` command prints
 its help and version; the commands of both paths arrive in later releases.
 
-The [API documentation](api/sound_to_serum/index.html) covers the library.
+The [API documentation](api/sound_to_patch/index.html) covers the library.
 The development chapters describe how the project is tested and released.

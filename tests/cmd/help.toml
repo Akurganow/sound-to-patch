@@ -1,10 +1,10 @@
 # A deliberate snapshot: update it in the pull request that adds a command.
-bin.name = "sound-to-serum"
+bin.name = "sound-to-patch"
 args = ["--help"]
 stdout = """
 Turn an audio stem or a written sound description into a Serum 2 starting point.
 
-Usage: sound-to-serum
+Usage: sound-to-patch
 
 Options:
   -h, --help     Print help

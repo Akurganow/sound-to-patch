@@ -1,4 +1,4 @@
-//! Development tasks for sound-to-serum. Run them with `cargo xtask`.
+//! Development tasks for sound-to-patch. Run them with `cargo xtask`.
 //!
 //! Nothing here ships. The tasks generate release artifacts, run repository
 //! checks and fetch pinned datasets.
@@ -17,7 +17,7 @@ use clap::{Parser, Subcommand};
 
 use crate::fetch::Sha256Digest;
 
-/// Development tasks for sound-to-serum.
+/// Development tasks for sound-to-patch.
 #[derive(Debug, Parser)]
 #[command(
     name = "xtask",

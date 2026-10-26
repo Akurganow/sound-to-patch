@@ -746,7 +746,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sound-to-serum"
+name = "sound-to-patch"
 version = "0.2.0"
 dependencies = [
  "approx",
@@ -927,7 +927,7 @@ dependencies = [
  "clap_complete",
  "clap_mangen",
  "sha2",
- "sound-to-serum",
+ "sound-to-patch",
  "tempfile",
 ]
 

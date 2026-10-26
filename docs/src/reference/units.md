@@ -18,15 +18,15 @@ type states its exact range.
 
 | Type | Holds |
 | :-- | :-- |
-| [`Hz`](../api/sound_to_serum/units/struct.Hz.html) | a frequency, zero or more |
-| [`Seconds`](../api/sound_to_serum/units/struct.Seconds.html) | a duration, zero or more |
-| [`Semitones`](../api/sound_to_serum/units/struct.Semitones.html) | an interval, either sign |
-| [`Cents`](../api/sound_to_serum/units/struct.Cents.html) | an interval in hundredths of a semitone, either sign |
-| [`Octaves`](../api/sound_to_serum/units/struct.Octaves.html) | an interval, either sign |
-| [`Decibels`](../api/sound_to_serum/units/struct.Decibels.html) | a level, either sign |
-| [`Percent`](../api/sound_to_serum/units/struct.Percent.html) | a percentage of a unipolar or a bipolar control |
-| [`Normalized`](../api/sound_to_serum/units/struct.Normalized.html) | a knob position |
-| [`MidiPitch`](../api/sound_to_serum/units/struct.MidiPitch.html) | a fractional MIDI note |
+| [`Hz`](../api/sound_to_patch/units/struct.Hz.html) | a frequency, zero or more |
+| [`Seconds`](../api/sound_to_patch/units/struct.Seconds.html) | a duration, zero or more |
+| [`Semitones`](../api/sound_to_patch/units/struct.Semitones.html) | an interval, either sign |
+| [`Cents`](../api/sound_to_patch/units/struct.Cents.html) | an interval in hundredths of a semitone, either sign |
+| [`Octaves`](../api/sound_to_patch/units/struct.Octaves.html) | an interval, either sign |
+| [`Decibels`](../api/sound_to_patch/units/struct.Decibels.html) | a level, either sign |
+| [`Percent`](../api/sound_to_patch/units/struct.Percent.html) | a percentage of a unipolar or a bipolar control |
+| [`Normalized`](../api/sound_to_patch/units/struct.Normalized.html) | a knob position |
+| [`MidiPitch`](../api/sound_to_patch/units/struct.MidiPitch.html) | a fractional MIDI note |
 
 `Percent` has two ranges, fixed by its type parameter.
 `Percent<Unipolar>` is for controls that go one way from zero.
@@ -66,14 +66,14 @@ beyond a conservative cap, such as 1000 octaves, that keeps the ratio
 finite and nonzero.
 
 The conversion methods are
-[`Cents::to_ratio`](../api/sound_to_serum/units/struct.Cents.html#method.to_ratio),
-[`Cents::from_ratio`](../api/sound_to_serum/units/struct.Cents.html#method.from_ratio),
-[`Semitones::to_ratio`](../api/sound_to_serum/units/struct.Semitones.html#method.to_ratio),
-[`Octaves::to_ratio`](../api/sound_to_serum/units/struct.Octaves.html#method.to_ratio),
-[`Decibels::to_amplitude_gain`](../api/sound_to_serum/units/struct.Decibels.html#method.to_amplitude_gain),
-[`Decibels::from_amplitude_gain`](../api/sound_to_serum/units/struct.Decibels.html#method.from_amplitude_gain),
-[`Decibels::to_power_ratio`](../api/sound_to_serum/units/struct.Decibels.html#method.to_power_ratio)
-and [`Decibels::from_power_ratio`](../api/sound_to_serum/units/struct.Decibels.html#method.from_power_ratio).
+[`Cents::to_ratio`](../api/sound_to_patch/units/struct.Cents.html#method.to_ratio),
+[`Cents::from_ratio`](../api/sound_to_patch/units/struct.Cents.html#method.from_ratio),
+[`Semitones::to_ratio`](../api/sound_to_patch/units/struct.Semitones.html#method.to_ratio),
+[`Octaves::to_ratio`](../api/sound_to_patch/units/struct.Octaves.html#method.to_ratio),
+[`Decibels::to_amplitude_gain`](../api/sound_to_patch/units/struct.Decibels.html#method.to_amplitude_gain),
+[`Decibels::from_amplitude_gain`](../api/sound_to_patch/units/struct.Decibels.html#method.from_amplitude_gain),
+[`Decibels::to_power_ratio`](../api/sound_to_patch/units/struct.Decibels.html#method.to_power_ratio)
+and [`Decibels::from_power_ratio`](../api/sound_to_patch/units/struct.Decibels.html#method.from_power_ratio).
 
 ```rust,ignore
 {{#include ../../../examples/units.rs:convert}}
@@ -122,7 +122,7 @@ same range checks:
   message.
 - The agent's edit list holds unit strings, such as `"value": "410 Hz"`.
   The edit-list contract
-  ([#94](https://github.com/Akurganow/sound-to-serum/issues/94)) documents
+  ([#94](https://github.com/Akurganow/sound-to-patch/issues/94)) documents
   where each string goes.
 
 A value outside its range fails with the type's message, and the JSON
@@ -132,13 +132,13 @@ because no unit type can hold them.
 ## Confidence
 
 Every estimate in the layer report carries a
-[`Confidence`](../api/sound_to_serum/confidence/struct.Confidence.html):
+[`Confidence`](../api/sound_to_patch/confidence/struct.Confidence.html):
 
-- a [level](../api/sound_to_serum/confidence/enum.Level.html): `low`, `medium` or `high`. The estimator stores it from its own
+- a [level](../api/sound_to_patch/confidence/enum.Level.html): `low`, `medium` or `high`. The estimator stores it from its own
   signals; the type does not derive it;
 - one or more reasons. Each pairs a stable
-  [code](../api/sound_to_serum/confidence/enum.ReasonCode.html), such as `active_frames`, with the
-  [value](../api/sound_to_serum/confidence/enum.Signal.html) of the signal behind it: a count, a number
+  [code](../api/sound_to_patch/confidence/enum.ReasonCode.html), such as `active_frames`, with the
+  [value](../api/sound_to_patch/confidence/enum.Signal.html) of the signal behind it: a count, a number
   or a bool;
 - an optional spread, never negative, in the unit the type parameter
   names. A cutoff is a frequency, but its spread is in octaves, so its
@@ -171,14 +171,14 @@ from `Normalized` to `Hz` or `Cents` exists, because the law from knob to
 unit is not measured yet. A cutoff in Hz therefore has no unit type for its
 knob: the preset writer will map it through the interim law of the
 parameter registry
-([#107](https://github.com/Akurganow/sound-to-serum/issues/107)) and mark
+([#107](https://github.com/Akurganow/sound-to-patch/issues/107)) and mark
 the value uncalibrated.
 
 Each claim below has a build column and a status: `verified` in a
 Serum 2.1.5 session, `reported` by an outside source, or `open`. The
 outside source records no build, so every row says `not recorded` and is
 `reported`. The probe presets of
-[#42](https://github.com/Akurganow/sound-to-serum/issues/42) will check
+[#42](https://github.com/Akurganow/sound-to-patch/issues/42) will check
 each claim on build 2.1.5 and fill in the build.
 
 | Control | Stored as | Unit type | Build | Status |

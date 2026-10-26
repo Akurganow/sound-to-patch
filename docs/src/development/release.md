@@ -36,10 +36,10 @@ commit whose subject starts with `chore(version)`, so the loop stops there.
 
 ## The release archive
 
-`sound-to-serum-vX.Y.Z-aarch64-apple-darwin.tar.gz` holds:
+`sound-to-patch-vX.Y.Z-aarch64-apple-darwin.tar.gz` holds:
 
-- `sound-to-serum`, the binary;
-- `man/sound-to-serum.1`;
+- `sound-to-patch`, the binary;
+- `man/sound-to-patch.1`;
 - `completions/` for bash, zsh and fish;
 - `THIRD-PARTY-LICENSES.html`;
 - `LICENSE`.

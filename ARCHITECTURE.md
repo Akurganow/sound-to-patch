@@ -2,7 +2,7 @@
 
 ## Purpose
 
-sound-to-serum gives a producer a Serum 2 starting point for one sound. On
+sound-to-patch gives a producer a Serum 2 starting point for one sound. On
 the audio path a stem and its BPM become notes, a preset and an
 explanation. On the text path a written description becomes a preset and
 an explanation. This file is the map for finding the code that does a

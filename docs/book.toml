@@ -1,5 +1,5 @@
 [book]
-title = "sound-to-serum"
+title = "sound-to-patch"
 authors = ["Alexander Kurganov"]
 language = "en"
 src = "src"
@@ -13,5 +13,5 @@ build-dir = "book"
 after = ["links"]
 
 [output.html]
-site-url = "/sound-to-serum/"
-git-repository-url = "https://github.com/Akurganow/sound-to-serum"
+site-url = "/sound-to-patch/"
+git-repository-url = "https://github.com/Akurganow/sound-to-patch"

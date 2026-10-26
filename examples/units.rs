@@ -2,8 +2,8 @@
 //! JSON, as the units page of the book shows. Run it with
 //! `cargo run --example units`.
 
-use sound_to_serum::confidence::{Confidence, Level, Reason, ReasonCode, Signal};
-use sound_to_serum::units::{Bipolar, Cents, Decibels, Hz, MidiPitch, Octaves, Percent, Seconds};
+use sound_to_patch::confidence::{Confidence, Level, Reason, ReasonCode, Signal};
+use sound_to_patch::units::{Bipolar, Cents, Decibels, Hz, MidiPitch, Octaves, Percent, Seconds};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR: parse

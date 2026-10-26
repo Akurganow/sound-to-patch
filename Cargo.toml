@@ -1,12 +1,12 @@
 [package]
-name = "sound-to-serum"
+name = "sound-to-patch"
 description = "Turn an audio stem or a written sound description into a Serum 2 starting point."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-documentation = "https://akurganow.github.io/sound-to-serum/api/sound_to_serum/"
+documentation = "https://akurganow.github.io/sound-to-patch/api/sound_to_patch/"
 publish.workspace = true
 
 [lints]
@@ -34,7 +34,7 @@ edition = "2024"
 # included.
 rust-version = "1.91"
 license = "MIT"
-repository = "https://github.com/Akurganow/sound-to-serum"
+repository = "https://github.com/Akurganow/sound-to-patch"
 publish = false
 
 [workspace.lints.rust]

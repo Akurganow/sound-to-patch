@@ -70,19 +70,19 @@ jobs:
       - name: Check the version
         if: steps.existing.outputs.exists != 'true'
         run: |
-          printed="$(target/aarch64-apple-darwin/release/sound-to-serum --version)"
+          printed="$(target/aarch64-apple-darwin/release/sound-to-patch --version)"
           echo "$printed"
-          [ "$printed" = "sound-to-serum ${TAG#v}" ]
+          [ "$printed" = "sound-to-patch ${TAG#v}" ]
 
       - name: Pack the archive
         if: steps.existing.outputs.exists != 'true'
         run: |
-          name="sound-to-serum-$TAG-aarch64-apple-darwin"
+          name="sound-to-patch-$TAG-aarch64-apple-darwin"
           stage="target/stage/$name"
           mkdir -p "$stage"
           cargo xtask dist --out-dir "$stage"
           cargo about generate --locked --fail -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
-          cp target/aarch64-apple-darwin/release/sound-to-serum LICENSE "$stage/"
+          cp target/aarch64-apple-darwin/release/sound-to-patch LICENSE "$stage/"
           mkdir -p target/assets
           tar -czf "target/assets/$name.tar.gz" -C target/stage "$name"
           cp "$stage/THIRD-PARTY-LICENSES.html" target/assets/
