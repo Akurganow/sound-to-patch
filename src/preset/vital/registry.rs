@@ -5,7 +5,8 @@
 //! law, and the instance ids of each group. `cargo xtask vital-registry`
 //! regenerates it from a checkout of the open source. This module expands
 //! the groups to 794 keys and adds what is our judgment, not a fact: the
-//! provenance of each law and the tuning notes.
+//! provenance of each law and the tuning notes. The file names the source
+//! repository, its commit and its licence.
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::OnceLock;
@@ -39,10 +40,19 @@ pub enum EngineScale {
     Exponential,
 }
 
+/// Where the extracted facts come from.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Source {
+    repository: String,
+    commit: String,
+    licence: String,
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Data {
-    source: String,
+    source: Source,
     groups: Vec<Group>,
     defaults: BTreeMap<String, f64>,
 }
@@ -185,7 +195,7 @@ fn spec(
     later: Option<&str>,
     default: f64,
     legacy: bool,
-    source: &str,
+    source: &Source,
 ) -> Result<ParamSpec, String> {
     let law = match (control.unit, control.law.clone()) {
         (Some(unit), Some(law)) => Some(UnitLaw { unit, law }),
@@ -197,8 +207,10 @@ fn spec(
         None => control.since.clone(),
     };
     let note = tuning_note(&group.prefix, &control.name, control.kind, law.is_some());
-    let mut evidence =
-        format!("Vital open source 1.0.6 ({source}): src/common/synth_parameters.cpp");
+    let mut evidence = format!(
+        "Vital open source 1.0.6 ({} at {}, {}): src/common/synth_parameters.cpp",
+        source.repository, source.commit, source.licence
+    );
     if let Some(extra) = law.as_ref().and_then(law_evidence) {
         evidence.push_str("; ");
         evidence.push_str(extra);
@@ -676,7 +688,7 @@ mod tests {
     #[test]
     fn broken_data_is_an_error() {
         assert!(build("{}").is_err());
-        assert!(build(r#"{"source":"s","groups":[],"defaults":{"nope":1.0}}"#).is_err());
+        assert!(build(r#"{"source":{"repository":"r","commit":"c","licence":"l"},"groups":[],"defaults":{"nope":1.0}}"#).is_err());
     }
 
     #[test]

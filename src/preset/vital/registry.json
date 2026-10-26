@@ -1,5 +1,9 @@
 {
-  "source": "Vital open source, commit 636ca0ef517a4db087a6a08a6a8a5e704e21f836",
+  "source": {
+    "repository": "https://github.com/mtytel/vital",
+    "commit": "636ca0ef517a4db087a6a08a6a8a5e704e21f836",
+    "licence": "GPL-3.0-or-later"
+  },
   "groups": [
     {
       "prefix": "",

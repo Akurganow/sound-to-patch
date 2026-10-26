@@ -1490,7 +1490,11 @@ fn build(parsed: &Parsed, commit: &str, expect: &Expect) -> crate::Result<Value>
     }
     check_totals(&tally, expect)?;
     Ok(json!({
-        "source": format!("Vital open source, commit {commit}"),
+        "source": {
+            "repository": "https://github.com/mtytel/vital",
+            "commit": commit,
+            "licence": "GPL-3.0-or-later",
+        },
         "groups": groups,
         "defaults": defaults,
     }))
@@ -2016,7 +2020,14 @@ mod tests {
     #[test]
     fn the_document_has_sorted_controls_defaults_and_instance_markers() {
         let doc = build(&mini(0.5), "abc", &MINI).unwrap();
-        assert_eq!(doc["source"], "Vital open source, commit abc");
+        assert_eq!(
+            doc["source"],
+            json!({
+                "repository": "https://github.com/mtytel/vital",
+                "commit": "abc",
+                "licence": "GPL-3.0-or-later",
+            })
+        );
         assert_eq!(doc["defaults"], json!({"filter_1_filter_input": 1.0}));
         let filter = &doc["groups"][1];
         assert_eq!(filter["later"], json!({"ids": ["fx"], "since": "0.6.0"}));

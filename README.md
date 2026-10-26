@@ -275,7 +275,7 @@ and ideas, from which we copy no code, text or data.
 - [torchsynth](https://github.com/torchsynth/torchsynth) (Apache-2.0): seeded random-parameter synthesizer idea for optimizer tests.
 - [u-he Preset Randomizer](https://github.com/Fannon/u-he-preset-randomizer) (MIT): per-synth statistical guides and clamp-and-blend variation.
 - [Vita](https://github.com/DBraun/Vita) (GPL-3.0): Python bindings over the open Vital engine, run as a separate process for test renders. Inspiration only.
-- [Vital](https://github.com/mtytel/vital) (GPL-3.0): preset file structure, parameter laws, unison, filter and modulation mechanisms, described in our own words. Inspiration only.
+- [Vital](https://github.com/mtytel/vital) (GPL-3.0-or-later): preset file structure, parameter laws, unison, filter and modulation mechanisms, described in our own words. Our own tool extracts its parameter facts (names, ranges, defaults, engine scales, UI and menu labels) into `src/preset/vital/registry.json` for compatibility; no code or comments are copied. Inspiration only.
 - [vital-mcp](https://github.com/mard4/vital-mcp) (GPL-3.0): render-measure-fix loop and its descriptor set. Inspiration only.
 - [vital_discord_preset_archive](https://github.com/ArcerionDev/vital_discord_preset_archive) (no license found): preset role and macro-label counts; no files copied. Inspiration only.
 - [WildFX](https://github.com/IsaacYQH/WildFX) (no license): DAW-hosted plugin pipeline for effect-estimation data. Inspiration only.

@@ -135,10 +135,13 @@ license.
 
 ### Vital
 
-- Vital source rule: the Vital source is GPL-3.0. We use facts only:
-  names, ranges, defaults, laws and structure, in our own words. We copy
-  no code and no comments, and paste no whole parameter table into an
-  issue or a doc. A cited law or range with its source file is fine.
+- Vital source rule: the Vital source is GPL-3.0-or-later. We use facts
+  only: names, ranges, defaults, laws and structure. For compatibility,
+  `cargo xtask vital-registry` extracts the parameter facts into
+  `src/preset/vital/registry.json`: names, ranges, defaults, engine
+  scales, UI labels and menu labels. We never copy code or comments, and
+  paste no whole parameter table into an issue or a doc. A cited law or
+  range with its source file is fine.
 - Linking rule: our code never links, embeds or includes Vital source.
   `vita`, the GPL-3.0 Python binding of the open engine, runs only as a
   separate process, ships nowhere, and no crate of ours depends on it.
