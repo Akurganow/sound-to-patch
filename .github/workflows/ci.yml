@@ -50,6 +50,9 @@ jobs:
         with:
           tool: cargo-nextest@0.9.149
       - run: cargo nextest run --workspace --profile ci
+        # A changed snapshot fails the run instead of being written.
+        env:
+          INSTA_UPDATE: "no"
       # nextest does not run doc tests.
       - run: cargo test --workspace --doc
       # Reads the committed golden vectors against the pins; needs no Python.
@@ -68,6 +71,9 @@ jobs:
         with:
           tool: cargo-nextest@0.9.149
       - run: cargo nextest run --workspace --profile ci
+        # A changed snapshot fails the run instead of being written.
+        env:
+          INSTA_UPDATE: "no"
       - run: cargo test --workspace --doc
 
   doc:

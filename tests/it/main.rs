@@ -12,7 +12,9 @@ mod decode;
 mod golden;
 #[cfg(test)]
 mod masks;
+mod preset;
 #[cfg(test)]
 mod stft;
 #[cfg(test)]
 mod support;
+mod synth;

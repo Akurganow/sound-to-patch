@@ -1,6 +1,6 @@
 [package]
 name = "sound-to-patch"
-description = "Turn an audio stem or a written sound description into a Serum 2 starting point."
+description = "Turn an audio stem or a written sound description into a starting point in Vital or Serum 2."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,19 +13,21 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+base64 = { version = "0.23.1", default-features = false, features = ["std"] }
 biquad = "0.6.0"
 clap = { version = "4.6.7", features = ["derive"] }
 realfft = "3.5.0"
 rubato = "=5.0.1"
 rustfft = "6.4.1"
 serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.154", features = ["float_roundtrip", "preserve_order"] }
 symphonia = { version = "0.6.1", features = ["mp3", "aac", "isomp4", "aiff"] }
 
 [dev-dependencies]
 approx = "0.5.1"
 hound = "3.5.1"
+insta = "1.49.0"
 proptest = "1.12.0"
-serde_json = { version = "1.0.154", features = ["float_roundtrip"] }
 tempfile = "3.27.0"
 trycmd = "1.2.1"
 

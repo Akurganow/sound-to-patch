@@ -1,5 +1,5 @@
-//! Turn an audio stem or a written sound description into a Serum 2 starting
-//! point.
+//! Turn an audio stem or a written sound description into a starting point
+//! in a target synth, Vital or Serum 2.
 //!
 //! The library holds all logic. The `sound-to-patch` binary parses the
 //! command line with [`cli::Cli`], calls the library and prints the result.
@@ -17,6 +17,11 @@
 //!   the analytic signal and decay fits.
 //! - [`notes`]: the note list that every layer reads, and the harmonic
 //!   masks built from it.
+//! - [`preset`]: preset files behind one adapter per synth: the format
+//!   traits, the parameter registry with its laws, the template and the
+//!   Vital adapter.
+//! - [`synth`]: the target synth, the shared `--synth` argument and what
+//!   each synth offers in structure.
 //! - [`units`]: unit newtypes, checked once when built, with their
 //!   conversions, serde and the unit-string parser.
 
@@ -26,4 +31,6 @@ pub mod cli;
 pub mod confidence;
 pub mod dsp;
 pub mod notes;
+pub mod preset;
+pub mod synth;
 pub mod units;

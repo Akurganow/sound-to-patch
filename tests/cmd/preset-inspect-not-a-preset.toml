@@ -1,0 +1,8 @@
+# Any file that is not a .vital preset fails with the cause and a fix.
+bin.name = "sound-to-patch"
+args = ["preset", "inspect", "--synth", "vital", "Cargo.toml"]
+status.code = 1
+stdout = ""
+stderr = """
+error: Cargo.toml: cannot read the .vital preset: the text is not valid JSON: expected value at line 1 column 2. Save the preset again from Vital, or fix the JSON at that position
+"""

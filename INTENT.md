@@ -383,12 +383,13 @@ checks whether the agent read it.
 - GPL, LGPL, AGPL and MPL-2.0 projects serve only as sources of facts, or
   run as a separate process. An MPL-2.0 crate may be a dependency if we do
   not modify its files.
-- Vital is GPL-3.0. We use its facts only: names, ranges, laws and
-  structure, written in our own words in `research/vital/`. We copy no
-  code or comment. The registry restates names, ranges, defaults and laws
-  as facts in our own layout and never ships a mechanical dump of the
-  source table. The implementation follows the fact files, not the Vital
-  source. A cited law or range with its source file is fine.
+- Vital is GPL-3.0-or-later. We use its facts only: names, ranges, laws
+  and structure, written in our own words in `research/vital/`. We copy no
+  code or comment. For compatibility, our own tool extracts the parameter
+  facts into the registry data: names, ranges, defaults, engine scales,
+  UI labels and menu labels. The data file records the source repository,
+  its commit and its licence. The implementation follows the fact files,
+  not the Vital source. A cited law or range with its source file is fine.
 - Vita, the Python binding of the Vital engine, is GPL-3.0 too. It runs
   only as a separate process for test renders. No Rust code links it.
 - The retail Vital app falls under the vendor EULA. As summarised from the
