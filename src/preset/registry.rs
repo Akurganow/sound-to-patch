@@ -1102,11 +1102,12 @@ pub(crate) mod tests {
         }
 
         #[test]
-        fn every_law_is_monotone(a in 0.0..=1.0f64, b in 0.0..=1.0f64) {
-            prop_assume!(a < b);
+        fn every_law_is_monotone(a in 0.0..=1.0f64, step in 0.0..=1.0f64) {
+            // b >= a by construction: rejecting half of the pairs exhausts
+            // proptest's global reject limit.
+            let b = a + (1.0 - a) * step;
             for (name, law, min, max, _) in law_cases() {
                 let (sa, sb) = (min + a * (max - min), min + b * (max - min));
-                prop_assume!(sa < sb);
                 let (pa, pb) = (law.to_physical(sa).unwrap(), law.to_physical(sb).unwrap());
                 let rising = law.to_physical(max).unwrap() > law.to_physical(min).unwrap();
                 prop_assert!(if rising { pa <= pb } else { pa >= pb }, "{name}: {sa} -> {pa}, {sb} -> {pb}");
