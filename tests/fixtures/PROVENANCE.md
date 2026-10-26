@@ -3,5 +3,9 @@
 Every committed fixture has one row here. The license text of each fixture
 follows the table, under a heading with the fixture's file name.
 
+Golden vectors under `golden/` are generated, not taken from another
+project. Each carries its own provenance: recipe, generator, tool versions
+and tolerance. `cargo xtask golden-check` enforces it.
+
 | File | Origin URL | Version or commit | License | Copyright | SHA-256 | Date | Purpose |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

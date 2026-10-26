@@ -45,13 +45,29 @@ pub enum Level {
     High,
 }
 
-/// Why an estimator chose its level, or why it made no estimate.
-///
-/// Each code is a stable `snake_case` identifier in the report. Each
-/// estimator adds the codes of its own signals here.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReasonCode {
+/// Defines [`ReasonCode`] and the list of all its variants together, so a
+/// new code cannot miss the list that the tests draw from.
+macro_rules! reason_codes {
+    ($($(#[$doc:meta])* $variant:ident,)+) => {
+        /// Why an estimator chose its level, or why it made no estimate.
+        ///
+        /// Each code is a stable `snake_case` identifier in the report. Each
+        /// estimator adds the codes of its own signals here.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+        #[serde(rename_all = "snake_case")]
+        pub enum ReasonCode {
+            $($(#[$doc])* $variant,)+
+        }
+
+        impl ReasonCode {
+            /// Every code, in declaration order.
+            #[cfg(test)]
+            pub(crate) const ALL: &[Self] = &[$(Self::$variant,)+];
+        }
+    };
+}
+
+reason_codes! {
     /// The number of analysis frames with signal above the noise floor.
     ActiveFrames,
     /// Too few notes to fit the value.
@@ -690,17 +706,26 @@ mod tests {
     }
 
     #[test]
+    fn every_reason_code_has_a_distinct_snake_case_name() {
+        let names: Vec<String> = ReasonCode::ALL
+            .iter()
+            .map(|code| serde_json::to_string(code).unwrap())
+            .collect();
+        let mut unique = names.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), names.len());
+        assert!(names.contains(&"\"octave_uncertain\"".to_owned()));
+    }
+
+    #[test]
     fn levels_order_low_to_high() {
         assert!(Level::Low < Level::Medium && Level::Medium < Level::High);
         assert_eq!(Level::High.min(Level::Low), Level::Low);
     }
 
     fn reason() -> impl Strategy<Value = Reason> {
-        let code = prop_oneof![
-            Just(ReasonCode::ActiveFrames),
-            Just(ReasonCode::TooFewNotes),
-            Just(ReasonCode::OctaveUncertain),
-        ];
+        let code = prop::sample::select(ReasonCode::ALL);
         let signal = prop_oneof![
             any::<u64>().prop_map(Signal::Count),
             crate::units::tests::finite().prop_map(Signal::Number),

@@ -18,8 +18,9 @@ code validates the edit list against a template preset of the target synth and
 writes the preset file. The text path skips the analysis: the agent writes the
 edit list from the description.
 
-The library so far holds the command-line skeleton, the unit types and
-the confidence type.
+The library so far holds the command-line skeleton, the unit types, the
+confidence type, stem intake, the note list with its masks and the signal
+core that the estimators share.
 
 ## Synth adapter seam
 
@@ -47,8 +48,18 @@ One contract test suite runs once per adapter. Vital is built first.
 
 ## Code map
 
+- `audio`: stem intake. It decodes a file at its native rate with every
+  channel kept, mixes to mono as the channel mean and resamples for a
+  consumer with a fixed rate.
+- `cast`: the audited numeric casts between indices and `f64`. Every lossy
+  cast of the crate goes through one function here.
 - `cli`: the command-line definition. The binary parses it, and `xtask`
   renders the man page and the shell completions from the same tree.
+- `dsp`: the signal core: periodic windows, the centred STFT, the peak
+  picker, active frames with median and interquartile range, the analytic
+  signal with the heterodyne, and decay fits by backward integration.
+- `notes`: the note list that the transcriber and the MIDI reader produce
+  and every layer reads, and the harmonic masks built from it.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.
@@ -57,9 +68,10 @@ One contract test suite runs once per adapter. Vital is built first.
 - `src/lib.rs`: the crate root and the crate docs.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
 - `xtask`: development tasks. It generates the man page and completions,
-  fetches pinned datasets, checks the credits, this code map, the Rust
-  version named in the docs and pull request descriptions, and writes the
-  release version.
+  fetches pinned datasets, runs the pinned golden-number generator and
+  checks its vectors, checks the credits, this code map, the Rust version
+  named in the docs and pull request descriptions, and writes the release
+  version.
 
 ## Invariants
 

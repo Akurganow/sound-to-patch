@@ -1,0 +1,50 @@
+{
+ "description": "Accuracy of the parabolic log-magnitude peak picker on one noisy sine.",
+ "generator": "xtask/golden/generate.py:peak_accuracy",
+ "issue": 48,
+ "issue_figures": {
+  "blackman_harris_no_padding_bias_bins": 0.003,
+  "bound_mhz": 0.73,
+  "hann_4x_padding_bias_hz": 0.001,
+  "hann_no_padding_bias_bins": 0.016,
+  "hann_std_mhz": 1.55,
+  "rectangular_std_mhz": 21.7
+ },
+ "name": "48-peak-accuracy",
+ "recipe": {
+  "amplitude": 1.0,
+  "draw_order": "uniform(seed, 2 * trials) gives offset then phase per trial; the noise of trial i is gaussian(seed + 1 + i, frame_len)",
+  "frame_len": 8192,
+  "frequency_hz": "100 Hz plus a uniform offset of up to half a bin of 8192, one draw per trial",
+  "oversample": 16,
+  "phase": "uniform in [0, 2 pi), one draw per trial",
+  "sample_rate": 44100,
+  "seed": 4800,
+  "snr_db": 30.0,
+  "snr_definition": "A^2 / (2 sigma^2)",
+  "trials": 300
+ },
+ "rounding": "the issue prints mHz to two decimals and bins to three",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.0,
+  "rel": 0.02
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "bound_std_hz": 0.0007332455468300255,
+  "max_noiseless_bias": {
+   "blackman_harris_no_padding_bins": 0.003193911207286016,
+   "hann_4x_padding_hz": 0.001080158363649275,
+   "hann_no_padding_bins": 0.01600940631679312
+  },
+  "std_hz": {
+   "hann": 0.001553507481872975,
+   "rectangular": 0.021703739306230763
+  }
+ }
+}

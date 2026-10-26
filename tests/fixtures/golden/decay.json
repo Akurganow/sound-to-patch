@@ -1,0 +1,44 @@
+{
+ "description": "Closed forms: an amplitude decay exp(-ln(1000) t / RT60) falls 60 dB per RT60, and a release exp(-t / tau) has RT60 = ln(1000) tau, about 6.9 tau.",
+ "generator": "xtask/golden/generate.py:decay_closed_forms",
+ "issue": 53,
+ "name": "decay",
+ "recipe": {
+  "kind": "closed_form"
+ },
+ "tolerance": {
+  "abs": 0.0,
+  "rel": 1e-12
+ },
+ "tools": {},
+ "values": {
+  "release_rt60_s": [
+   {
+    "rt60": 0.34538776394910686,
+    "tau_s": 0.05
+   },
+   {
+    "rt60": 2.072326583694641,
+    "tau_s": 0.3
+   },
+   {
+    "rt60": 6.907755278982137,
+    "tau_s": 1.0
+   }
+  ],
+  "slope_db_per_s": [
+   {
+    "rt60_s": 0.4,
+    "slope": -150.0
+   },
+   {
+    "rt60_s": 1.2,
+    "slope": -50.0
+   },
+   {
+    "rt60_s": 2.5,
+    "slope": -24.0
+   }
+  ]
+ }
+}

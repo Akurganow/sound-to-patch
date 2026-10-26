@@ -1,0 +1,48 @@
+{
+ "description": "Beat peaks of two detuned sawtooths in band envelopes of harmonics 1, 2 and 5.",
+ "generator": "xtask/golden/generate.py:two_saw_peaks",
+ "issue": 51,
+ "name": "51-two-saw-peaks",
+ "recipe": {
+  "band": "fourth-order Butterworth band-pass of +/- 15 Hz around h f0, run forward and backward",
+  "detune_cents": 10.0,
+  "duration_s": 8.0,
+  "envelope": "magnitude of the analytic signal of the band",
+  "f0_hz": 55.0,
+  "harmonics": [
+   1,
+   2,
+   5
+  ],
+  "sample_rate": 48000,
+  "source": "sum of two naive sawtooths 2 (f t mod 1) - 1 at f0 and f0 2^(10/1200), phase 0",
+  "spectrum": "linear detrend, periodic Hann, 8x zero padding, magnitude FFT; peak bin between 0.2 and 20 Hz, no interpolation",
+  "track": "block means of 240 samples, a 200 Hz track"
+ },
+ "rounding": "the issue prints Hz to two decimals",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.125,
+  "rel": 0.0
+ },
+ "tolerance_note": "the rate rule of the issue: within 1 / T, 0.125 Hz for 8 s",
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "1": {
+   "peak_hz": 0.3125,
+   "predicted_hz": 0.31861175873194014
+  },
+  "2": {
+   "peak_hz": 0.640625,
+   "predicted_hz": 0.6372235174638803
+  },
+  "5": {
+   "peak_hz": 1.59375,
+   "predicted_hz": 1.5930587936597007
+  }
+ }
+}

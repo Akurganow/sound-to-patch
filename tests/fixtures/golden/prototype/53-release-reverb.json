@@ -1,0 +1,131 @@
+{
+ "description": "The -5 to -25 dB slope after note-off follows the slower of release and reverb.",
+ "generator": "xtask/golden/generate.py:decay_release_reverb",
+ "issue": 53,
+ "name": "53-release-reverb",
+ "recipe": {
+  "length": "0.5 s gate plus 3 times the slower of R and ln(1000) tau, at least 6 tau",
+  "method": "plain Schroeder integral of the tail from note-off, -5 to -25 dB line, RT = -60 / slope; median, 10th and 90th percentile over trials",
+  "note": "gaussian(seed, n) gated for 0.5 s, then amplitude exp(-(t - 0.5) / tau)",
+  "release_tau_s": [
+   0.05,
+   0.3,
+   1.0
+  ],
+  "reverb": "fully wet: the note convolved with gaussian(seed + 70000, n) * exp(-ln(1000) t / R), 1.5 R long, scaled to unit energy; R = 0 means no reverb",
+  "reverb_rt60_s": [
+   0.0,
+   0.5,
+   1.0,
+   2.0
+  ],
+  "sample_rate": 16000,
+  "seeds": "trial i of cell (a, b) uses seed 5310 + 1000 a + 100 b + i",
+  "trials": 15
+ },
+ "rounding": "the issue prints seconds to two decimals",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.0,
+  "rel": 0.05
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "rows": [
+   {
+    "cells": [
+     {
+      "median_s": 0.3459881265756188,
+      "p10_s": 0.3376074119019919,
+      "p90_s": 0.3569107305345442,
+      "reverb_rt60_s": 0.0
+     },
+     {
+      "median_s": 0.5243961287741206,
+      "p10_s": 0.5160708595012463,
+      "p90_s": 0.5355179360938521,
+      "reverb_rt60_s": 0.5
+     },
+     {
+      "median_s": 0.9983842060509139,
+      "p10_s": 0.9915307098814401,
+      "p90_s": 1.0127363333259378,
+      "reverb_rt60_s": 1.0
+     },
+     {
+      "median_s": 2.004266350531365,
+      "p10_s": 1.9899711861136862,
+      "p90_s": 2.025901415388731,
+      "reverb_rt60_s": 2.0
+     }
+    ],
+    "equivalent_rt60_s": 0.34538776394910686,
+    "release_tau_s": 0.05
+   },
+   {
+    "cells": [
+     {
+      "median_s": 2.059383537905972,
+      "p10_s": 2.0488775292589403,
+      "p90_s": 2.0837617365540666,
+      "reverb_rt60_s": 0.0
+     },
+     {
+      "median_s": 2.0734384004115842,
+      "p10_s": 2.0405673379064,
+      "p90_s": 2.0974570875625482,
+      "reverb_rt60_s": 0.5
+     },
+     {
+      "median_s": 2.100044545810311,
+      "p10_s": 2.0726757875857484,
+      "p90_s": 2.109961956841021,
+      "reverb_rt60_s": 1.0
+     },
+     {
+      "median_s": 2.4225646327240367,
+      "p10_s": 2.4124118635888068,
+      "p90_s": 2.439027896333441,
+      "reverb_rt60_s": 2.0
+     }
+    ],
+    "equivalent_rt60_s": 2.072326583694641,
+    "release_tau_s": 0.3
+   },
+   {
+    "cells": [
+     {
+      "median_s": 6.890203304385665,
+      "p10_s": 6.866306646783568,
+      "p90_s": 6.934514884276445,
+      "reverb_rt60_s": 0.0
+     },
+     {
+      "median_s": 6.923022222755153,
+      "p10_s": 6.884636862908755,
+      "p90_s": 6.9689042296478565,
+      "reverb_rt60_s": 0.5
+     },
+     {
+      "median_s": 6.8885727497339415,
+      "p10_s": 6.863257246413317,
+      "p90_s": 6.935782248230703,
+      "reverb_rt60_s": 1.0
+     },
+     {
+      "median_s": 6.91467991244872,
+      "p10_s": 6.8645851257291755,
+      "p90_s": 6.931933098320507,
+      "reverb_rt60_s": 2.0
+     }
+    ],
+    "equivalent_rt60_s": 6.907755278982137,
+    "release_tau_s": 1.0
+   }
+  ]
+ }
+}

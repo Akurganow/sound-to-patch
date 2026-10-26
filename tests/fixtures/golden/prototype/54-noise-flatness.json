@@ -1,0 +1,32 @@
+{
+ "description": "Spectral flatness of white noise under magnitude and power weights.",
+ "generator": "xtask/golden/generate.py:noise_flatness",
+ "issue": 54,
+ "name": "54-noise-flatness",
+ "recipe": {
+  "band": "bins from 100 Hz to 10 kHz inclusive",
+  "flatness": "geometric over arithmetic mean of the weights, magnitude |X| or power |X|^2; mean over frames",
+  "frame_len": 4096,
+  "frames": 200,
+  "sample_rate": 44100,
+  "scale": "magnitude divided by the window sum, then floored at 1e-5",
+  "seed": 5400,
+  "signal": "gaussian(seed + m, 4096) for frame m, windowed by a periodic Hann"
+ },
+ "rounding": "the issue prints three decimals",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.01,
+  "rel": 0.0
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "magnitude": 0.8459171013817958,
+  "power": 0.5626379120608865,
+  "power_closed_form": 0.5614594835668851
+ }
+}

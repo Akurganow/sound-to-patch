@@ -1,0 +1,95 @@
+{
+ "description": "Stereo screen of a 220 Hz sawtooth under delay, decorrelation, unison, chorus and reverb.",
+ "generator": "xtask/golden/generate.py:stereo_screen",
+ "issue": 47,
+ "name": "47-stereo-screen",
+ "recipe": {
+  "channel_scaling": "none; rows compare the raw channels",
+  "duration_s": 1.5,
+  "f0_hz": 220.0,
+  "ipd_deg": "8192-point centred Hann STFT, hop 2048; per frame, at the bin of the largest |L conj R| within 2 bins of h f0 for h = 1..20, abs(angle(L conj R)) in degrees, averaged with weights |L conj R|; then the mean over frames whose mid RMS is within 40 dB of the loudest",
+  "rho": "Pearson correlation of L and R at zero lag",
+  "rows": {
+   "chorus": "each channel is saw + saw delayed by 7 ms + 2 ms sin(2 pi 0.8 t + phi), phi = 0 on L and pi on R, per harmonic phase",
+   "delay_0_4_ms": "R is L delayed by 0.4 ms, exactly, per harmonic phase",
+   "haas_10_ms": "R is L delayed by 10 ms, exactly, per harmonic phase",
+   "mono": "L = R = saw",
+   "reverb": "each channel is (1 - wet) saw + wet (saw convolved with its own unit-energy noise reverb of RT60 1 s and 1.5 s length, seeds 4730 for L and 4731 for R)",
+   "unison": "voices detuned evenly across -25 to +25 cents, phase 2 pi uniform(4720 + v, 1) for voice v; voices alternate left and right with rank, pan p = width * rank / max rank, constant-power gains L = cos(pi/4 (1 + p)), R = sin(pi/4 (1 + p))",
+   "velvet_20_ms": "each channel is the saw convolved with its own velvet noise: one impulse per 1 ms cell over 20 ms at a uniform position, sign + or - with equal odds; L draws uniform(4710, 40), R uniform(4711, 40): position then sign per cell"
+  },
+  "sample_rate": 44100,
+  "sm_db": "20 log10(rms(S) / rms(M)), M = (L + R) / 2, S = (L - R) / 2; None when either RMS is 0",
+  "source": "band-limited sawtooth: harmonic h at amplitude 1/h below the Nyquist frequency, phase 0"
+ },
+ "rounding": "the issue prints rho to three decimals, dB to one and degrees to one",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 2.0,
+  "rel": 0.1
+ },
+ "tolerance_note": "10 % or 2 degrees, whichever is larger, as the issue states",
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "chorus": {
+   "ipd_deg": 52.987847793217,
+   "rho": 0.5075982480702341,
+   "sm_db": -4.858692023434687
+  },
+  "delay_0_4_ms": {
+   "ipd_deg": 52.72325503530248,
+   "rho": 0.5215251444477753,
+   "sm_db": -5.024200138268603
+  },
+  "haas_10_ms": {
+   "ipd_deg": 87.47036642632777,
+   "rho": 0.04027312832763306,
+   "sm_db": -0.3499972530270461
+  },
+  "mono": {
+   "ipd_deg": 6.54828212222029e-16,
+   "rho": 0.9999999999999999,
+   "sm_db": null
+  },
+  "reverb_0.3": {
+   "ipd_deg": 24.19570161838316,
+   "rho": 0.8152802922133153,
+   "sm_db": -9.874126213732255
+  },
+  "reverb_1.0": {
+   "ipd_deg": 88.91935094147524,
+   "rho": 0.04052695124824347,
+   "sm_db": -0.32365336974699777
+  },
+  "unison_3_0.5": {
+   "ipd_deg": 12.233023180759925,
+   "rho": 0.8019507877862818,
+   "sm_db": -9.589608424277268
+  },
+  "unison_3_1.0": {
+   "ipd_deg": 41.8957885848369,
+   "rho": 0.32741848842250737,
+   "sm_db": -2.9525758822519026
+  },
+  "unison_7_0.5": {
+   "ipd_deg": 17.872644563262586,
+   "rho": 0.8592578539680849,
+   "sm_db": -11.204025264408404
+  },
+  "unison_7_1.0": {
+   "ipd_deg": 43.06356954486087,
+   "rho": 0.5007482751077974,
+   "sm_db": -4.776499048715493
+  },
+  "velvet_20_ms": {
+   "ipd_deg": 76.87781006182645,
+   "rho": 0.1113841492190348,
+   "sm_db": -0.8872932378895828
+  }
+ }
+}
