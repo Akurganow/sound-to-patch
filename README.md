@@ -5,10 +5,12 @@ turn a written description of a sound into a preset. Vital and Serum 2 are
 the target synths, and Vital comes first. The project is MIT-licensed, see
 [LICENSE](LICENSE).
 
-The project is at its first release: the `sound-to-patch` command prints its
-help and its version. The commands of both paths arrive in later releases.
+The project is at an early release. `sound-to-patch preset inspect` prints
+the header and the decoded settings of a Vital preset. The commands of both
+paths arrive in later releases.
 
-The project has no affiliation with the makers of Vital or Serum 2.
+Vital and Serum 2 are trademarks of their owners. This project is not
+affiliated with or endorsed by them.
 
 ## Build
 

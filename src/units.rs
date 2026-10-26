@@ -32,6 +32,7 @@
 //! | [`Octaves`] | `oct` |
 //! | [`Decibels`] | `dB` |
 //! | [`Percent`] | `%` |
+//! | [`MidiPitch`] | `midi` |
 //!
 //! ```
 //! use sound_to_patch::units::{Bipolar, Hz, Percent, Seconds};
@@ -166,6 +167,14 @@ macro_rules! unit {
             #[must_use]
             pub fn get(self) -> f64 {
                 self.0
+            }
+
+            /// Builds a value in a `const` item without the check. Every
+            /// caller passes a literal that a test also builds through
+            /// [`Self::new`].
+            #[allow(dead_code, reason = "not every unit type has a constant yet")]
+            pub(crate) const fn from_const(value: f64) -> Self {
+                Self(value)
             }
         }
 
@@ -384,6 +393,15 @@ impl<P: Polarity> Percent<P> {
     #[must_use]
     pub fn get(self) -> f64 {
         self.value
+    }
+
+    /// Builds a value in a `const` item without the check. Every caller
+    /// passes a literal that a test also builds through [`Self::new`].
+    pub(crate) const fn from_const(value: f64) -> Self {
+        Self {
+            value,
+            polarity: PhantomData,
+        }
     }
 }
 

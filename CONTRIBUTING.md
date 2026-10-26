@@ -65,8 +65,15 @@ PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-b
 - Public APIs take unit newtypes, never a bare float.
 - Every public item has rustdoc. Changed behaviour has a test. The testing
   guide in `docs/src/development/testing.md` says which test goes where.
-- Expected test values never come from an AI. Take them from a file saved
-  by the target synth or from an independent reference.
+- Expected test values never come from an AI. Take them from a formula in
+  the facts, a file saved by the target synth, a render, or an independent
+  reference.
+- A test that needs a synth carries `#[ignore = "needs Vital"]` or
+  `#[ignore = "needs Serum 2"]`. No default test needs a synth or the
+  network.
+- Estimators report measured values in unit types and never round to what
+  one synth offers. A mapper picks the nearest option and reports the
+  residual.
 - An epic closes with its docs and the checklist in its issue.
 
 ## Commits and pull requests
@@ -115,11 +122,45 @@ license.
 - Crates we depend on are not credits. Their notices ship in
   `THIRD-PARTY-LICENSES.html`. A new dependency adds its license to
   `about.toml` when the license is new to the tree.
-- Docs name no third-party brands except Serum and Vital. A credit is not
-  a brand mention.
-- Vital is GPL-3.0, so we use its facts only, in our own words, and `vita`
-  runs only as a separate process.
+- Brand rule: docs and issues name Serum and Vital and no other synth or
+  product. A credit is not a brand mention. `Xfer Records` may appear only
+  as data: in paths, metadata values, error messages, rustdoc and the
+  format spec.
 - Committed test fixtures have a row in `tests/fixtures/PROVENANCE.md`.
+  Fixture rule: a Vital fixture is a file our code generated, or a file a
+  maintainer saved from the app after loading a file we generated.
+- Format-page rule: each synth has one format page,
+  `docs/src/reference/formats/<synth>-preset.md`. Each fact on it carries
+  a build, a status and a source.
+
+### Vital
+
+- Vital source rule: the Vital source is GPL-3.0. We use facts only:
+  names, ranges, defaults, laws and structure, in our own words. We copy
+  no code and no comments, and paste no whole parameter table into an
+  issue or a doc. A cited law or range with its source file is fine.
+- Linking rule: our code never links, embeds or includes Vital source.
+  `vita`, the GPL-3.0 Python binding of the open engine, runs only as a
+  separate process, ships nowhere, and no crate of ours depends on it.
+  Users install Vital themselves.
+- Vendor content rule: factory presets, samples and wavetables of the
+  retail app are not redistributable. No fixture, doc or release asset
+  contains them, and community banks without a licence stay out too.
+- App rule: the EULA bars reverse engineering of the app except where law
+  allows. We read the open source and the presets a maintainer saves, and
+  never disassemble the retail app.
+- Web-service rule: the EULA bars automated requests to the vendor's web
+  services. The tool makes no request to them and never uses the cloud
+  features, such as the account or text to wavetable.
+- The registry data in `src/preset/vital/registry.json` holds facts in our
+  own layout. A maintainer regenerates it from a local checkout of the
+  open source, which never enters the repository:
+
+  ```sh
+  cargo xtask vital-registry --source <checkout>
+  cargo xtask vital-registry --source <checkout> --check
+  VITAL_SOURCE=<checkout> cargo nextest run -p xtask --run-ignored only
+  ```
 
 ## Security
 

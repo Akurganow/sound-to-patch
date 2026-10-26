@@ -5,7 +5,9 @@ use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
-use super::{Cents, Decibels, Hz, Octaves, Percent, Polarity, RangeError, Seconds, Semitones};
+use super::{
+    Cents, Decibels, Hz, MidiPitch, Octaves, Percent, Polarity, RangeError, Seconds, Semitones,
+};
 
 /// A unit string that does not parse into its unit type.
 ///
@@ -27,6 +29,7 @@ enum Cause {
     UnknownSuffix(String),
     BadNumber(String),
     Range(RangeError),
+    NoUnitString,
 }
 
 impl fmt::Display for ParseUnitError {
@@ -38,6 +41,9 @@ impl fmt::Display for ParseUnitError {
             Cause::UnknownSuffix(suffix) => write!(f, "unknown suffix {suffix:?}")?,
             Cause::BadNumber(number) => write!(f, "{number:?} is not a number")?,
             Cause::Range(error) => return write!(f, "{error}"),
+            Cause::NoUnitString => {
+                return write!(f, "{} has no unit string", self.unit);
+            }
         }
         write!(
             f,
@@ -52,6 +58,19 @@ impl Error for ParseUnitError {
         match &self.cause {
             Cause::Range(error) => Some(error),
             _ => None,
+        }
+    }
+}
+
+impl ParseUnitError {
+    /// The error for a unit type that has no unit string, such as
+    /// `Normalized`.
+    pub(crate) fn no_unit_string(input: &str, unit: &'static str) -> Self {
+        Self {
+            input: input.to_owned(),
+            unit,
+            accepted: Vec::new(),
+            cause: Cause::NoUnitString,
         }
     }
 }
@@ -136,6 +155,7 @@ unit_string!(Cents, " ", [("ct", 0, Cents::new)]);
 unit_string!(Semitones, " ", [("st", 0, Semitones::new)]);
 unit_string!(Octaves, " ", [("oct", 0, Octaves::new)]);
 unit_string!(Decibels, " ", [("dB", 0, Decibels::new)]);
+unit_string!(MidiPitch, " ", [("midi", 0, MidiPitch::new)]);
 
 impl<P: Polarity> FromStr for Percent<P> {
     type Err = ParseUnitError;
@@ -286,6 +306,27 @@ mod tests {
         assert_eq!(Octaves::new(-1.0).unwrap().to_string(), "-1 oct");
         assert_eq!(Decibels::new(-6.0).unwrap().to_string(), "-6 dB");
         assert_eq!(Percent::<Unipolar>::new(25.0).unwrap().to_string(), "25%");
+        assert_eq!(MidiPitch::new(45.0).unwrap().to_string(), "45 midi");
+    }
+
+    #[test]
+    fn midi_pitch_parses_its_suffix_only() {
+        assert_eq!("45 midi".parse::<MidiPitch>().unwrap().get(), 45.0);
+        assert_eq!("69.5midi".parse::<MidiPitch>().unwrap().get(), 69.5);
+        let message = "45".parse::<MidiPitch>().unwrap_err().to_string();
+        assert_eq!(
+            message,
+            "cannot read \"45\" as MidiPitch: no unit suffix. Write a number followed by one of: midi"
+        );
+        assert!("128 midi".parse::<MidiPitch>().is_err());
+    }
+
+    #[test]
+    fn a_type_without_unit_strings_says_so() {
+        assert_eq!(
+            ParseUnitError::no_unit_string("0.5", "Normalized").to_string(),
+            "cannot read \"0.5\" as Normalized: Normalized has no unit string"
+        );
     }
 
     #[test]
@@ -311,6 +352,7 @@ mod tests {
             any in finite(),
             unipolar in 0.0..=100.0f64,
             bipolar in -100.0..=100.0f64,
+            midi in 0.0..=127.0f64,
         ) {
             reparses(Hz::new(any.abs()).unwrap())?;
             reparses(Seconds::new(any.abs()).unwrap())?;
@@ -320,6 +362,7 @@ mod tests {
             reparses(Decibels::new(any).unwrap())?;
             reparses(Percent::<Unipolar>::new(unipolar).unwrap())?;
             reparses(Percent::<Bipolar>::new(bipolar).unwrap())?;
+            reparses(MidiPitch::new(midi).unwrap())?;
         }
     }
 }

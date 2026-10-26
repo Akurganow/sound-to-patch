@@ -1,0 +1,18 @@
+---
+source: tests/it/synth.rs
+expression: "Probe::command().render_long_help().to_string()"
+---
+A command that only flattens the shared argument
+
+Usage: probe [OPTIONS]
+
+Options:
+      --synth <SYNTH>
+          The target synth. Without it, the extension of the preset file picks the synth, and otherwise Vital
+
+          Possible values:
+          - vital:  Vital, with `.vital` preset files
+          - serum2: Serum 2, with `.SerumPreset` preset files
+
+  -h, --help
+          Print help (see a summary with '-h')

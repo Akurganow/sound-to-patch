@@ -18,48 +18,62 @@ code validates the edit list against a template preset of the target synth and
 writes the preset file. The text path skips the analysis: the agent writes the
 edit list from the description.
 
-The library so far holds the command-line skeleton, the unit types and
-the confidence type.
+The library so far holds the command line with `preset inspect`, the unit
+types, the confidence type, the synth seam and the Vital read path.
 
 ## Synth adapter seam
 
 Estimators speak physical units, and adapters speak synth parameters. The
 neutral core holds stem intake, notes, the estimators, the layer report,
 compare and refine. It never rounds an estimate to what one synth offers.
-Each synth has one adapter behind these traits. They are planned and not
-yet in the code map.
+Each synth has one adapter behind these traits. A fact that belongs to one
+synth lives in its adapter, never in the neutral core.
 
-- `PresetFormat` and `PresetModel`: read and write the file, name its header
-  fields and supply the template through a `TemplateSource`.
-- `ParamRegistry` and `ParamLaw`: the key, range and unit of each parameter,
-  the law between the stored value and the physical unit, and a provenance
-  tag (`from facts`, `measured` or `interim`).
-- `SynthMapper`: maps layers to edits and returns an `unrepresentable` list
-  with the residual for what the synth cannot reach.
-- `RenderStateAdapter`: sets the plugin state in the VST3 host.
+- `PresetFormat` and `PresetModel` (`preset::format`): read and write the
+  file, name its header fields and supply the template through a
+  `TemplateSource` (`preset::template`).
+- `ParamRegistry` and `ParamLaw` (`preset::registry`): the key, range and
+  unit of each parameter, the law between the stored value and the
+  physical unit, and a provenance tag (`from facts`, `measured` or
+  `interim`). A calibration set replaces laws with measured tables.
+- `SynthMapper`, planned: maps layers to edits and returns an
+  `unrepresentable` list with the residual for what the synth cannot reach.
+- `RenderStateAdapter`, planned: sets the plugin state in the VST3 host.
 - The agent reference: the controls, the gotchas and the word-to-control
   maps of the synth.
 
 `SynthCapabilities` holds what differs in structure: the oscillator
 layout, the effect set, the LFO kinds, the glide and velocity rules and the
-bend range. A `Synth` enum picks the adapter from `--synth vital|serum2`.
-One contract test suite runs once per adapter. Vital is built first.
+bend range. A `Synth` enum picks the adapter from `--synth vital|serum2`;
+without the flag, a preset's extension or Vital. One contract test suite
+runs once per synth in `Synth::READY`. Vital is built first, and Serum 2
+joins `READY` when its adapter lands.
 
 ## Code map
 
-- `cli`: the command-line definition. The binary parses it, and `xtask`
-  renders the man page and the shell completions from the same tree.
+- `cast`: the audited numeric casts. Every `as` between number types goes
+  through one function here, with its reason and a test.
+- `cli`: the command-line definition, one module per command. The binary
+  parses it, and `xtask` renders the man page and the shell completions
+  from the same tree.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.
 - `confidence`: the confidence of an estimate: a level, the reasons with
   their signal values and a spread in a unit type, or no estimate.
+- `preset`: preset files. `format`, `registry` and `template` hold the
+  synth-neutral traits and the `inspect` command; `vital` is the Vital
+  adapter: the JSON codec, the registry built from `registry.json`, the
+  built-in template, the capabilities and the laws that span controls.
+- `synth`: the `Synth` enum, the shared `--synth` argument and
+  `SynthCapabilities`.
 - `src/lib.rs`: the crate root and the crate docs.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
 - `xtask`: development tasks. It generates the man page and completions,
   fetches pinned datasets, checks the credits, this code map, the Rust
-  version named in the docs and pull request descriptions, and writes the
-  release version.
+  version named in the docs and pull request descriptions, writes the
+  release version, and regenerates the Vital registry data from a local
+  checkout of the open source.
 
 ## Invariants
 
@@ -70,7 +84,12 @@ One contract test suite runs once per adapter. Vital is built first.
 - No test needs the network, a synth plugin (Vital or Serum 2) or a dataset
   unless it is `#[ignore]` with a reason.
 - Estimators report physical units with a confidence. They never round a
-  value to what one synth offers. Only an adapter speaks synth parameters.
+  value to what one synth offers. Only an adapter speaks synth parameters,
+  and a mapper picks the nearest option and reports the residual.
+- A registry law never rounds. A stored value that must be whole and is
+  not is an error.
+- A model keeps every key it read, unknown keys included, so a rewrite
+  loses no feature of a newer build.
 
 ## Layer boundaries
 

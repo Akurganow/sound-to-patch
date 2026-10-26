@@ -1,0 +1,8 @@
+# The flag names a synth whose adapter does not exist yet.
+bin.name = "sound-to-patch"
+args = ["preset", "inspect", "--synth", "serum2", "bass.SerumPreset"]
+status.code = 1
+stdout = ""
+stderr = """
+error: Serum 2 support is not built yet. Use --synth vital.
+"""

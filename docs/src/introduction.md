@@ -12,10 +12,12 @@ paths:
   agent turns the description into a preset and its explanation, and into
   notes when the description asks for them.
 
-The project is at its first release. The `sound-to-patch` command prints
-its help and version; the commands of both paths arrive in later releases.
+The project is at an early release. `sound-to-patch preset inspect` prints
+the header and the decoded settings of a Vital preset; the commands of both
+paths arrive in later releases.
 
-The project has no affiliation with the makers of Vital or Serum 2.
+Vital and Serum 2 are trademarks of their owners. This project is not
+affiliated with or endorsed by them.
 
 The [API documentation](api/sound_to_patch/index.html) covers the library.
 The development chapters describe how the project is tested and released.

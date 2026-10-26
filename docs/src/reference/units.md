@@ -96,6 +96,7 @@ only these, matched case-sensitively:
 | `oct` | octaves | `Octaves` |
 | `dB` | decibels | `Decibels` |
 | `%` | percent | `Percent` |
+| `midi` | MIDI note number | `MidiPitch` |
 
 A target type accepts only its own suffixes. A suffix of another unit, an
 unknown suffix and a missing number are errors that list the accepted

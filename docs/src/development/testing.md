@@ -15,7 +15,7 @@ needs from the matrix below and names them in its issue.
 | L2 | Integration tests | the one test binary in `tests/it/`, one module per feature |
 | L3 | Command-line cases | declarative files in `tests/cmd/`, run by `trycmd` |
 | L4 | Doc tests and runnable examples | rustdoc examples, `examples/` |
-| L5 | Snapshots of the shape of our own output | `--help`, report and explanation templates |
+| L5 | Snapshots of the shape of our own output | `--help`, report and explanation templates, with `insta` or `trycmd` |
 | L6 | Property tests | round trips, unit conversions, invariants |
 | L7 | Golden numbers with explicit tolerances | JSON vectors in `tests/fixtures/golden/` |
 | L8 | Fuzzing | `fuzz/`, for code that reads untrusted bytes |
@@ -52,7 +52,8 @@ doc tests, hence the second command. CI uses the `ci` profile from
 
 ## CI versus local
 
-- A test that needs a synth plugin (Vital or Serum 2), `vita` or a dataset carries `#[ignore = "needs <thing>"]`.
+- A test that needs a synth (Vital or Serum 2), `vita` or a dataset
+  carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
 - Never skip a test at run time with an early `return`. It reports a pass
@@ -89,8 +90,15 @@ doc tests, hence the second command. CI uses the `ci` profile from
   SHA-256, date and purpose. Its license text goes in the same file.
 - Nothing licensed or private enters git: no factory presets, no renders of
   them, no user stems, no personal Init preset. No Git LFS.
-- Expected values never come from an AI. They come from a file saved by
-  Serum 2 or from an independent reference.
+- A Vital fixture is a file our code generated, or a file a maintainer
+  saved from the app after loading a file we generated.
+- Expected values never come from an AI. They come from a formula in the
+  facts, a file saved by the synth, a render or an independent reference.
+- A snapshot accepts every diff as the new truth, so CI runs `insta` with
+  `INSTA_UPDATE=no`. Snapshot the decoded values of a preset, never its
+  bytes, and never a number that must match an outside reference. Review
+  a changed snapshot like code; record one locally with
+  `INSTA_UPDATE=always` or `TRYCMD=overwrite`.
 
 ## Golden numbers
 

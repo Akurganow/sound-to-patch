@@ -1,0 +1,45 @@
+# Header fields first, then the decoded tree with lists cut after three items.
+bin.name = "sound-to-patch"
+args = ["preset", "inspect", "tests/fixtures/vital/minimal.vital"]
+stdout = """
+build             1.0.6
+name              Fixture
+author            sound-to-patch
+style             Bass
+controls          7
+unknown keys      3  [warn]
+retail-only keys  custom_warps  [warn]
+
+synth_version: "1.0.6"
+preset_name: "Fixture"
+author: "sound-to-patch"
+comments: "A hand-written test file"
+preset_style: "Bass"
+settings:
+  filter_1_on: 1.0
+  filter_1_cutoff: 72.0
+  filter_2_cutoff: 140.0  (out of range: 8.0 to 136.0)
+  env_1_attack: 0.5
+  osc_1_transpose: -12.0
+  sub_on: 0.0  (legacy control)
+  zz_unknown: 1  (unknown key)
+  custom_warps: list of 0
+  modulation_1_amount: 0.25
+  modulations: list of 5
+    -
+      source: "lfo_1"
+      destination: "filter_1_cutoff"
+    -
+      source: ""
+      destination: ""
+    -
+      source: ""
+      destination: ""
+    - ... 2 more
+  sample:
+    name: "Silence"
+    length: 4
+    sample_rate: 44100
+    samples: "AAAAAAAAAAA="
+extra_top: true  (unknown key)
+"""

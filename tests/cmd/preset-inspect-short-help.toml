@@ -1,0 +1,16 @@
+bin.name = "sound-to-patch"
+args = ["preset", "inspect", "-h"]
+stdout = """
+Print the header fields and the decoded tree of a preset file
+
+Usage: sound-to-patch preset inspect [OPTIONS] <FILE>
+
+Arguments:
+  <FILE>  The preset file, such as `bass.vital`
+
+Options:
+      --synth <SYNTH>  The target synth. Without it, the extension of the preset file picks the synth, and otherwise Vital [possible values: vital, serum2]
+      --full           Print every list element and every text in full
+      --shown <N>      List elements printed before the rest is counted [default: 3]
+  -h, --help           Print help (see more with '--help')
+"""

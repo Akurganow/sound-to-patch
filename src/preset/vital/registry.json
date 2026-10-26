@@ -1,0 +1,3505 @@
+{
+  "source": "Vital open source, commit 636ca0ef517a4db087a6a08a6a8a5e704e21f836",
+  "groups": [
+    {
+      "prefix": "",
+      "label": "",
+      "ids": [
+        ""
+      ],
+      "controls": [
+        {
+          "name": "beats_per_minute",
+          "label": "Beats Per Minute",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.333333333,
+          "max": 5.0,
+          "default": 2.0,
+          "scale": "linear"
+        },
+        {
+          "name": "bypass",
+          "label": "Bypass",
+          "since": "0.7.2",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "chorus_cutoff",
+          "label": "Chorus Filter Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 60.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "chorus_delay_1",
+          "label": "Chorus Delay 1",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -10.0,
+          "max": -5.64386,
+          "default": -9.0,
+          "scale": "exponential",
+          "unit": "seconds",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "chorus_delay_2",
+          "label": "Chorus Delay 2",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -10.0,
+          "max": -5.64386,
+          "default": -7.0,
+          "scale": "exponential",
+          "unit": "seconds",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "chorus_dry_wet",
+          "label": "Chorus Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "chorus_feedback",
+          "label": "Chorus Feedback",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -0.95,
+          "max": 0.95,
+          "default": 0.4,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "chorus_frequency",
+          "label": "Chorus Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -6.0,
+          "max": 3.0,
+          "default": -3.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "chorus_mod_depth",
+          "label": "Chorus Mod Depth",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "chorus_on",
+          "label": "Chorus Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "chorus_spread",
+          "label": "Chorus Filter Spread",
+          "since": "0.6.7",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "chorus_sync",
+          "label": "Chorus Sync",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets"
+          ]
+        },
+        {
+          "name": "chorus_tempo",
+          "label": "Chorus Tempo",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 10.0,
+          "default": 4.0,
+          "scale": "indexed",
+          "choices": [
+            "Freeze",
+            "32/1",
+            "16/1",
+            "8/1",
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16"
+          ]
+        },
+        {
+          "name": "chorus_voices",
+          "label": "Chorus Voices",
+          "since": "0.5.8",
+          "kind": "count",
+          "min": 1.0,
+          "max": 4.0,
+          "default": 4.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "compressor_attack",
+          "label": "Compressor Attack",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_band_gain",
+          "label": "Compressor Band Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -30.0,
+          "max": 30.0,
+          "default": 11.7,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_band_lower_ratio",
+          "label": "Band Lower Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.8,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_band_lower_threshold",
+          "label": "Band Lower Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -36.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_band_upper_ratio",
+          "label": "Band Upper Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.857,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_band_upper_threshold",
+          "label": "Band Upper Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -25.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_enabled_bands",
+          "label": "Compressor Enabled Bands",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Multiband",
+            "Low Band",
+            "High Band",
+            "Single Band"
+          ]
+        },
+        {
+          "name": "compressor_high_gain",
+          "label": "Compressor High Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -30.0,
+          "max": 30.0,
+          "default": 16.3,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_high_lower_ratio",
+          "label": "High Lower Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.8,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_high_lower_threshold",
+          "label": "High Lower Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -35.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_high_upper_ratio",
+          "label": "High Upper Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_high_upper_threshold",
+          "label": "High Upper Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -30.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_low_band_unused",
+          "label": "Compressor Unused",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "compressor_low_gain",
+          "label": "Compressor Low Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -30.0,
+          "max": 30.0,
+          "default": 16.3,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_low_lower_ratio",
+          "label": "Low Lower Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.8,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_low_lower_threshold",
+          "label": "Low Lower Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -35.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_low_upper_ratio",
+          "label": "Low Upper Ratio",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.9,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_low_upper_threshold",
+          "label": "Low Upper Threshold",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -80.0,
+          "max": 0.0,
+          "default": -28.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "compressor_mix",
+          "label": "Compressor Mix",
+          "since": "0.6.2",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "compressor_on",
+          "label": "Compressor Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "compressor_release",
+          "label": "Compressor Release",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "delay_aux_frequency",
+          "label": "Delay Frequency 2",
+          "since": "0.5.7",
+          "kind": "float",
+          "min": -2.0,
+          "max": 9.0,
+          "default": 2.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "delay_aux_sync",
+          "label": "Delay Sync 2",
+          "since": "0.5.7",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets"
+          ]
+        },
+        {
+          "name": "delay_aux_tempo",
+          "label": "Delay Tempo 2",
+          "since": "0.5.7",
+          "kind": "choice",
+          "min": 4.0,
+          "max": 12.0,
+          "default": 9.0,
+          "scale": "indexed",
+          "choices": [
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16",
+            "1/32",
+            "1/64"
+          ]
+        },
+        {
+          "name": "delay_dry_wet",
+          "label": "Delay Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3334,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "delay_feedback",
+          "label": "Delay Feedback",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "delay_filter_cutoff",
+          "label": "Delay Filter Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 60.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "delay_filter_spread",
+          "label": "Delay Filter Spread",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "delay_frequency",
+          "label": "Delay Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -2.0,
+          "max": 9.0,
+          "default": 2.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "delay_on",
+          "label": "Delay Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "delay_style",
+          "label": "Delay Style",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Mono",
+            "Stereo",
+            "Ping Pong",
+            "Mid Ping Pong"
+          ]
+        },
+        {
+          "name": "delay_sync",
+          "label": "Delay Sync",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets"
+          ]
+        },
+        {
+          "name": "delay_tempo",
+          "label": "Delay Tempo",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 4.0,
+          "max": 12.0,
+          "default": 9.0,
+          "scale": "indexed",
+          "choices": [
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16",
+            "1/32",
+            "1/64"
+          ]
+        },
+        {
+          "name": "distortion_drive",
+          "label": "Distortion Drive",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -30.0,
+          "max": 30.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "distortion_filter_blend",
+          "label": "Distortion Filter Blend",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "distortion_filter_cutoff",
+          "label": "Distortion Filter Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 80.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "distortion_filter_order",
+          "label": "Distortion Filter Order",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "None",
+            "Pre",
+            "Post"
+          ]
+        },
+        {
+          "name": "distortion_filter_resonance",
+          "label": "Distortion Filter Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "distortion_mix",
+          "label": "Distortion Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "distortion_on",
+          "label": "Distortion Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "distortion_type",
+          "label": "Distortion Type",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 5.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Soft Clip",
+            "Hard Clip",
+            "Linear Fold",
+            "Sine Fold",
+            "Bit Crush",
+            "Down Sample"
+          ]
+        },
+        {
+          "name": "effect_chain_order",
+          "label": "Effect Chain Order",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 362879.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "eq_band_cutoff",
+          "label": "EQ Band Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 80.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "eq_band_gain",
+          "label": "EQ Band Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -15.0,
+          "max": 15.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_band_mode",
+          "label": "EQ Band Mode",
+          "since": "0.5.6",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Shelf",
+            "Notch"
+          ]
+        },
+        {
+          "name": "eq_band_resonance",
+          "label": "EQ Band Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.4473,
+          "scale": "quadratic",
+          "unit": "percent_unipolar",
+          "law": {
+            "power": {
+              "exponent": 2.0,
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_high_cutoff",
+          "label": "EQ High Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 100.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "eq_high_gain",
+          "label": "EQ High Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -15.0,
+          "max": 15.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_high_mode",
+          "label": "EQ High Mode",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Shelf",
+            "Low Pass"
+          ]
+        },
+        {
+          "name": "eq_high_resonance",
+          "label": "EQ High Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3163,
+          "scale": "quadratic",
+          "unit": "percent_unipolar",
+          "law": {
+            "power": {
+              "exponent": 2.0,
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_low_cutoff",
+          "label": "EQ Low Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 40.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "eq_low_gain",
+          "label": "EQ Low Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -15.0,
+          "max": 15.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_low_mode",
+          "label": "EQ Low Mode",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Shelf",
+            "High Pass"
+          ]
+        },
+        {
+          "name": "eq_low_resonance",
+          "label": "EQ Low Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.3163,
+          "scale": "quadratic",
+          "unit": "percent_unipolar",
+          "law": {
+            "power": {
+              "exponent": 2.0,
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "eq_on",
+          "label": "EQ Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "flanger_center",
+          "label": "Flanger Center",
+          "since": "0.5.5",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 64.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "flanger_dry_wet",
+          "label": "Flanger Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 0.5,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 200.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "flanger_feedback",
+          "label": "Flanger Feedback",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "flanger_frequency",
+          "label": "Flanger Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -5.0,
+          "max": 2.0,
+          "default": 2.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "flanger_mod_depth",
+          "label": "Flanger Mod Depth",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "flanger_on",
+          "label": "Flanger Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "flanger_phase_offset",
+          "label": "Flanger Phase Offset",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.33333333,
+          "scale": "linear"
+        },
+        {
+          "name": "flanger_sync",
+          "label": "Flanger Sync",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets"
+          ]
+        },
+        {
+          "name": "flanger_tempo",
+          "label": "Flanger Tempo",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 10.0,
+          "default": 4.0,
+          "scale": "indexed",
+          "choices": [
+            "Freeze",
+            "32/1",
+            "16/1",
+            "8/1",
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16"
+          ]
+        },
+        {
+          "name": "legato",
+          "label": "Legato",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "macro_control_1",
+          "label": "Macro 1",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "macro_control_2",
+          "label": "Macro 2",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "macro_control_3",
+          "label": "Macro 3",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "macro_control_4",
+          "label": "Macro 4",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "mod_wheel",
+          "label": "Mod Wheel",
+          "since": "0.4.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "mpe_enabled",
+          "label": "MPE Enabled",
+          "since": "0.5.1",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "oversampling",
+          "label": "Oversampling",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "1x",
+            "2x",
+            "4x",
+            "8x"
+          ]
+        },
+        {
+          "name": "phaser_blend",
+          "label": "Phaser Blend",
+          "since": "0.5.9",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "phaser_center",
+          "label": "Phaser Center",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 80.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "phaser_dry_wet",
+          "label": "Phaser Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "phaser_feedback",
+          "label": "Phaser Feedback",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "phaser_frequency",
+          "label": "Phaser Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -5.0,
+          "max": 2.0,
+          "default": -3.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "phaser_mod_depth",
+          "label": "Phaser Mod Depth",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 48.0,
+          "default": 24.0,
+          "scale": "linear",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "phaser_on",
+          "label": "Phaser Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "phaser_phase_offset",
+          "label": "Phaser Phase Offset",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.33333333,
+          "scale": "linear"
+        },
+        {
+          "name": "phaser_sync",
+          "label": "Phaser Sync",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets"
+          ]
+        },
+        {
+          "name": "phaser_tempo",
+          "label": "Phaser Tempo",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 10.0,
+          "default": 3.0,
+          "scale": "indexed",
+          "choices": [
+            "Freeze",
+            "32/1",
+            "16/1",
+            "8/1",
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16"
+          ]
+        },
+        {
+          "name": "pitch_bend_range",
+          "label": "Pitch Bend Range",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 48.0,
+          "default": 2.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "pitch_wheel",
+          "label": "Pitch Wheel",
+          "since": "0.4.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "polyphony",
+          "label": "Polyphony",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 1.0,
+          "max": 32.0,
+          "default": 8.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "portamento_force",
+          "label": "Portamento Force",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "portamento_scale",
+          "label": "Portamento Scale",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "portamento_slope",
+          "label": "Portamento Slope",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -8.0,
+          "max": 8.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "portamento_time",
+          "label": "Portamento Time",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -10.0,
+          "max": 4.0,
+          "default": -10.0,
+          "scale": "exponential",
+          "unit": "seconds",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "reverb_chorus_amount",
+          "label": "Reverb Chorus Amount",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.223607,
+          "scale": "quadratic",
+          "unit": "percent_unipolar",
+          "law": {
+            "power": {
+              "exponent": 2.0,
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "reverb_chorus_frequency",
+          "label": "Reverb Chorus Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -8.0,
+          "max": 3.0,
+          "default": -2.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "reverb_decay_time",
+          "label": "Reverb Decay Time",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -6.0,
+          "max": 6.0,
+          "default": 0.0,
+          "scale": "exponential",
+          "unit": "seconds",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "reverb_delay",
+          "label": "Reverb Delay",
+          "since": "0.6.9",
+          "kind": "float",
+          "min": 0.0,
+          "max": 0.3,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "seconds",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "reverb_dry_wet",
+          "label": "Reverb Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.25,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "reverb_high_shelf_cutoff",
+          "label": "Reverb High Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 128.0,
+          "default": 90.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "reverb_high_shelf_gain",
+          "label": "Reverb High Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -6.0,
+          "max": 0.0,
+          "default": -1.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "reverb_low_shelf_cutoff",
+          "label": "Reverb Low Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 128.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "reverb_low_shelf_gain",
+          "label": "Reverb Low Gain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -6.0,
+          "max": 0.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "reverb_on",
+          "label": "Reverb Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "reverb_pre_high_cutoff",
+          "label": "Reverb Pre High Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 128.0,
+          "default": 110.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "reverb_pre_low_cutoff",
+          "label": "Reverb Pre Low Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 128.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "reverb_size",
+          "label": "Reverb Size",
+          "since": "0.5.6",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "sample_bounce",
+          "label": "Sample Bounce",
+          "since": "0.6.3",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_destination",
+          "label": "Sample Destination",
+          "since": "0.5.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 14.0,
+          "default": 3.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_keytrack",
+          "label": "Sample Keytrack",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_level",
+          "label": "Sample Level",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.70710678119,
+          "scale": "quadratic",
+          "unit": "decibels",
+          "law": {
+            "db_of_power": {
+              "exponent": 2.0
+            }
+          }
+        },
+        {
+          "name": "sample_loop",
+          "label": "Sample Loop",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_on",
+          "label": "Sample Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_pan",
+          "label": "Sample Pan",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "sample_random_phase",
+          "label": "Sample Random Phase",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_transpose",
+          "label": "Sample Transpose",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": -48.0,
+          "max": 48.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "sample_transpose_quantize",
+          "label": "Sample Transpose Quantize",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 8191.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "sample_tune",
+          "label": "Sample Tune",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "stereo_mode",
+          "label": "Stereo Mode",
+          "since": "0.6.5",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "SPREAD",
+            "ROTATE"
+          ]
+        },
+        {
+          "name": "stereo_routing",
+          "label": "Stereo Routing",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "sub_direct_out",
+          "label": "Sub Direct Out",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "sub_level",
+          "label": "Sub Level",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.70710678119,
+          "scale": "quadratic",
+          "unit": "decibels",
+          "law": {
+            "db_of_power": {
+              "exponent": 2.0
+            }
+          },
+          "legacy": true
+        },
+        {
+          "name": "sub_on",
+          "label": "Sub Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "sub_pan",
+          "label": "Sub Pan",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          },
+          "legacy": true
+        },
+        {
+          "name": "sub_transpose",
+          "label": "Sub Transpose",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": -48.0,
+          "max": 48.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          },
+          "legacy": true
+        },
+        {
+          "name": "sub_transpose_quantize",
+          "label": "Sub Transpose Quantize",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 8191.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "sub_tune",
+          "label": "Sub Tune",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          },
+          "legacy": true
+        },
+        {
+          "name": "sub_waveform",
+          "label": "Sub Osc Waveform",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 5.0,
+          "default": 2.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "velocity_track",
+          "label": "Velocity Track",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "view_spectrogram",
+          "label": "View Spectrogram",
+          "since": "0.8.3",
+          "kind": "count",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "voice_amplitude",
+          "label": "Voice Amplitude",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        },
+        {
+          "name": "voice_override",
+          "label": "Voice Override",
+          "since": "0.7.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Kill",
+            "Steal"
+          ]
+        },
+        {
+          "name": "voice_priority",
+          "label": "Voice Priority",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 4.0,
+          "default": 4.0,
+          "scale": "indexed",
+          "choices": [
+            "Newest",
+            "Oldest",
+            "Highest",
+            "Lowest",
+            "Round Robin"
+          ]
+        },
+        {
+          "name": "voice_transpose",
+          "label": "Voice Transpose",
+          "since": "0.6.4",
+          "kind": "count",
+          "min": -48.0,
+          "max": 48.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "voice_tune",
+          "label": "Voice Tune",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "volume",
+          "label": "Volume",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 7399.4404,
+          "default": 5473.0404,
+          "scale": "square_root",
+          "unit": "decibels",
+          "law": {
+            "power": {
+              "exponent": 0.5,
+              "scale": 1.0,
+              "offset": -80.0
+            }
+          }
+        }
+      ]
+    },
+    {
+      "prefix": "env",
+      "label": "Envelope",
+      "ids": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "controls": [
+        {
+          "name": "attack",
+          "label": "Attack",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.37842,
+          "default": 0.1495,
+          "scale": "quartic",
+          "unit": "seconds",
+          "law": {
+            "power": {
+              "exponent": 4.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "attack_power",
+          "label": "Attack Power",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -20.0,
+          "max": 20.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "decay",
+          "label": "Decay",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.37842,
+          "default": 1.0,
+          "scale": "quartic",
+          "unit": "seconds",
+          "law": {
+            "power": {
+              "exponent": 4.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "decay_power",
+          "label": "Decay Power",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -20.0,
+          "max": 20.0,
+          "default": -2.0,
+          "scale": "linear"
+        },
+        {
+          "name": "delay",
+          "label": "Delay",
+          "since": "0.5.3",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.4142135624,
+          "default": 0.0,
+          "scale": "quartic",
+          "unit": "seconds",
+          "law": {
+            "power": {
+              "exponent": 4.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "hold",
+          "label": "Hold",
+          "since": "0.5.4",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.4142135624,
+          "default": 0.0,
+          "scale": "quartic",
+          "unit": "seconds",
+          "law": {
+            "power": {
+              "exponent": 4.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "release",
+          "label": "Release",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.37842,
+          "default": 0.5476,
+          "scale": "quartic",
+          "unit": "seconds",
+          "law": {
+            "power": {
+              "exponent": 4.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "release_power",
+          "label": "Release Power",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -20.0,
+          "max": 20.0,
+          "default": -2.0,
+          "scale": "linear"
+        },
+        {
+          "name": "sustain",
+          "label": "Sustain",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear"
+        }
+      ]
+    },
+    {
+      "prefix": "lfo",
+      "label": "LFO",
+      "ids": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "controls": [
+        {
+          "name": "delay_time",
+          "label": "Delay",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 4.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "seconds",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "fade_time",
+          "label": "Fade In",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 8.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "seconds",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "frequency",
+          "label": "Frequency",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -7.0,
+          "max": 9.0,
+          "default": 1.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "keytrack_transpose",
+          "label": "Transpose",
+          "since": "0.7.4",
+          "kind": "count",
+          "min": -60.0,
+          "max": 36.0,
+          "default": -12.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "keytrack_tune",
+          "label": "Tune",
+          "since": "0.7.4",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "phase",
+          "label": "Phase",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "smooth_mode",
+          "label": "Smooth Mode",
+          "since": "0.8.1",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "smooth_time",
+          "label": "Smooth Time",
+          "since": "0.8.1",
+          "kind": "float",
+          "min": -10.0,
+          "max": 4.0,
+          "default": -7.5,
+          "scale": "exponential",
+          "unit": "seconds",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "stereo",
+          "label": "Stereo",
+          "since": "0.4.6",
+          "kind": "float",
+          "min": -0.5,
+          "max": 0.5,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "sync",
+          "label": "Sync",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 4.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets",
+            "Keytrack"
+          ]
+        },
+        {
+          "name": "sync_type",
+          "label": "Sync Type",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 5.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Trigger",
+            "Sync",
+            "Envelope",
+            "Sustain Envelope",
+            "Loop Point",
+            "Loop Hold"
+          ]
+        },
+        {
+          "name": "tempo",
+          "label": "Tempo",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 12.0,
+          "default": 7.0,
+          "scale": "indexed",
+          "choices": [
+            "Freeze",
+            "32/1",
+            "16/1",
+            "8/1",
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16",
+            "1/32",
+            "1/64"
+          ]
+        }
+      ]
+    },
+    {
+      "prefix": "random",
+      "label": "Random LFO",
+      "ids": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "controls": [
+        {
+          "name": "frequency",
+          "label": "Frequency",
+          "since": "0.4.1",
+          "kind": "float",
+          "min": -7.0,
+          "max": 9.0,
+          "default": 1.0,
+          "scale": "exponential",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 1.0,
+              "scale": 1.0
+            }
+          }
+        },
+        {
+          "name": "keytrack_transpose",
+          "label": "Transpose",
+          "since": "0.7.4",
+          "kind": "count",
+          "min": -60.0,
+          "max": 36.0,
+          "default": -12.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "keytrack_tune",
+          "label": "Tune",
+          "since": "0.7.4",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "stereo",
+          "label": "Stereo",
+          "since": "0.4.1",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "style",
+          "label": "Style",
+          "since": "0.4.1",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 3.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Perlin",
+            "Sample & Hold",
+            "Sine Interpolate",
+            "Lorenz Attractor"
+          ]
+        },
+        {
+          "name": "sync",
+          "label": "Sync",
+          "since": "0.4.1",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 4.0,
+          "default": 1.0,
+          "scale": "indexed",
+          "choices": [
+            "Seconds",
+            "Tempo",
+            "Tempo Dotted",
+            "Tempo Triplets",
+            "Keytrack"
+          ]
+        },
+        {
+          "name": "sync_type",
+          "label": "Sync Type",
+          "since": "0.6.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "tempo",
+          "label": "Tempo",
+          "since": "0.4.1",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 12.0,
+          "default": 8.0,
+          "scale": "indexed",
+          "choices": [
+            "Freeze",
+            "32/1",
+            "16/1",
+            "8/1",
+            "4/1",
+            "2/1",
+            "1/1",
+            "1/2",
+            "1/4",
+            "1/8",
+            "1/16",
+            "1/32",
+            "1/64"
+          ]
+        }
+      ]
+    },
+    {
+      "prefix": "osc",
+      "label": "Oscillator",
+      "ids": [
+        "1",
+        "2",
+        "3"
+      ],
+      "later": {
+        "ids": [
+          "3"
+        ],
+        "since": "0.5.0"
+      },
+      "controls": [
+        {
+          "name": "destination",
+          "label": "Destination",
+          "since": "0.5.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 14.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "detune_power",
+          "label": "Detune Power",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -5.0,
+          "max": 5.0,
+          "default": 1.5,
+          "scale": "linear"
+        },
+        {
+          "name": "detune_range",
+          "label": "Detune Range",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 48.0,
+          "default": 2.0,
+          "scale": "linear"
+        },
+        {
+          "name": "distortion_amount",
+          "label": "Distortion Amount",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "distortion_phase",
+          "label": "Distortion Phase",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear"
+        },
+        {
+          "name": "distortion_spread",
+          "label": "Distortion Spread",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -0.5,
+          "max": 0.5,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 200.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "distortion_type",
+          "label": "Distortion Type",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 12.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "None",
+            "Sync",
+            "Formant",
+            "Quantize",
+            "Bend",
+            "Squeeze",
+            "Pulse",
+            "FM <- Osc",
+            "FM <- Osc",
+            "FM <- Sample",
+            "RM <- Osc",
+            "RM <- Osc",
+            "RM <- Sample"
+          ]
+        },
+        {
+          "name": "frame_spread",
+          "label": "Unison Frame Spread",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -128.0,
+          "max": 128.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "level",
+          "label": "Level",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.70710678119,
+          "scale": "quadratic",
+          "unit": "decibels",
+          "law": {
+            "db_of_power": {
+              "exponent": 2.0
+            }
+          }
+        },
+        {
+          "name": "midi_track",
+          "label": "Midi Track",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "on",
+          "label": "Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "pan",
+          "label": "Pan",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "phase",
+          "label": "Phase",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear"
+        },
+        {
+          "name": "random_phase",
+          "label": "Phase Randomization",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "smooth_interpolation",
+          "label": "Smooth Interpolation",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "spectral_morph_amount",
+          "label": "Frequency Morph Amount",
+          "since": "0.4.7",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "spectral_morph_spread",
+          "label": "Frequency Morph Spread",
+          "since": "0.4.7",
+          "kind": "float",
+          "min": -0.5,
+          "max": 0.5,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 200.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "spectral_morph_type",
+          "label": "Frequency Morph Type",
+          "since": "0.4.7",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 11.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "None",
+            "Vocode",
+            "Formant Scale",
+            "Harmonic Stretch",
+            "Inharmonic Stretch",
+            "Smear",
+            "Random Amplitudes",
+            "Low Pass",
+            "High Pass",
+            "Phase Disperse",
+            "Shepard Tone",
+            "Spectral Time Skew"
+          ]
+        },
+        {
+          "name": "spectral_unison",
+          "label": "Spectral Unison",
+          "since": "0.5.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "stack_style",
+          "label": "Stack Style",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 10.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Unison",
+            "Center Drop 12",
+            "Center Drop 24",
+            "Octave",
+            "2x Octave",
+            "Power Chord",
+            "2x Power Chord",
+            "Major Chord",
+            "Minor Chord",
+            "Harmonics",
+            "Odd Harmonics"
+          ]
+        },
+        {
+          "name": "stereo_spread",
+          "label": "Stereo Spread",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "transpose",
+          "label": "Transpose",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": -48.0,
+          "max": 48.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "transpose_quantize",
+          "label": "Transpose Quantize",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 8191.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "tune",
+          "label": "Tune",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "cents",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "unison_blend",
+          "label": "Blend",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.8,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "unison_detune",
+          "label": "Unison Detune",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 10.0,
+          "default": 4.472135955,
+          "scale": "quadratic",
+          "unit": "percent_unipolar",
+          "law": {
+            "power": {
+              "exponent": 2.0,
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "unison_voices",
+          "label": "Unison Voices",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 1.0,
+          "max": 16.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "view_2d",
+          "label": "View 2D",
+          "since": "0.4.2",
+          "kind": "count",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 1.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "wave_frame",
+          "label": "Wave Frame",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 256.0,
+          "default": 0.0,
+          "scale": "linear"
+        }
+      ]
+    },
+    {
+      "prefix": "filter",
+      "label": "Filter",
+      "ids": [
+        "1",
+        "2",
+        "fx"
+      ],
+      "controls": [
+        {
+          "name": "blend",
+          "label": "Blend",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 2.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "blend_transpose",
+          "label": "Comb Blend Offset",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 84.0,
+          "default": 42.0,
+          "scale": "linear",
+          "unit": "semitones",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "cutoff",
+          "label": "Cutoff",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 8.0,
+          "max": 136.0,
+          "default": 60.0,
+          "scale": "linear",
+          "unit": "hz",
+          "law": {
+            "exp2": {
+              "rate": 0.08333333333333333,
+              "scale": 8.1757989156
+            }
+          }
+        },
+        {
+          "name": "drive",
+          "label": "Drive",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 20.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "decibels",
+          "law": {
+            "affine": {
+              "scale": 1.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "filter_input",
+          "label": "FILTER Input",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": [
+            "fx"
+          ]
+        },
+        {
+          "name": "formant_resonance",
+          "label": "Formant Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.3,
+          "max": 1.0,
+          "default": 0.85,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "formant_spread",
+          "label": "Formant Spread",
+          "since": "0.7.7",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "formant_transpose",
+          "label": "Formant Transpose",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -12.0,
+          "max": 12.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "formant_x",
+          "label": "Formant X",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear"
+        },
+        {
+          "name": "formant_y",
+          "label": "Formant Y",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear"
+        },
+        {
+          "name": "keytrack",
+          "label": "Key Track",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear",
+          "unit": "percent_bipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "mix",
+          "label": "Mix",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 1.0,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "model",
+          "label": "Model",
+          "since": "0.0.0",
+          "kind": "choice",
+          "min": 0.0,
+          "max": 7.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "choices": [
+            "Analog",
+            "Dirty",
+            "Ladder",
+            "Digital",
+            "Diode",
+            "Formant",
+            "Comb",
+            "Phaser"
+          ]
+        },
+        {
+          "name": "on",
+          "label": "Switch",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "osc1_input",
+          "label": "OSC 1 Input",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "osc2_input",
+          "label": "OSC 2 Input",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "osc3_input",
+          "label": "OSC 3 Input",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "resonance",
+          "label": "Resonance",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.5,
+          "scale": "linear",
+          "unit": "percent_unipolar",
+          "law": {
+            "affine": {
+              "scale": 100.0,
+              "offset": 0.0
+            }
+          }
+        },
+        {
+          "name": "sample_input",
+          "label": "SAMPLE Input",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed",
+          "legacy": true
+        },
+        {
+          "name": "style",
+          "label": "Style",
+          "since": "0.0.0",
+          "kind": "count",
+          "min": 0.0,
+          "max": 9.0,
+          "default": 0.0,
+          "scale": "indexed"
+        }
+      ]
+    },
+    {
+      "prefix": "modulation",
+      "label": "Modulation",
+      "ids": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57",
+        "58",
+        "59",
+        "60",
+        "61",
+        "62",
+        "63",
+        "64"
+      ],
+      "later": {
+        "ids": [
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45",
+          "46",
+          "47",
+          "48",
+          "49",
+          "50",
+          "51",
+          "52",
+          "53",
+          "54",
+          "55",
+          "56",
+          "57",
+          "58",
+          "59",
+          "60",
+          "61",
+          "62",
+          "63",
+          "64"
+        ],
+        "since": "0.6.1"
+      },
+      "controls": [
+        {
+          "name": "amount",
+          "label": "Amount",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -1.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "bipolar",
+          "label": "Bipolar",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "bypass",
+          "label": "Bypass",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        },
+        {
+          "name": "power",
+          "label": "Power",
+          "since": "0.0.0",
+          "kind": "float",
+          "min": -10.0,
+          "max": 10.0,
+          "default": 0.0,
+          "scale": "linear"
+        },
+        {
+          "name": "stereo",
+          "label": "Stereo",
+          "since": "0.0.0",
+          "kind": "flag",
+          "min": 0.0,
+          "max": 1.0,
+          "default": 0.0,
+          "scale": "indexed"
+        }
+      ]
+    }
+  ],
+  "defaults": {
+    "filter_1_osc1_input": 1.0,
+    "filter_2_osc2_input": 1.0,
+    "osc_1_on": 1.0,
+    "osc_2_destination": 1.0,
+    "osc_3_destination": 3.0
+  }
+}
