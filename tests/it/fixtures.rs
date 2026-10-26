@@ -107,7 +107,7 @@ fn the_routes_wavetable_has_two_full_frames() {
     let table = model.wavetable(0).unwrap();
     assert_eq!(
         (table.name.as_str(), table.author.as_str()),
-        ("Sine to Square", "sound-to-patch")
+        ("Parabola to Square", "sound-to-patch")
     );
     let frames: Vec<_> = table
         .keyframes

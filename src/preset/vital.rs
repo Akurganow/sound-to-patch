@@ -52,7 +52,7 @@ pub const RETAIL_ONLY_KEYS: [&str; 5] = [
 /// Three wavetables of 257 keyframes at 10924 base64 characters each come
 /// to 8,422,404 bytes. An embedded sample adds more, with no size the
 /// source states. No saved file has been measured yet. The largest file
-/// the generated fixtures hold is `routes.vital`, 184,697 bytes. The cap
+/// the generated fixtures hold is `routes.vital`, 184,701 bytes. The cap
 /// leaves about seven times the wavetable maximum for a sample. A file of
 /// that size made of short numbers can take about 2.4 GB to parse; see
 /// [`VitalFormat`].

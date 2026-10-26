@@ -4,7 +4,6 @@
 //! writers of the library. `--check` compares the committed files with a
 //! fresh run, so a change to the writers shows up as a fixture diff.
 
-use std::f32::consts::TAU;
 use std::fs;
 use std::path::Path;
 
@@ -96,20 +95,36 @@ fn routes() -> crate::Result<Vec<u8>> {
     model.set_wavetable(
         0,
         &Wavetable {
-            name: "Sine to Square".to_owned(),
+            name: "Parabola to Square".to_owned(),
             author: "sound-to-patch".to_owned(),
-            keyframes: vec![frame(0, f32::sin), frame(256, |phase| phase.sin().signum())],
+            keyframes: vec![frame(0, parabola), frame(256, square)],
         },
     )?;
     Ok(FORMAT.write(&model)?)
 }
 
-/// One cycle of 2048 samples of `shape`, from phase 0 to just below 2 pi.
+/// One cycle of 2048 samples of `shape`, from phase 0 to just below 1.
 fn frame(position: u16, shape: fn(f32) -> f32) -> Keyframe {
     let samples = (0..2048_u16)
-        .map(|i| shape(TAU * f32::from(i) / 2048.0))
+        .map(|i| shape(f32::from(i) / 2048.0))
         .collect();
     Keyframe { position, samples }
+}
+
+/// A sine-like cycle of two parabola halves. It uses only exact IEEE
+/// operations, so every platform writes the same bytes; `f32::sin` differs
+/// between platform maths libraries in the last bits.
+fn parabola(phase: f32) -> f32 {
+    if phase < 0.5 {
+        16.0 * phase * (0.5 - phase)
+    } else {
+        -16.0 * (phase - 0.5) * (1.0 - phase)
+    }
+}
+
+/// A square cycle: +1 for the first half, -1 for the second.
+fn square(phase: f32) -> f32 {
+    if phase < 0.5 { 1.0 } else { -1.0 }
 }
 
 /// The SHA-256 of a file as 64 hex digits.
