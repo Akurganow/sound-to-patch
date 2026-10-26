@@ -1,0 +1,13 @@
+{
+  "synth": "vital",
+  "edits": [
+    { "param": "filter_1_on", "value": true, "reason": "send the oscillators through filter 1" },
+    { "menu": "filter_1_model", "choice": "Ladder", "reason": "a warm ladder low-pass" },
+    { "param": "filter_1_cutoff", "value": "400 Hz", "reason": "a dark bass" },
+    { "param": "env_1_attack", "value": "5 ms", "reason": "a quick attack" },
+    {
+      "route": { "source": "env_2", "dest": "filter_1_cutoff", "amount": "+24 st" },
+      "reason": "envelope 2 opens the filter on each note"
+    }
+  ]
+}

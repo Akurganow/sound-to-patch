@@ -101,6 +101,9 @@ Options:
       --name <NAME>
           The preset name. Without it, the name of the output file
 
+      --force
+          Replace the output file if it exists
+
       --synth <SYNTH>
           The target synth [default: the extension of the preset file, else vital]
 
@@ -112,6 +115,17 @@ Options:
           Print help (see a summary with '-h')
 
 ```
+
+The output file:
+
+- must carry the synth's extension, such as `.vital`;
+- must not exist, unless `--force` is given;
+- must not be the edit list or the template;
+- must not lie inside Vital's own `Factory` folder.
+
+The output keeps the template's stamp, and the summary prints it. A stamp
+newer than the stable build 1.0.7 gives a warning, since that build refuses
+a newer first or second number. A failed run leaves no file.
 
 ## The edit list
 
@@ -130,7 +144,15 @@ a list of edits. Each edit is one of four records, and each carries a
   `"1.2 kHz"`, `"800 ms"`, `"-6 dB"`, `"+12 st"` or `"25%"`. A switch takes
   `true` or `false`, and a count takes a number.
 - A route amount is in semitones when the destination is stored in
-  semitones, such as a cutoff or a pitch, and in percent otherwise.
+  semitones, such as a cutoff or a pitch, and in percent otherwise. A
+  depth in semitones is divided by the destination's stored span, as Vital
+  shows it.
+- A route may target a number, a count, a menu such as `lfo_1_tempo`, or
+  the amount or power of another slot. A switch and the bipolar, stereo and
+  bypass flags of a slot take no route.
+- A route that joins the same source and destination as an existing one
+  edits it in place and keeps its polarity, curve and flags unless the edit
+  sets them.
 - A raw key is written as it is, outside the registry, and the output lists
   it as raw.
 - Every problem of a list is reported at once, each with the edit, the

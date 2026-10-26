@@ -32,11 +32,12 @@ commit hook and the checks for contributing are in
 
 Write a Vital preset from an edit list of two controls, then read it back.
 The commands run from the repository root, with `target/debug` on your
-`PATH`:
+`PATH`. `--force` replaces the file of an earlier run:
 
 ```console
-$ sound-to-patch preset apply tests/cmd/data/two-edits.json -o target/Pluck.vital
+$ sound-to-patch preset apply tests/cmd/data/two-edits.json -o target/Pluck.vital --force
 wrote target/Pluck.vital ("Pluck") from built-in default
+  build 1.0.6, kept from the template
   set filter_1_cutoff = 1046.502261 Hz, stored 83.99999999674434
   set env_1_attack = 1 s, stored 1.0
 

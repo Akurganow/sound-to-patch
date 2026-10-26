@@ -38,6 +38,7 @@ needs a reason.
 ```console
 $ sound-to-patch preset apply bass.json -o Bass.vital
 wrote Bass.vital ("Bass") from built-in default
+  build 1.0.6, kept from the template
   set filter_1_on = on, stored 1.0
   set filter_1_model = Ladder, stored 2.0
   set filter_1_cutoff = 400 Hz, stored 67.34995771509334
@@ -52,8 +53,9 @@ wavetable is a set of single-cycle waveforms that an oscillator plays. The
 built-in template is not Vital's Init preset.
 
 The preset takes its name from the output file, so name the file after the
-preset. Vital also shows the file name. The command never writes over its
-edit list or its template, and it refuses a path inside a `Factory` folder.
+preset. Vital also shows the file name. The command refuses an existing
+output file unless you pass `--force`. It never writes over its edit list or
+its template, and it refuses a path inside Vital's own `Factory` folder.
 
 A wrong unit stops the command before it writes anything. The message names
 the edit, the cause and the fix:
@@ -62,7 +64,7 @@ the edit, the cause and the fix:
 $ sound-to-patch preset apply typo.json -o Typo.vital
 ? failed
 error: the edit list has 1 problem(s):
-  edit 1 (env_1_attack): env_1_attack: cannot read "5 Hz" as Seconds: unknown suffix "Hz". Write a number followed by one of: s, ms. Write a value such as "800 ms"
+  edit 1 (env_1_attack): env_1_attack: cannot read "5 Hz" as Seconds: unknown suffix "Hz". Write a number followed by one of: s, ms, such as "800 ms"
 
 ```
 
@@ -71,7 +73,7 @@ error: the edit list has 1 problem(s):
 `preset inspect` prints the header and the controls:
 
 ```console
-$ sound-to-patch preset apply bass.json -o Bass.vital
+$ sound-to-patch preset apply bass.json -o Bass.vital --force
 ...
 $ sound-to-patch preset inspect Bass.vital
 build         1.0.6
@@ -101,7 +103,7 @@ A preset you saved from Vital carries the stamp your app expects. Pass it
 with `--template`, and the edits apply on top of it:
 
 ```console
-$ sound-to-patch preset apply bass.json -o Bass.vital
+$ sound-to-patch preset apply bass.json -o Bass.vital --force
 ...
 $ sound-to-patch preset apply bass.json --template Bass.vital -o Again.vital
 ...

@@ -13,7 +13,7 @@ needs from the matrix below and names them in its issue.
 | L0 | rustc, Clippy pedantic, rustdoc lints, units in types | `[workspace.lints]` in `Cargo.toml`, `clippy.toml` |
 | L1 | Unit tests | `#[cfg(test)] mod tests` next to the code |
 | L2 | Integration tests | the one test binary in `tests/it/`, one module per feature |
-| L3 | Command-line cases | declarative files in `tests/cmd/`, run by `trycmd` |
+| L3 | Command-line cases | declarative files in `tests/cmd/`, and the console blocks of the README, the guide and the CLI reference, run by `trycmd` |
 | L4 | Doc tests and runnable examples | rustdoc examples, `examples/` |
 | L5 | Snapshots of the shape of our own output | `--help`, report and explanation templates, with `insta` or `trycmd` |
 | L6 | Property tests | round trips, unit conversions, invariants |
@@ -105,6 +105,12 @@ doc tests, hence the second command. CI uses the `ci` profile from
   bytes, and never a number that must match an outside reference. Review
   a changed snapshot like code; record one locally with
   `INSTA_UPDATE=always` or `TRYCMD=overwrite`.
+
+A Markdown page whose commands write files keeps its inputs in a
+`<page>.in/` folder and holds a `<page>.out/` folder. With the `.out` folder,
+`trycmd` runs the commands in a copy of `.in`, so the files they write never
+land in the repository. It compares only the files that `.out` holds, so a
+copy of one input is enough.
 
 ## The open Vital engine
 

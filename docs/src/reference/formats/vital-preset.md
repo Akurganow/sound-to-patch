@@ -36,6 +36,7 @@ stable 1.0.7 and early access 1.6.4. The checks still open are listed under
 | An unknown key loads and is dropped on save, in `settings` and at the top level. | open engine | verified | load check: the unknown-keys variant |
 | A file without `preset_name` and `author` loads. | open engine | verified | load check: the no-name variant |
 | An out-of-range control is applied as it is. The loader does not clamp. | source 1.0.6 | checked | `load_save.cpp` |
+| Factory presets hold values outside the table range, such as a dry/wet above its maximum or the 32-bit float form of a bound. `preset apply` warns about such a value in a key no edit touched and refuses it in an edited key. | 1.0.x | verified | observed in factory presets of Vital 1.0.x |
 | A text in a control fails the load. A bool loads. The writer of this project writes neither. | open engine | verified | probe: `filter_1_cutoff` set to `"x"` and to `true` |
 | The app overwrites `preset_name` with the file name on open. | source 1.0.6 | checked | `synth_base.cpp` |
 | The writer of this project prints each number as the shortest text that reads back to the same value. `1E5` becomes `100000.0`. Values stay bit for bit. | this project | verified | unit test `number_text_is_canonical_and_values_are_kept` |
@@ -103,7 +104,7 @@ source; the units, laws and provenance are ours.
 | The open engine and 1.0.7 create exactly the 772 non-legacy controls. | open engine, 1.0.7 | verified | probe: key sets |
 | Ranges, defaults and the build that added each control match for 763 controls. These carry `verified_on = 1.0.7`. | open engine, 1.0.7 | verified | probe: control details and the 1.0.7 default state |
 | A filter cutoff follows $f = 8.1758 \cdot 2^{s/12}$ Hz: stored 66.86 shows about 390 Hz. | 1.0.7 | verified | probe: a UI edit read back from the saved file |
-| Display laws read and typed in the value box, each matching the registry law: `portamento_time` is $2^s$ seconds (0.5 s stores -1), `osc_1_unison_detune` is $s^2$ percent (25 % stores 5), `filter_1_cutoff` shows $s - 60$ semitones (12 stores 72), `distortion_drive` is $s$ dB (12 stores 12). | 1.0.7 | verified | probe: values typed in the app and read back from the saved file |
+| Display laws read and typed in the value box, each matching the registry law: `portamento_time` is $2^s$ seconds (0.5 s stores -1), `osc_1_unison_detune` is $s^2$ percent (25 % stores 5), `filter_1_cutoff` shows $s - 60$ semitones (12 stores 72), `distortion_drive` is $s$ dB (12 stores 12). The registry tags these four `measured`, with `verified_on = 1.0.7`. | 1.0.7 | verified | probe: values typed in the app and read back from the saved file |
 | A route amount shows in the destination's units, as the amount times the destination's stored span. On `filter_1_cutoff`, span 128, 64 semitones stores 0.5. `preset apply` converts a semitone amount the same way. | 1.0.7 | verified | probe: a value typed in the app; unit tests of the edit list |
 | An LFO tempo menu stores the index of its label: `2/1` is 5 and `1/4` is 8. | 1.0.7 | verified | probe: a UI edit read back from the saved file |
 | The macOS bundles of 1.0.7 are x86_64 only, checked with `lipo -archs` on 2026-10-26. A native arm64 plugin host cannot load them; the standalone app runs under Rosetta. | 1.0.7 | verified | probe 1 |
@@ -115,7 +116,7 @@ source; the units, laws and provenance are ours.
 | Unison voice offsets follow `laws::unison_offsets` for 2, 3, 4 and 8 voices at powers 0 and 1.5, within 0.02 cents. | open engine | verified | render, unit test `offsets_match_the_render` |
 | Unison gains follow `laws::unison_gains`. A gain belongs to a pair of voices, which share it equally. | open engine | verified | render, unit test `gains_match_the_render` |
 | The voice gain is $(e \cdot \mathrm{lerp}(1, v, t) \cdot a)^2$, with envelope $e$, velocity $v$, velocity track $t$ and `voice_amplitude` $a$. | open engine | verified | render, unit test `the_amp_gain_squares_like_the_render` |
-| Laws tagged `interim` in the registry: resonance, drive, filter shape, distortion, compressor, EQ, effect feedback, depth and mix, reverb, oscillator warp, curve powers, and the controls with no display unit. | source 1.0.6 | checked | `src/preset/vital/registry.rs`; each carries a tuning note |
+| Laws tagged `interim` in the registry: resonance, filter drive, filter shape, distortion except `distortion_drive`, compressor, EQ, effect feedback, depth and mix, reverb, oscillator warp, curve powers, and the controls with no display unit. | source 1.0.6 | checked | `src/preset/vital/registry.rs`; each carries a tuning note |
 
 The interim laws wait for the render calibration. They are not settled
 here.
@@ -127,6 +128,7 @@ here.
 | `modulations` holds 64 `{source, destination}` entries. A slot's amount, bipolar flag, power, stereo and bypass are the controls `modulation_N_*`. | open engine | verified | probe: a fresh engine's saved state |
 | The 32 source names. A route from each of them loads. | open engine | verified | load check: the every-source variant |
 | A route amount is a fraction of the destination's stored range: $\Delta = (x - 0.5 b) \cdot \mathrm{amount} \cdot (\max - \min)$. | source 1.0.6 | checked | `laws::modulation_delta` |
+| Routes target numbers, counts, menus such as `osc_1_transpose` and `lfo_1_tempo`, and the amount or power of another slot, never a switch. `preset apply` refuses a switch and the bipolar, stereo and bypass flags of a slot. | 1.0.x | verified | observed in factory presets of Vital 1.0.x |
 | A Wave Source holds `name`, `author`, `version`, `remove_all_dc`, `full_normalize` and `groups`. A component holds `type`, `interpolation`, `interpolation_style` and `keyframes`. A keyframe holds `position` and `wave_data`. | open engine | verified | probe 9: the engine's saved state has the same fields as ours |
 | `wave_data` is base64 of 2048 little-endian 32-bit floats: 10924 characters. Positions run from 0 to 256. | source 1.0.6 | checked | `wave_source.cpp` |
 | Tables of 1 and of 257 keyframes load. | open engine | verified | load check: the wavetable variants |
