@@ -102,13 +102,43 @@ doc tests, hence the second command. CI uses the `ci` profile from
 
 ## Golden numbers
 
-- The recipe of the test signal lives in code.
-- The expected value comes from an independent reference, computed once by
-  a pinned script under `xtask/`. Its output is committed as JSON with the
-  recipe, the generator, the tool versions and the tolerance. CI never runs
-  that script.
-- The tolerance sits in the assertion, with the source of the number in a
-  comment.
+- The recipe of the test signal lives in code, in the JSON vector that the
+  generator writes and the Rust test reads.
+- The expected value comes from an independent reference: librosa, SciPy or
+  a closed form, never our own code. The generator,
+  `xtask/golden/generate.py`, computes it once. Its output is committed as
+  JSON under `tests/fixtures/golden/` with the recipe, the generator, the
+  tool versions, the values and the tolerance.
+- `xtask/golden/.python-version` pins the interpreter and
+  `xtask/golden/requirements.txt` pins every package with its hashes.
+  `cargo xtask golden` installs them with uv into `target/golden-venv` and
+  rewrites every vector. A second run with the same pins writes
+  byte-identical files.
+- `requirements.in` lists the direct packages. To change a pin, edit it and
+  regenerate the lock from the repository root:
+
+  ```bash
+  uv pip compile xtask/golden/requirements.in --generate-hashes --python-version 3.14.7 --output-file xtask/golden/requirements.txt
+  ```
+
+  Add `--upgrade` to move every package to its latest release. The command
+  also stands in the header of `requirements.txt`.
+- CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
+  fails when a vector lacks a field, lacks the Python version in `tools`,
+  names a version other than the pin, or when a prototype table has no
+  recipe file.
+- Noise comes from SplitMix64, which the generator and
+  `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
+  the same signal in both languages.
+- Tests compare through `assert_close` in `tests/it/support/golden.rs` with
+  the stored tolerance, `|actual - expected| <= abs + rel |expected|`, and
+  name the source of the number in a comment.
+- `tests/fixtures/golden/prototype/` holds the tables that task issues
+  quote. Each is the issue's method run on a recipe given in the file; where
+  the issue stated no recipe, the file's recipe defines it and its numbers
+  replace the issue's.
+- To change a reference: edit the generator or the pins, run
+  `cargo xtask golden`, and commit the vectors with the change.
 
 ## Closing an epic
 

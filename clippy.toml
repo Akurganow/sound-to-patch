@@ -2,4 +2,4 @@ allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 # ".." keeps Clippy's default list.
-doc-valid-idents = ["..", "SerumPreset"]
+doc-valid-idents = ["..", "SerumPreset", "SplitMix64"]

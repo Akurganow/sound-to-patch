@@ -119,6 +119,27 @@ impl Range {
             }
     }
 
+    /// Clamps a value into the range: NaN becomes the lower bound (zero for
+    /// `Finite`), an infinity the nearest bound. For values that are valid by
+    /// construction, where the clamp never acts.
+    pub(crate) fn clamp(self, value: f64) -> f64 {
+        let (min, max) = match self {
+            Self::Finite => (f64::MIN, f64::MAX),
+            Self::AtLeast(min) => (min, f64::MAX),
+            Self::Above(min) => (min.next_up(), f64::MAX),
+            Self::Closed(min, max) => (min, max),
+        };
+        if value.is_nan() {
+            if matches!(self, Self::Finite) {
+                0.0
+            } else {
+                min
+            }
+        } else {
+            value.clamp(min, max) + 0.0
+        }
+    }
+
     /// Returns the value, with `-0.0` stored as `+0.0`, or the error naming
     /// `what`.
     pub(crate) fn check(self, what: &'static str, value: f64) -> Result<f64, RangeError> {
@@ -175,6 +196,14 @@ macro_rules! unit {
             #[allow(dead_code, reason = "not every unit type has a constant yet")]
             pub(crate) const fn from_const(value: f64) -> Self {
                 Self(value)
+            }
+
+            /// Builds a value that the computation guarantees to be in
+            /// range, such as a bin frequency `k fs / N`. The clamp only
+            /// guards against a bug; it never acts on a valid input.
+            #[allow(dead_code, reason = "not every unit type has such a caller yet")]
+            pub(crate) fn clamped(value: f64) -> Self {
+                Self(Self::RANGE.clamp(value))
             }
         }
 
@@ -520,6 +549,19 @@ pub(crate) mod tests {
                 .get()
                 .is_sign_positive()
         );
+    }
+
+    #[test]
+    fn clamped_keeps_valid_values_and_pins_bad_ones_to_the_range() {
+        assert_eq!(Hz::clamped(440.0).get(), 440.0);
+        assert_eq!(Hz::clamped(-1.0).get(), 0.0);
+        assert_eq!(Hz::clamped(f64::NAN).get(), 0.0);
+        assert_eq!(Hz::clamped(f64::INFINITY).get(), f64::MAX);
+        assert_eq!(Decibels::clamped(f64::NEG_INFINITY).get(), f64::MIN);
+        assert_eq!(Decibels::clamped(f64::NAN).get(), 0.0);
+        assert_eq!(Normalized::clamped(1.5).get(), 1.0);
+        assert!(Seconds::clamped(-0.0).get().is_sign_positive());
+        assert_eq!(Range::Above(0.0).clamp(-1.0), 0.0_f64.next_up());
     }
 
     #[test]

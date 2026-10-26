@@ -7,6 +7,7 @@ mod architecture;
 mod credits;
 mod dist;
 mod fetch;
+mod golden;
 mod pr;
 mod version;
 mod vital;
@@ -50,6 +51,10 @@ enum Task {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Regenerate the golden vectors with the pinned Python tools (needs uv).
+    Golden,
+    /// Check the golden vectors against the pinned tool versions.
+    GoldenCheck,
     /// Check that `ARCHITECTURE.md` names every top-level module of `src/`.
     CheckArchitecture,
     /// Check that every cited source has a credit with a licence.
@@ -80,6 +85,8 @@ fn main() -> ExitCode {
     let result = match Xtask::parse().task {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
+        Task::Golden => golden::generate(root()),
+        Task::GoldenCheck => golden::check(root()),
         Task::CheckArchitecture => architecture::check(root()),
         Task::CheckCredits => credits::check(root()),
         Task::CheckRustVersion => version::check_rust_version(root()),

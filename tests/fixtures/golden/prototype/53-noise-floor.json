@@ -1,0 +1,204 @@
+{
+ "description": "Bias of plain T20 and T30 fits from a noise floor under the decay.",
+ "generator": "xtask/golden/generate.py:decay_noise_floor",
+ "issue": 53,
+ "issue_figures": {
+  "cells": [
+   {
+    "floor_db": null,
+    "issue_t20_s": 0.41,
+    "issue_t30_s": 0.4,
+    "reproduced": true,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 0.39,
+    "issue_t30_s": 0.4,
+    "reproduced": true,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 0.48,
+    "issue_t30_s": 3.27,
+    "reproduced": false,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 5.14,
+    "issue_t30_s": 4.38,
+    "reproduced": false,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": null,
+    "issue_t20_s": 1.19,
+    "issue_t30_s": 1.2,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 1.21,
+    "issue_t30_s": 1.21,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 1.39,
+    "issue_t30_s": 5.82,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 9.58,
+    "issue_t30_s": 8.48,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": null,
+    "issue_t20_s": 2.51,
+    "issue_t30_s": 2.5,
+    "reproduced": true,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 2.51,
+    "issue_t30_s": 2.51,
+    "reproduced": true,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 2.72,
+    "issue_t30_s": 6.23,
+    "reproduced": false,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 10.05,
+    "issue_t30_s": 10.02,
+    "reproduced": false,
+    "rt60_s": 2.5
+   }
+  ],
+  "check": "5 % plus 0.005 s for the issue's rounding, on both T20 and T30"
+ },
+ "name": "53-noise-floor",
+ "recipe": {
+  "floor": "independent gaussian noise of power 10^(floor / 10)",
+  "floors_db": [
+   null,
+   -60.0,
+   -40.0,
+   -30.0
+  ],
+  "impulse_response": "gaussian(seed, n) * exp(-ln(1000) t / RT60), direct power 1",
+  "length": "2 RT60",
+  "method": "plain Schroeder integral to the end, least-squares line between -5 and -25 dB (T20) or -5 and -35 dB (T30), RT = -60 / slope; median over trials",
+  "rt60_s": [
+   0.4,
+   1.2,
+   2.5
+  ],
+  "sample_rate": 16000,
+  "seeds": "trial i of cell (r, f) uses seed 5300 + 100 r + 10 f + i for the response and that seed + 50000 for the floor",
+  "trials": 15
+ },
+ "rounding": "the issue prints seconds to two decimals",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.0,
+  "rel": 0.05
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "rows": [
+   {
+    "cells": [
+     {
+      "floor_db": null,
+      "t20_s": 0.40140503589364057,
+      "t30_s": 0.40132066057461246
+     },
+     {
+      "floor_db": -60.0,
+      "t20_s": 0.39971061327258267,
+      "t30_s": 0.4030395060022171
+     },
+     {
+      "floor_db": -40.0,
+      "t20_s": 0.4730349185942842,
+      "t30_s": 1.9801698000030383
+     },
+     {
+      "floor_db": -30.0,
+      "t20_s": 3.186256649464877,
+      "t30_s": 2.814178578054714
+     }
+    ],
+    "rt60_s": 0.4
+   },
+   {
+    "cells": [
+     {
+      "floor_db": null,
+      "t20_s": 1.1983433043578864,
+      "t30_s": 1.2002422857416088
+     },
+     {
+      "floor_db": -60.0,
+      "t20_s": 1.196768463781903,
+      "t30_s": 1.2074284842788487
+     },
+     {
+      "floor_db": -40.0,
+      "t20_s": 1.4303507022879074,
+      "t30_s": 5.915654299312531
+     },
+     {
+      "floor_db": -30.0,
+      "t20_s": 9.612812856774836,
+      "t30_s": 8.45640903207636
+     }
+    ],
+    "rt60_s": 1.2
+   },
+   {
+    "cells": [
+     {
+      "floor_db": null,
+      "t20_s": 2.49608636464155,
+      "t30_s": 2.501307169959288
+     },
+     {
+      "floor_db": -60.0,
+      "t20_s": 2.5061585072069827,
+      "t30_s": 2.5172420600417853
+     },
+     {
+      "floor_db": -40.0,
+      "t20_s": 2.963029626187796,
+      "t30_s": 12.352291117695685
+     },
+     {
+      "floor_db": -30.0,
+      "t20_s": 20.050593904751494,
+      "t30_s": 17.671449335452245
+     }
+    ],
+    "rt60_s": 2.5
+   }
+  ]
+ }
+}

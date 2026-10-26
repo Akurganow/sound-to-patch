@@ -1,0 +1,42 @@
+{
+ "description": "Crest factor of a 110 Hz tone, plain and saturated.",
+ "generator": "xtask/golden/generate.py:crest_values",
+ "issue": 54,
+ "name": "54-crest",
+ "recipe": {
+  "crest": "20 log10(max |x| / rms(x))",
+  "duration_s": 1.0,
+  "f0_hz": 110.0,
+  "sample_rate": 44100,
+  "signals": {
+   "saw": "naive ramp 2 (f t mod 1) - 1",
+   "sine": "sin(2 pi f t)",
+   "square": "sign of sin(2 pi f t), with sign(0) = 1",
+   "tanh_saw": "tanh(4 (2 (f t mod 1) - 1))",
+   "tanh_sine": "tanh(4 sin(2 pi f t))"
+  }
+ },
+ "rounding": "the issue prints two decimals",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.02,
+  "rel": 0.0
+ },
+ "tolerance_note": "0.02 dB for the closed forms, 0.05 dB for the two tanh values",
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "closed_forms_db": {
+   "saw": 4.771212547196624,
+   "sine": 3.0102999566398125,
+   "square": 0.0
+  },
+  "saw": 4.771212100577717,
+  "sine": 3.0102977526635404,
+  "square": 0.0,
+  "tanh_saw": 1.242588952517452,
+  "tanh_sine": 0.7733766193615786
+ }
+}

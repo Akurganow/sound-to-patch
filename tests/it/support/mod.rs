@@ -1,8 +1,13 @@
 //! Helpers shared by the integration tests: the contract suites that every
-//! synth adapter must pass, and an in-memory adapter that proves the
-//! suites pass and fail where they should.
+//! synth adapter must pass, an in-memory adapter that proves the suites
+//! pass and fail where they should, seeded noise, golden vectors and test
+//! signals.
 
+pub(crate) mod cast;
+pub(crate) mod golden;
 pub(crate) mod memory;
+pub(crate) mod rng;
+pub(crate) mod signals;
 
 use std::panic::{self, AssertUnwindSafe};
 

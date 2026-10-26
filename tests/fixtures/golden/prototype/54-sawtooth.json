@@ -1,0 +1,58 @@
+{
+ "description": "Centroid and rolloff of ideal sawtooths under magnitude and power weights.",
+ "generator": "xtask/golden/generate.py:sawtooth_table",
+ "issue": 54,
+ "name": "54-sawtooth",
+ "recipe": {
+  "centroid": "sum f_k w_k / sum w_k with w = |X| (magnitude) or |X|^2 (power)",
+  "duration_s": 2.0,
+  "f0_hz": [
+   55.0,
+   220.0,
+   880.0
+  ],
+  "frames": "4096-point centred Hann STFT, hop 1024, magnitude divided by the window sum; frames that lie wholly inside the signal",
+  "rolloff": "frequency of the first bin whose cumulative weight reaches 85 % of the total",
+  "sample_rate": 44100,
+  "source": "ideal sawtooth: harmonic h at amplitude 1/h below the Nyquist frequency, phase 0",
+  "statistic": "median over those frames"
+ },
+ "rounding": "the issue prints whole hertz",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 1.0,
+  "rel": 0.0
+ },
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "220": {
+   "centroid_magnitude_hz": 4228.253203941229,
+   "centroid_power_hz": 698.0026258169432,
+   "closed_form_centroid_magnitude_hz": 4241.0639914271205,
+   "closed_form_centroid_power_hz": 698.0026248280859,
+   "rolloff85_magnitude_hz": 10120.60546875,
+   "rolloff85_power_hz": 882.861328125
+  },
+  "55": {
+   "centroid_magnitude_hz": 3348.2411968517627,
+   "centroid_power_hz": 220.00390944853388,
+   "closed_form_centroid_magnitude_hz": 3348.5898684039585,
+   "closed_form_centroid_power_hz": 220.00605891115907,
+   "rolloff85_magnitude_hz": 8214.9169921875,
+   "rolloff85_power_hz": 226.0986328125
+  },
+  "880": {
+   "centroid_magnitude_hz": 5751.735590055035,
+   "centroid_power_hz": 2091.2962956692136,
+   "closed_form_centroid_magnitude_hz": 5765.262347018599,
+   "closed_form_centroid_power_hz": 2091.2961652755635,
+   "rolloff85_magnitude_hz": 12327.7587890625,
+   "rolloff85_power_hz": 3509.912109375
+  }
+ }
+}
