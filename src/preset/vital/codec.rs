@@ -23,7 +23,7 @@ use crate::preset::format::{
 };
 use crate::preset::registry::{ParamKind, ParamRegistry};
 use crate::preset::template::TemplateSource;
-use crate::preset::vital::{RETAIL_ONLY_KEYS, VitalTemplate, VitalVersion, registry};
+use crate::preset::vital::{RETAIL_ONLY_KEYS, VitalTemplate, VitalVersion, registry, writers};
 use crate::synth::Synth;
 
 /// Top-level keys the app reads.
@@ -59,7 +59,7 @@ pub(crate) const STYLES: [&str; 9] = [
 ];
 
 /// Modulation slots of a patch.
-const SLOTS: usize = 64;
+pub(crate) const SLOTS: usize = 64;
 
 /// The numeric controls each modulation slot owns.
 const SLOT_CONTROLS: [&str; 5] = ["amount", "bipolar", "power", "stereo", "bypass"];
@@ -191,6 +191,37 @@ impl PresetFormat for VitalFormat {
 
     fn template(&self) -> &dyn TemplateSource {
         &VitalTemplate
+    }
+
+    fn route_sources(&self) -> &'static [&'static str] {
+        &writers::ROUTE_SOURCES
+    }
+
+    fn default_polarity(&self, source: &str) -> RoutePolarity {
+        writers::default_polarity(source)
+    }
+
+    fn check_value(&self, key: &str, stored: f64) -> Result<(), FormatError> {
+        if key == "effect_chain_order" {
+            writers::check_effect_order(stored)?;
+        }
+        Ok(())
+    }
+
+    fn scan(&self, model: &dyn PresetModel, edited: &[&str]) -> Result<Vec<String>, FormatError> {
+        let model = model.as_any().downcast_ref::<VitalModel>().ok_or_else(|| {
+            FormatError::new(
+                "cannot check the .vital preset",
+                "the model belongs to another synth",
+                "Check it with the format of its own synth",
+            )
+        })?;
+        validate(&model.root)?;
+        writers::scan(model, edited)
+    }
+
+    fn factory_folder(&self) -> &'static [&'static str] {
+        &["Vital", "Factory"]
     }
 }
 
@@ -471,6 +502,14 @@ impl VitalModel {
             })
     }
 
+    pub(crate) fn settings_map_mut(&mut self) -> Result<&mut Map<String, Value>, FormatError> {
+        self.settings_mut()
+    }
+
+    pub(crate) fn set_top_text(&mut self, key: &str, text: &str) {
+        self.set_text(key, text);
+    }
+
     fn set_text(&mut self, key: &str, text: &str) {
         self.root
             .insert(key.to_owned(), Value::String(text.to_owned()));
@@ -495,6 +534,43 @@ fn stored_of(value: &Value) -> Option<Stored> {
 
 fn edit_error(cause: impl Into<String>, fix: impl Into<String>) -> FormatError {
     FormatError::new("cannot edit the .vital preset", cause, fix)
+}
+
+/// Refuses a route without a source or a destination, and one into an
+/// on-off control: a switch, or the bipolar, stereo or bypass flag of a
+/// slot. Factory presets of Vital 1.0.x route into numbers, counts, menus
+/// such as `osc_1_transpose` and `lfo_1_tempo`, and the amount and power
+/// of other slots, and never into an on-off control.
+fn check_route(slot: usize, route: &Route) -> Result<(), FormatError> {
+    if route.source.is_empty() || route.destination.is_empty() {
+        return Err(edit_error(
+            format!(
+                "slot {}: a route needs a source and a destination",
+                slot + 1
+            ),
+            "Name both, or clear the slot",
+        ));
+    }
+    let target = registry()
+        .ok()
+        .and_then(|registry| registry.get(&route.destination));
+    let Some(spec) = target.filter(|spec| {
+        spec.kind == ParamKind::Flag
+            || (spec.key.starts_with("modulation_")
+                && ["_bipolar", "_stereo", "_bypass"]
+                    .iter()
+                    .any(|flag| spec.key.ends_with(flag)))
+    }) else {
+        return Ok(());
+    };
+    Err(edit_error(
+        format!(
+            "slot {}: `{}` is an on-off control and takes no modulation",
+            slot + 1,
+            spec.key
+        ),
+        "Route into a number, count or menu control, or into the amount or power of another slot",
+    ))
 }
 
 /// A JSON number for a finite control value.
@@ -586,6 +662,13 @@ impl PresetModel for VitalModel {
             ));
         }
         let control = |name: &str| format!("modulation_{}_{name}", slot + 1);
+        // The same source and destination edit the slot in place: its
+        // controls and the extra fields of its entry, such as a drawn
+        // `line_mapping` curve, stay. Any other route starts from the
+        // defaults, so a new route never inherits a muted or curved slot.
+        let current = self.routes().get(slot).cloned().flatten();
+        let in_place = matches!((&current, &route), (Some(have), Some(new))
+            if have.source == new.source && have.destination == new.destination);
         // Every slot control is written, so a cleared slot holds its
         // defaults and the bipolar flag never relies on the GUI rule.
         let mut numbers: Vec<(String, Value)> = SLOT_CONTROLS
@@ -596,7 +679,8 @@ impl PresetModel for VitalModel {
                     .ok()
                     .and_then(|registry| registry.get(&key))
                     .map_or(0.0, |spec| spec.default);
-                (key, Value::from(default))
+                let kept = in_place.then(|| self.number(&key)).flatten();
+                (key, Value::from(kept.unwrap_or(default)))
             })
             .collect();
         let mut put = |key: String, value: Value| {
@@ -606,15 +690,7 @@ impl PresetModel for VitalModel {
         };
         let (source, destination) = match &route {
             Some(route) => {
-                if route.source.is_empty() || route.destination.is_empty() {
-                    return Err(edit_error(
-                        format!(
-                            "slot {}: a route needs a source and a destination",
-                            slot + 1
-                        ),
-                        "Name both, or clear the slot",
-                    ));
-                }
+                check_route(slot, route)?;
                 put(
                     control("amount"),
                     number_value(&control("amount"), &Stored::Float(route.amount))?,
@@ -661,10 +737,18 @@ impl PresetModel for VitalModel {
         while modulations.len() < SLOTS {
             modulations.push(serde_json::json!({"source": "", "destination": ""}));
         }
-        let mut entry = Map::new();
-        entry.insert("source".to_owned(), Value::String(source));
-        entry.insert("destination".to_owned(), Value::String(destination));
-        modulations[slot] = Value::Object(entry);
+        match (&mut modulations[slot], in_place) {
+            (Value::Object(entry), true) => {
+                entry.insert("source".to_owned(), Value::String(source));
+                entry.insert("destination".to_owned(), Value::String(destination));
+            }
+            (entry, _) => {
+                let mut fresh = Map::new();
+                fresh.insert("source".to_owned(), Value::String(source));
+                fresh.insert("destination".to_owned(), Value::String(destination));
+                *entry = Value::Object(fresh);
+            }
+        }
         for (key, value) in numbers {
             settings.insert(key, value);
         }
@@ -770,7 +854,7 @@ fn control_mark(
     let Some(number) = value.as_f64() else {
         return Some("not a number; Vital throws on load".to_owned());
     };
-    if !spec.accepts(number) {
+    if !spec.accepts_saved(number) {
         let whole = if spec.kind == ParamKind::Float {
             ""
         } else {
@@ -1002,6 +1086,49 @@ mod tests {
     }
 
     #[test]
+    fn a_declared_length_allocates_nothing() {
+        // 2^28 float32 samples are 1 GiB. The reader keeps the sample as
+        // text and never sizes a buffer from `length`.
+        let text = r#"{"synth_version":"1.0.6","settings":{"sample":{"length":268435456,"sample_rate":44100,"samples":"AAA="}}}"#;
+        assert_eq!(write(read(text).unwrap().as_ref()), text);
+    }
+
+    #[test]
+    fn hostile_values_read_as_written_or_fail() {
+        let wrap = |settings: &str| {
+            format!(
+                r#"{{"synth_version":"1.0.6","settings":{{{settings}"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+            )
+        };
+        for bad in [
+            wrap(r#""filter_1_cutoff":1e400,"#),
+            wrap(r#""x":"\ud800","#),
+            "[1]".to_owned(),
+            "\"x\"".to_owned(),
+        ] {
+            assert!(read(&bad).is_err(), "{bad}");
+        }
+        let negative_zero = model(&wrap(r#""filter_1_cutoff":-0.0,"#));
+        assert_eq!(
+            negative_zero
+                .get("filter_1_cutoff")
+                .map(|value| match value {
+                    Stored::Float(number) => number.to_bits(),
+                    _ => 0,
+                }),
+            Some((-0.0_f64).to_bits())
+        );
+        let duplicate = model(&wrap(r#""filter_1_cutoff":1.0,"filter_1_cutoff":2.0,"#));
+        assert_eq!(duplicate.get("filter_1_cutoff"), Some(Stored::Float(2.0)));
+        let slots = (0..65)
+            .map(|_| r#"{"source":"","destination":""}"#)
+            .collect::<Vec<_>>()
+            .join(",");
+        let long = model(&wrap(&format!(r#""modulations":[{slots}],"#)));
+        assert_eq!(write(&long), wrap(&format!(r#""modulations":[{slots}],"#)));
+    }
+
+    #[test]
     fn unknown_keys_and_order_survive() {
         let text = r#"{"zeta":1,"synth_version":"1.5.5","settings":{"zz_new":2.5,"sample":{"length":1,"sample_rate":44100,"samples":"AAA="},"custom_warps":[],"filter_1_cutoff":60.0},"alpha":"x"}"#;
         let model = model(text);
@@ -1219,6 +1346,45 @@ mod tests {
                 model.get(&format!("modulation_1_{name}")),
                 Some(Stored::Float(0.0)),
                 "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_route_into_an_on_off_control_is_refused() {
+        let mut model = model(MINIMAL);
+        let route = |destination: &str| Route {
+            source: "lfo_1".into(),
+            destination: destination.into(),
+            amount: 0.5,
+            polarity: RoutePolarity::Unipolar,
+            extras: Vec::new(),
+        };
+        for destination in ["osc_1_on", "modulation_3_bipolar", "modulation_3_bypass"] {
+            let error = model
+                .set_route(0, Some(route(destination)))
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("is an on-off control"), "{error}");
+            assert!(error.contains("number, count or menu control"), "{error}");
+        }
+        assert!(model.routes()[0].is_none());
+        for (slot, destination) in [
+            "lfo_1_tempo",
+            "osc_1_transpose",
+            "osc_1_unison_voices",
+            "modulation_3_amount",
+            "modulation_3_power",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            model.set_route(slot, Some(route(destination))).unwrap();
+            assert_eq!(
+                model.routes()[slot]
+                    .as_ref()
+                    .map(|have| have.destination.as_str()),
+                Some(destination)
             );
         }
     }

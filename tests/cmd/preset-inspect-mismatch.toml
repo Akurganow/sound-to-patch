@@ -1,8 +1,8 @@
 # The flag and the file extension disagree.
 bin.name = "sound-to-patch"
-args = ["preset", "inspect", "--synth", "serum2", "tests/fixtures/vital/minimal.vital"]
+args = ["preset", "inspect", "--synth", "serum2", "tests/fixtures/vital/marks.vital"]
 status.code = 1
 stdout = ""
 stderr = """
-error: --synth serum2 does not match "tests/fixtures/vital/minimal.vital", a Vital preset. Pass --synth vital or a .SerumPreset file
+error: --synth serum2 does not match "tests/fixtures/vital/marks.vital", a Vital preset. Pass --synth vital or a .SerumPreset file
 """

@@ -6,11 +6,11 @@
 
 use std::error::Error;
 use std::fmt;
-use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::preset::format::PresetModel;
+use crate::preset::read_prefix;
 
 /// The template rules of one synth.
 pub trait TemplateSource: Send + Sync {
@@ -153,15 +153,27 @@ impl Error for TemplateError {
 ///
 /// # Errors
 ///
-/// [`TemplateError::Unreadable`] when the command-line path cannot be read,
-/// with no fallback, and [`TemplateError::Missing`] when no step supplies a
-/// template.
+/// [`TemplateError::Unreadable`] when the command-line path cannot be read
+/// or holds more than `max` bytes, with no fallback, and
+/// [`TemplateError::Missing`] when no step supplies a template. A candidate
+/// over `max` bytes is passed over.
 pub fn locate_template(
     source: &dyn TemplateSource,
     cli_path: Option<&Path>,
+    max: usize,
 ) -> Result<Template, TemplateError> {
+    let read = |path: &Path| {
+        let bytes = read_prefix(path, max)?;
+        if bytes.len() > max {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("the file is larger than the limit of {max} bytes"),
+            ));
+        }
+        Ok(bytes)
+    };
     if let Some(path) = cli_path {
-        return fs::read(path)
+        return read(path)
             .map(|bytes| Template {
                 bytes,
                 origin: Origin::CommandLine(path.to_owned()),
@@ -174,7 +186,7 @@ pub fn locate_template(
     let candidates = source.candidates();
     for path in &candidates {
         if path.is_file()
-            && let Ok(bytes) = fs::read(path)
+            && let Ok(bytes) = read(path)
         {
             return Ok(Template {
                 bytes,

@@ -11,7 +11,7 @@ use sound_to_patch::synth::Synth;
 use crate::support::memory::{Flaw, MemoryFormat, MemoryTemplate};
 use crate::support::{for_each_ready_synth, format_contract, registry_contract};
 
-const VITAL_MINIMAL: &[u8] = include_bytes!("../fixtures/vital/minimal.vital");
+const VITAL_MINIMAL: &[u8] = include_bytes!("../fixtures/vital/marks.vital");
 
 #[test]
 fn every_ready_registry_meets_the_contract() {
@@ -80,15 +80,15 @@ fn template_lookup_follows_its_order() {
         builtin: Some(b"builtin".to_vec()),
     };
 
-    let template = locate_template(&source, Some(&cli)).unwrap();
+    let template = locate_template(&source, Some(&cli), 1 << 20).unwrap();
     assert_eq!(template.bytes, b"cli");
     assert_eq!(template.origin, Origin::CommandLine(cli));
 
-    let template = locate_template(&source, None).unwrap();
+    let template = locate_template(&source, None, 1 << 20).unwrap();
     assert_eq!(template.bytes, b"first");
     assert_eq!(template.origin, Origin::Candidate(first.clone()));
 
-    let error = locate_template(&source, Some(&absent)).unwrap_err();
+    let error = locate_template(&source, Some(&absent), 1 << 20).unwrap_err();
     assert!(matches!(error, TemplateError::Unreadable { .. }));
     assert!(error.to_string().contains(&absent.display().to_string()));
 
@@ -96,7 +96,19 @@ fn template_lookup_follows_its_order() {
         candidates: vec![absent.clone()],
         builtin: Some(b"builtin".to_vec()),
     };
-    let template = locate_template(&builtin_only, None).unwrap();
+    let template = locate_template(&builtin_only, None, 1 << 20).unwrap();
+    assert_eq!(template.origin, Origin::Builtin);
+
+    // A file over the cap is refused on the command line and passed over
+    // as a candidate.
+    let error = locate_template(&source, Some(&first), 2).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("larger than the limit of 2 bytes"),
+        "{error}"
+    );
+    let template = locate_template(&source, None, 2).unwrap();
     assert_eq!(template.origin, Origin::Builtin);
 }
 
@@ -108,7 +120,9 @@ fn a_missing_template_lists_every_path_and_the_help() {
         candidates: paths.clone(),
         builtin: None,
     };
-    let message = locate_template(&source, None).unwrap_err().to_string();
+    let message = locate_template(&source, None, 1 << 20)
+        .unwrap_err()
+        .to_string();
     let lines: Vec<&str> = message.lines().collect();
     assert_eq!(lines[0], "no template found; tried:");
     for (line, path) in lines[1..].iter().zip(&paths) {
@@ -127,10 +141,10 @@ fn a_vital_template_path_is_used_as_it_is() {
     let path = dir.path().join("mine.vital");
     fs::write(&path, VITAL_MINIMAL).unwrap();
     let format = format_for(Synth::Vital).unwrap();
-    let template = locate_template(format.template(), Some(&path)).unwrap();
+    let template = locate_template(format.template(), Some(&path), format.max_bytes()).unwrap();
     assert_eq!(template.bytes, VITAL_MINIMAL);
     let missing = dir.path().join("missing.vital");
-    let message = locate_template(format.template(), Some(&missing))
+    let message = locate_template(format.template(), Some(&missing), format.max_bytes())
         .unwrap_err()
         .to_string();
     assert!(message.contains("missing.vital"), "{message}");
@@ -139,7 +153,7 @@ fn a_vital_template_path_is_used_as_it_is() {
 #[test]
 fn the_builtin_vital_template_has_no_findings() {
     let format = format_for(Synth::Vital).unwrap();
-    let template = locate_template(format.template(), None).unwrap();
+    let template = locate_template(format.template(), None, format.max_bytes()).unwrap();
     assert_eq!(template.origin, Origin::Builtin);
     let model = format.read(&template.bytes).unwrap();
     assert_eq!(format.template().check(model.as_ref()), Vec::new());

@@ -1,0 +1,62 @@
+[package]
+name = "sound-to-patch-fuzz"
+description = "Fuzz targets for the preset readers and writers of sound-to-patch."
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+# Its own workspace: the fuzz targets build with a pinned nightly and
+# libFuzzer, and never join the shipped workspace.
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+arbitrary = { version = "1.5.0", features = ["derive"] }
+libfuzzer-sys = "0.4.13"
+sound-to-patch = { path = ".." }
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+unreachable_pub = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+
+[[bin]]
+name = "vital_read"
+path = "fuzz_targets/vital_read.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vital_roundtrip"
+path = "fuzz_targets/vital_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vital_write"
+path = "fuzz_targets/vital_write.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "edits_apply"
+path = "fuzz_targets/edits_apply.rs"
+test = false
+doc = false
+bench = false

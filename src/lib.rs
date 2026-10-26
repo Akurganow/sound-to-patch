@@ -18,8 +18,9 @@
 //! - [`notes`]: the note list that every layer reads, and the harmonic
 //!   masks built from it.
 //! - [`preset`]: preset files behind one adapter per synth: the format
-//!   traits, the parameter registry with its laws, the template and the
-//!   Vital adapter.
+//!   traits, the parameter registry with its laws, the template, the edit
+//!   list and its applier, the mapper trait that turns layer values into
+//!   edits, and the Vital adapter.
 //! - [`synth`]: the target synth, the shared `--synth` argument and what
 //!   each synth offers in structure.
 //! - [`units`]: unit newtypes, checked once when built, with their

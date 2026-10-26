@@ -3,7 +3,9 @@
 //! pass and fail where they should, seeded noise, golden vectors and test
 //! signals.
 
+pub(crate) mod apply;
 pub(crate) mod cast;
+pub(crate) mod fixtures;
 pub(crate) mod golden;
 pub(crate) mod memory;
 pub(crate) mod rng;
@@ -12,6 +14,9 @@ pub(crate) mod signals;
 use std::panic::{self, AssertUnwindSafe};
 
 use sound_to_patch::preset::format::{DescribeOptions, PresetFormat, PresetModel};
+use sound_to_patch::preset::mapper::{
+    MapContext, Mapped, MotionFxGroups, PitchEnvelopeGroups, SynthMapper, TimbreGroups,
+};
 use sound_to_patch::preset::registry::{ParamKind, ParamRegistry, Provenance};
 use sound_to_patch::preset::template::{Severity, locate_template};
 use sound_to_patch::synth::Synth;
@@ -163,7 +168,7 @@ pub(crate) fn format_contract(format: &dyn PresetFormat, samples: &[&[u8]]) -> R
         rejects(format, &sample[..sample.len() / 2])?;
         rejects(format, &sample[..sample.len() - 1])?;
     }
-    let template = locate_template(format.template(), None)
+    let template = locate_template(format.template(), None, format.max_bytes())
         .map_err(|error| format!("no template: {error}"))?;
     let model = format
         .read(&template.bytes)
@@ -175,6 +180,31 @@ pub(crate) fn format_contract(format: &dyn PresetFormat, samples: &[&[u8]]) -> R
         .find(|check| check.severity == Severity::Error)
     {
         return Err(format!("the template fails its check: {check}"));
+    }
+    Ok(())
+}
+
+/// The rules every mapper meets on the empty inputs: no edit and no
+/// `unrepresentable` entry. The mapper tasks add cases with real groups.
+pub(crate) fn mapper_contract(
+    mapper: &dyn SynthMapper,
+    ctx: &MapContext<'_>,
+) -> Result<(), String> {
+    let empty = Mapped::default();
+    for (group, mapped) in [
+        (
+            "pitch_envelope",
+            mapper.pitch_envelope(&PitchEnvelopeGroups::default(), ctx),
+        ),
+        ("timbre", mapper.timbre(&TimbreGroups::default(), ctx)),
+        (
+            "motion_fx",
+            mapper.motion_fx(&MotionFxGroups::default(), ctx),
+        ),
+    ] {
+        if mapped != empty {
+            return Err(format!("{group} maps empty input to {mapped:?}"));
+        }
     }
     Ok(())
 }

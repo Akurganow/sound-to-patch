@@ -8,9 +8,12 @@
 use std::fmt;
 use std::str::FromStr;
 
+use crate::preset::mapper::{
+    MapContext, Mapped, MotionFxGroups, PitchEnvelopeGroups, SynthMapper, TimbreGroups,
+};
 use crate::preset::registry::{Provenance, Registry};
 use crate::synth::{
-    EffectFamily, GlideRule, GlideScaling, LfoSync, OscillatorLayout, SynthCapabilities,
+    EffectFamily, GlideRule, GlideScaling, LfoSync, OscillatorLayout, Synth, SynthCapabilities,
     SynthError, VelocityRule,
 };
 use crate::units::{Percent, Seconds, Semitones};
@@ -19,15 +22,23 @@ mod codec;
 pub mod laws;
 mod registry;
 mod template;
+mod writers;
 
 pub use codec::{VitalFormat, VitalModel};
 pub use registry::EngineScale;
 pub use template::VitalTemplate;
+pub use writers::{
+    FRAME_BASE64_CHARS, FRAME_SAMPLES, Keyframe, LfoShape, MAX_LFO_POINTS, MAX_POSITION,
+    ROUTE_SOURCES, Wavetable, default_polarity,
+};
 
 /// The `synth_version` stamp of files built from the built-in template:
 /// the version of the open source. A load check on the retail app settles
 /// the final stamp.
 pub const DEFAULT_STAMP: &str = "1.0.6";
+
+/// The stable retail build that written files are checked against.
+pub const RETAIL_BUILD: &str = "1.0.7";
 
 /// Keys that retail builds from 1.5 on write and the open source cannot
 /// read. A rewrite keeps them.
@@ -39,9 +50,15 @@ pub const RETAIL_ONLY_KEYS: [&str; 5] = [
     "osc_3_spectral_morph_phase",
 ];
 
-/// The largest file the reader accepts until the fuzzing task measures
-/// real files: 64 MiB. A file of that size made of short numbers can take
-/// about 2.4 GB to parse; see [`VitalFormat`].
+/// The largest file the reader accepts: 64 MiB.
+///
+/// Three wavetables of 257 keyframes at 10924 base64 characters each come
+/// to 8,422,404 bytes. An embedded sample adds more, with no size the
+/// source states. No saved file has been measured yet. The largest file
+/// the generated fixtures hold is `routes.vital`, 184,701 bytes. The cap
+/// leaves about seven times the wavetable maximum for a sample. A file of
+/// that size made of short numbers can take about 2.4 GB to parse; see
+/// [`VitalFormat`].
 pub const MAX_PRESET_BYTES: usize = 64 << 20;
 
 /// The Vital format with the default size cap.
@@ -98,6 +115,32 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
     },
     bend_range_default: Semitones::from_const(2.0),
 };
+
+/// The Vital mapper. The estimator epics fill its groups; until then each
+/// group maps to no edit.
+pub static MAPPER: VitalMapper = VitalMapper;
+
+/// Maps layer groups to Vital edits.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct VitalMapper;
+
+impl SynthMapper for VitalMapper {
+    fn synth(&self) -> Synth {
+        Synth::Vital
+    }
+
+    fn pitch_envelope(&self, _input: &PitchEnvelopeGroups, _ctx: &MapContext<'_>) -> Mapped {
+        Mapped::default()
+    }
+
+    fn timbre(&self, _input: &TimbreGroups, _ctx: &MapContext<'_>) -> Mapped {
+        Mapped::default()
+    }
+
+    fn motion_fx(&self, _input: &MotionFxGroups, _ctx: &MapContext<'_>) -> Mapped {
+        Mapped::default()
+    }
+}
 
 /// The registry of Vital.
 pub(crate) fn registry() -> Result<&'static Registry, SynthError> {

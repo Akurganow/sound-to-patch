@@ -52,6 +52,34 @@ pub trait PresetFormat: Send + Sync {
 
     /// Where the template of this synth comes from.
     fn template(&self) -> &dyn TemplateSource;
+
+    /// The names a modulation source may take.
+    fn route_sources(&self) -> &'static [&'static str];
+
+    /// The polarity of a route whose edit names none.
+    fn default_polarity(&self, source: &str) -> RoutePolarity;
+
+    /// Checks a stored value that the registry range allows but the writer
+    /// cannot write yet.
+    ///
+    /// # Errors
+    ///
+    /// A [`FormatError`] naming the key, the cause and the fix.
+    fn check_value(&self, key: &str, stored: f64) -> Result<(), FormatError>;
+
+    /// Scans a model after an edit list: every control holds a value of the
+    /// right wire type inside its range, and the structured parts are
+    /// whole. Returns warnings, such as a route into a switched-off module.
+    ///
+    /// # Errors
+    ///
+    /// A [`FormatError`] for a value the synth would refuse or misread.
+    fn scan(&self, model: &dyn PresetModel, edited: &[&str]) -> Result<Vec<String>, FormatError>;
+
+    /// The trailing folder names of the synth's factory preset folder,
+    /// outermost first, such as the data folder and then `Factory`. The
+    /// writer refuses to write into it. Empty when the synth has none.
+    fn factory_folder(&self) -> &'static [&'static str];
 }
 
 /// A decoded preset.

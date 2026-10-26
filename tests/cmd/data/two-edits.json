@@ -1,0 +1,15 @@
+{
+  "synth": "vital",
+  "edits": [
+    {
+      "param": "filter_1_cutoff",
+      "value": "1046.502261 Hz",
+      "reason": "cutoff near C6"
+    },
+    {
+      "param": "env_1_attack",
+      "value": "1 s",
+      "reason": "slow swell"
+    }
+  ]
+}

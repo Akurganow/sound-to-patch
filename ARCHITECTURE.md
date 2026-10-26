@@ -18,10 +18,10 @@ code validates the edit list against a template preset of the target synth and
 writes the preset file. The text path skips the analysis: the agent writes the
 edit list from the description.
 
-The library so far holds the command line with `preset inspect`, the unit
-types, the confidence type, the synth seam and the Vital read path, stem
-intake, the note list with its masks and the signal core that the
-estimators share.
+The library so far holds the command line with `preset inspect` and
+`preset apply`, the unit types, the confidence type, the synth seam, the
+Vital read and write paths, stem intake, the note list with its masks and
+the signal core that the estimators share.
 
 ## Synth adapter seam
 
@@ -38,8 +38,10 @@ synth lives in its adapter, never in the neutral core.
   unit of each parameter, the law between the stored value and the
   physical unit, and a provenance tag (`from facts`, `measured` or
   `interim`). A calibration set replaces laws with measured tables.
-- `SynthMapper`, planned: maps layers to edits and returns an
+- `SynthMapper` (`preset::mapper`): maps layers to edits and returns an
   `unrepresentable` list with the residual for what the synth cannot reach.
+  The trait and the fitting helper exist; the layer groups join with the
+  estimators.
 - `RenderStateAdapter`, planned: sets the plugin state in the VST3 host.
 - The agent reference: the controls, the gotchas and the word-to-control
   maps of the synth.
@@ -72,9 +74,12 @@ joins `READY` when its adapter lands.
 - `confidence`: the confidence of an estimate: a level, the reasons with
   their signal values and a spread in a unit type, or no estimate.
 - `preset`: preset files. `format`, `registry` and `template` hold the
-  synth-neutral traits and the `inspect` command; `vital` is the Vital
+  synth-neutral traits and the `inspect` command. `edits` parses an edit
+  list and resolves it against a registry, `apply` writes resolved edits
+  into a model, and `mapper` holds the mapper trait. `vital` is the Vital
   adapter: the JSON codec, the registry built from `registry.json`, the
-  built-in template, the capabilities and the laws that span controls.
+  built-in template, the writers of routes, wavetables and LFO shapes, the
+  capabilities and the laws that span controls.
 - `synth`: the `Synth` enum, the shared `--synth` argument and
   `SynthCapabilities`.
 - `src/lib.rs`: the crate root and the crate docs.
@@ -83,8 +88,9 @@ joins `READY` when its adapter lands.
   fetches pinned datasets, runs the pinned golden-number generator and
   checks its vectors, checks the credits, this code map, the Rust version
   named in the docs and pull request descriptions, writes the release
-  version, and regenerates the Vital registry data from a local checkout of
-  the open source.
+  version, regenerates the Vital registry data from a local checkout of
+  the open source, and generates the Vital test fixtures.
+- `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 
 ## Invariants
 

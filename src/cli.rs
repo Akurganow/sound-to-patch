@@ -39,7 +39,7 @@ pub struct Cli {
 /// The commands, one variant per line.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Read and inspect synth presets.
+    /// Read, inspect and write synth presets.
     Preset(preset::PresetArgs),
 }
 
@@ -58,6 +58,16 @@ impl Command {
                     &inspect.synth,
                     &inspect.describe_options(),
                 )?),
+                preset::PresetCommand::Apply(apply) => {
+                    Ok(crate::preset::apply_file(&crate::preset::ApplyRequest {
+                        edits: &apply.edits,
+                        out: &apply.out,
+                        template: apply.template.as_deref(),
+                        synth: &apply.synth,
+                        name: apply.name.as_deref(),
+                        force: apply.force,
+                    })?)
+                }
             },
         }
     }

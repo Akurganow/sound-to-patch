@@ -7,6 +7,7 @@ mod architecture;
 mod credits;
 mod dist;
 mod fetch;
+mod fixtures;
 mod golden;
 mod pr;
 mod version;
@@ -74,6 +75,15 @@ enum Task {
         #[arg(long)]
         check: bool,
     },
+    /// Write the generated Vital fixtures of `tests/fixtures/vital/`.
+    VitalFixtures {
+        /// Compare the committed fixtures with the generator instead.
+        #[arg(long)]
+        check: bool,
+        /// Write nothing and list the registry keys no fixture holds.
+        #[arg(long, conflicts_with = "check")]
+        coverage: bool,
+    },
     /// Write a release version into the workspace manifest and the lock file.
     SetVersion {
         /// The new version, without a `v` prefix.
@@ -100,6 +110,13 @@ fn main() -> ExitCode {
             .and_then(|title| pr::check_title(&title)),
         Task::VitalRegistry { source, check } => vital::run(root(), &source, check),
         Task::SetVersion { version } => version::set(root(), &version),
+        Task::VitalFixtures { check, coverage } => {
+            if coverage {
+                fixtures::coverage()
+            } else {
+                fixtures::run(root(), check)
+            }
+        }
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,

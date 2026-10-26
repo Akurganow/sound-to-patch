@@ -643,6 +643,19 @@ impl ParamSpec {
             && (self.kind == ParamKind::Float || stored.fract() == 0.0)
     }
 
+    /// Whether a saved preset may hold `stored`: [`Self::accepts`], with
+    /// each bound widened to its 32-bit float form, which a synth that
+    /// keeps controls as `f32` saves.
+    #[must_use]
+    pub fn accepts_saved(&self, stored: f64) -> bool {
+        let narrow = |bound: f64| f64::from(crate::cast::f64_to_f32(bound));
+        let low = self.stored_min.min(narrow(self.stored_min));
+        let high = self.stored_max.max(narrow(self.stored_max));
+        stored.is_finite()
+            && (low..=high).contains(&stored)
+            && (self.kind == ParamKind::Float || stored.fract() == 0.0)
+    }
+
     fn check_stored(&self, stored: f64) -> Result<f64, ParamError> {
         if !stored.is_finite() || !(self.stored_min..=self.stored_max).contains(&stored) {
             return Err(ParamError::new(
@@ -1113,7 +1126,7 @@ pub(crate) mod tests {
         }
     }
 
-    fn spec(key: &str, law: Law, min: f64, max: f64, unit: UnitKind) -> ParamSpec {
+    pub(crate) fn spec(key: &str, law: Law, min: f64, max: f64, unit: UnitKind) -> ParamSpec {
         ParamSpec {
             key: key.to_owned(),
             kind: ParamKind::Float,

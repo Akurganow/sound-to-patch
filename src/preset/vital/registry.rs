@@ -16,7 +16,7 @@ use serde::Deserialize;
 use crate::preset::registry::{
     Build, Law, ParamKind, ParamSpec, Provenance, Registry, UnitKind, UnitLaw,
 };
-use crate::preset::vital::VitalVersion;
+use crate::preset::vital::{RETAIL_BUILD, VitalVersion};
 use crate::synth::{Synth, SynthError};
 
 /// The engine transform of a stored value, applied after modulation adds
@@ -218,6 +218,11 @@ fn spec(
     if note.is_some() {
         evidence.push_str("; the audible effect is not measured");
     }
+    let displayed = DISPLAYED.contains(&key.as_str());
+    if displayed {
+        evidence.push_str("; the law is confirmed in the value box of Vital ");
+        evidence.push_str(RETAIL_BUILD);
+    }
     Ok(ParamSpec {
         key,
         kind: control.kind,
@@ -227,18 +232,29 @@ fn spec(
         law,
         label,
         choices: control.choices.clone(),
-        provenance: if note.is_some() {
-            Provenance::Interim
-        } else {
-            Provenance::FromFacts
+        provenance: match (displayed, note.is_some()) {
+            (true, _) => Provenance::Measured,
+            (false, true) => Provenance::Interim,
+            (false, false) => Provenance::FromFacts,
         },
         evidence,
         first_build: Some(Build(since)),
-        verified_on: None,
+        verified_on: displayed.then(|| Build(RETAIL_BUILD.to_owned())),
         tuning_note: note.map(str::to_owned),
         legacy,
     })
 }
+
+/// Controls whose law the value box of retail Vital confirmed: a typed
+/// value was stored as the law gives, and a stored value read back as the
+/// law gives. The drive keeps its tuning note: its law is in decibels, but
+/// the sound of the distortion curve is not measured.
+const DISPLAYED: [&str; 4] = [
+    "distortion_drive",
+    "filter_1_cutoff",
+    "osc_1_unison_detune",
+    "portamento_time",
+];
 
 /// The later of two build texts.
 fn newer(a: &str, b: &str) -> Result<String, String> {
@@ -615,6 +631,52 @@ mod tests {
     }
 
     #[test]
+    fn the_value_box_confirms_four_laws() {
+        // Pairs from a file saved by Vital 1.0.7: a typed value and the
+        // value it stored, then a stored value and what the box read.
+        let seconds = |key: &str, stored: f64| match spec(key).physical(stored).unwrap() {
+            Physical::Seconds(value) => value.get(),
+            other => panic!("{other:?}"),
+        };
+        assert_relative_eq!(seconds("portamento_time", -1.0), 0.5);
+        assert_relative_eq!(
+            seconds("portamento_time", -1.88),
+            0.271_684,
+            max_relative = 1e-5
+        );
+        let percent = |stored: f64| match spec("osc_1_unison_detune").physical(stored).unwrap() {
+            Physical::PercentUnipolar(value) => value.get(),
+            other => panic!("{other:?}"),
+        };
+        assert_relative_eq!(percent(5.0), 25.0);
+        assert_relative_eq!(percent(6.05), 36.60, max_relative = 1e-3);
+        // The box shows the cutoff as semitones above MIDI note 60.
+        let hz = |stored: f64| match spec("filter_1_cutoff").physical(stored).unwrap() {
+            Physical::Hz(value) => value.get(),
+            other => panic!("{other:?}"),
+        };
+        for (shown, stored) in [(12.0, 72.0), (6.860_02, 66.86)] {
+            let note: f64 = 60.0 + shown;
+            assert_relative_eq!(
+                hz(stored),
+                440.0 * ((note - 69.0) / 12.0).exp2(),
+                max_relative = 1e-5
+            );
+        }
+        let db = |stored: f64| match spec("distortion_drive").physical(stored).unwrap() {
+            Physical::Decibels(value) => value.get(),
+            other => panic!("{other:?}"),
+        };
+        assert_relative_eq!(db(12.0), 12.0);
+        assert_relative_eq!(db(20.507), 20.5071, max_relative = 1e-5);
+        for key in DISPLAYED {
+            assert_eq!(spec(key).provenance, Provenance::Measured, "{key}");
+            assert_eq!(spec(key).verified_on, Some(Build(RETAIL_BUILD.to_owned())));
+        }
+        assert!(spec("distortion_drive").tuning_note.is_some());
+    }
+
+    #[test]
     fn interim_entries_are_listed_with_notes() {
         let interim: Vec<_> = vital()
             .registry
@@ -634,7 +696,6 @@ mod tests {
         }
         for key in [
             "filter_1_drive",
-            "distortion_drive",
             "eq_low_gain",
             "compressor_band_gain",
             "delay_feedback",
@@ -644,7 +705,7 @@ mod tests {
             assert_eq!(spec(key).provenance, Provenance::Interim, "{key}");
         }
         for key in [
-            "filter_1_cutoff",
+            "filter_2_cutoff",
             "env_1_attack",
             "lfo_1_frequency",
             "osc_1_level",
