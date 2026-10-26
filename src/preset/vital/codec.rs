@@ -536,9 +536,11 @@ fn edit_error(cause: impl Into<String>, fix: impl Into<String>) -> FormatError {
     FormatError::new("cannot edit the .vital preset", cause, fix)
 }
 
-/// Refuses a route without a source or a destination, and one into a
-/// switch, a menu or a control of the modulation matrix: none of them
-/// takes modulation.
+/// Refuses a route without a source or a destination, and one into an
+/// on-off control: a switch, or the bipolar, stereo or bypass flag of a
+/// slot. Factory presets of Vital 1.0.x route into numbers, counts, menus
+/// such as `osc_1_transpose` and `lfo_1_tempo`, and the amount and power
+/// of other slots, and never into an on-off control.
 fn check_route(slot: usize, route: &Route) -> Result<(), FormatError> {
     if route.source.is_empty() || route.destination.is_empty() {
         return Err(edit_error(
@@ -553,23 +555,21 @@ fn check_route(slot: usize, route: &Route) -> Result<(), FormatError> {
         .ok()
         .and_then(|registry| registry.get(&route.destination));
     let Some(spec) = target.filter(|spec| {
-        matches!(spec.kind, ParamKind::Flag | ParamKind::Choice)
-            || spec.key.starts_with("modulation_")
+        spec.kind == ParamKind::Flag
+            || (spec.key.starts_with("modulation_")
+                && ["_bipolar", "_stereo", "_bypass"]
+                    .iter()
+                    .any(|flag| spec.key.ends_with(flag)))
     }) else {
         return Ok(());
     };
-    let kind = match spec.kind {
-        ParamKind::Flag => "switch",
-        ParamKind::Choice => "menu",
-        ParamKind::Float | ParamKind::Count => "control of the modulation matrix",
-    };
     Err(edit_error(
         format!(
-            "slot {}: `{}` is a {kind} and takes no modulation",
+            "slot {}: `{}` is an on-off control and takes no modulation",
             slot + 1,
             spec.key
         ),
-        "Route into a number or count control outside the modulation matrix",
+        "Route into a number, count or menu control, or into the amount or power of another slot",
     ))
 }
 
@@ -1351,25 +1351,42 @@ mod tests {
     }
 
     #[test]
-    fn a_route_into_a_switch_menu_or_slot_control_is_refused() {
+    fn a_route_into_an_on_off_control_is_refused() {
         let mut model = model(MINIMAL);
-        for (destination, kind) in [
-            ("osc_1_on", "switch"),
-            ("filter_1_model", "menu"),
-            ("modulation_1_amount", "control of the modulation matrix"),
-        ] {
-            let route = Route {
-                source: "lfo_1".into(),
-                destination: destination.into(),
-                amount: 0.5,
-                polarity: RoutePolarity::Unipolar,
-                extras: Vec::new(),
-            };
-            let error = model.set_route(0, Some(route)).unwrap_err().to_string();
-            assert!(error.contains(&format!("is a {kind}")), "{error}");
-            assert!(error.contains("number or count control"), "{error}");
+        let route = |destination: &str| Route {
+            source: "lfo_1".into(),
+            destination: destination.into(),
+            amount: 0.5,
+            polarity: RoutePolarity::Unipolar,
+            extras: Vec::new(),
+        };
+        for destination in ["osc_1_on", "modulation_3_bipolar", "modulation_3_bypass"] {
+            let error = model
+                .set_route(0, Some(route(destination)))
+                .unwrap_err()
+                .to_string();
+            assert!(error.contains("is an on-off control"), "{error}");
+            assert!(error.contains("number, count or menu control"), "{error}");
         }
         assert!(model.routes()[0].is_none());
+        for (slot, destination) in [
+            "lfo_1_tempo",
+            "osc_1_transpose",
+            "osc_1_unison_voices",
+            "modulation_3_amount",
+            "modulation_3_power",
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            model.set_route(slot, Some(route(destination))).unwrap();
+            assert_eq!(
+                model.routes()[slot]
+                    .as_ref()
+                    .map(|have| have.destination.as_str()),
+                Some(destination)
+            );
+        }
     }
 
     #[test]

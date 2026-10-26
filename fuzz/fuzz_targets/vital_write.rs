@@ -47,13 +47,15 @@ fn build(plan: &Plan, model: &mut VitalModel) -> Result<(), String> {
     let registry = registry_for(Synth::Vital).map_err(|error| error.to_string())?;
     let controls: Vec<&ParamSpec> = registry.iter().filter(|spec| !spec.legacy).collect();
     let pick = |index: u16| controls[usize::from(index) % controls.len()];
-    // A route takes a number or count control outside the slot controls.
+    // A route takes any control but an on-off one.
     let targets: Vec<&ParamSpec> = controls
         .iter()
         .copied()
         .filter(|spec| {
-            matches!(spec.kind, ParamKind::Float | ParamKind::Count)
-                && !spec.key.starts_with("modulation_")
+            spec.kind != ParamKind::Flag
+                && !["_bipolar", "_stereo", "_bypass"]
+                    .iter()
+                    .any(|flag| spec.key.starts_with("modulation_") && spec.key.ends_with(flag))
         })
         .collect();
     for &(index, value) in &plan.controls {
