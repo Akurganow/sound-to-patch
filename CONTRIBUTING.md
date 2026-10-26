@@ -66,7 +66,7 @@ PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-b
 - Every public item has rustdoc. Changed behaviour has a test. The testing
   guide in `docs/src/development/testing.md` says which test goes where.
 - Expected test values never come from an AI. Take them from a file saved
-  by Serum 2 or from an independent reference.
+  by the target synth or from an independent reference.
 - An epic closes with its docs and the checklist in its issue.
 
 ## Commits and pull requests

@@ -21,7 +21,7 @@ needs from the matrix below and names them in its issue.
 | L8 | Fuzzing | `fuzz/`, for code that reads untrusted bytes |
 | L9 | Benchmarks | `benches/`; CI only compiles them |
 | L10 | Test-quality reports | mutation testing and coverage, at epic close |
-| L11 | Dataset evaluation and the Serum 2 bench | `xtask`, local only |
+| L11 | Dataset evaluation and the per-synth bench | `xtask`, local only |
 
 `●` needed, `○` optional, `–` not applicable.
 
@@ -52,7 +52,7 @@ doc tests, hence the second command. CI uses the `ci` profile from
 
 ## CI versus local
 
-- A test that needs Serum 2 or a dataset carries `#[ignore = "needs <thing>"]`.
+- A test that needs a synth plugin (Vital or Serum 2), `vita` or a dataset carries `#[ignore = "needs <thing>"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
 - Never skip a test at run time with an early `return`. It reports a pass

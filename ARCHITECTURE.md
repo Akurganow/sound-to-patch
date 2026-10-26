@@ -11,12 +11,12 @@ map for finding the code that does a thing.
 ## Bird's-eye view
 
 The audio path reads a stem, estimates eight synth layers in a fixed order
-(notes and pitch, amplitude envelope, unison, oscillator, filter,
-modulation, distortion, space), and writes a layer report. An agent session
-reads the report, settles the flagged ambiguities and writes an edit list.
-The `preset` code validates the edit list against a template preset of the
-target synth and writes the preset file. The text path skips the analysis: the agent writes
-the edit list from the description.
+(notes and pitch, amplitude envelope, unison, oscillator, filter, modulation,
+distortion, space), and writes a layer report. An agent session reads the
+report, settles the flagged ambiguities and writes an edit list. The `preset`
+code validates the edit list against a template preset of the target synth and
+writes the preset file. The text path skips the analysis: the agent writes the
+edit list from the description.
 
 The library so far holds the command-line skeleton, the unit types and
 the confidence type.

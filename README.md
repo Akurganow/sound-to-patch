@@ -8,6 +8,8 @@ the target synths, and Vital comes first. The project is MIT-licensed, see
 The project is at its first release: the `sound-to-patch` command prints its
 help and its version. The commands of both paths arrive in later releases.
 
+The project has no affiliation with the makers of Vital or Serum 2.
+
 ## Build
 
 Building needs Rust 1.91 or newer.
