@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.4.0](https://github.com/Akurganow/sound-to-patch/compare/6da52b8fbec72f603cc5e69c828921ba24d46ef9..v0.4.0) - 2026-10-26
+#### Features
+- (**preset**) add the synth seam and read Vital presets - ([f394b21](https://github.com/Akurganow/sound-to-patch/commit/f394b21b8b86a92bcb34f36efc2e7a1532d2b0b4)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.3.0](https://github.com/Akurganow/sound-to-patch/compare/d3ebab3766153bf2e1349507ee01f7ddc10d8c78..v0.3.0) - 2026-10-26
 #### Features
 - rename the program to sound-to-patch - ([d3ebab3](https://github.com/Akurganow/sound-to-patch/commit/d3ebab3766153bf2e1349507ee01f7ddc10d8c78)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
