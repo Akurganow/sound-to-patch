@@ -33,11 +33,15 @@ pub use writers::{
 };
 
 /// The `synth_version` stamp of files built from the built-in template:
-/// the version of the open source. A load check on the retail app settles
-/// the final stamp.
+/// the version of the open source.
+///
+/// Stable retail 1.0.7 loads it, since the gate compares only major and
+/// minor. Builds from 1.5 on are unchecked.
 pub const DEFAULT_STAMP: &str = "1.0.6";
 
-/// The stable retail build that written files are checked against.
+/// The stable retail build that written files are checked against: the
+/// load check of #181 ran on it. Its saved default state holds every
+/// created control at the registry default.
 pub const RETAIL_BUILD: &str = "1.0.7";
 
 /// Keys that retail builds from 1.5 on write and the open source cannot

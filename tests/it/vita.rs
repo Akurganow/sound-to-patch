@@ -48,13 +48,14 @@ fn written_presets_load_in_the_open_engine() {
 #[test]
 #[ignore = "needs Vital and a saved copy of the written preset in VITAL_SAVED_PRESET"]
 fn a_preset_saved_by_vital_keeps_the_edits() {
-    let saved = std::env::var("VITAL_SAVED_PRESET").unwrap_or_else(|_| {
+    let saved_path = std::env::var("VITAL_SAVED_PRESET").unwrap_or_else(|_| {
         panic!(
             "set VITAL_SAVED_PRESET to the file Vital saved after loading the preset \
              that `preset apply tests/cmd/data/two-edits.json -o Bass.vital` writes"
         )
     });
-    let saved = fs::read(&saved).unwrap_or_else(|error| panic!("cannot read {saved}: {error}"));
+    let saved =
+        fs::read(&saved_path).unwrap_or_else(|error| panic!("cannot read {saved_path}: {error}"));
     let dir = tempfile::tempdir().unwrap();
     let edits = write(dir.path(), "edits.json", TWO_EDITS);
     let out = dir.path().join("Bass.vital");
@@ -69,7 +70,13 @@ fn a_preset_saved_by_vital_keeps_the_edits() {
             .find(|field| field.label == "name")
             .map(|field| field.value.clone())
     };
-    assert_eq!(name(again.as_ref()), name(written.as_ref()));
+    // Vital names a preset after its file, so a re-save under a new name
+    // carries that name.
+    let saved_stem = std::path::Path::new(&saved_path)
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned());
+    assert_eq!(name(again.as_ref()), saved_stem);
+    assert_eq!(name(written.as_ref()).as_deref(), Some("Bass"));
     for key in ["filter_1_cutoff", "env_1_attack"] {
         let (Some(Stored::Float(want)), Some(Stored::Float(got))) =
             (written.get(key), again.get(key))
@@ -80,7 +87,8 @@ fn a_preset_saved_by_vital_keeps_the_edits() {
             clippy::cast_possible_truncation,
             reason = "one f32 step is the tolerance"
         )]
-        let step = f64::from((want as f32).abs()).next_up() - f64::from((want as f32).abs());
+        let narrow = (want as f32).abs();
+        let step = f64::from(narrow.next_up()) - f64::from(narrow);
         assert!(
             (want - got).abs() <= (1e-6 * want.abs()).max(step),
             "{key}: wrote {want}, Vital saved {got}"

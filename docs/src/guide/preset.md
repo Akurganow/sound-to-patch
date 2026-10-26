@@ -107,8 +107,9 @@ $ sound-to-patch preset apply bass.json --template Bass.vital -o Again.vital
 ...
 ```
 
-Prefer a saved template until the retail check of the stamp is done. The
-built-in template is stamped `1.0.6`, the open-source build.
+The built-in template is stamped `1.0.6`, the open-source build, which
+Vital 1.0.7 loads. For a newer build, such as the early-access 1.6, start
+from a preset saved by your own app.
 
 ### Load it in Vital
 
@@ -122,9 +123,20 @@ A file is untrusted until Vital has loaded it. Check the sound, not only
 the name: in a plugin host, Vital ignores a file it rejects and keeps the
 last sound without a dialog.
 
-- Written files load in the open Vital engine, with every control kept.
-  The load in the retail app is still to be checked; the
-  [format page](../reference/formats/vital-preset.md#open-items) lists it.
+- Results on Vital 1.0.7, the stable build:
+
+  | Check | Result |
+  | :-- | :-- |
+  | A preset written from the two edits of the README quick start | loads; the attack shows 1 s and the note swells |
+  | The same file stamped `1.5.5`, `1.6.0` or `1.7.0` | refused: the stamp is newer than the app |
+  | The same file with keys of later builds | loads |
+  | Save it again from the app | every control kept |
+
+  The [format page](../reference/formats/vital-preset.md#open-items) lists
+  what is still open.
+- The 1.0.7 plugin bundles for macOS are Intel-only. The app runs on Apple
+  silicon under Rosetta, but a plugin host running natively on Apple
+  silicon cannot load the plugin.
 - Presets saved by Vital 1.6 do not open in 1.5.
 - Factory presets, wavetables and samples cannot be shared. Do not share a
   preset that embeds them.

@@ -228,13 +228,10 @@ fn spec(
         evidence.push_str("; the law is confirmed by a render on the ");
         evidence.push_str(OPEN_ENGINE);
     }
-    let verified_on = if displayed {
-        Some(Build(RETAIL_BUILD.to_owned()))
-    } else {
-        // The open engine reported the same key set, ranges and defaults
-        // for every other control that a module creates.
-        (!legacy && !ENGINE_DIFFERS.contains(&key.as_str())).then(|| Build(OPEN_ENGINE.to_owned()))
-    };
+    // Retail 1.0.7 saved every created control at its default, and the open
+    // engine reported the same ranges for all but `ENGINE_DIFFERS`.
+    let verified_on = (!legacy && !ENGINE_DIFFERS.contains(&key.as_str()))
+        .then(|| Build(RETAIL_BUILD.to_owned()));
     Ok(ParamSpec {
         key,
         kind: control.kind,
@@ -268,8 +265,8 @@ const DISPLAYED: [&str; 4] = [
     "portamento_time",
 ];
 
-/// The engine the probes of #179 ran on: the open 1.0.x engine through the
-/// `vita` 0.1.0 binding. A row verified there is not verified on retail.
+/// The engine the render probes of #179 ran on: the open 1.0.x engine
+/// through the `vita` 0.1.0 binding.
 pub const OPEN_ENGINE: &str = "open engine 1.0.x (vita 0.1.0)";
 
 /// Keys whose range or menu labels the open engine reports differently
@@ -414,14 +411,14 @@ mod tests {
     }
 
     #[test]
-    fn the_open_engine_verifies_every_created_control_but_nine() {
+    fn the_probes_verify_every_created_control_but_nine() {
         let registry = &vital().registry;
         let verified = registry
             .iter()
             .filter(|spec| {
                 spec.verified_on
                     .as_ref()
-                    .is_some_and(|build| build.0 == OPEN_ENGINE)
+                    .is_some_and(|build| build.0 == RETAIL_BUILD)
             })
             .count();
         assert_eq!(verified, 794 - 22 - ENGINE_DIFFERS.len());
