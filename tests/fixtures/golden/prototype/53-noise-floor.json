@@ -2,6 +2,95 @@
  "description": "Bias of plain T20 and T30 fits from a noise floor under the decay.",
  "generator": "xtask/golden/generate.py:decay_noise_floor",
  "issue": 53,
+ "issue_figures": {
+  "cells": [
+   {
+    "floor_db": null,
+    "issue_t20_s": 0.41,
+    "issue_t30_s": 0.4,
+    "reproduced": true,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 0.39,
+    "issue_t30_s": 0.4,
+    "reproduced": true,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 0.48,
+    "issue_t30_s": 3.27,
+    "reproduced": false,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 5.14,
+    "issue_t30_s": 4.38,
+    "reproduced": false,
+    "rt60_s": 0.4
+   },
+   {
+    "floor_db": null,
+    "issue_t20_s": 1.19,
+    "issue_t30_s": 1.2,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 1.21,
+    "issue_t30_s": 1.21,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 1.39,
+    "issue_t30_s": 5.82,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 9.58,
+    "issue_t30_s": 8.48,
+    "reproduced": true,
+    "rt60_s": 1.2
+   },
+   {
+    "floor_db": null,
+    "issue_t20_s": 2.51,
+    "issue_t30_s": 2.5,
+    "reproduced": true,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -60.0,
+    "issue_t20_s": 2.51,
+    "issue_t30_s": 2.51,
+    "reproduced": true,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -40.0,
+    "issue_t20_s": 2.72,
+    "issue_t30_s": 6.23,
+    "reproduced": false,
+    "rt60_s": 2.5
+   },
+   {
+    "floor_db": -30.0,
+    "issue_t20_s": 10.05,
+    "issue_t30_s": 10.02,
+    "reproduced": false,
+    "rt60_s": 2.5
+   }
+  ],
+  "check": "5 % plus 0.005 s for the issue's rounding, on both T20 and T30"
+ },
  "name": "53-noise-floor",
  "recipe": {
   "floor": "independent gaussian noise of power 10^(floor / 10)",

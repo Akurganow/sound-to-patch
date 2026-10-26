@@ -388,7 +388,44 @@ def decay_noise_floor():
         {"abs": 0.0, "rel": 0.05},
         tag="[own, synthetic]",
         rounding="the issue prints seconds to two decimals",
+        issue_figures=issue_figures_53_noise_floor(rows),
     )
+
+
+def within(ours, figure, rel, abs_):
+    """Whether our value matches an issue figure: both None, or within tolerance."""
+    if ours is None or figure is None:
+        return ours is None and figure is None
+    return abs(ours - figure) <= abs_ + rel * abs(figure)
+
+
+# The figures that #53 prints, T20 / T30 in seconds per floor: none, -60,
+# -40 and -30 dB.
+ISSUE_53_NOISE_FLOOR = {
+    0.4: [(0.41, 0.40), (0.39, 0.40), (0.48, 3.27), (5.14, 4.38)],
+    1.2: [(1.19, 1.20), (1.21, 1.21), (1.39, 5.82), (9.58, 8.48)],
+    2.5: [(2.51, 2.50), (2.51, 2.51), (2.72, 6.23), (10.05, 10.02)],
+}
+
+
+def issue_figures_53_noise_floor(rows):
+    cells = []
+    for row in rows:
+        for cell, (t20, t30) in zip(row["cells"], ISSUE_53_NOISE_FLOOR[row["rt60_s"]]):
+            reproduced = within(cell["t20_s"], t20, 0.05, 0.005) and within(cell["t30_s"], t30, 0.05, 0.005)
+            cells.append(
+                {
+                    "rt60_s": row["rt60_s"],
+                    "floor_db": cell["floor_db"],
+                    "issue_t20_s": t20,
+                    "issue_t30_s": t30,
+                    "reproduced": reproduced,
+                }
+            )
+    return {
+        "check": "5 % plus 0.005 s for the issue's rounding, on both T20 and T30",
+        "cells": cells,
+    }
 
 
 def median_or_none(values):
@@ -478,14 +515,17 @@ def decay_drop_time():
     r = DROP_RECIPE
     rate = r["sample_rate"]
     block = int(round(0.01 * rate))
-    drops = []
+    drops = {30.0: [], 15.0: []}
     for bi, reverb in enumerate(r["reverb_rt60_s"]):
         for trial in range(r["trials"]):
             tail = note_with_reverb(r["release_tau_s"], reverb, rate, 5390 + 100 * bi + trial)
             usable = len(tail) // block * block
             rms = np.sqrt(np.mean((tail[:usable] ** 2).reshape(-1, block), axis=1))
-            below = np.nonzero(rms <= rms[0] * 10 ** (-30.0 / 20.0))[0]
-            drops.append(float(below[0] * block / rate))
+            for drop, found in drops.items():
+                below = np.nonzero(rms <= rms[0] * 10 ** (-drop / 20.0))[0]
+                found.append(float(below[0] * block / rate))
+    ours = {"min_s": min(drops[30.0]), "max_s": max(drops[30.0])}
+    issue = {"min_s": 0.141, "max_s": 0.554}
     return document(
         "53-drop-time",
         53,
@@ -493,10 +533,16 @@ def decay_drop_time():
         "decay_drop_time",
         ["python", "numpy", "scipy"],
         r,
-        {"min_s": min(drops), "max_s": max(drops)},
+        ours,
         {"abs": 0.0, "rel": 0.1},
         tag="[own, synthetic]",
         rounding="the issue prints 141 to 554 ms",
+        issue_figures={
+            "check": "10 % on both ends",
+            "issue": issue,
+            "reproduced": all(within(ours[k], issue[k], 0.1, 0.0) for k in issue),
+            "same_method_at_15_db": {"min_s": min(drops[15.0]), "max_s": max(drops[15.0])},
+        },
     )
 
 
@@ -601,6 +647,40 @@ def stereo_pair(row, t, rate, f0):
     raise ValueError(row)
 
 
+# The figures that #47 prints: rho, sm_db, ipd_deg per row.
+ISSUE_47_STEREO = {
+    "mono": (1.000, None, 0.0),
+    "delay_0_4_ms": (0.538, -5.2, 53.0),
+    "haas_10_ms": (0.040, -0.3, 88.0),
+    "velvet_20_ms": (0.572, -5.1, 41.0),
+    "unison_3_0.5": (0.862, -10.9, 0.7),
+    "unison_3_1.0": (0.479, -4.4, 2.5),
+    "unison_7_0.5": (0.886, -12.2, 0.3),
+    "unison_7_1.0": (0.588, -5.9, 0.7),
+    "chorus": (0.819, -10.0, 3.7),
+    "reverb_0.3": (0.962, -15.9, 8.0),
+    "reverb_1.0": (0.518, -4.7, 42.0),
+}
+
+
+def issue_figures_47_stereo(values):
+    rows = {}
+    for row, (rho, sm_db, ipd) in ISSUE_47_STEREO.items():
+        ours = values[row]
+        rows[row] = {
+            "issue": {"rho": rho, "sm_db": sm_db, "ipd_deg": ipd},
+            "reproduced": within(ours["rho"], rho, 0.1, 0.0005)
+            and within(ours["sm_db"], sm_db, 0.1, 0.05)
+            and within(ours["ipd_deg"], ipd, 0.0, max(2.0, 0.1 * ipd)),
+        }
+    return {
+        "check": "10 % on rho and sm_db plus half the issue's last digit; 10 % or 2 degrees on ipd_deg",
+        "note": "the issue gives no recipe for the velvet, chorus and reverb rows and asks only for "
+        "their order of magnitude; the recipe here defines them",
+        "rows": rows,
+    }
+
+
 def stereo_stats(left, right, rate, f0):
     if np.all(left == 0) or np.all(right == 0):
         rho = None
@@ -667,6 +747,7 @@ def stereo_screen():
         tag="[own, synthetic]",
         rounding="the issue prints rho to three decimals, dB to one and degrees to one",
         tolerance_note="10 % or 2 degrees, whichever is larger, as the issue states",
+        issue_figures=issue_figures_47_stereo(values),
     )
 
 

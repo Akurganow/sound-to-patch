@@ -2,6 +2,100 @@
  "description": "Stereo screen of a 220 Hz sawtooth under delay, decorrelation, unison, chorus and reverb.",
  "generator": "xtask/golden/generate.py:stereo_screen",
  "issue": 47,
+ "issue_figures": {
+  "check": "10 % on rho and sm_db plus half the issue's last digit; 10 % or 2 degrees on ipd_deg",
+  "note": "the issue gives no recipe for the velvet, chorus and reverb rows and asks only for their order of magnitude; the recipe here defines them",
+  "rows": {
+   "chorus": {
+    "issue": {
+     "ipd_deg": 3.7,
+     "rho": 0.819,
+     "sm_db": -10.0
+    },
+    "reproduced": false
+   },
+   "delay_0_4_ms": {
+    "issue": {
+     "ipd_deg": 53.0,
+     "rho": 0.538,
+     "sm_db": -5.2
+    },
+    "reproduced": true
+   },
+   "haas_10_ms": {
+    "issue": {
+     "ipd_deg": 88.0,
+     "rho": 0.04,
+     "sm_db": -0.3
+    },
+    "reproduced": true
+   },
+   "mono": {
+    "issue": {
+     "ipd_deg": 0.0,
+     "rho": 1.0,
+     "sm_db": null
+    },
+    "reproduced": true
+   },
+   "reverb_0.3": {
+    "issue": {
+     "ipd_deg": 8.0,
+     "rho": 0.962,
+     "sm_db": -15.9
+    },
+    "reproduced": false
+   },
+   "reverb_1.0": {
+    "issue": {
+     "ipd_deg": 42.0,
+     "rho": 0.518,
+     "sm_db": -4.7
+    },
+    "reproduced": false
+   },
+   "unison_3_0.5": {
+    "issue": {
+     "ipd_deg": 0.7,
+     "rho": 0.862,
+     "sm_db": -10.9
+    },
+    "reproduced": false
+   },
+   "unison_3_1.0": {
+    "issue": {
+     "ipd_deg": 2.5,
+     "rho": 0.479,
+     "sm_db": -4.4
+    },
+    "reproduced": false
+   },
+   "unison_7_0.5": {
+    "issue": {
+     "ipd_deg": 0.3,
+     "rho": 0.886,
+     "sm_db": -12.2
+    },
+    "reproduced": false
+   },
+   "unison_7_1.0": {
+    "issue": {
+     "ipd_deg": 0.7,
+     "rho": 0.588,
+     "sm_db": -5.9
+    },
+    "reproduced": false
+   },
+   "velvet_20_ms": {
+    "issue": {
+     "ipd_deg": 41.0,
+     "rho": 0.572,
+     "sm_db": -5.1
+    },
+    "reproduced": false
+   }
+  }
+ },
  "name": "47-stereo-screen",
  "recipe": {
   "channel_scaling": "none; rows compare the raw channels",

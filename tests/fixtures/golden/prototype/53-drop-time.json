@@ -2,6 +2,18 @@
  "description": "A fixed 30 dB drop on the raw envelope misreads a 50 ms release under reverb.",
  "generator": "xtask/golden/generate.py:decay_drop_time",
  "issue": 53,
+ "issue_figures": {
+  "check": "10 % on both ends",
+  "issue": {
+   "max_s": 0.554,
+   "min_s": 0.141
+  },
+  "reproduced": false,
+  "same_method_at_15_db": {
+   "max_s": 0.56,
+   "min_s": 0.15
+  }
+ },
  "name": "53-drop-time",
  "recipe": {
   "method": "time from note-off until the 10 ms RMS of the raw tail first falls 30 dB below the RMS of its first 10 ms; minimum and maximum over reverbs and trials",
