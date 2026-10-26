@@ -18,12 +18,18 @@ The `preset` code validates the edit list against an Init preset and
 writes the preset file. The text path skips the analysis: the agent writes
 the edit list from the description.
 
-The first release holds only the command-line skeleton.
+The library so far holds the command-line skeleton, the unit types and
+the confidence type.
 
 ## Code map
 
 - `cli`: the command-line definition. The binary parses it, and `xtask`
   renders the man page and the shell completions from the same tree.
+- `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
+  checked once when built, from a number, JSON or a unit string such as
+  `"1.2 kHz"`. The conversions between units live here too.
+- `confidence`: the confidence of an estimate: a level, the reasons with
+  their signal values and a spread in a unit type, or no estimate.
 - `src/lib.rs`: the crate root and the crate docs.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
 - `xtask`: development tasks. It generates the man page and completions,
