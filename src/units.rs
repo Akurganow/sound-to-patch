@@ -34,14 +34,14 @@
 //! | [`Percent`] | `%` |
 //!
 //! ```
-//! use sound_to_serum::units::{Bipolar, Hz, Percent, Seconds};
+//! use sound_to_patch::units::{Bipolar, Hz, Percent, Seconds};
 //!
 //! let cutoff: Hz = "1.2 kHz".parse()?;
 //! let pre_delay: Seconds = "20 ms".parse()?;
 //! let amount: Percent<Bipolar> = "-40%".parse()?;
 //! assert_eq!(cutoff.to_string(), "1200 Hz");
 //! assert!("1.2 s".parse::<Hz>().is_err());
-//! # Ok::<(), sound_to_serum::units::ParseUnitError>(())
+//! # Ok::<(), sound_to_patch::units::ParseUnitError>(())
 //! ```
 //!
 //! A conversion between two unit types is a [`From`] impl when every input
@@ -189,11 +189,11 @@ unit!(
     /// A frequency in hertz: a finite value of zero or more.
     ///
     /// ```
-    /// use sound_to_serum::units::Hz;
+    /// use sound_to_patch::units::Hz;
     ///
     /// let a4 = Hz::new(440.0)?;
     /// assert!(Hz::new(-1.0).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Hz,
     Range::AtLeast(0.0)
@@ -203,12 +203,12 @@ unit!(
     /// A duration in seconds: a finite value of zero or more.
     ///
     /// ```
-    /// use sound_to_serum::units::Seconds;
+    /// use sound_to_patch::units::Seconds;
     ///
     /// let attack = Seconds::new(0.25)?;
     /// let pre_delay = Seconds::from_millis(20.0)?;
     /// assert!(Seconds::new(-0.1).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Seconds,
     Range::AtLeast(0.0)
@@ -218,11 +218,11 @@ unit!(
     /// An interval in semitones: any finite value, sign allowed.
     ///
     /// ```
-    /// use sound_to_serum::units::Semitones;
+    /// use sound_to_patch::units::Semitones;
     ///
     /// let octave_down = Semitones::new(-12.0)?;
     /// assert!(Semitones::new(f64::NAN).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Semitones,
     Range::Finite
@@ -233,11 +233,11 @@ unit!(
     /// sign allowed.
     ///
     /// ```
-    /// use sound_to_serum::units::Cents;
+    /// use sound_to_patch::units::Cents;
     ///
     /// let detune = Cents::new(-7.0)?;
     /// assert!(Cents::new(f64::INFINITY).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Cents,
     Range::Finite
@@ -247,11 +247,11 @@ unit!(
     /// An interval in octaves: any finite value, sign allowed.
     ///
     /// ```
-    /// use sound_to_serum::units::Octaves;
+    /// use sound_to_patch::units::Octaves;
     ///
     /// let spread = Octaves::new(0.3)?;
     /// assert!(Octaves::new(f64::NEG_INFINITY).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Octaves,
     Range::Finite
@@ -262,11 +262,11 @@ unit!(
     /// because levels are often relative to a peak.
     ///
     /// ```
-    /// use sound_to_serum::units::Decibels;
+    /// use sound_to_patch::units::Decibels;
     ///
     /// let level = Decibels::new(-6.0)?;
     /// assert!(Decibels::new(f64::NAN).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Decibels,
     Range::Finite
@@ -278,11 +278,11 @@ unit!(
     /// A value just above 1.0 from float rounding is rejected, not clamped.
     ///
     /// ```
-    /// use sound_to_serum::units::Normalized;
+    /// use sound_to_patch::units::Normalized;
     ///
     /// let cutoff_knob = Normalized::new(0.5)?;
     /// assert!(Normalized::new(1.000_000_1).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     Normalized,
     Range::Closed(0.0, 1.0)
@@ -293,12 +293,12 @@ unit!(
     /// carry a pitch between notes, such as a pitch track gives.
     ///
     /// ```
-    /// use sound_to_serum::units::MidiPitch;
+    /// use sound_to_patch::units::MidiPitch;
     ///
     /// let a4 = MidiPitch::new(69.0)?;
     /// let bent = MidiPitch::new(69.25)?;
     /// assert!(MidiPitch::new(127.5).is_err());
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     MidiPitch,
     Range::Closed(0.0, 127.0)
@@ -322,13 +322,13 @@ impl Seconds {
 /// [`TryFrom`].
 ///
 /// ```
-/// use sound_to_serum::units::{Bipolar, Percent, Unipolar};
+/// use sound_to_patch::units::{Bipolar, Percent, Unipolar};
 ///
 /// let drive = Percent::<Unipolar>::new(25.0)?;
 /// let amount = Percent::<Bipolar>::new(-100.0)?;
 /// assert!(Percent::<Unipolar>::new(-1.0).is_err());
 /// assert!(Percent::<Bipolar>::new(-101.0).is_err());
-/// # Ok::<(), sound_to_serum::units::RangeError>(())
+/// # Ok::<(), sound_to_patch::units::RangeError>(())
 /// ```
 pub struct Percent<P: Polarity> {
     value: f64,

@@ -28,7 +28,7 @@ path = "CHANGELOG.md"
 template = "remote"
 remote = "github.com"
 owner = "Akurganow"
-repository = "sound-to-serum"
+repository = "sound-to-patch"
 authors = [{ signature = "Alexander Kurganov", username = "Akurganow" }]
 
 # The changelog describes the program. Book changes reach Pages on merge.

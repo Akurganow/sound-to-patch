@@ -1,17 +1,17 @@
 //! The man page and the shell completions, rendered from the command tree in
-//! `sound_to_serum::cli`.
+//! `sound_to_patch::cli`.
 
 use std::fs;
 use std::path::Path;
 
 use clap::CommandFactory;
 use clap_complete::Shell;
-use sound_to_serum::cli::Cli;
+use sound_to_patch::cli::Cli;
 
 /// The shells a macOS user is likely to run.
 const SHELLS: [Shell; 3] = [Shell::Bash, Shell::Zsh, Shell::Fish];
 
-/// Writes `man/sound-to-serum.1` and one completion file per shell into
+/// Writes `man/sound-to-patch.1` and one completion file per shell into
 /// `out_dir/completions/`.
 pub(crate) fn write(out_dir: &Path) -> crate::Result<()> {
     let man_dir = out_dir.join("man");
@@ -51,10 +51,10 @@ mod tests {
         assert_eq!(
             files,
             [
-                "_sound-to-serum",
-                "sound-to-serum.1",
-                "sound-to-serum.bash",
-                "sound-to-serum.fish"
+                "_sound-to-patch",
+                "sound-to-patch.1",
+                "sound-to-patch.bash",
+                "sound-to-patch.fish"
             ]
         );
     }
@@ -64,7 +64,7 @@ mod tests {
     fn man_page_renders_without_errors() {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path()).unwrap();
-        let page = dir.path().join("man/sound-to-serum.1");
+        let page = dir.path().join("man/sound-to-patch.1");
         let output = match Command::new("mandoc")
             .args(["-T", "utf8", "-W", "error"])
             .arg(&page)
@@ -78,6 +78,6 @@ mod tests {
         .expect("needs mandoc or man-db to render the man page");
         assert!(output.status.success(), "{output:?}");
         let text = String::from_utf8_lossy(&output.stdout);
-        assert!(text.contains("sound-to-serum"), "{text}");
+        assert!(text.contains("sound-to-patch"), "{text}");
     }
 }

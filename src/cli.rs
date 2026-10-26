@@ -5,21 +5,21 @@
 
 use clap::Parser;
 
-/// Arguments of the `sound-to-serum` command.
+/// Arguments of the `sound-to-patch` command.
 ///
 /// # Examples
 ///
 /// ```
 /// use clap::Parser;
 /// use clap::error::ErrorKind;
-/// use sound_to_serum::cli::Cli;
+/// use sound_to_patch::cli::Cli;
 ///
-/// let err = Cli::try_parse_from(["sound-to-serum", "--version"]).unwrap_err();
+/// let err = Cli::try_parse_from(["sound-to-patch", "--version"]).unwrap_err();
 /// assert_eq!(err.kind(), ErrorKind::DisplayVersion);
 /// ```
 #[derive(Debug, Parser)]
 #[command(
-    name = "sound-to-serum",
+    name = "sound-to-patch",
     version,
     about,
     long_about = None,

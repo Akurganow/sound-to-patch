@@ -77,11 +77,11 @@ pub enum Signal {
 /// A reason code with the value of its signal.
 ///
 /// ```
-/// use sound_to_serum::confidence::{Reason, ReasonCode, Signal};
+/// use sound_to_patch::confidence::{Reason, ReasonCode, Signal};
 ///
 /// let reason = Reason::new(ReasonCode::ActiveFrames, Signal::Count(412))?;
 /// assert!(Reason::new(ReasonCode::ActiveFrames, Signal::Number(f64::NAN)).is_err());
-/// # Ok::<(), sound_to_serum::confidence::ConfidenceError>(())
+/// # Ok::<(), sound_to_patch::confidence::ConfidenceError>(())
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -248,8 +248,8 @@ impl Spread for NoSpread {}
 /// level, and a "no estimate" state never has a level or a spread.
 ///
 /// ```
-/// use sound_to_serum::confidence::{Confidence, Level, Reason, ReasonCode, Signal};
-/// use sound_to_serum::units::Octaves;
+/// use sound_to_patch::confidence::{Confidence, Level, Reason, ReasonCode, Signal};
+/// use sound_to_patch::units::Octaves;
 ///
 /// let frames = Reason::new(ReasonCode::ActiveFrames, Signal::Count(412))?;
 /// let cutoff = Confidence::estimate(Level::Medium, Some(Octaves::new(0.3)?), vec![frames])?;
@@ -264,7 +264,7 @@ impl Spread for NoSpread {}
 /// A "no estimate" state takes no level:
 ///
 /// ```compile_fail,E0061
-/// use sound_to_serum::confidence::{Confidence, Level, NoSpread};
+/// use sound_to_patch::confidence::{Confidence, Level, NoSpread};
 ///
 /// let _ = Confidence::<NoSpread>::no_estimate(Level::High, Vec::new());
 /// ```

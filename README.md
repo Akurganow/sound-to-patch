@@ -1,10 +1,10 @@
-# Sound to Serum
+# Sound to Patch
 
 Turn an audio stem into a Serum 2 starting point, a preset and the notes, or
 turn a written description of a sound into a Serum 2 preset. The project is
 MIT-licensed, see [LICENSE](LICENSE).
 
-The project is at its first release: the `sound-to-serum` command prints its
+The project is at its first release: the `sound-to-patch` command prints its
 help and its version. The commands of both paths arrive in later releases.
 
 ## Build
@@ -12,13 +12,13 @@ help and its version. The commands of both paths arrive in later releases.
 Building needs Rust 1.91 or newer.
 
 ```sh
-git clone https://github.com/Akurganow/sound-to-serum.git
-cd sound-to-serum
+git clone https://github.com/Akurganow/sound-to-patch.git
+cd sound-to-patch
 cargo build
-target/debug/sound-to-serum --version
+target/debug/sound-to-patch --version
 ```
 
-The last command prints `sound-to-serum` and the version. The tools, the
+The last command prints `sound-to-patch` and the version. The tools, the
 commit hook and the checks for contributing are in
 [CONTRIBUTING.md](CONTRIBUTING.md).
 

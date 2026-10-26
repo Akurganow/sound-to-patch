@@ -60,10 +60,10 @@ impl Cents {
     /// Returns the frequency ratio `2^(c / 1200)`.
     ///
     /// ```
-    /// use sound_to_serum::units::Cents;
+    /// use sound_to_patch::units::Cents;
     ///
     /// assert_eq!(Cents::new(1200.0)?.to_ratio()?, 2.0);
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     ///
     /// # Errors
@@ -123,11 +123,11 @@ impl Decibels {
     /// magnitude such as a sample value or a spectral magnitude weight.
     ///
     /// ```
-    /// use sound_to_serum::units::Decibels;
+    /// use sound_to_patch::units::Decibels;
     ///
     /// let gain = Decibels::new(-20.0)?.to_amplitude_gain()?;
     /// assert!((gain - 0.1).abs() < 1e-15);
-    /// # Ok::<(), sound_to_serum::units::RangeError>(())
+    /// # Ok::<(), sound_to_patch::units::RangeError>(())
     /// ```
     ///
     /// # Errors

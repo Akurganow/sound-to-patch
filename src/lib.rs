@@ -1,7 +1,7 @@
 //! Turn an audio stem or a written sound description into a Serum 2 starting
 //! point.
 //!
-//! The library holds all logic. The `sound-to-serum` binary parses the
+//! The library holds all logic. The `sound-to-patch` binary parses the
 //! command line with [`cli::Cli`], calls the library and prints the result.
 //! The library itself never prints.
 //!
