@@ -4,8 +4,14 @@
 //! the structured parts as read. The reader checks only what the app needs
 //! to load a file: the stamp, `settings`, the three fields of
 //! `settings.sample` and both names of each modulation entry.
+//!
+//! A written file keeps every value bit for bit, but not the text of each
+//! number: the writer prints the shortest text that reads back to the same
+//! value. `1E5` becomes `100000.0`, and an integer of 1e23 becomes `1e+23`.
+//! A leading UTF-8 byte order mark is skipped and not written back.
 
 use std::any::Any;
+use std::collections::HashSet;
 use std::fmt;
 
 use serde::de::{self, Deserializer, IgnoredAny, MapAccess, Visitor};
@@ -55,7 +61,16 @@ pub(crate) const STYLES: [&str; 9] = [
 /// Modulation slots of a patch.
 const SLOTS: usize = 64;
 
+/// The numeric controls each modulation slot owns.
+const SLOT_CONTROLS: [&str; 5] = ["amount", "bipolar", "power", "stereo", "bypass"];
+
 /// The `.vital` format.
+///
+/// A read parses the whole JSON tree. Peak memory depends on the shape of
+/// the file: a file of long base64 texts takes about 3 times its size, and
+/// a file of short numbers up to about 38 times. Measured in a release
+/// build: 60 MB of `0,` items peaked at 2.28 GB, 60 MB in one text at
+/// 184 MB.
 #[derive(Debug)]
 pub struct VitalFormat {
     max_bytes: usize,
@@ -87,11 +102,30 @@ fn read_error(cause: impl Into<String>, fix: impl Into<String>) -> FormatError {
     FormatError::new("cannot read the .vital preset", cause, fix)
 }
 
+/// The depth `serde_json` stops at.
+const MAX_DEPTH: usize = 128;
+
 fn json_error(error: &serde_json::Error) -> FormatError {
+    // serde_json has no error kind for depth; its message is the only sign.
+    if error.to_string().starts_with("recursion limit exceeded") {
+        return read_error(
+            format!(
+                "the JSON nests deeper than {MAX_DEPTH} levels at line {} column {}",
+                error.line(),
+                error.column()
+            ),
+            "A Vital preset nests a few levels deep; pass a preset saved by Vital",
+        );
+    }
     read_error(
         format!("the text is not valid JSON: {error}"),
         "Save the preset again from Vital, or fix the JSON at that position",
     )
+}
+
+/// The bytes after a UTF-8 byte order mark, which some editors add.
+fn without_bom(bytes: &[u8]) -> &[u8] {
+    bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(bytes)
 }
 
 impl PresetFormat for VitalFormat {
@@ -103,9 +137,14 @@ impl PresetFormat for VitalFormat {
         Synth::Vital.extension()
     }
 
+    fn max_bytes(&self) -> usize {
+        self.max_bytes
+    }
+
     fn read(&self, bytes: &[u8]) -> Result<Box<dyn PresetModel>, FormatError> {
         self.check_size(bytes)?;
-        let value: Value = serde_json::from_slice(bytes).map_err(|error| json_error(&error))?;
+        let value: Value =
+            serde_json::from_slice(without_bom(bytes)).map_err(|error| json_error(&error))?;
         let Value::Object(root) = value else {
             return Err(read_error(
                 "the top level is not a JSON object",
@@ -118,7 +157,7 @@ impl PresetFormat for VitalFormat {
 
     fn read_header(&self, bytes: &[u8]) -> Result<Header, FormatError> {
         self.check_size(bytes)?;
-        let mut deserializer = serde_json::Deserializer::from_slice(bytes);
+        let mut deserializer = serde_json::Deserializer::from_slice(without_bom(bytes));
         let parts = deserializer
             .deserialize_map(PartsVisitor)
             .and_then(|parts| deserializer.end().map(|()| parts))
@@ -134,6 +173,9 @@ impl PresetFormat for VitalFormat {
                 "Write it with the format of its own synth",
             )
         })?;
+        // A model can lose a required key, as `reset("sample")` does; the
+        // app throws on such a file, so it is never written.
+        validate(&model.root)?;
         serde_json::to_vec(&model.root).map_err(|error| {
             FormatError::new(
                 "cannot write the .vital preset",
@@ -341,6 +383,7 @@ impl<'de> Visitor<'de> for PartsVisitor {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<HeaderParts, A::Error> {
         let mut parts = HeaderParts::default();
+        let mut seen = HashSet::new();
         while let Some(key) = map.next_key::<String>()? {
             match key.as_str() {
                 "synth_version" => parts.version = Some(text_of(&map.next_value()?)),
@@ -352,7 +395,7 @@ impl<'de> Visitor<'de> for PartsVisitor {
                     map.next_value::<IgnoredAny>()?;
                 }
             }
-            if !parts.top_keys.contains(&key) {
+            if seen.insert(key.clone()) {
                 parts.top_keys.push(key);
             }
         }
@@ -376,9 +419,10 @@ impl<'de> de::Deserialize<'de> for SettingsKeys {
 
             fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<SettingsKeys, A::Error> {
                 let mut keys: Vec<String> = Vec::new();
+                let mut seen = HashSet::new();
                 while let Some(key) = map.next_key::<String>()? {
                     map.next_value::<IgnoredAny>()?;
-                    if !keys.contains(&key) {
+                    if seen.insert(key.clone()) {
                         keys.push(key);
                     }
                 }
@@ -542,7 +586,24 @@ impl PresetModel for VitalModel {
             ));
         }
         let control = |name: &str| format!("modulation_{}_{name}", slot + 1);
-        let mut numbers: Vec<(String, Value)> = Vec::new();
+        // Every slot control is written, so a cleared slot holds its
+        // defaults and the bipolar flag never relies on the GUI rule.
+        let mut numbers: Vec<(String, Value)> = SLOT_CONTROLS
+            .into_iter()
+            .map(|name| {
+                let key = control(name);
+                let default = registry()
+                    .ok()
+                    .and_then(|registry| registry.get(&key))
+                    .map_or(0.0, |spec| spec.default);
+                (key, Value::from(default))
+            })
+            .collect();
+        let mut put = |key: String, value: Value| {
+            if let Some(slot) = numbers.iter_mut().find(|(have, _)| *have == key) {
+                slot.1 = value;
+            }
+        };
         let (source, destination) = match &route {
             Some(route) => {
                 if route.source.is_empty() || route.destination.is_empty() {
@@ -554,18 +615,18 @@ impl PresetModel for VitalModel {
                         "Name both, or clear the slot",
                     ));
                 }
-                numbers.push((
+                put(
                     control("amount"),
                     number_value(&control("amount"), &Stored::Float(route.amount))?,
-                ));
+                );
                 let bipolar = Stored::Float(match route.polarity {
                     RoutePolarity::Bipolar => 1.0,
                     RoutePolarity::Unipolar => 0.0,
                 });
-                numbers.push((
+                put(
                     control("bipolar"),
                     number_value(&control("bipolar"), &bipolar)?,
-                ));
+                );
                 for (key, value) in &route.extras {
                     if !["power", "stereo", "bypass"]
                         .iter()
@@ -581,7 +642,7 @@ impl PresetModel for VitalModel {
                             ),
                         ));
                     }
-                    numbers.push((key.clone(), number_value(key, value)?));
+                    put(key.clone(), number_value(key, value)?);
                 }
                 (route.source.clone(), route.destination.clone())
             }
@@ -604,11 +665,6 @@ impl PresetModel for VitalModel {
         entry.insert("source".to_owned(), Value::String(source));
         entry.insert("destination".to_owned(), Value::String(destination));
         modulations[slot] = Value::Object(entry);
-        if route.is_none() {
-            for name in ["amount", "bipolar", "power", "stereo", "bypass"] {
-                settings.shift_remove(&control(name));
-            }
-        }
         for (key, value) in numbers {
             settings.insert(key, value);
         }
@@ -658,22 +714,23 @@ impl PresetModel for VitalModel {
                         settings
                             .iter()
                             .map(|(key, value)| {
-                                let mut node = describe_value(value, opts);
-                                if let Node::Scalar { mark, .. } = &mut node {
-                                    *mark = control_mark(registry, key, value);
-                                }
-                                (key.clone(), node)
+                                // A retail-only part such as `custom_warps`
+                                // is a structure; the header names it.
+                                let retail_part = RETAIL_ONLY_KEYS.contains(&key.as_str())
+                                    && (value.is_array() || value.is_object());
+                                let mark = if retail_part {
+                                    None
+                                } else {
+                                    control_mark(registry, key, value)
+                                };
+                                (key.clone(), marked(value, mark, opts))
                             })
                             .collect(),
                     ),
+                    _ if !KNOWN_TOP.contains(&key.as_str()) => {
+                        marked(value, Some("unknown key".to_owned()), opts)
+                    }
                     _ => describe_value(value, opts),
-                };
-                let node = match (node, KNOWN_TOP.contains(&key.as_str())) {
-                    (Node::Scalar { text, .. }, false) => Node::Scalar {
-                        text,
-                        mark: Some("unknown key".to_owned()),
-                    },
-                    (node, _) => node,
                 };
                 (key.clone(), node)
             })
@@ -722,6 +779,26 @@ fn control_mark(
         return Some(format!("out of range:{whole} {}", spec.range_text()));
     }
     spec.legacy.then(|| "legacy control".to_owned())
+}
+
+/// A value with a mark. A list or an object that carries a mark becomes
+/// one marked line: its compact JSON in a full view, its size otherwise.
+fn marked(value: &Value, mark: Option<String>, opts: &DescribeOptions) -> Node {
+    let text = match (value, opts.full) {
+        (Value::Array(_) | Value::Object(_), true) => {
+            serde_json::to_string(value).unwrap_or_default()
+        }
+        (Value::Array(items), false) => format!("list of {}", items.len()),
+        (Value::Object(map), false) => format!("object of {} keys", map.len()),
+        _ => match describe_value(value, opts) {
+            Node::Scalar { text, .. } => text,
+            node => return node,
+        },
+    };
+    match (mark, value) {
+        (None, Value::Array(_) | Value::Object(_)) => describe_value(value, opts),
+        (mark, _) => Node::Scalar { text, mark },
+    }
 }
 
 fn describe_value(value: &Value, opts: &DescribeOptions) -> Node {
@@ -814,6 +891,101 @@ mod tests {
             );
             assert!(message.contains(needle), "{needle}: {message}");
         }
+    }
+
+    #[test]
+    fn deep_nesting_names_the_depth_limit() {
+        for (open, close) in [("[", "]"), (r#"{"a":"#, "}")] {
+            let deep = format!("{}1{}", open.repeat(100_000), close.repeat(100_000));
+            let text = format!(
+                r#"{{"synth_version":"1.0.6","settings":{{"x":{deep},"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+            );
+            let error = read(&text).unwrap_err().to_string();
+            assert!(error.contains("nests deeper than 128 levels"), "{error}");
+            assert!(error.contains("pass a preset saved by Vital"), "{error}");
+            // The header read skips values without recursing, so it ends
+            // without a depth error.
+            assert!(
+                VitalFormat::new(1 << 20)
+                    .read_header(text.as_bytes())
+                    .is_ok()
+            );
+        }
+    }
+
+    #[test]
+    fn lists_and_objects_in_control_slots_are_marked() {
+        let text = r#"{"synth_version":"1.0.6","zz_top":{"a":1},"settings":{"filter_1_cutoff":[1,2],"osc_1_level":{"x":1},"zz":[3],"sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#;
+        let shown = model(text)
+            .describe(&DescribeOptions::default())
+            .to_string();
+        for line in [
+            "filter_1_cutoff: list of 2  (not a number; Vital throws on load)",
+            "osc_1_level: object of 1 keys  (not a number; Vital throws on load)",
+            "zz: list of 1  (unknown key)",
+            "zz_top: object of 1 keys  (unknown key)",
+        ] {
+            assert!(shown.contains(line), "{line}\n{shown}");
+        }
+        assert!(shown.contains("sample:\n"), "{shown}");
+        let full = model(text)
+            .describe(&DescribeOptions {
+                full: true,
+                shown: 0,
+            })
+            .to_string();
+        assert!(
+            full.contains("filter_1_cutoff: [1,2]  (not a number"),
+            "{full}"
+        );
+    }
+
+    #[test]
+    fn number_text_is_canonical_and_values_are_kept() {
+        let text = MINIMAL.replace(
+            r#""length":1"#,
+            r#""length":1E5,"x":100000000000000000000000"#,
+        );
+        let written = write(read(&text).unwrap().as_ref());
+        assert!(
+            written.contains(r#""length":100000.0,"x":1e+23"#),
+            "{written}"
+        );
+        assert_eq!(model(&written), model(&text));
+    }
+
+    #[test]
+    fn a_byte_order_mark_is_skipped() {
+        let text = format!("\u{feff}{MINIMAL}");
+        assert_eq!(write(read(&text).unwrap().as_ref()), MINIMAL);
+        let header = VitalFormat::new(1 << 20)
+            .read_header(text.as_bytes())
+            .unwrap();
+        assert_eq!(header.fields[0].value, "1.0.6");
+    }
+
+    #[test]
+    fn a_header_read_of_many_keys_is_linear() {
+        let keys = (0..200_000)
+            .map(|i| format!(r#""k{i}":0,"#))
+            .collect::<Vec<_>>()
+            .concat();
+        let text = format!(
+            r#"{{{keys}"synth_version":"1.0.6","settings":{{{keys}"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+        );
+        let start = std::time::Instant::now();
+        let header = VitalFormat::new(64 << 20)
+            .read_header(text.as_bytes())
+            .unwrap();
+        // A quadratic scan of 200,000 keys took 15 s; a linear one takes
+        // well under a second, even in a debug build.
+        assert!(start.elapsed() < std::time::Duration::from_secs(5));
+        let unknown = header
+            .fields
+            .iter()
+            .find(|field| field.label == "unknown keys")
+            .unwrap();
+        assert_eq!(unknown.value, "400000");
     }
 
     #[test]
@@ -977,14 +1149,20 @@ mod tests {
             extras: vec![("modulation_3_power".into(), Stored::Float(-2.0))],
         };
         model.set_route(2, Some(route.clone())).unwrap();
-        assert_eq!(model.routes()[2], Some(route));
+        let mut expected = route;
+        expected.extras.extend([
+            ("modulation_3_stereo".to_owned(), Stored::Float(0.0)),
+            ("modulation_3_bypass".to_owned(), Stored::Float(0.0)),
+        ]);
+        assert_eq!(model.routes()[2], Some(expected));
         assert_eq!(model.get("modulation_3_amount"), Some(Stored::Float(0.25)));
         assert_eq!(model.get("modulation_3_bipolar"), Some(Stored::Float(1.0)));
         let written = write(&model);
         assert_eq!(written.matches("\"source\"").count(), 64);
         model.set_route(2, None).unwrap();
         assert!(model.routes()[2].is_none());
-        assert_eq!(model.get("modulation_3_amount"), None);
+        assert_eq!(model.get("modulation_3_amount"), Some(Stored::Float(0.0)));
+        assert_eq!(model.get("modulation_3_power"), Some(Stored::Float(0.0)));
         assert!(
             model
                 .set_route(64, None)
@@ -1000,6 +1178,49 @@ mod tests {
             extras: vec![("modulation_9_power".into(), Stored::Float(1.0))],
         };
         assert!(model.set_route(0, Some(bad_extra)).is_err());
+    }
+
+    #[test]
+    fn a_model_without_a_required_key_does_not_write() {
+        let mut model = model(MINIMAL);
+        model.reset("sample");
+        let error = VitalFormat::new(1 << 20)
+            .write(&model)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("settings.sample"), "{error}");
+    }
+
+    #[test]
+    fn a_new_route_clears_the_old_slot_controls() {
+        let mut model = model(MINIMAL);
+        let muted = Route {
+            source: "lfo_1".into(),
+            destination: "filter_1_cutoff".into(),
+            amount: 0.5,
+            polarity: RoutePolarity::Unipolar,
+            extras: vec![
+                ("modulation_1_power".into(), Stored::Float(-2.0)),
+                ("modulation_1_stereo".into(), Stored::Float(1.0)),
+                ("modulation_1_bypass".into(), Stored::Float(1.0)),
+            ],
+        };
+        model.set_route(0, Some(muted)).unwrap();
+        let plain = Route {
+            source: "env_2".into(),
+            destination: "osc_1_level".into(),
+            amount: 0.25,
+            polarity: RoutePolarity::Unipolar,
+            extras: Vec::new(),
+        };
+        model.set_route(0, Some(plain)).unwrap();
+        for name in ["power", "stereo", "bypass"] {
+            assert_eq!(
+                model.get(&format!("modulation_1_{name}")),
+                Some(Stored::Float(0.0)),
+                "{name}"
+            );
+        }
     }
 
     #[test]

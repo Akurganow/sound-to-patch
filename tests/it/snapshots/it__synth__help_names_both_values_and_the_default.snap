@@ -8,7 +8,7 @@ Usage: probe [OPTIONS]
 
 Options:
       --synth <SYNTH>
-          The target synth. Without it, the extension of the preset file picks the synth, and otherwise Vital
+          The target synth [default: the extension of the preset file, else vital]
 
           Possible values:
           - vital:  Vital, with `.vital` preset files

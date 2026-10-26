@@ -723,14 +723,35 @@ impl ParamSpec {
             ));
         }
         let limits = self.physical_limits();
+        let nearest = |toward_max: bool| {
+            let bound = if toward_max {
+                self.stored_max
+            } else {
+                self.stored_min
+            };
+            self.physical(bound)
+                .map_or_else(|_| format!("stored {bound:?}"), |value| value.to_string())
+        };
         let stored = unit_law.law.to_stored(value.get()).map_err(|error| {
             ParamError::new(
                 &self.key,
                 format!("{value} has no stored value: {error}"),
-                format!("Use a value from {limits}"),
+                format!(
+                    "Use a value from {limits}; the nearest is {}",
+                    nearest(false)
+                ),
             )
             .with_source(error)
         })?;
+        // A law round trip can land a few ulps past a bound; that is the bound.
+        let slack = 1e-9 * (self.stored_max - self.stored_min);
+        let stored = if (self.stored_max..=self.stored_max + slack).contains(&stored) {
+            self.stored_max
+        } else if (self.stored_min - slack..=self.stored_min).contains(&stored) {
+            self.stored_min
+        } else {
+            stored
+        };
         if !(self.stored_min..=self.stored_max).contains(&stored) {
             return Err(ParamError::new(
                 &self.key,
@@ -738,7 +759,10 @@ impl ParamSpec {
                     "{value} is stored as {stored:?}, outside {}",
                     self.range_text()
                 ),
-                format!("Use a value from {limits}"),
+                format!(
+                    "Use a value from {limits}; the nearest is {}",
+                    nearest(stored > self.stored_max)
+                ),
             ));
         }
         if self.kind != ParamKind::Float && stored.fract() != 0.0 {
@@ -1065,7 +1089,28 @@ pub(crate) mod tests {
                 1.0,
                 UnitKind::Decibels,
             ),
+            (
+                "custom",
+                Law::Custom(CustomLaw(Arc::new(Cube))),
+                0.0,
+                1.0,
+                UnitKind::Seconds,
+            ),
         ]
+    }
+
+    /// A law no closed form covers: `10 * s^3` seconds.
+    #[derive(Debug)]
+    struct Cube;
+
+    impl ParamLaw for Cube {
+        fn to_physical(&self, stored: f64) -> Result<f64, RangeError> {
+            Ok(10.0 * stored.powi(3))
+        }
+
+        fn to_stored(&self, physical: f64) -> Result<f64, RangeError> {
+            Ok((physical / 10.0).cbrt())
+        }
     }
 
     fn spec(key: &str, law: Law, min: f64, max: f64, unit: UnitKind) -> ParamSpec {
@@ -1111,6 +1156,11 @@ pub(crate) mod tests {
                 let (pa, pb) = (law.to_physical(sa).unwrap(), law.to_physical(sb).unwrap());
                 let rising = law.to_physical(max).unwrap() > law.to_physical(min).unwrap();
                 prop_assert!(if rising { pa <= pb } else { pa >= pb }, "{name}: {sa} -> {pa}, {sb} -> {pb}");
+                // Every law case is strictly monotone. Points a few ulps
+                // apart may still round to one physical value.
+                if sb - sa > 1e-9 * (max - min) {
+                    prop_assert!(if rising { pa < pb } else { pa > pb }, "{name}: {sa} -> {pa}, {sb} -> {pb}");
+                }
             }
         }
     }

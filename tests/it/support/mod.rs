@@ -63,6 +63,28 @@ pub(crate) fn registry_contract(registry: &dyn ParamRegistry) -> Result<(), Stri
         {
             return Err(format!("{key}: a float without a unit must be interim"));
         }
+        if spec.law.is_some() {
+            for (name, bound) in [
+                ("min", spec.stored_min),
+                ("default", spec.default),
+                ("max", spec.stored_max),
+            ] {
+                // A range end may lie outside the law's domain, such as
+                // stored 0 under a decibel law. Any other value must map.
+                let Ok(value) = spec.physical(bound) else {
+                    if name == "default" {
+                        return Err(format!("{key}: the default {bound} has no physical value"));
+                    }
+                    continue;
+                };
+                let back = spec.stored(&value).map_err(|error| {
+                    format!("{key}: stored {bound} does not round-trip: {error}")
+                })?;
+                if (back - bound).abs() > 1e-9 * (spec.stored_max - spec.stored_min) {
+                    return Err(format!("{key}: stored {bound} came back as {back}"));
+                }
+            }
+        }
         if spec.kind == ParamKind::Choice {
             let labels = spec.stored_max - spec.stored_min + 1.0;
             let count = f64::from(u32::try_from(spec.choices.len()).unwrap());

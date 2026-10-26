@@ -21,6 +21,9 @@ pub trait PresetFormat: Send + Sync {
     /// The file extension without the dot.
     fn extension(&self) -> &'static str;
 
+    /// The largest input [`PresetFormat::read`] accepts, in bytes.
+    fn max_bytes(&self) -> usize;
+
     /// Decodes a preset.
     ///
     /// # Errors
@@ -39,8 +42,9 @@ pub trait PresetFormat: Send + Sync {
     ///
     /// # Errors
     ///
-    /// A [`FormatError`] when the model belongs to another synth or holds
-    /// a value the format cannot store.
+    /// A [`FormatError`] when the model belongs to another synth, holds a
+    /// value the format cannot store or lacks a part the synth needs to
+    /// load the file.
     fn write(&self, model: &dyn PresetModel) -> Result<Vec<u8>, FormatError>;
 
     /// Whether a missing key and an explicit default sound the same.

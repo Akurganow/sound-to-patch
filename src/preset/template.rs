@@ -126,17 +126,14 @@ impl fmt::Display for TemplateError {
                 path.display()
             ),
             Self::Missing { tried, help } => {
-                write!(f, "no template found")?;
                 if tried.is_empty() {
-                    write!(f, " and no path was searched")?;
-                } else {
-                    write!(f, "; tried:")?;
-                    for path in tried {
-                        write!(f, "\n  {}", path.display())?;
-                    }
-                    writeln!(f)?;
+                    return write!(f, "no template found and no path was searched. {help}");
                 }
-                write!(f, ". {help}")
+                write!(f, "no template found; tried:")?;
+                for path in tried {
+                    write!(f, "\n  {}", path.display())?;
+                }
+                write!(f, "\n{help}")
             }
         }
     }

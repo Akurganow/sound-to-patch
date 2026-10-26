@@ -8,7 +8,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use crate::preset::registry::Registry;
+use crate::preset::registry::{Provenance, Registry};
 use crate::synth::{
     EffectFamily, GlideRule, GlideScaling, LfoSync, OscillatorLayout, SynthCapabilities,
     SynthError, VelocityRule,
@@ -40,7 +40,8 @@ pub const RETAIL_ONLY_KEYS: [&str; 5] = [
 ];
 
 /// The largest file the reader accepts until the fuzzing task measures
-/// real files: 64 MiB.
+/// real files: 64 MiB. A file of that size made of short numbers can take
+/// about 2.4 GB to parse; see [`VitalFormat`].
 pub const MAX_PRESET_BYTES: usize = 64 << 20;
 
 /// The Vital format with the default size cap.
@@ -93,6 +94,7 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
     velocity: VelocityRule {
         default_track: Percent::from_const(0.0),
         amp_path_power: 2,
+        provenance: Provenance::Interim,
     },
     bend_range_default: Semitones::from_const(2.0),
 };

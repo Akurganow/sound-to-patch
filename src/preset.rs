@@ -15,6 +15,7 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::io;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use crate::preset::format::{DescribeOptions, FormatError, format_for};
@@ -89,13 +90,53 @@ pub fn inspect(
     opts: &DescribeOptions,
 ) -> Result<String, PresetError> {
     let format = format_for(synth.resolve(Some(path))?)?;
-    let bytes = fs::read(path).map_err(|cause| PresetError::Read {
-        path: path.to_owned(),
-        cause,
-    })?;
+    let bytes = read_capped(path, format.max_bytes())?;
     let model = format.read(&bytes).map_err(|error| PresetError::Format {
         path: path.to_owned(),
         error,
     })?;
     Ok(format!("{}\n{}", model.header(), model.describe(opts)))
+}
+
+/// Reads at most `max` bytes of a file, so an oversized file is refused
+/// without loading it.
+fn read_capped(path: &Path, max: usize) -> Result<Vec<u8>, PresetError> {
+    let read_error = |cause| PresetError::Read {
+        path: path.to_owned(),
+        cause,
+    };
+    let limit = u64::try_from(max).map_or(u64::MAX, |max| max.saturating_add(1));
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .and_then(|file| file.take(limit).read_to_end(&mut bytes))
+        .map_err(read_error)?;
+    if bytes.len() > max {
+        return Err(PresetError::Format {
+            path: path.to_owned(),
+            error: FormatError::new(
+                "cannot read the preset",
+                format!("the file is larger than the limit of {max} bytes"),
+                "Check that the file is a preset of the target synth",
+            ),
+        });
+    }
+    Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_oversized_file_is_refused_unread() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.vital");
+        fs::write(&path, vec![b' '; 11]).unwrap();
+        let error = read_capped(&path, 10).unwrap_err().to_string();
+        assert!(
+            error.contains("larger than the limit of 10 bytes"),
+            "{error}"
+        );
+        assert_eq!(read_capped(&path, 11).unwrap().len(), 11);
+    }
 }

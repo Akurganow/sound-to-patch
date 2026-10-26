@@ -1,8 +1,8 @@
-# The flag names a synth whose adapter does not exist yet.
+# A Serum 2 file says that only Vital files work, even with the flag.
 bin.name = "sound-to-patch"
 args = ["preset", "inspect", "--synth", "serum2", "bass.SerumPreset"]
 status.code = 1
 stdout = ""
 stderr = """
-error: Serum 2 support is not built yet. Use --synth vital.
+error: cannot read "bass.SerumPreset": Serum 2 files cannot be read yet. Only Vital files (.vital) work now
 """

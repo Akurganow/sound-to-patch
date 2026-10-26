@@ -95,6 +95,10 @@ impl PresetFormat for MemoryFormat {
         "mem"
     }
 
+    fn max_bytes(&self) -> usize {
+        1 << 20
+    }
+
     fn read(&self, bytes: &[u8]) -> Result<Box<dyn PresetModel>, FormatError> {
         assert!(
             !(bytes.is_empty() && self.flaw == Flaw::PanicsOnEmpty),

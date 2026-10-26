@@ -24,6 +24,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::preset::registry::Provenance;
 use crate::units::{Bipolar, Percent, Seconds, Semitones};
 
 /// A target synth.
@@ -135,6 +136,13 @@ pub enum SynthError {
     Unknown(String),
     /// The synth has no adapter yet.
     NotBuilt(Synth),
+    /// The extension of a preset path names a synth without an adapter.
+    FileNotReady {
+        /// The preset path.
+        path: String,
+        /// The synth its extension names.
+        synth: Synth,
+    },
     /// `--synth` and the extension of a preset path name different synths.
     Mismatch {
         /// The synth that `--synth` names.
@@ -167,6 +175,13 @@ impl fmt::Display for SynthError {
                 synth.name(),
                 Synth::READY[0]
             ),
+            Self::FileNotReady { path, synth } => write!(
+                f,
+                "cannot read {path:?}: {} files cannot be read yet. Only {} files (.{}) work now",
+                synth.name(),
+                Synth::READY[0].name(),
+                Synth::READY[0].extension()
+            ),
             Self::Mismatch {
                 flag,
                 path,
@@ -192,8 +207,8 @@ impl Error for SynthError {}
 /// target synth.
 #[derive(Clone, Debug, Default, PartialEq, Eq, clap::Args)]
 pub struct SynthArg {
-    /// The target synth. Without it, the extension of the preset file picks
-    /// the synth, and otherwise Vital.
+    /// The target synth [default: the extension of the preset file, else
+    /// vital]
     #[arg(long, value_enum, value_name = "SYNTH")]
     pub synth: Option<Synth>,
 }
@@ -212,7 +227,9 @@ impl SynthArg {
     /// # Errors
     ///
     /// [`SynthError::Mismatch`] when the flag and the extension disagree,
-    /// and [`SynthError::NotBuilt`] for a synth without an adapter.
+    /// [`SynthError::FileNotReady`] when the extension names a synth
+    /// without an adapter, and [`SynthError::NotBuilt`] for a synth without
+    /// an adapter.
     pub fn resolve(&self, hint: Option<&Path>) -> Result<Synth, SynthError> {
         let from_hint = hint.and_then(|path| {
             path.extension()
@@ -226,6 +243,13 @@ impl SynthArg {
                     flag,
                     path: path.display().to_string(),
                     extension,
+                });
+            }
+            // Suggesting another --synth would only end in a mismatch.
+            (_, Some((path, extension))) if !Synth::READY.contains(&extension) => {
+                return Err(SynthError::FileNotReady {
+                    path: path.display().to_string(),
+                    synth: extension,
                 });
             }
             (Some(flag), _) => flag,
@@ -405,6 +429,9 @@ pub struct VelocityRule {
     /// The power applied to envelope times velocity on the way to the
     /// audio gain.
     pub amp_path_power: u8,
+    /// Where the rule comes from. A reading of the source stays interim
+    /// until a render confirms it.
+    pub provenance: Provenance,
 }
 
 #[cfg(test)]
@@ -458,15 +485,29 @@ mod tests {
             mismatch.contains("serum2") && mismatch.contains("vital"),
             "{mismatch}"
         );
-        // 3. The extension picks the synth.
-        assert_eq!(
-            none.resolve(Some(Path::new("lead.SerumPreset"))),
-            Err(SynthError::NotBuilt(Synth::Serum2))
-        );
-        assert_eq!(
-            none.resolve(Some(Path::new("lead.serumpreset"))),
-            Err(SynthError::NotBuilt(Synth::Serum2))
-        );
+        // 3. The extension picks the synth. A file of a synth without an
+        // adapter says that only Vital files work, with or without a flag.
+        for (arg, name) in [
+            (&none, "lead.SerumPreset"),
+            (&none, "lead.serumpreset"),
+            (&serum, "lead.SerumPreset"),
+        ] {
+            let error = arg.resolve(Some(Path::new(name))).unwrap_err();
+            assert_eq!(
+                error,
+                SynthError::FileNotReady {
+                    path: name.to_owned(),
+                    synth: Synth::Serum2
+                }
+            );
+            let text = error.to_string();
+            assert!(text.contains("Serum 2 files cannot be read yet"), "{text}");
+            assert!(
+                text.contains("Only Vital files (.vital) work now"),
+                "{text}"
+            );
+            assert!(!text.contains("--synth"), "{text}");
+        }
         // 4. Neither: Vital, also with an unknown extension.
         assert_eq!(none.resolve(None), Ok(Synth::Vital));
         assert_eq!(none.resolve(Some(Path::new("notes.txt"))), Ok(Synth::Vital));
@@ -509,6 +550,7 @@ mod tests {
             velocity: VelocityRule {
                 default_track: Percent::new(100.0).unwrap(),
                 amp_path_power: 1,
+                provenance: Provenance::Interim,
             },
             bend_range_default: Semitones::new(2.0).unwrap(),
         }

@@ -6,7 +6,23 @@
 //! a render confirms it before a mapper relies on it.
 
 use crate::cast::usize_to_f64;
+use crate::preset::registry::Provenance;
 use crate::units::{Cents, Hz, MidiPitch, RangeError, Semitones};
+
+/// The provenance of each law in this module, by function name. A law
+/// that joins several facts by a reading stays interim until a probe or a
+/// render confirms it.
+pub const PROVENANCE: [(&str, Provenance); 9] = [
+    ("power_scale", Provenance::FromFacts),
+    ("unison_outer_offset", Provenance::FromFacts),
+    ("unison_offsets", Provenance::Interim),
+    ("unison_gains", Provenance::Interim),
+    ("lfo_tempo_rate", Provenance::FromFacts),
+    ("lfo_keytrack_rate", Provenance::FromFacts),
+    ("pan_gains", Provenance::FromFacts),
+    ("modulation_delta", Provenance::FromFacts),
+    ("amp_gain", Provenance::Interim),
+];
 
 /// The note-number frequency law: `8.1757989156 * 2^(note / 12)` Hz.
 pub const MIDI_0_HZ: f64 = 8.175_798_915_6;
@@ -183,6 +199,22 @@ pub fn amp_gain(envelope: f64, velocity: f64, velocity_track: f64, voice_amplitu
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+
+    #[test]
+    fn readings_are_interim() {
+        let interim: Vec<&str> = PROVENANCE
+            .iter()
+            .filter(|(_, provenance)| *provenance == Provenance::Interim)
+            .map(|(name, _)| *name)
+            .collect();
+        assert_eq!(interim, ["unison_offsets", "unison_gains", "amp_gain"]);
+        let source = include_str!("laws.rs");
+        let public = source.matches("\npub fn ").count();
+        assert_eq!(public, PROVENANCE.len(), "every public law has a row");
+        for (name, _) in PROVENANCE {
+            assert!(source.contains(&format!("pub fn {name}(")), "{name}");
+        }
+    }
 
     /// `(e^(1.5 t) - 1) / (e^1.5 - 1)`, the default power curve.
     fn curve(t: f64) -> f64 {

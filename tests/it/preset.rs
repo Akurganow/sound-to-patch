@@ -109,11 +109,14 @@ fn a_missing_template_lists_every_path_and_the_help() {
         builtin: None,
     };
     let message = locate_template(&source, None).unwrap_err().to_string();
-    for path in &paths {
-        assert!(message.contains(&path.display().to_string()), "{message}");
+    let lines: Vec<&str> = message.lines().collect();
+    assert_eq!(lines[0], "no template found; tried:");
+    for (line, path) in lines[1..].iter().zip(&paths) {
+        assert_eq!(*line, format!("  {}", path.display()));
     }
+    assert_eq!(lines.len(), paths.len() + 2, "{message}");
     assert!(
-        message.contains("Write a build=1 file and pass it with --template"),
+        lines[paths.len() + 1].starts_with("Write a build=1 file and pass it with --template"),
         "{message}"
     );
 }
