@@ -25,6 +25,11 @@ const PROVENANCE: &str = "tests/fixtures/PROVENANCE.md";
 /// The size limit of one fixture.
 const MAX_BYTES: u64 = 256 * 1024;
 
+/// How the origin cell of a `PROVENANCE.md` row starts for a fixture
+/// saved by the Vital app. The generator cannot make such a file, so
+/// `--check` skips its comparison but still checks its row.
+const APP_SAVED: &str = "saved by the Vital app";
+
 /// The line of `PROVENANCE.md` that lists the allowed wavetable authors.
 const AUTHORS_LINE: &str = "Allowed wavetable authors: ";
 
@@ -138,10 +143,11 @@ pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
     let dir = root.join(DIR);
     let generated = generate()?;
     if check {
-        let extra = orphans(&dir, &generated)?;
+        let provenance = fs::read_to_string(root.join(PROVENANCE))?;
+        let extra = orphans(&dir, &generated, &provenance)?;
         if !extra.is_empty() {
             return Err(format!(
-                "the generator does not produce these fixtures: {}. Add them to `generate` or remove them",
+                "the generator does not produce these fixtures: {}. Add them to `generate`, mark an app-saved file {APP_SAVED:?} in {PROVENANCE}, or remove them",
                 extra.join(", ")
             )
             .into());
@@ -244,11 +250,20 @@ pub(crate) fn check_folder(folder: &Path) -> crate::Result<()> {
     }
 }
 
-/// The files under `dir` that are not in `generated`.
-fn orphans(dir: &Path, generated: &[(String, Vec<u8>)]) -> crate::Result<Vec<String>> {
+/// The files under `dir` that are neither in `generated` nor marked as
+/// saved by the app in `provenance`.
+fn orphans(
+    dir: &Path,
+    generated: &[(String, Vec<u8>)],
+    provenance: &str,
+) -> crate::Result<Vec<String>> {
     let mut files = Vec::new();
     list(dir, dir, &mut files)?;
-    files.retain(|file| !generated.iter().any(|(name, _)| name == file));
+    files.retain(|file| {
+        let row = format!("| `vital/{file}` | {APP_SAVED}");
+        !generated.iter().any(|(name, _)| name == file)
+            && !provenance.lines().any(|line| line.starts_with(&row))
+    });
     Ok(files)
 }
 
@@ -356,13 +371,14 @@ mod tests {
     fn a_fixture_the_generator_does_not_produce_fails() {
         let dir = folder_copy();
         let vital = dir.path().join("vital");
+        let provenance = fs::read_to_string(dir.path().join("PROVENANCE.md")).unwrap();
         assert_eq!(
-            orphans(&vital, &generate().unwrap()).unwrap(),
+            orphans(&vital, &generate().unwrap(), &provenance).unwrap(),
             Vec::<String>::new()
         );
         fs::write(vital.join("stamps/9.9.9.vital"), MINIMAL).unwrap();
         assert_eq!(
-            orphans(&vital, &generate().unwrap()).unwrap(),
+            orphans(&vital, &generate().unwrap(), &provenance).unwrap(),
             ["stamps/9.9.9.vital"]
         );
         let root = tempfile::tempdir().unwrap();
@@ -373,6 +389,42 @@ mod tests {
         assert!(
             error.contains("the generator does not produce these fixtures: stamps/9.9.9.vital"),
             "{error}"
+        );
+    }
+
+    #[test]
+    fn an_app_saved_fixture_skips_the_generator_but_not_its_row() {
+        let dir = folder_copy();
+        fs::write(dir.path().join("vital/saved.vital"), MINIMAL).unwrap();
+        let path = dir.path().join("PROVENANCE.md");
+        let row = |sha: &str| {
+            format!(
+                "| `vital/saved.vital` | {APP_SAVED} 1.0.7 | 1.0.7 | MIT | Copyright (c) 2026 the sound-to-patch contributors | `{sha}` | 2026-10-26 | A re-save |\n"
+            )
+        };
+        let text = fs::read_to_string(&path).unwrap();
+        let (head, tail) = text.split_once("\nAllowed wavetable authors").unwrap();
+        let with_row = |sha: &str| {
+            format!(
+                "{head}\n{}\nAllowed wavetable authors{tail}",
+                row(sha).trim_end()
+            )
+        };
+        fs::write(&path, with_row(&sha256(MINIMAL.as_bytes()))).unwrap();
+        let provenance = fs::read_to_string(&path).unwrap();
+        assert_eq!(
+            orphans(&dir.path().join("vital"), &generate().unwrap(), &provenance).unwrap(),
+            Vec::<String>::new()
+        );
+        check_folder(dir.path()).unwrap();
+        // Its row is still checked.
+        fs::write(&path, with_row(&"0".repeat(64))).unwrap();
+        assert!(folder_error(&dir).contains("vital/saved.vital: the SHA-256 of its row"));
+        // A row that does not mark the file as app-saved leaves it an orphan.
+        let plain = with_row(&sha256(MINIMAL.as_bytes())).replace(APP_SAVED, "copied");
+        assert_eq!(
+            orphans(&dir.path().join("vital"), &generate().unwrap(), &plain).unwrap(),
+            ["saved.vital"]
         );
     }
 

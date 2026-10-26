@@ -20,8 +20,9 @@ use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::io::Read;
+use std::io::{Read, Write as _};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::preset::edits::EditErrors;
 use crate::preset::format::{DescribeOptions, FormatError, PresetFormat, format_for};
@@ -218,10 +219,7 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
         ));
     }
     if !request.force && fs::symlink_metadata(out).is_ok() {
-        return Err(refuse(
-            "the file exists".to_owned(),
-            "Pass --force to replace it, or write to a new file".to_owned(),
-        ));
+        return Err(exists(out));
     }
     // The folder as the system resolves it: `-o x.vital` inside a factory
     // folder, a link into one and `Factory/../x.vital` all count by where
@@ -259,9 +257,10 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
 ///
 /// The output must carry the extension of the synth, and must not be the
 /// edit list, the template or a file in the factory folder of the synth,
-/// and must not exist unless the request sets `force`. The
-/// file is written to a temporary file next to it and renamed, so a failed
-/// run leaves no partial file.
+/// and must not exist unless the request sets `force`. The file is
+/// written to a temporary file next to it and then published: renamed
+/// with `force`, hard-linked without it, so a file that appears meanwhile
+/// is never replaced. A failed run leaves no partial file.
 ///
 /// # Errors
 ///
@@ -325,7 +324,7 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
     model.set_name(&name).map_err(write_error)?;
     let bytes = format.write(model.as_ref()).map_err(write_error)?;
     format.read(&bytes).map_err(write_error)?;
-    write_atomically(out, format.extension(), &bytes)?;
+    write_atomically(out, format.extension(), &bytes, request.force)?;
     let stamp = model
         .header()
         .fields
@@ -342,21 +341,60 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
     ))
 }
 
-/// Writes a file through a temporary sibling and a rename, so a failed
-/// write leaves no partial file.
-fn write_atomically(out: &Path, extension: &str, bytes: &[u8]) -> Result<(), PresetError> {
-    let temporary = out.with_extension(format!("{extension}.partial"));
-    let failed = |cause: io::Error| {
-        // The temporary file may not exist; either way nothing is left.
-        let _ = fs::remove_file(&temporary);
-        PresetError::Output {
-            path: out.to_owned(),
-            cause: cause.to_string(),
-            fix: "Check that the folder exists, is writable and has free space".to_owned(),
-        }
+/// The error for an output file that exists without `--force`.
+fn exists(out: &Path) -> PresetError {
+    PresetError::Output {
+        path: out.to_owned(),
+        cause: "the file exists".to_owned(),
+        fix: "Pass --force to replace it, or write to a new file".to_owned(),
+    }
+}
+
+/// Writes a file through a new temporary sibling, so a failed write leaves
+/// no partial file. With `force` a rename replaces `out`. Without it a
+/// hard link publishes the file and fails if `out` exists, so a file that
+/// appears after the check is never replaced.
+fn write_atomically(
+    out: &Path,
+    extension: &str,
+    bytes: &[u8],
+    force: bool,
+) -> Result<(), PresetError> {
+    static RUN: AtomicUsize = AtomicUsize::new(0);
+    let temporary = out.with_extension(format!(
+        "{extension}.{}-{}.partial",
+        std::process::id(),
+        RUN.fetch_add(1, Ordering::Relaxed)
+    ));
+    let output_error = |cause: io::Error| PresetError::Output {
+        path: out.to_owned(),
+        cause: cause.to_string(),
+        fix: "Check that the folder exists, is writable and has free space".to_owned(),
     };
-    fs::write(&temporary, bytes).map_err(failed)?;
-    fs::rename(&temporary, out).map_err(failed)
+    // A failed create_new made no file, and the path may be another's.
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(output_error)?;
+    let failed = |cause: io::Error| {
+        let _ = fs::remove_file(&temporary);
+        output_error(cause)
+    };
+    file.write_all(bytes)
+        .and_then(|()| file.sync_all())
+        .map_err(failed)?;
+    drop(file);
+    if force {
+        return fs::rename(&temporary, out).map_err(failed);
+    }
+    let linked = fs::hard_link(&temporary, out);
+    let _ = fs::remove_file(&temporary);
+    match linked {
+        Ok(()) => Ok(()),
+        Err(cause) if cause.kind() == io::ErrorKind::AlreadyExists => Err(exists(out)),
+        Err(cause) => Err(output_error(cause)),
+    }
 }
 
 fn apply_summary(
@@ -402,6 +440,25 @@ fn apply_summary(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_file_that_appears_after_the_check_is_not_replaced() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("Out.vital");
+        fs::write(&out, "theirs").unwrap();
+        let error = write_atomically(&out, "vital", b"ours", false)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("the file exists. Pass --force"), "{error}");
+        assert_eq!(fs::read_to_string(&out).unwrap(), "theirs");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+        write_atomically(&out, "vital", b"ours", true).unwrap();
+        assert_eq!(fs::read_to_string(&out).unwrap(), "ours");
+        let new = dir.path().join("New.vital");
+        write_atomically(&new, "vital", b"new", false).unwrap();
+        assert_eq!(fs::read_to_string(&new).unwrap(), "new");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
 
     #[test]
     fn an_oversized_file_is_refused_unread() {
