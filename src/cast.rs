@@ -12,6 +12,16 @@ pub(crate) fn usize_to_f64(n: usize) -> f64 {
     n as f64
 }
 
+/// A signed integer read from a file as `f64`. Exact up to ±2^53; larger
+/// values round to the nearest `f64`, as a JSON reader does.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "a JSON integer beyond 2^53 has no exact f64 in any reader"
+)]
+pub(crate) fn i64_to_f64(n: i64) -> f64 {
+    n as f64
+}
+
 /// The top 53 bits of a random word as a value in `[0, 1)`, every value a
 /// multiple of 2^-53.
 #[expect(
@@ -78,6 +88,8 @@ mod tests {
         assert_eq!(usize_to_f64(0), 0.0);
         assert_eq!(usize_to_f64(44_100), 44_100.0);
         assert_eq!(usize_to_f64(1 << 53), 9_007_199_254_740_992.0);
+        assert_eq!(i64_to_f64(-48), -48.0);
+        assert_eq!(i64_to_f64(1 << 53), 9_007_199_254_740_992.0);
     }
 
     #[test]

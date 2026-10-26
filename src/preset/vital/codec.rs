@@ -23,7 +23,7 @@ use crate::preset::format::{
 };
 use crate::preset::registry::{ParamKind, ParamRegistry};
 use crate::preset::template::TemplateSource;
-use crate::preset::vital::{RETAIL_ONLY_KEYS, VitalTemplate, VitalVersion, registry};
+use crate::preset::vital::{RETAIL_ONLY_KEYS, VitalTemplate, VitalVersion, registry, writers};
 use crate::synth::Synth;
 
 /// Top-level keys the app reads.
@@ -59,7 +59,7 @@ pub(crate) const STYLES: [&str; 9] = [
 ];
 
 /// Modulation slots of a patch.
-const SLOTS: usize = 64;
+pub(crate) const SLOTS: usize = 64;
 
 /// The numeric controls each modulation slot owns.
 const SLOT_CONTROLS: [&str; 5] = ["amount", "bipolar", "power", "stereo", "bypass"];
@@ -191,6 +191,37 @@ impl PresetFormat for VitalFormat {
 
     fn template(&self) -> &dyn TemplateSource {
         &VitalTemplate
+    }
+
+    fn route_sources(&self) -> &'static [&'static str] {
+        &writers::ROUTE_SOURCES
+    }
+
+    fn default_polarity(&self, source: &str) -> RoutePolarity {
+        writers::default_polarity(source)
+    }
+
+    fn check_value(&self, key: &str, stored: f64) -> Result<(), FormatError> {
+        if key == "effect_chain_order" {
+            writers::check_effect_order(stored)?;
+        }
+        Ok(())
+    }
+
+    fn scan(&self, model: &dyn PresetModel) -> Result<Vec<String>, FormatError> {
+        let model = model.as_any().downcast_ref::<VitalModel>().ok_or_else(|| {
+            FormatError::new(
+                "cannot check the .vital preset",
+                "the model belongs to another synth",
+                "Check it with the format of its own synth",
+            )
+        })?;
+        validate(&model.root)?;
+        writers::scan(model)
+    }
+
+    fn factory_folders(&self) -> &'static [&'static str] {
+        &["Factory"]
     }
 }
 
@@ -469,6 +500,14 @@ impl VitalModel {
                     "Read the preset again from a valid file",
                 )
             })
+    }
+
+    pub(crate) fn settings_map_mut(&mut self) -> Result<&mut Map<String, Value>, FormatError> {
+        self.settings_mut()
+    }
+
+    pub(crate) fn set_top_text(&mut self, key: &str, text: &str) {
+        self.set_text(key, text);
     }
 
     fn set_text(&mut self, key: &str, text: &str) {
@@ -999,6 +1038,49 @@ mod tests {
                 .contains("limit of 10")
         );
         assert!(format.read_header(MINIMAL.as_bytes()).is_err());
+    }
+
+    #[test]
+    fn a_declared_length_allocates_nothing() {
+        // 2^28 float32 samples are 1 GiB. The reader keeps the sample as
+        // text and never sizes a buffer from `length`.
+        let text = r#"{"synth_version":"1.0.6","settings":{"sample":{"length":268435456,"sample_rate":44100,"samples":"AAA="}}}"#;
+        assert_eq!(write(read(text).unwrap().as_ref()), text);
+    }
+
+    #[test]
+    fn hostile_values_read_as_written_or_fail() {
+        let wrap = |settings: &str| {
+            format!(
+                r#"{{"synth_version":"1.0.6","settings":{{{settings}"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+            )
+        };
+        for bad in [
+            wrap(r#""filter_1_cutoff":1e400,"#),
+            wrap(r#""x":"\ud800","#),
+            "[1]".to_owned(),
+            "\"x\"".to_owned(),
+        ] {
+            assert!(read(&bad).is_err(), "{bad}");
+        }
+        let negative_zero = model(&wrap(r#""filter_1_cutoff":-0.0,"#));
+        assert_eq!(
+            negative_zero
+                .get("filter_1_cutoff")
+                .map(|value| match value {
+                    Stored::Float(number) => number.to_bits(),
+                    _ => 0,
+                }),
+            Some((-0.0_f64).to_bits())
+        );
+        let duplicate = model(&wrap(r#""filter_1_cutoff":1.0,"filter_1_cutoff":2.0,"#));
+        assert_eq!(duplicate.get("filter_1_cutoff"), Some(Stored::Float(2.0)));
+        let slots = (0..65)
+            .map(|_| r#"{"source":"","destination":""}"#)
+            .collect::<Vec<_>>()
+            .join(",");
+        let long = model(&wrap(&format!(r#""modulations":[{slots}],"#)));
+        assert_eq!(write(&long), wrap(&format!(r#""modulations":[{slots}],"#)));
     }
 
     #[test]

@@ -11,7 +11,7 @@ use sound_to_patch::synth::Synth;
 use crate::support::memory::{Flaw, MemoryFormat, MemoryTemplate};
 use crate::support::{for_each_ready_synth, format_contract, registry_contract};
 
-const VITAL_MINIMAL: &[u8] = include_bytes!("../fixtures/vital/minimal.vital");
+const VITAL_MINIMAL: &[u8] = include_bytes!("../fixtures/vital/marks.vital");
 
 #[test]
 fn every_ready_registry_meets_the_contract() {

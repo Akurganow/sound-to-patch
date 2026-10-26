@@ -32,3 +32,32 @@ jobs:
         with:
           name: coverage
           path: target/coverage
+
+  # Five minutes per fuzz target on the pinned nightly, seeded from the
+  # committed fixtures. A crash uploads its input.
+  fuzz:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - working-directory: fuzz
+        run: rustup toolchain install
+      - working-directory: fuzz
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+      - name: Seed the corpus
+        run: |
+          for target in vital_read vital_roundtrip; do
+            mkdir -p "fuzz/corpus/$target"
+            find tests/fixtures/vital -name '*.vital' -exec cp {} "fuzz/corpus/$target/" \;
+          done
+      - working-directory: fuzz
+        run: |
+          for target in vital_read vital_roundtrip vital_write; do
+            cargo fuzz run --fuzz-dir . "$target" -- -max_total_time=300
+          done
+      - if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: fuzz-artifacts
+          path: fuzz/artifacts

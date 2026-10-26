@@ -28,6 +28,8 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
       - run: cargo fmt --all --check
+      # The fuzz crate is its own workspace.
+      - run: cargo fmt --manifest-path fuzz/Cargo.toml --check
 
   # Lints on the shipped target, so target-specific code is linted as built.
   clippy:
@@ -38,6 +40,9 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # Checks the fuzz targets on stable. Running them needs the nightly
+      # pinned in fuzz/rust-toolchain.toml.
+      - run: cargo clippy --manifest-path fuzz/Cargo.toml --all-targets -- -D warnings
 
   test:
     runs-on: macos-latest

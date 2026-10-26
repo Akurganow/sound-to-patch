@@ -1,0 +1,10 @@
+# Every bad edit is reported, with close names for an unknown key.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/bad-edits.json", "-o", "target/Bass.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: the edit list has 2 problem(s):
+  edit 1 (filter_1_cuttoff): "filter_1_cuttoff" is not a control of Vital. Close names: filter_1_cutoff, filter_2_cutoff, filter_fx_cutoff
+  edit 2 (env_1_attack): env_1_attack: cannot read "5 Hz" as Seconds: unknown suffix "Hz". Write a number followed by one of: s, ms. Write a value such as "800 ms"
+"""

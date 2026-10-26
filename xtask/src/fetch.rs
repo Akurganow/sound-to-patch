@@ -15,7 +15,7 @@ use sha2::{Digest, Sha256};
 
 /// A SHA-256 digest, parsed from 64 hex digits.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Sha256Digest([u8; 32]);
+pub(crate) struct Sha256Digest(pub(crate) [u8; 32]);
 
 impl FromStr for Sha256Digest {
     type Err = String;

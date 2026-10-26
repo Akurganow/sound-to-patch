@@ -1,0 +1,15 @@
+{
+  "synth": "vital",
+  "edits": [
+    {
+      "param": "filter_1_cuttoff",
+      "value": "1 kHz",
+      "reason": "r"
+    },
+    {
+      "param": "env_1_attack",
+      "value": "5 Hz",
+      "reason": "r"
+    }
+  ]
+}

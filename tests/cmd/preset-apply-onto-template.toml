@@ -1,0 +1,8 @@
+# The template is never overwritten.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/two-edits.json", "--template", "tests/fixtures/vital/minimal.vital", "-o", "tests/fixtures/vital/minimal.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: cannot write tests/fixtures/vital/minimal.vital: it is the edit list or the template. Write to a new file; the inputs stay as they are
+"""

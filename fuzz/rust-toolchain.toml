@@ -1,0 +1,5 @@
+# cargo-fuzz needs nightly for the sanitizer flags. A dated nightly keeps
+# runs reproducible. The scheduled job installs cargo-fuzz 0.13.2.
+[toolchain]
+channel = "nightly-2026-10-20"
+profile = "minimal"

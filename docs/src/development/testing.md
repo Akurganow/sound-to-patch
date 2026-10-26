@@ -91,7 +91,13 @@ doc tests, hence the second command. CI uses the `ci` profile from
 - Nothing licensed or private enters git: no factory presets, no renders of
   them, no user stems, no personal Init preset. No Git LFS.
 - A Vital fixture is a file our code generated, or a file a maintainer
-  saved from the app after loading a file we generated.
+  saved from the app after loading a file we generated. The generated files
+  come from `cargo xtask vital-fixtures`; after a change to the writers, run
+  it and update the SHA-256 rows. `cargo xtask vital-fixtures --check`
+  compares the committed files with the generator and checks every row,
+  the size limit of 256 KiB, the licence section and the wavetable authors.
+  `cargo xtask vital-fixtures --coverage` lists the registry keys no
+  fixture holds.
 - Expected values never come from an AI. They come from a formula in the
   facts, a file saved by the synth, a render or an independent reference.
 - A snapshot accepts every diff as the new truth, so CI runs `insta` with
@@ -99,6 +105,22 @@ doc tests, hence the second command. CI uses the `ci` profile from
   bytes, and never a number that must match an outside reference. Review
   a changed snapshot like code; record one locally with
   `INSTA_UPDATE=always` or `TRYCMD=overwrite`.
+
+## Fuzzing
+
+The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated
+nightly in `fuzz/rust-toolchain.toml`. CI lints them on stable, and a
+scheduled job runs each one for five minutes. Run one locally from the
+repository root, seeded from the fixtures:
+
+```sh
+mkdir -p fuzz/corpus/vital_read
+cp tests/fixtures/vital/*.vital fuzz/corpus/vital_read/
+cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
+```
+
+The corpus and the crash artifacts stay out of git. A crash becomes a
+unit test with the input bytes inline, next to the code it broke.
 
 ## Golden numbers
 

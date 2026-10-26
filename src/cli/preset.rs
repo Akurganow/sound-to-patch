@@ -22,6 +22,13 @@ pub enum PresetCommand {
     ///
     /// Example: sound-to-patch preset inspect bass.vital
     Inspect(InspectArgs),
+    /// Apply an edit list to a template and write a preset.
+    ///
+    /// Values are written with their unit, such as "1.2 kHz", "800 ms",
+    /// "-6 dB", "+12 st" or "25%".
+    ///
+    /// Example: sound-to-patch preset apply edits.json -o bass.vital
+    Apply(ApplyArgs),
 }
 
 /// Arguments of `preset inspect`.
@@ -49,4 +56,23 @@ impl InspectArgs {
             shown: self.shown,
         }
     }
+}
+
+/// Arguments of `preset apply`.
+#[derive(Debug, Args)]
+pub struct ApplyArgs {
+    /// The edit list, a JSON file.
+    pub edits: PathBuf,
+    /// The preset to write, such as `bass.vital`.
+    #[arg(short, long, value_name = "FILE")]
+    pub out: PathBuf,
+    /// A preset to start from instead of the synth's built-in template.
+    #[arg(long, value_name = "FILE")]
+    pub template: Option<PathBuf>,
+    /// The preset name. Without it, the name of the output file.
+    #[arg(long)]
+    pub name: Option<String>,
+    /// The target synth.
+    #[command(flatten)]
+    pub synth: SynthArg,
 }

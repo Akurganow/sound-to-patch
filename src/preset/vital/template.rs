@@ -17,10 +17,8 @@ use crate::preset::format::PresetModel;
 use crate::preset::registry::ParamRegistry;
 use crate::preset::template::{Severity, TemplateCheck, TemplateHelp, TemplateSource};
 use crate::preset::vital::codec::VitalModel;
+use crate::preset::vital::writers::FRAME_SAMPLES;
 use crate::preset::vital::{DEFAULT_STAMP, RETAIL_ONLY_KEYS, VitalVersion, registry};
-
-/// Samples in one wavetable frame.
-const FRAME_SAMPLES: usize = 2048;
 
 /// Samples in the default sample: one second at 44.1 kHz.
 const NOISE_SAMPLES: usize = 44_100;
@@ -116,11 +114,22 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
     }
     if let Ok(registry) = registry() {
         for (key, value) in settings {
-            if registry.get(key).is_some() && !value.is_number() {
-                checks.push(error(
+            let Some(spec) = registry.get(key) else {
+                continue;
+            };
+            match value.as_f64() {
+                None => checks.push(error(
                     format!("control `{key}` holds {value}, not a number"),
                     "Vital throws on load; save the template again from Vital",
-                ));
+                )),
+                Some(number) if !spec.accepts(number) => checks.push(error(
+                    format!(
+                        "control `{key}` holds {number}, outside {}",
+                        spec.range_text()
+                    ),
+                    "Vital applies it unclamped; save the template again from Vital",
+                )),
+                Some(_) => {}
             }
         }
     }
@@ -154,6 +163,15 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
         ));
     }
     checks
+}
+
+/// The built-in item of a structured list, used to fill a short list.
+pub(crate) fn default_item(list: &str) -> Value {
+    match list {
+        "wavetables" => saw_wavetable(),
+        "lfos" => triangle_lfo(),
+        _ => json!({"source": "", "destination": ""}),
+    }
 }
 
 /// The built-in template as a JSON tree.
@@ -360,6 +378,13 @@ mod tests {
             r#"{{"synth_version":"1.0.6","settings":{{"sample":{{}},"filter_1_on":true,{full_shapes}}}}}"#
         );
         assert!(checks(&bool_control)[0].text.contains("filter_1_on"));
+        let outside = format!(
+            r#"{{"synth_version":"1.0.6","settings":{{"sample":{{}},"filter_2_cutoff":140.0,{full_shapes}}}}}"#
+        );
+        assert_eq!(
+            checks(&outside)[0].text,
+            "control `filter_2_cutoff` holds 140, outside 8.0 to 136.0"
+        );
         let short =
             r#"{"synth_version":"1.0.6","settings":{"sample":{},"wavetables":[{}],"lfos":[]}}"#;
         let found = texts(checks(short));

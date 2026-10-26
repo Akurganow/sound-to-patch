@@ -1,9 +1,9 @@
 # Header fields first, then the decoded tree with lists cut after three items.
 bin.name = "sound-to-patch"
-args = ["preset", "inspect", "tests/fixtures/vital/minimal.vital"]
+args = ["preset", "inspect", "tests/fixtures/vital/marks.vital"]
 stdout = """
 build             1.0.6
-name              Fixture
+name              marks
 author            sound-to-patch
 style             Bass
 controls          7
@@ -11,7 +11,7 @@ unknown keys      3  [warn]
 retail-only keys  custom_warps  [warn]
 
 synth_version: "1.0.6"
-preset_name: "Fixture"
+preset_name: "marks"
 author: "sound-to-patch"
 comments: "A hand-written test file"
 preset_style: "Bass"

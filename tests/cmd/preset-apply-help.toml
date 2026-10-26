@@ -1,0 +1,35 @@
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "--help"]
+stdout = """
+Apply an edit list to a template and write a preset.
+
+Values are written with their unit, such as "1.2 kHz", "800 ms", "-6 dB", "+12 st" or "25%".
+
+Example: sound-to-patch preset apply edits.json -o bass.vital
+
+Usage: sound-to-patch preset apply [OPTIONS] --out <FILE> <EDITS>
+
+Arguments:
+  <EDITS>
+          The edit list, a JSON file
+
+Options:
+  -o, --out <FILE>
+          The preset to write, such as `bass.vital`
+
+      --template <FILE>
+          A preset to start from instead of the synth's built-in template
+
+      --name <NAME>
+          The preset name. Without it, the name of the output file
+
+      --synth <SYNTH>
+          The target synth [default: the extension of the preset file, else vital]
+
+          Possible values:
+          - vital:  Vital, with `.vital` preset files
+          - serum2: Serum 2, with `.SerumPreset` preset files
+
+  -h, --help
+          Print help (see a summary with '-h')
+"""

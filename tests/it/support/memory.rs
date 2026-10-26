@@ -10,7 +10,7 @@ use std::path::PathBuf;
 
 use sound_to_patch::preset::format::{
     DescribeOptions, Description, FormatError, Header, Node, PresetFormat, PresetModel, Route,
-    Stored,
+    RoutePolarity, Stored,
 };
 use sound_to_patch::preset::template::{Severity, TemplateCheck, TemplateHelp, TemplateSource};
 use sound_to_patch::synth::Synth;
@@ -157,6 +157,26 @@ impl PresetFormat for MemoryFormat {
 
     fn template(&self) -> &dyn TemplateSource {
         &self.template
+    }
+
+    fn route_sources(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    fn default_polarity(&self, _source: &str) -> RoutePolarity {
+        RoutePolarity::Unipolar
+    }
+
+    fn check_value(&self, _key: &str, _stored: f64) -> Result<(), FormatError> {
+        Ok(())
+    }
+
+    fn scan(&self, _model: &dyn PresetModel) -> Result<Vec<String>, FormatError> {
+        Ok(Vec::new())
+    }
+
+    fn factory_folders(&self) -> &'static [&'static str] {
+        &[]
     }
 }
 

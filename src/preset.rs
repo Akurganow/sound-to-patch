@@ -1,6 +1,6 @@
 //! Preset files of the target synths, behind one adapter per synth.
 //!
-//! - [`format`](mod@format): the [`PresetFormat`](format::PresetFormat) and
+//! - [`format`](mod@format): the [`PresetFormat`] and
 //!   [`PresetModel`](format::PresetModel) traits that read, edit and write
 //!   a preset, and the tree that `preset inspect` prints.
 //! - [`registry`]: the [`ParamRegistry`](registry::ParamRegistry) of each
@@ -8,8 +8,13 @@
 //!   provenance.
 //! - [`template`]: where the template of a new preset comes from.
 //! - [`vital`]: the Vital adapter.
+//! - [`edits`]: the edit list an agent writes, and its check against the
+//!   registry.
+//! - [`apply`]: applies checked edits to a model.
+//! - [`mapper`]: the [`SynthMapper`](mapper::SynthMapper) trait that turns
+//!   layer values into edits.
 //!
-//! [`inspect`] runs the `preset inspect` command.
+//! [`inspect`] runs `preset inspect` and [`apply_file`] runs `preset apply`.
 
 use std::error::Error;
 use std::fmt;
@@ -18,10 +23,16 @@ use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use crate::preset::format::{DescribeOptions, FormatError, format_for};
+use crate::preset::edits::EditErrors;
+use crate::preset::format::{DescribeOptions, FormatError, PresetFormat, format_for};
+use crate::preset::registry::registry_for;
+use crate::preset::template::{Severity, TemplateError, locate_template};
 use crate::synth::{SynthArg, SynthError};
 
+pub mod apply;
+pub mod edits;
 pub mod format;
+pub mod mapper;
 pub mod registry;
 pub mod template;
 pub mod vital;
@@ -45,6 +56,19 @@ pub enum PresetError {
         /// Why.
         error: FormatError,
     },
+    /// The edit list is not valid or does not apply.
+    Edits(EditErrors),
+    /// No usable template.
+    Template(TemplateError),
+    /// The output path is refused.
+    Output {
+        /// The path.
+        path: PathBuf,
+        /// Why.
+        cause: String,
+        /// How to fix it.
+        fix: String,
+    },
 }
 
 impl fmt::Display for PresetError {
@@ -57,6 +81,11 @@ impl fmt::Display for PresetError {
                 path.display()
             ),
             Self::Format { path, error } => write!(f, "{}: {error}", path.display()),
+            Self::Edits(errors) => errors.fmt(f),
+            Self::Template(error) => error.fmt(f),
+            Self::Output { path, cause, fix } => {
+                write!(f, "cannot write {}: {cause}. {fix}", path.display())
+            }
         }
     }
 }
@@ -67,6 +96,9 @@ impl Error for PresetError {
             Self::Synth(error) => Some(error),
             Self::Read { cause, .. } => Some(cause),
             Self::Format { error, .. } => Some(error),
+            Self::Edits(errors) => Some(errors),
+            Self::Template(error) => Some(error),
+            Self::Output { .. } => None,
         }
     }
 }
@@ -121,6 +153,207 @@ fn read_capped(path: &Path, max: usize) -> Result<Vec<u8>, PresetError> {
         });
     }
     Ok(bytes)
+}
+
+/// The inputs of `preset apply`.
+#[derive(Clone, Debug)]
+pub struct ApplyRequest<'a> {
+    /// The edit list file.
+    pub edits: &'a Path,
+    /// The output preset file.
+    pub out: &'a Path,
+    /// A template path, or `None` for the synth's own lookup.
+    pub template: Option<&'a Path>,
+    /// The target synth.
+    pub synth: &'a SynthArg,
+    /// The preset name, or `None` for the output file stem.
+    pub name: Option<&'a str>,
+}
+
+/// Whether two paths name the same file. Paths that do not exist yet are
+/// compared as written.
+fn same_file(a: &Path, b: &Path) -> bool {
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+/// Refuses an output path with the wrong extension, one that is an input,
+/// or one inside a factory folder of the synth.
+fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result<(), PresetError> {
+    let out = request.out;
+    let synth = format.synth();
+    let refuse = |cause: String, fix: String| PresetError::Output {
+        path: out.to_owned(),
+        cause,
+        fix,
+    };
+    let extension = out.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+    if !extension.eq_ignore_ascii_case(format.extension()) {
+        return Err(refuse(
+            format!(
+                "a {} preset needs the .{} extension",
+                synth.name(),
+                format.extension()
+            ),
+            format!("Name the output like bass.{}", format.extension()),
+        ));
+    }
+    if same_file(out, request.edits)
+        || request
+            .template
+            .is_some_and(|template| same_file(out, template))
+    {
+        return Err(refuse(
+            "it is the edit list or the template".to_owned(),
+            "Write to a new file; the inputs stay as they are".to_owned(),
+        ));
+    }
+    if let Some(folder) = out.ancestors().skip(1).find_map(|dir| {
+        let name = dir.file_name()?.to_str()?;
+        format
+            .factory_folders()
+            .iter()
+            .find(|factory| factory.eq_ignore_ascii_case(name))
+    }) {
+        return Err(refuse(
+            format!("it is inside a {folder} folder of {}", synth.name()),
+            "Write into your own preset folder; factory presets stay untouched".to_owned(),
+        ));
+    }
+    Ok(())
+}
+
+/// Runs `preset apply`: reads the edit list, takes the template, applies
+/// the edits and writes the preset. Returns the report to print.
+///
+/// The output must carry the extension of the synth, and must not be the
+/// edit list, the template or a file in a factory folder of the synth. The
+/// file is written to a temporary file next to it and renamed, so a failed
+/// run leaves no partial file.
+///
+/// # Errors
+///
+/// A [`PresetError`] for any refused input, edit or path.
+pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
+    let out = request.out;
+    let synth = request.synth.resolve(request.template.or(Some(out)))?;
+    let format = format_for(synth)?;
+    let registry = registry_for(synth)?;
+    check_output(request, format)?;
+    let text =
+        String::from_utf8(read_capped(request.edits, format.max_bytes())?).map_err(|error| {
+            PresetError::Read {
+                path: request.edits.to_owned(),
+                cause: io::Error::new(io::ErrorKind::InvalidData, error),
+            }
+        })?;
+    let list = edits::parse(&text, edits::Path::Agent).map_err(PresetError::Edits)?;
+    let template =
+        locate_template(format.template(), request.template).map_err(PresetError::Template)?;
+    let template_path = match &template.origin {
+        template::Origin::CommandLine(path) | template::Origin::Candidate(path) => path.clone(),
+        template::Origin::Builtin => PathBuf::from("built-in template"),
+    };
+    let mut model = format
+        .read(&template.bytes)
+        .map_err(|error| PresetError::Format {
+            path: template_path.clone(),
+            error,
+        })?;
+    let checks = format.template().check(model.as_ref());
+    if let Some(error) = checks
+        .iter()
+        .find(|check| check.severity == Severity::Error)
+    {
+        return Err(PresetError::Format {
+            path: template_path,
+            error: FormatError::new(
+                "cannot use the template",
+                error.text.clone(),
+                error.fix.clone(),
+            ),
+        });
+    }
+    let resolved = edits::resolve(&list, registry).map_err(PresetError::Edits)?;
+    let report =
+        apply::apply(format, registry, model.as_mut(), &resolved).map_err(PresetError::Edits)?;
+    let name = request
+        .name
+        .map(str::to_owned)
+        .or_else(|| {
+            out.file_stem()
+                .and_then(|stem| stem.to_str())
+                .map(str::to_owned)
+        })
+        .unwrap_or_default();
+    let write_error = |error: FormatError| PresetError::Format {
+        path: out.to_owned(),
+        error,
+    };
+    model.set_name(&name).map_err(write_error)?;
+    let bytes = format.write(model.as_ref()).map_err(write_error)?;
+    format.read(&bytes).map_err(write_error)?;
+    write_atomically(out, format.extension(), &bytes)?;
+    Ok(apply_summary(
+        out,
+        &template.origin,
+        &name,
+        &report,
+        &checks,
+    ))
+}
+
+/// Writes a file through a temporary sibling and a rename, so a failed
+/// write leaves no partial file.
+fn write_atomically(out: &Path, extension: &str, bytes: &[u8]) -> Result<(), PresetError> {
+    let temporary = out.with_extension(format!("{extension}.partial"));
+    let io_error = |cause| PresetError::Read {
+        path: out.to_owned(),
+        cause,
+    };
+    fs::write(&temporary, bytes).map_err(io_error)?;
+    fs::rename(&temporary, out).map_err(|cause| {
+        let _ = fs::remove_file(&temporary);
+        io_error(cause)
+    })
+}
+
+fn apply_summary(
+    out: &Path,
+    origin: &template::Origin,
+    name: &str,
+    report: &apply::ApplyReport,
+    checks: &[template::TemplateCheck],
+) -> String {
+    use std::fmt::Write as _;
+    let mut text = format!("wrote {} ({name:?}) from {origin}\n", out.display());
+    for change in &report.changes {
+        let mut notes = Vec::new();
+        if change.uncalibrated {
+            notes.push("uncalibrated");
+        }
+        if change.raw {
+            notes.push("raw");
+        }
+        let notes = if notes.is_empty() {
+            String::new()
+        } else {
+            format!(" [{}]", notes.join(", "))
+        };
+        let _ = writeln!(text, "  set {} = {}{notes}", change.target, change.value);
+    }
+    for skipped in &report.skipped {
+        let _ = writeln!(text, "  skipped {}: {}", skipped.target, skipped.why);
+    }
+    for check in checks {
+        let _ = writeln!(text, "  {check}");
+    }
+    for warning in &report.warnings {
+        let _ = writeln!(text, "  warning: {warning}");
+    }
+    text
 }
 
 #[cfg(test)]

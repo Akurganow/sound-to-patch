@@ -129,6 +129,8 @@ license.
 - Committed test fixtures have a row in `tests/fixtures/PROVENANCE.md`.
   Fixture rule: a Vital fixture is a file our code generated, or a file a
   maintainer saved from the app after loading a file we generated.
+  `cargo xtask vital-fixtures` regenerates the generated ones, and
+  `cargo xtask vital-fixtures --check` checks them and their rows.
 - Format-page rule: each synth has one format page,
   `docs/src/reference/formats/<synth>-preset.md`. Each fact on it carries
   a build, a status and a source.

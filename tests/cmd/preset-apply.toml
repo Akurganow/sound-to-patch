@@ -1,0 +1,8 @@
+# Two edits on the routes fixture; the output is named after its file.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/two-edits.json", "--template", "tests/fixtures/vital/routes.vital", "-o", "target/Bass.vital"]
+stdout = """
+wrote target/Bass.vital ("Bass") from tests/fixtures/vital/routes.vital
+  set filter_1_cutoff = 1046.502261 Hz, stored 83.99999999674434
+  set env_1_attack = 1 s, stored 1.0
+"""
