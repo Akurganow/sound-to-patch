@@ -2,7 +2,9 @@
 
 Every physical value in the library has a unit type. A value is checked
 once, when it is built from a number, a JSON field or a unit string, and is
-valid by type afterwards. No public function takes a bare float.
+valid by type afterwards. Only the constructors and the ratio and gain
+conversions take a bare float; every other public function takes a unit
+type.
 
 The code examples on this page come from `examples/units.rs`, which CI
 compiles. `cargo run --example units` prints their results.
@@ -158,11 +160,12 @@ maps it through the interim law of the parameter registry
 ([#107](https://github.com/Akurganow/sound-to-serum/issues/107)) and marks
 the value uncalibrated.
 
-Each claim below names the build it was checked on and its status:
-`verified` in a Serum 2.1.5 session, `reported` by an outside source, or
-`open`. The probe presets of
+Each claim below has a build column and a status: `verified` in a
+Serum 2.1.5 session, `reported` by an outside source, or `open`. The
+outside source records no build, so every row says `not recorded` and is
+`reported`. The probe presets of
 [#42](https://github.com/Akurganow/sound-to-serum/issues/42) will check
-them on build 2.1.5; until then each is `reported`.
+each claim on build 2.1.5 and fill in the build.
 
 | Control | Stored as | Unit type | Build | Status |
 | :-- | :-- | :-- | :-- | :-- |
