@@ -1,0 +1,176 @@
+{
+ "description": "Note times in ticks and the tempo of a MIDI file, as closed forms of the BPM.",
+ "generator": "xtask/golden/generate.py:midi_timing",
+ "issue": 62,
+ "name": "midi-timing",
+ "recipe": {
+  "bpm": [
+   4.0,
+   60.0,
+   120.0,
+   140.0,
+   173.5,
+   1000.0
+  ],
+  "notes": [
+   {
+    "offset_s": 0.5,
+    "onset_s": 0.0,
+    "pitch": 45
+   },
+   {
+    "offset_s": 1.125,
+    "onset_s": 0.25,
+    "pitch": 57
+   },
+   {
+    "offset_s": 2.0,
+    "onset_s": 1.3333333333333333,
+    "pitch": 60
+   },
+   {
+    "offset_s": 2.7071,
+    "onset_s": 2.0,
+    "pitch": 64
+   },
+   {
+    "offset_s": 4.5,
+    "onset_s": 3.14159,
+    "pitch": 33
+   },
+   {
+    "offset_s": 9.001,
+    "onset_s": 7.777,
+    "pitch": 96
+   }
+  ],
+  "tempo": "60,000,000 / BPM microseconds per quarter note, unrounded",
+  "ticks": "seconds * BPM / 60 * ticks_per_beat, unrounded",
+  "ticks_per_beat": 480
+ },
+ "tolerance": {
+  "abs": 0.5,
+  "rel": 0.0
+ },
+ "tolerance_note": "half a tick, the most that rounding to whole ticks moves a time; the tempo rounds to whole microseconds",
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "1000.0": {
+   "offset_ticks": [
+    4000.0000000000005,
+    9000.000000000002,
+    16000.000000000002,
+    21656.800000000003,
+    36000.00000000001,
+    72008.0
+   ],
+   "onset_ticks": [
+    0.0,
+    2000.0000000000002,
+    10666.666666666668,
+    16000.000000000002,
+    25132.72,
+    62216.00000000001
+   ],
+   "tempo_us": 60000.0
+  },
+  "120.0": {
+   "offset_ticks": [
+    480.0,
+    1080.0,
+    1920.0,
+    2598.8160000000003,
+    4320.0,
+    8640.96
+   ],
+   "onset_ticks": [
+    0.0,
+    240.0,
+    1280.0,
+    1920.0,
+    3015.9264,
+    7465.92
+   ],
+   "tempo_us": 500000.0
+  },
+  "140.0": {
+   "offset_ticks": [
+    560.0,
+    1260.0,
+    2240.0,
+    3031.952,
+    5040.0,
+    10081.119999999999
+   ],
+   "onset_ticks": [
+    0.0,
+    280.0,
+    1493.3333333333333,
+    2240.0,
+    3518.5807999999997,
+    8710.24
+   ],
+   "tempo_us": 428571.4285714286
+  },
+  "173.5": {
+   "offset_ticks": [
+    694.0,
+    1561.5,
+    2776.0,
+    3757.4548,
+    6246.0,
+    12493.387999999999
+   ],
+   "onset_ticks": [
+    0.0,
+    347.0,
+    1850.6666666666665,
+    2776.0,
+    4360.52692,
+    10794.476
+   ],
+   "tempo_us": 345821.32564841496
+  },
+  "4.0": {
+   "offset_ticks": [
+    16.0,
+    36.0,
+    64.0,
+    86.6272,
+    144.0,
+    288.032
+   ],
+   "onset_ticks": [
+    0.0,
+    8.0,
+    42.666666666666664,
+    64.0,
+    100.53088,
+    248.864
+   ],
+   "tempo_us": 15000000.0
+  },
+  "60.0": {
+   "offset_ticks": [
+    240.0,
+    540.0,
+    960.0,
+    1299.4080000000001,
+    2160.0,
+    4320.48
+   ],
+   "onset_ticks": [
+    0.0,
+    120.0,
+    640.0,
+    960.0,
+    1507.9632,
+    3732.96
+   ],
+   "tempo_us": 1000000.0
+  }
+ }
+}

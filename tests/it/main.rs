@@ -22,6 +22,8 @@ mod masks;
 #[cfg(test)]
 mod midi;
 #[cfg(test)]
+mod midi_write;
+#[cfg(test)]
 mod modulation;
 mod preset;
 #[cfg(test)]
@@ -35,4 +37,6 @@ mod stft;
 #[cfg(test)]
 mod support;
 mod synth;
+#[cfg(test)]
+mod transcribe;
 mod vita;

@@ -22,7 +22,8 @@ The library so far holds the command line with `analyze`, `preset inspect`
 and `preset apply`, the unit types, the confidence type, the synth seam,
 the Vital read and write paths, stem intake, the note list with its masks
 and its MIDI reader, the signal core that the estimators share, and the
-report with the `stem` group and the spectrogram.
+report with the `stem` group and the spectrogram, the transcriber with its
+profiles, and the MIDI writer.
 
 ## Synth adapter seam
 
@@ -71,8 +72,10 @@ joins `READY` when its adapter lands.
   descriptors, the modulation spectrum with the division snap, and the
   Lomb-Scargle periodogram.
 - `notes`: the note list that the transcriber and the MIDI reader produce
-  and every layer reads, the MIDI reader behind `analyze --notes`, and the
-  harmonic masks built from the list.
+  and every layer reads. The transcriber runs the model once per stem and
+  decodes that run with the settings of a profile; the MIDI writer stores
+  a list as a format 0 file. It also holds the MIDI reader behind
+  `analyze --notes` and the harmonic masks built from the list.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.

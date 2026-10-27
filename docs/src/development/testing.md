@@ -177,7 +177,9 @@ unit test with the input bytes inline, next to the code it broke.
 - CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
   fails when a vector lacks a field, lacks the Python version in `tools`,
   names a version other than the pin, or when a prototype table has no
-  recipe file.
+  recipe file. The same job runs `cargo xtask check-no-ort`, which fails
+  when `Cargo.lock` holds the ONNX Runtime crate of the transcription
+  model.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

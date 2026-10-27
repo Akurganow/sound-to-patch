@@ -9,6 +9,7 @@ mod dist;
 mod fetch;
 mod fixtures;
 mod golden;
+mod lock;
 mod pr;
 mod version;
 mod vital;
@@ -58,6 +59,8 @@ enum Task {
     GoldenCheck,
     /// Check that `ARCHITECTURE.md` names every top-level module of `src/`.
     CheckArchitecture,
+    /// Check that `Cargo.lock` holds no ONNX Runtime crate.
+    CheckNoOrt,
     /// Check that every cited source has a credit with a licence.
     CheckCredits,
     /// Check that the docs name the manifest's `rust-version`.
@@ -98,6 +101,7 @@ fn main() -> ExitCode {
         Task::Golden => golden::generate(root()),
         Task::GoldenCheck => golden::check(root()),
         Task::CheckArchitecture => architecture::check(root()),
+        Task::CheckNoOrt => lock::check_no_ort(root()),
         Task::CheckCredits => credits::check(root()),
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
