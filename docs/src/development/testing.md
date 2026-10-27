@@ -38,6 +38,25 @@ needs from the matrix below and names them in its issue.
 | Test bench | ● | ○ | – | – | ○ | ○ | – | – | – | – | ● |
 | Skill and docs | – | – | ● | ● | ○ | – | – | – | – | – | ○ |
 
+## Benchmarks
+
+`cargo bench --bench notes` runs the criterion groups of the notes step on
+one generated 60 s stem: the model load, the model run at one thread and
+at all threads, the f0 track, the MIDI write and the whole step at both
+thread counts. A run takes about 40 minutes, most of it in the f0 track.
+CI compiles the benches and never runs them.
+
+The notes budget is the first run's median plus 25 %, per minute of audio:
+
+| Threads | First median | Budget |
+| :-- | :-- | :-- |
+| 1 | 38.4 s | 48.0 s |
+| All | 32.5 s | 40.7 s |
+
+A run above the budget names its step: the f0 track takes 35.8 s of the
+38.4 s. The [pipeline page](../analysis/pipeline.md#time-budget) gives
+every group.
+
 ## Running the tests
 
 ```sh
@@ -185,7 +204,11 @@ unit test with the input bytes inline, next to the code it broke.
   its audio on each run and commits nothing. Run it as a release build:
   the f0 tracker's generic code compiles at our crate's level, so a debug
   run is about 55 times slower. `--part TEXT` runs the matching parts and
-  prints their notes.
+  prints their notes, raw and clean. It fails when a golden of the
+  cleanup breaks: the dry 110 Hz saw must show its octave copy at MIDI 57
+  before the cleanup and none after, and its six notes through reverb
+  must give six notes after it. Those stems take minutes in a debug
+  build, so no test in CI runs them.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

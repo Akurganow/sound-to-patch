@@ -15,7 +15,7 @@ report against it.
 | `source` | The file name of the stem, without its folder. A run of another stem into the same folder stops unless `--force` is given. |
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
-| `transcription` | The transcriber's model hash, crate version, profile and note settings. `null` in this release: no transcriber runs, and with `--notes` none would. |
+| `transcription` | The transcriber's model and settings, the group below. `null` in this release: `analyze` runs no transcriber, and with `--notes` none would. |
 | `conventions` | The convention of every number in `stem`, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
 The top level takes no other field. Later releases add one group per layer,
@@ -24,6 +24,18 @@ each with `values`, `confidence`, `flags`, `needs_render` and
 too little evidence writes `values: null` and says why in its confidence.
 `suggested_edits` maps a parameter name with its unit suffix to a plain
 number, such as `"filter1_cutoff_hz": 410`.
+
+## The transcription group
+
+The group records what produced the notes, so a note that flips between
+two machines can be traced to its settings.
+
+| Field | Value |
+| :-- | :-- |
+| `model_sha256` | The SHA-256 of the bundled model weights, 64 lowercase hex digits. |
+| `crate_version` | The version of the transcription crate, `"0.1.0"`. |
+| `profile` | `"bass"`, `"lead"` or `"pad"`, or `"detected"` when the stem chose the settings. |
+| `note_params` | Every decoder parameter by the crate's own name: `onset_threshold`, `frame_threshold`, `minimum_note_length_ms`, `minimum_frequency`, `maximum_frequency` (both in Hz), `infer_onsets`, `melodia_trick`, `include_pitch_bends`, `energy_tolerance` and `bend_offset`. Numbers and booleans only. |
 
 ## Naming
 

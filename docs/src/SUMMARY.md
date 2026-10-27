@@ -5,6 +5,7 @@
 # Guide
 
 - [Analysing a stem](guide/analyze.md)
+- [Transcribing a stem](guide/notes.md)
 - [Presets](guide/preset.md)
 
 # Analysis

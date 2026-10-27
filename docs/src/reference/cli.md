@@ -93,15 +93,83 @@ it: `stems/bass.wav` writes `stems/bass/`. With `--notes`, the MIDI file
 gives the note list. Its note times follow the file's tempo map, and every
 tempo in the file must lie within 0.01 BPM of `--bpm`; a file without a
 tempo event plays at the MIDI default of 120 BPM. Notes on channel 10, the
-percussion channel, are left out. No transcription runs in
-this release, so the report's `transcription` group is `null` with or
-without `--notes`.
+percussion channel, are left out. `analyze` runs no transcription in this
+release, so the report's `transcription` group is `null` with or without
+`--notes`; `notes` transcribes on its own and writes no report.
 
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | Both files were written. |
 | 1 | The stem or the note file cannot be read or is invalid, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
 | 2 | A usage error, such as a missing `--bpm` or a tempo outside 4 to 1000. |
+
+## notes
+
+```console
+$ sound-to-patch notes --help
+Transcribe a stem and write notes.mid.
+
+The pitch range, the voicing and the minimum note length come from the stem unless --profile sets them. Each step prints what it found.
+
+Example: sound-to-patch notes bass.wav --bpm 140
+
+Usage: sound-to-patch notes [OPTIONS] --bpm <BPM> <STEM>
+
+Arguments:
+  <STEM>
+          The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A
+
+Options:
+      --bpm <BPM>
+          The tempo of the stem in beats per minute, 4 to 1000
+
+      --profile <PROFILE>
+          Decode with the settings of this kind of stem instead of the detected ones
+
+          Possible values:
+          - bass: B0 to F#4, with the minimum length from the BPM
+          - lead: C2 to B6, with the minimum length from the BPM. Plucks use it too
+          - pad:  C2 to B6, with the decoder's default minimum length. Chords use it too
+
+  -o, --out <DIR>
+          The output folder [default: a folder named after the stem, next to it]
+
+      --force
+          Write next to a report of another stem in the output folder
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+```
+
+`notes` decodes the stem at its native rate, runs the transcription model
+once and the f0 track once, and writes `notes.mid` into the output folder,
+which it creates. The [pipeline page](../analysis/pipeline.md#the-notes-step)
+gives each step.
+
+- Settings: without `--profile`, the pitch range, the voicing and the
+  minimum note length come from the stem. `--profile bass`, `lead` or
+  `pad` sets them instead; detection still runs and prints its findings.
+- Output: standard output gets one line per step, in order: the detected
+  range, the detected voicing, the register window, the settings used,
+  the decoded count, then the note count after the octave check, the
+  ghost merge, the split join and the quiet-note guard with its drop
+  count, and last `wrote <path>`. A warning line for each corrupt packet
+  that became silence goes to standard error.
+- The file: a format 0 MIDI file with 480 ticks per beat, the tempo of
+  `--bpm` and 4/4 at tick 0, and every note on channel 1 at velocity 100.
+  It is written to a temporary sibling and renamed into place. Only
+  `notes.mid` is replaced; nothing else in the folder changes.
+- The folder: as for `analyze`, `stems/bass.wav` writes into `stems/bass/`
+  without `--out`. When the folder holds a `layers.json` of another stem,
+  the command stops and names both; `--out` picks another folder, and
+  `--force` writes next to that report.
+
+| Exit code | Meaning |
+| :-- | :-- |
+| 0 | `notes.mid` was written. |
+| 1 | The stem cannot be read, gives no note (silence, for one), or cannot be transcribed; the output folder is a file or holds the report of another stem; or the file cannot be written. Nothing is written. The message names the cause and the fix. |
+| 2 | A usage error: a missing `--bpm`, a tempo outside 4 to 1000 or not a number, or a profile other than `bass`, `lead` and `pad`. |
 
 ## preset
 
