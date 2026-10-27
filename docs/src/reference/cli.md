@@ -84,7 +84,7 @@ without `--notes`.
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | Both files were written. |
-| 1 | The stem or the note file cannot be read, or an output cannot be written. The message names the file, the cause and the fix. |
+| 1 | The stem or the note file cannot be read or is invalid, the selected synth has no adapter yet, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
 | 2 | A usage error, such as a missing `--bpm` or a tempo outside 4 to 1000. |
 
 ## preset
