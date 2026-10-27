@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 import librosa
+import mir_eval
 import numpy as np
 import scipy
 import scipy.signal
@@ -31,6 +32,7 @@ TOOLS = {
     "numpy": np.__version__,
     "scipy": scipy.__version__,
     "librosa": librosa.__version__,
+    "mir-eval": mir_eval.__version__,
 }
 LN_1000 = math.log(1000.0)
 
@@ -1181,6 +1183,223 @@ def min_note_length():
     )
 
 
+MATCH_RECIPE = {
+    "notes": "[onset_s, offset_s, midi pitch]; pitches become Hz by 440 * 2 ** ((m - 69) / 12)",
+    "onset_tolerance_s": 0.05,
+    "pitch_tolerance_cents": 50.0,
+    "offset": "offset_ratio 0.2 with offset_min_tolerance 0.05; onset scores pass offset_ratio=None",
+    "pitch_class": "every pitch folds to 60 + (m mod 12) before matching",
+    "octave_errors": "maximum onset matchings with the estimate shifted down (up) an octave count estimates an octave above (below) the reference",
+    "cases": {
+        "exact": [[[0.5, 1.0, 60], [1.0, 1.5, 62]], [[0.5, 1.0, 60], [1.0, 1.5, 62]]],
+        "onset_plus_60_ms": [[[0.5, 1.0, 60]], [[0.56, 1.0, 60]]],
+        "onset_plus_40_ms": [[[0.5, 1.0, 60]], [[0.54, 1.0, 60]]],
+        "onset_plus_50_ms": [[[0.5, 1.0, 60]], [[0.55, 1.0, 60]]],
+        "one_semitone": [[[0.5, 1.0, 60]], [[0.5, 1.0, 61]]],
+        "octave_up": [[[0.5, 1.0, 45]], [[0.5, 1.0, 57]]],
+        "octave_down": [[[0.5, 1.0, 57]], [[0.51, 1.0, 45]]],
+        "duplicate": [[[0.5, 1.0, 60]], [[0.5, 1.0, 60], [0.52, 1.0, 60]]],
+        "late_offset": [[[0.5, 1.0, 60], [1.5, 2.0, 62]], [[0.5, 1.3, 60], [1.5, 2.05, 62]]],
+        "crowded_repeats": [[[0.0, 0.05, 40], [0.06, 0.1, 40]], [[0.04, 0.1, 40], [0.11, 0.2, 40]]],
+        "no_estimate": [[[0.5, 1.0, 60]], []],
+        "chord": [[[0.0, 1.0, 57], [0.0, 1.0, 60], [0.0, 1.0, 64]], [[0.01, 0.9, 57], [0.02, 1.4, 64], [0.0, 1.0, 69]]],
+    },
+}
+
+
+def note_arrays(notes):
+    a = np.asarray(notes, dtype=float).reshape(-1, 3)
+    return a[:, :2], 440.0 * 2.0 ** ((a[:, 2] - 69.0) / 12.0), a[:, 2]
+
+
+def prf(ref, est, offset_ratio):
+    (ri, rp, _), (ei, ep, _) = note_arrays(ref), note_arrays(est)
+    if len(rp) == 0 or len(ep) == 0:
+        return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+    p, r, f, _ = mir_eval.transcription.precision_recall_f1_overlap(
+        ri, rp, ei, ep, onset_tolerance=0.05, pitch_tolerance=50.0, offset_ratio=offset_ratio
+    )
+    return {"precision": float(p), "recall": float(r), "f1": float(f)}
+
+
+def octave_matches(ref, est, factor):
+    (ri, rp, _), (ei, ep, _) = note_arrays(ref), note_arrays(est)
+    if len(rp) == 0 or len(ep) == 0:
+        return 0
+    return len(mir_eval.transcription.match_notes(ri, rp, ei, ep * factor, offset_ratio=None))
+
+
+def folded(notes):
+    return [[n[0], n[1], 60 + n[2] % 12] for n in notes]
+
+
+def match_cases():
+    values = {}
+    for name, (ref, est) in MATCH_RECIPE["cases"].items():
+        values[name] = {
+            "onset": prf(ref, est, None),
+            "offset": prf(ref, est, 0.2),
+            "pitch_class": prf(folded(ref), folded(est), None),
+            "octave_up": octave_matches(ref, est, 0.5),
+            "octave_down": octave_matches(ref, est, 2.0),
+        }
+    return document(
+        "notes-match",
+        65,
+        "Note-transcription precision, recall and F1 by the mir_eval rules on hand-built note lists.",
+        "match_cases",
+        ["python", "numpy", "mir-eval"],
+        MATCH_RECIPE,
+        values,
+        {"abs": 1e-12, "rel": 0.0},
+    )
+
+
+TRACK_SETTINGS = {
+    "sample_rate": 22050,
+    "fmin_hz": 25.0,
+    "fmax_hz": 4200.0,
+    "frame_length": 2048,
+    "hop_length": 128,
+    "resolution": 0.1,
+    "center": True,
+    "pad_mode": "constant",
+}
+
+TRACK_RECIPE = {
+    "settings": TRACK_SETTINGS,
+    "sine_bank": {
+        "frequencies_hz": [30.87, 41.2, 55.0],
+        "amplitude": 0.5,
+        "tone_s": 0.5,
+        "gap_s": 0.25,
+        "layout": "gap, tone, gap, tone, gap, tone, gap; sin(2 pi f t) with t from the tone start",
+        "middle": "medians and voiced counts over each tone without its first and last 0.1 s",
+    },
+    "glides": {
+        "start_hz": 110.0,
+        "semitones": 7.0,
+        "glide_ms": [50.0, 150.0, 400.0],
+        "hold_s": 0.25,
+        "signal": "0.5 * band-limited saw, harmonic h at 1/h below the Nyquist frequency of the top pitch; phase is the running sum of f / rate; pitch linear in semitones over the glide",
+        "rise": "time between the first voiced frames above 10 % and 90 % of the step, in semitones over the start pitch",
+    },
+}
+
+
+def track_f0(y, settings):
+    f0, voiced, _ = librosa.pyin(
+        y,
+        fmin=settings["fmin_hz"],
+        fmax=settings["fmax_hz"],
+        sr=settings["sample_rate"],
+        frame_length=settings["frame_length"],
+        hop_length=settings["hop_length"],
+        resolution=settings["resolution"],
+        center=settings["center"],
+        pad_mode=settings["pad_mode"],
+    )
+    return np.where(voiced, f0, 0.0)
+
+
+def sine_bank_signal(r, rate):
+    gap = np.zeros(int(round(r["gap_s"] * rate)))
+    t = times(rate, int(round(r["tone_s"] * rate)))
+    parts = [gap]
+    for f in r["frequencies_hz"]:
+        parts += [r["amplitude"] * np.sin(2.0 * np.pi * f * t), gap]
+    return np.concatenate(parts)
+
+
+def glide_signal(r, glide_ms, rate):
+    hold = int(round(r["hold_s"] * rate))
+    glide = int(round(glide_ms / 1000.0 * rate))
+    steps = np.concatenate([np.zeros(hold), np.arange(glide) / glide, np.ones(hold)])
+    f = r["start_hz"] * 2.0 ** (steps * r["semitones"] / 12.0)
+    phase = np.concatenate([[0.0], np.cumsum(f[:-1] / rate)])
+    top = r["start_hz"] * 2.0 ** (r["semitones"] / 12.0)
+    x = np.zeros_like(phase)
+    h = 1
+    while h * top < rate / 2:
+        x += np.sin(2.0 * np.pi * h * phase) / h
+        h += 1
+    return 0.5 * x
+
+
+def rise_ms(f0, r, hop_s):
+    semis = np.where(f0 > 0, 12.0 * np.log2(np.maximum(f0, 1e-9) / r["start_hz"]), np.nan)
+    above = lambda level: int(np.argmax(np.nan_to_num(semis, nan=-1e9) >= level))
+    return (above(0.9 * r["semitones"]) - above(0.1 * r["semitones"])) * hop_s * 1000.0
+
+
+def pitch_track():
+    r = TRACK_RECIPE
+    settings = r["settings"]
+    rate = settings["sample_rate"]
+    hop_s = settings["hop_length"] / rate
+    bank = r["sine_bank"]
+    f0 = track_f0(sine_bank_signal(bank, rate), settings)
+    tones = []
+    for i, f in enumerate(bank["frequencies_hz"]):
+        start = bank["gap_s"] + i * (bank["tone_s"] + bank["gap_s"])
+        lo, hi = int(np.ceil((start + 0.1) / hop_s)), int(np.floor((start + bank["tone_s"] - 0.1) / hop_s))
+        middle = f0[lo : hi + 1]
+        voiced = middle[middle > 0]
+        tones.append({
+            "frequency_hz": f,
+            "frames": int(len(middle)),
+            "voiced": int(len(voiced)),
+            "median_hz": float(np.median(voiced)),
+        })
+    glides = {}
+    for ms in r["glides"]["glide_ms"]:
+        glides[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": float(rise_ms(track_f0(glide_signal(r["glides"], ms, rate), settings), r["glides"], hop_s))}
+    return document(
+        "pitch-track",
+        113,
+        "pYIN f0 of a low sine bank and of linear saw glides, with the f0 track settings of sound-to-patch.",
+        "pitch_track",
+        ["python", "numpy", "scipy", "librosa"],
+        r,
+        {"sine_bank": tones, "glides": glides},
+        {"abs": 0.0, "rel": 0.0116},
+        tolerance_note="medians within 20 cents (rel 0.0116); the Rust crate follows librosa 0.9.1, so frames differ slightly; rises within two hops (11.6 ms) and voiced counts within 2 % are checked in the test",
+    )
+
+
+GLIDE_ISSUE_RECIPE = {
+    "settings": {**TRACK_SETTINGS, "fmin_hz": 30.0, "fmax_hz": 400.0},
+    "glides": TRACK_RECIPE["glides"],
+    "note": "the #61 method: frame 2048, hop 128, fmin 30 Hz; the issue states no fmax, so the #61 track ceiling of 400 Hz is used",
+}
+
+
+def glide_issue_table():
+    r = GLIDE_ISSUE_RECIPE
+    rate = r["settings"]["sample_rate"]
+    hop_s = r["settings"]["hop_length"] / rate
+    values = {}
+    for ms in r["glides"]["glide_ms"]:
+        values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": float(rise_ms(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s))}
+    issue = {"50.0": 29.0, "150.0": 116.0, "400.0": 319.0}
+    return document(
+        "61-glide",
+        61,
+        "10-90 % rise time of 7-semitone linear saw glides read by librosa pYIN.",
+        "glide_issue_table",
+        ["python", "numpy", "scipy", "librosa"],
+        r,
+        values,
+        {"abs": 6.0, "rel": 0.0},
+        tag="[own, synthetic]",
+        rounding="the issue prints whole milliseconds",
+        issue_figures={
+            "figures": issue,
+            "reproduced": all(within(values[k]["rise_ms"], v, 0.0, 6.0) for k, v in issue.items()),
+        },
+    )
+
+
 VECTORS = {
     "window": window_vectors,
     "stft": stft_vectors,
@@ -1190,6 +1409,8 @@ VECTORS = {
     "descriptors": descriptor_vectors,
     "lombscargle": lomb_vectors,
     "midi-timing": midi_timing,
+    "notes-match": match_cases,
+    "pitch-track": pitch_track,
     "prototype/48-peak-accuracy": peak_accuracy,
     "prototype/53-noise-floor": decay_noise_floor,
     "prototype/53-release-reverb": decay_release_reverb,
@@ -1200,6 +1421,7 @@ VECTORS = {
     "prototype/54-noise-flatness": noise_flatness,
     "prototype/54-crest": crest_values,
     "prototype/59-min-note-length": min_note_length,
+    "prototype/61-glide": glide_issue_table,
 }
 
 

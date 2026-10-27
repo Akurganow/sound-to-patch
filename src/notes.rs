@@ -17,17 +17,28 @@ use std::fmt;
 
 use crate::units::{Hz, MidiPitch, Seconds};
 
+mod detect;
 mod mask;
 mod midi;
 mod profile;
+mod quiet;
+mod track;
 mod transcribe;
 mod write;
 
+pub use detect::{
+    CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, REGISTER_MARGIN, REGISTER_PERCENTILES,
+    REGISTER_WINDOW, Voicing, detect, detect_with_window, probe_settings,
+};
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
 pub use profile::{
     DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
     Profile, RangeError, min_note_frames,
+};
+pub use quiet::{QUIET_FRAME, QUIET_GATE, drop_quiet};
+pub use track::{
+    PitchTrack, TRACK_FMAX, TRACK_FMIN, TRACK_FRAME, TRACK_HOP, TrackError, TrackFrame,
 };
 pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
 pub use write::{

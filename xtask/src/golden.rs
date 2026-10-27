@@ -28,7 +28,7 @@ const FIELDS: [&str; 8] = [
 
 /// The prototype tables that the stem-intake tasks quote. Each needs a
 /// recipe file, so no quoted figure rests on a script that is gone.
-const PROTOTYPE_TABLES: [&str; 10] = [
+const PROTOTYPE_TABLES: [&str; 11] = [
     "47-stereo-screen",
     "48-peak-accuracy",
     "51-two-saw-peaks",
@@ -39,6 +39,7 @@ const PROTOTYPE_TABLES: [&str; 10] = [
     "54-noise-flatness",
     "54-sawtooth",
     "59-min-note-length",
+    "61-glide",
 ];
 
 const GOLDEN_DIR: &str = "tests/fixtures/golden";

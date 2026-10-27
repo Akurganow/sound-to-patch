@@ -6,6 +6,7 @@
 mod architecture;
 mod credits;
 mod dist;
+mod eval;
 mod fetch;
 mod fixtures;
 mod golden;
@@ -53,6 +54,13 @@ enum Task {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Score the notes step on generated parts with known notes; local only.
+    Eval {
+        /// Run only the parts whose name holds this text, and print their
+        /// notes.
+        #[arg(long)]
+        part: Option<String>,
+    },
     /// Regenerate the golden vectors with the pinned Python tools (needs uv).
     Golden,
     /// Check the golden vectors against the pinned tool versions.
@@ -98,6 +106,7 @@ fn main() -> ExitCode {
     let result = match Xtask::parse().task {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
+        Task::Eval { part } => eval::run(part.as_deref()),
         Task::Golden => golden::generate(root()),
         Task::GoldenCheck => golden::check(root()),
         Task::CheckArchitecture => architecture::check(root()),
