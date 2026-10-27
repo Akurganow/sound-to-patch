@@ -2,8 +2,7 @@
 
 Turn an audio stem into a synth starting point, a preset and the notes, or
 turn a written description of a sound into a preset. Vital and Serum 2 are
-the target synths, and Vital comes first. The project is MIT-licensed, see
-[LICENSE](LICENSE).
+the target synths, and Vital comes first.
 
 The project is at an early release. `sound-to-patch analyze` reads a stem
 and writes a report of its level, spectrum, band edge and stereo image
@@ -11,9 +10,6 @@ with a spectrogram image. `sound-to-patch preset inspect` prints the header
 and the decoded settings of a Vital preset, and `sound-to-patch preset
 apply` writes a Vital preset from an edit list. The layer estimators and
 the text path arrive in later releases.
-
-Vital and Serum 2 are trademarks of their owners. This project is not
-affiliated with or endorsed by them.
 
 ## Build
 
@@ -334,3 +330,10 @@ and ideas, from which we copy no code, text or data.
 - [timbremetrics timbre ratings (Thoret et al., Vahidi et al.)](https://github.com/tiianhk/timbremetrics) (no license): 21 human timbre-rating sets as the compare benchmark. Inspiration only.
 
 <!-- ANCHOR_END: credits -->
+
+## License
+
+The project is MIT-licensed, see [LICENSE](LICENSE).
+
+Vital and Serum 2 are trademarks of their owners. This project is not
+affiliated with or endorsed by them.
