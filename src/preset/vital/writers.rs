@@ -103,9 +103,10 @@ pub struct Wavetable {
 pub struct LfoShape {
     /// The shape name.
     pub name: String,
-    /// `(x, y)` points, x non-decreasing from 0 to 1, y from 0 to 1. Two
-    /// points with the same x draw a vertical step. The synth draws
-    /// `1 - y`, so `y = 0` is the top.
+    /// `(x, y)` points, x non-decreasing from 0 to 1, y the output from 0
+    /// (bottom) to 1 (top). Two points with the same x draw a vertical
+    /// step. The file stores `1 - y`: Vital 1.0.7 draws a stored 0 at the
+    /// top, and its default triangle stores its peak as 0.
     pub points: Vec<(f64, f64)>,
     /// One curve power per point.
     pub powers: Vec<f64>,
@@ -132,16 +133,71 @@ fn effect_switch(effect: EffectFamily) -> &'static str {
     }
 }
 
-/// Checks the one effect order code the writer knows how to encode.
-pub(crate) fn check_effect_order(code: f64) -> Result<(), FormatError> {
-    if code == 0.0 {
-        Ok(())
-    } else {
-        Err(write_error(
-            format!("effect_chain_order {code} is not the default order"),
-            "Keep code 0; the encoding of other orders is unverified",
-        ))
+/// The effect list of code 0, top to bottom: the order of a new patch.
+pub const EFFECT_ORDER: [EffectFamily; 9] = [
+    EffectFamily::Chorus,
+    EffectFamily::Compressor,
+    EffectFamily::Delay,
+    EffectFamily::Distortion,
+    EffectFamily::Eq,
+    EffectFamily::Filter,
+    EffectFamily::Flanger,
+    EffectFamily::Phaser,
+    EffectFamily::Reverb,
+];
+
+/// The number of effect orders, 9!. Codes run from 0 to one less.
+pub const EFFECT_ORDERS: u32 = 362_880;
+
+/// The `effect_chain_order` code of an effect list, top to bottom.
+///
+/// Number the effects by [`EFFECT_ORDER`]. Each effect after the first
+/// adds a mixed-radix digit: the count of effects above it with a higher
+/// number, in base `position + 1`. Measured on Vital 1.0.7: moving Reverb
+/// to the top stores 260650, Chorus to the bottom 8, and swapping the
+/// first two 181440.
+///
+/// # Errors
+///
+/// A [`FormatError`] when the list does not hold each effect once.
+pub fn effect_order_code(order: &[EffectFamily; 9]) -> Result<u32, FormatError> {
+    let ids: Vec<usize> = order
+        .iter()
+        .filter_map(|effect| EFFECT_ORDER.iter().position(|have| have == effect))
+        .collect();
+    if (0..EFFECT_ORDER.len()).any(|id| !ids.contains(&id)) {
+        return Err(write_error(
+            format!("the effect order {order:?} repeats an effect"),
+            "List each of the nine effects once",
+        ));
     }
+    let code = (1..ids.len()).fold(0, |code, i| {
+        code * (i + 1) + ids[..i].iter().filter(|&&above| above > ids[i]).count()
+    });
+    u32::try_from(code).map_err(|error| write_error(error.to_string(), "Report this"))
+}
+
+/// The effect list of an `effect_chain_order` code, top to bottom, or
+/// `None` for a code of 9! or more. The inverse of [`effect_order_code`].
+#[must_use]
+pub fn effect_order(code: u32) -> Option<[EffectFamily; 9]> {
+    if code >= EFFECT_ORDERS {
+        return None;
+    }
+    let mut rest = usize::try_from(code).ok()?;
+    let mut digits = [0; 9];
+    for (i, digit) in digits.iter_mut().enumerate().skip(1).rev() {
+        *digit = rest % (i + 1);
+        rest /= i + 1;
+    }
+    // The last effect is the digit-th highest of all nine; each earlier
+    // one is the same among those left.
+    let mut left: Vec<usize> = (0..EFFECT_ORDER.len()).collect();
+    let mut order = EFFECT_ORDER;
+    for i in (0..order.len()).rev() {
+        order[i] = EFFECT_ORDER[left.remove(i - digits[i])];
+    }
+    Some(order)
 }
 
 impl VitalModel {
@@ -430,7 +486,11 @@ impl VitalModel {
                 "Write finite powers",
             ));
         }
-        let points: Vec<f64> = shape.points.iter().flat_map(|&(x, y)| [x, y]).collect();
+        let points: Vec<f64> = shape
+            .points
+            .iter()
+            .flat_map(|&(x, y)| [x, 1.0 - y])
+            .collect();
         let value = json!({
             "num_points": count,
             "points": points,
@@ -453,16 +513,16 @@ impl VitalModel {
         )
     }
 
-    /// Sets the order of the effects. Only the default order, code 0, is
-    /// written until the encoding of other codes is verified.
+    /// Sets the order of the effect list, top to bottom, and returns its
+    /// code.
     ///
     /// # Errors
     ///
-    /// A [`FormatError`] for any other code.
-    pub fn set_effect_order(&mut self, code: u32) -> Result<(), FormatError> {
-        let code = f64::from(code);
-        check_effect_order(code)?;
-        self.set("effect_chain_order", Stored::Float(code))
+    /// A [`FormatError`] when the list does not hold each effect once.
+    pub fn set_effect_order(&mut self, order: &[EffectFamily; 9]) -> Result<u32, FormatError> {
+        let code = effect_order_code(order)?;
+        self.set("effect_chain_order", Stored::Float(f64::from(code)))?;
+        Ok(code)
     }
 
     /// Sets the label of macro `number` (1 to 4).
@@ -938,12 +998,75 @@ mod tests {
     }
 
     #[test]
-    fn only_the_default_effect_order_is_written() {
+    fn every_effect_order_code_round_trips() {
+        for code in 0..EFFECT_ORDERS {
+            let order = effect_order(code).unwrap();
+            assert_eq!(effect_order_code(&order).unwrap(), code);
+        }
+    }
+
+    #[test]
+    fn an_lfo_shape_stores_its_output_upside_down() {
+        // Vital 1.0.7 draws a stored 0 at the top, so a rising ramp of
+        // outputs is stored falling.
         let mut model = template();
-        model.set_effect_order(0).unwrap();
-        assert_eq!(model.get("effect_chain_order"), Some(Stored::Float(0.0)));
-        let message = model.set_effect_order(5).unwrap_err().to_string();
-        assert!(message.contains("unverified"), "{message}");
+        let ramp = LfoShape {
+            name: "Ramp Up".into(),
+            points: vec![(0.0, 0.0), (1.0, 1.0)],
+            powers: vec![0.0, 0.0],
+            smooth: false,
+        };
+        model.set_lfo_shape(0, &ramp).unwrap();
+        assert_eq!(
+            model.root()["settings"]["lfos"][0]["points"],
+            json!([0.0, 1.0, 1.0, 0.0])
+        );
+    }
+
+    #[test]
+    fn the_effect_order_codes_match_vital() {
+        use EffectFamily::{
+            Chorus, Compressor, Delay, Distortion, Eq, Filter, Flanger, Phaser, Reverb,
+        };
+        // Codes Vital 1.0.7 saved for effect lists rearranged in the app.
+        let saved = [
+            (EFFECT_ORDER, 0),
+            (
+                [
+                    Reverb, Chorus, Compressor, Delay, Distortion, Eq, Filter, Flanger, Phaser,
+                ],
+                260_650,
+            ),
+            (
+                [
+                    Compressor, Delay, Distortion, Eq, Filter, Flanger, Phaser, Reverb, Chorus,
+                ],
+                8,
+            ),
+            (
+                [
+                    Compressor, Chorus, Delay, Distortion, Eq, Filter, Flanger, Phaser, Reverb,
+                ],
+                181_440,
+            ),
+        ];
+        let mut model = template();
+        for (order, code) in saved {
+            assert_eq!(effect_order_code(&order).unwrap(), code);
+            assert_eq!(effect_order(code), Some(order));
+            assert_eq!(model.set_effect_order(&order).unwrap(), code);
+            assert_eq!(
+                model.get("effect_chain_order"),
+                Some(Stored::Float(f64::from(code)))
+            );
+        }
+        let twice = [Chorus; 9];
+        let message = effect_order_code(&twice).unwrap_err().to_string();
+        assert!(
+            message.contains("each of the nine effects once"),
+            "{message}"
+        );
+        assert_eq!(effect_order(EFFECT_ORDERS), None);
         model.set_effect_on(EffectFamily::Reverb, true).unwrap();
         assert_eq!(model.get("reverb_on"), Some(Stored::Float(1.0)));
         model.set_effect_on(EffectFamily::Filter, true).unwrap();

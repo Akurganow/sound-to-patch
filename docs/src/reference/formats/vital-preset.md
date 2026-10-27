@@ -127,14 +127,15 @@ here.
 | Fact | Build | Status | Source |
 | :-- | :-- | :-- | :-- |
 | `modulations` holds 64 `{source, destination}` entries. A slot's amount, bipolar flag, power, stereo and bypass are the controls `modulation_N_*`. | open engine | verified | probe: a fresh engine's saved state |
-| The 32 source names. A route from each of them loads. | open engine | verified | load check: the every-source variant |
+| The 32 source names. A route from each of them loads. | open engine, 1.0.7 | verified | load check: the every-source variant; in 1.0.7 the matrix shows 32 rows, and the value box reads 12.8 for amount 0.1 into the cutoff |
 | A route amount is a fraction of the destination's stored range: $\Delta = (x - 0.5 b) \cdot \mathrm{amount} \cdot (\max - \min)$. | source 1.0.6 | checked | `laws::modulation_delta` |
 | Routes target numbers, counts, menus such as `osc_1_transpose` and `lfo_1_tempo`, and the amount or power of another slot, never a switch. `preset apply` refuses a switch and the bipolar, stereo and bypass flags of a slot. | 1.0.x | verified | observed in factory presets of Vital 1.0.x |
 | A Wave Source holds `name`, `author`, `version`, `remove_all_dc`, `full_normalize` and `groups`. A component holds `type`, `interpolation`, `interpolation_style` and `keyframes`. A keyframe holds `position` and `wave_data`. | open engine | verified | probe 9: the engine's saved state has the same fields as ours |
 | `wave_data` is base64 of 2048 little-endian 32-bit floats: 10924 characters. Positions run from 0 to 256. | source 1.0.6 | checked | `wave_source.cpp` |
-| Tables of 1 and of 257 keyframes load. | open engine | verified | load check: the wavetable variants |
-| An LFO shape holds `name`, `num_points`, `points`, `powers` and `smooth`, with one power per point. A shape of 100 points loads. | open engine | verified | probe 9 and the 100-point variant |
-| How `effect_chain_order` encodes a permutation. The writer refuses every code but 0. | 1.0.7 | open | probe 10, in the follow-up check |
+| Tables of 1 and of 257 keyframes load. One keyframe shows a single frame; with 257 the frame position sweeps the wave. | open engine, 1.0.7 | verified | load check: the wavetable variants |
+| An LFO shape holds `name`, `num_points`, `points`, `powers` and `smooth`, with one power per point. A shape of 100 points loads. | open engine, 1.0.7 | verified | probe 9 and the 100-point variant |
+| A stored point y is drawn upside down: the output is $1 - y$, so a stored 0 is the top. The default triangle stores $(0, 1), (0.5, 0), (1, 1)$ and peaks at the centre. `LfoShape` takes outputs and stores $1 - y$. | 1.0.7 | verified | load check: a shape of rising stored values showed falling saws |
+| `effect_chain_order` codes the effect list, top to bottom. Code 0 is Chorus, Compressor, Delay, Distortion, EQ, Filter, Flanger, Phaser, Reverb. Number the effects in that order. Each effect after the first adds a mixed-radix digit, the count of effects above it with a higher number, in base its position plus one. The codes run from 0 to $9! - 1$. | 1.0.7 | verified | probe 10: lists rearranged in the app saved 260650, 8 and 181440; unit tests `the_effect_order_codes_match_vital` and `every_effect_order_code_round_trips` |
 
 ## Fixtures
 
@@ -183,13 +184,13 @@ facts in our own words and copies no code, comment or table.
 Stable 1.0.7 loaded a written preset with its edits, refused the newer
 stamps and re-saved the preset with every control kept. The ignored test
 `a_preset_saved_by_vital_keeps_the_edits` reads that re-save from
-`VITAL_SAVED_PRESET` and passes. The rest is tracked in
-[issue 233](https://github.com/Akurganow/sound-to-patch/issues/233):
+`VITAL_SAVED_PRESET` and passes. The unknown-key, no-name, every-source,
+LFO-shape and wavetable variants loaded in 1.0.7 with no dialog.
 
-- whether a bare preset JSON loads as plugin state in an x86_64 host;
-- how `effect_chain_order` encodes a permutation;
-- the load of the route, LFO-shape, wavetable, unknown-key and no-name
-  variants in 1.0.7;
+Still open:
+
+- whether a bare preset JSON loads as plugin state in an x86_64 host,
+  tracked in [issue 10](https://github.com/Akurganow/sound-to-patch/issues/10);
 - optionally, the stamps and the retail-only keys of early access 1.6.4.
 
 ## Sources

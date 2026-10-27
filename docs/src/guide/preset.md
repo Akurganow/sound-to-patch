@@ -133,6 +133,7 @@ last sound without a dialog.
   | The same file stamped `1.5.5`, `1.6.0` or `1.7.0` | refused: the stamp is newer than the app |
   | The same file with keys of later builds | loads |
   | Save it again from the app | every control kept |
+  | An unknown key, no name fields, a route from each source, a 100-point LFO shape, wavetables of 1 and 257 frames | each loads with no dialog |
 
   The [format page](../reference/formats/vital-preset.md#open-items) lists
   what is still open.

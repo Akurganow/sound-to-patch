@@ -170,24 +170,27 @@ fn uncalibrated_and_raw_edits_are_written_and_flagged() {
 }
 
 #[test]
-fn an_unverified_effect_order_is_refused() {
+fn every_effect_order_code_applies_and_no_other() {
     let synth = Synth::Vital;
     let mut model = template(synth);
-    let edit = [Resolved::Param {
-        key: "effect_chain_order".into(),
-        stored: 7.0,
-        uncalibrated: false,
-        reason: None,
-    }];
-    let message = apply(
-        format_for(synth).unwrap(),
-        registry_for(synth).unwrap(),
-        model.as_mut(),
-        &edit,
-    )
-    .unwrap_err()
-    .to_string();
-    assert!(message.contains("unverified"), "{message}");
+    let edit = |stored: f64| {
+        [Resolved::Param {
+            key: "effect_chain_order".into(),
+            stored,
+            uncalibrated: false,
+            reason: None,
+        }]
+    };
+    let (format, registry) = (format_for(synth).unwrap(), registry_for(synth).unwrap());
+    apply(format, registry, model.as_mut(), &edit(260_650.0)).unwrap();
+    assert_eq!(
+        model.get("effect_chain_order"),
+        Some(Stored::Float(260_650.0))
+    );
+    let message = apply(format, registry, model.as_mut(), &edit(362_880.0))
+        .unwrap_err()
+        .to_string();
+    assert!(message.contains("362879"), "{message}");
 }
 
 #[test]
