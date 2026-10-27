@@ -187,10 +187,16 @@ fn every_effect_order_code_applies_and_no_other() {
         model.get("effect_chain_order"),
         Some(Stored::Float(260_650.0))
     );
-    let message = apply(format, registry, model.as_mut(), &edit(362_880.0))
-        .unwrap_err()
-        .to_string();
-    assert!(message.contains("362879"), "{message}");
+    for (stored, cause) in [
+        (362_880.0, "outside 0.0 to 362879.0"),
+        (-1.0, "outside 0.0 to 362879.0"),
+        (1.5, "not a whole number"),
+    ] {
+        let message = apply(format, registry, model.as_mut(), &edit(stored))
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains(cause), "{stored}: {message}");
+    }
 }
 
 #[test]

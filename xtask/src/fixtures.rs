@@ -92,7 +92,7 @@ fn routes() -> crate::Result<Vec<u8>> {
         0,
         &LfoShape {
             name: "Ramp Down".to_owned(),
-            points: vec![(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)],
+            points: vec![(0.0, 1.0), (0.5, 0.5), (1.0, 0.0)],
             powers: vec![0.0, -2.0, 0.0],
             smooth: false,
         },

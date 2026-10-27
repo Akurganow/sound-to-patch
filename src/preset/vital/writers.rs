@@ -153,7 +153,8 @@ pub const EFFECT_ORDERS: u32 = 362_880;
 ///
 /// Number the effects by [`EFFECT_ORDER`]. Each effect after the first
 /// adds a mixed-radix digit: the count of effects above it with a higher
-/// number, in base `position + 1`. Measured on Vital 1.0.7: moving Reverb
+/// number, in base `position + 1`, the first digit the most significant.
+/// Measured on Vital 1.0.7: moving Reverb
 /// to the top stores 260650, Chorus to the bottom 8, and swapping the
 /// first two 181440.
 ///
@@ -630,13 +631,21 @@ pub(crate) fn scan(model: &VitalModel, edited: &[&str]) -> Result<Vec<String>, F
         // An edited control must be in range. One the edits left keeps
         // the template's value, which Vital loads as it is.
         if edited.contains(&key.as_str()) && !spec.accepts(number) {
-            return Err(write_error(
-                format!(
-                    "control {key} holds {number}, outside {}",
-                    spec.range_text()
-                ),
-                "Vital applies it unclamped; write a value inside the range",
-            ));
+            let inside = (spec.stored_min..=spec.stored_max).contains(&number);
+            return Err(if inside {
+                write_error(
+                    format!("control {key} holds {number}, not a whole number"),
+                    format!("Write a whole number from {}", spec.range_text()),
+                )
+            } else {
+                write_error(
+                    format!(
+                        "control {key} holds {number}, outside {}",
+                        spec.range_text()
+                    ),
+                    "Vital applies it unclamped; write a value inside the range",
+                )
+            });
         }
         if !spec.accepts_saved(number) {
             out_of_range.push(format!(
@@ -1020,6 +1029,19 @@ mod tests {
         assert_eq!(
             model.root()["settings"]["lfos"][0]["points"],
             json!([0.0, 1.0, 1.0, 0.0])
+        );
+        // The default triangle peaks at the centre, and 1.0.7 stores it
+        // with its peak as 0.
+        let triangle = LfoShape {
+            name: "Triangle".into(),
+            points: vec![(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
+            powers: vec![0.0; 3],
+            smooth: false,
+        };
+        model.set_lfo_shape(0, &triangle).unwrap();
+        assert_eq!(
+            model.root()["settings"]["lfos"][0]["points"],
+            json!([0.0, 1.0, 0.5, 0.0, 1.0, 1.0])
         );
     }
 
