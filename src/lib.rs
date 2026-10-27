@@ -15,8 +15,9 @@
 //!   reasons and a spread, or no estimate.
 //! - [`dsp`]: the signal core: windows, STFT, peak picking, active frames,
 //!   the analytic signal and decay fits.
-//! - [`notes`]: the note list that every layer reads, and the harmonic
-//!   masks built from it.
+//! - [`notes`]: the note list that every layer reads, the transcriber and
+//!   its profiles, the MIDI reader and writer, and the harmonic masks built
+//!   from the list.
 //! - [`preset`]: preset files behind one adapter per synth: the format
 //!   traits, the parameter registry with its laws, the template, the edit
 //!   list and its applier, the mapper trait that turns layer values into

@@ -1081,6 +1081,103 @@ def lomb_vectors():
     )
 
 
+MIDI_TIMING_RECIPE = {
+    "ticks_per_beat": 480,
+    "bpm": [4.0, 60.0, 120.0, 140.0, 173.5, 1000.0],
+    "notes": [
+        {"onset_s": 0.0, "offset_s": 0.5, "pitch": 45},
+        {"onset_s": 0.25, "offset_s": 1.125, "pitch": 57},
+        {"onset_s": 1.3333333333333333, "offset_s": 2.0, "pitch": 60},
+        {"onset_s": 2.0, "offset_s": 2.7071, "pitch": 64},
+        {"onset_s": 3.14159, "offset_s": 4.5, "pitch": 33},
+        {"onset_s": 7.777, "offset_s": 9.001, "pitch": 96},
+    ],
+    "ticks": "seconds * BPM / 60 * ticks_per_beat, unrounded",
+    "tempo": "60,000,000 / BPM microseconds per quarter note, unrounded",
+}
+
+
+def midi_timing():
+    r = MIDI_TIMING_RECIPE
+    per_beat = r["ticks_per_beat"]
+    values = {}
+    for bpm in r["bpm"]:
+        scale = np.float64(bpm) / 60.0 * per_beat
+        values[repr(bpm)] = {
+            "onset_ticks": floats(np.array([n["onset_s"] for n in r["notes"]]) * scale),
+            "offset_ticks": floats(np.array([n["offset_s"] for n in r["notes"]]) * scale),
+            "tempo_us": float(60e6 / np.float64(bpm)),
+        }
+    return document(
+        "midi-timing",
+        62,
+        "Note times in ticks and the tempo of a MIDI file, as closed forms of the BPM.",
+        "midi_timing",
+        ["python", "numpy"],
+        r,
+        values,
+        {"abs": 0.5, "rel": 0.0},
+        tolerance_note="half a tick, the most that rounding to whole ticks moves a time; the tempo rounds to whole microseconds",
+    )
+
+
+MIN_NOTE_RECIPE = {
+    "frame_s": "256 / 22050",
+    "settings_ms": [127.7, 58.0, 30.0, 0.0],
+    "frames": "round half to even of ms / 1000 * 22050 / 256",
+    "shortest_kept": "frames + 1, because the decoder drops a note of that many frames or fewer",
+    "rule": "clamp(0.5 * 15000 / BPM, 58, 127.7) ms",
+    "rule_bpm": [60.0, 90.0, 120.0],
+}
+
+ISSUE_FIGURES_59 = {
+    "settings": {"127.7": [11, 12, 139.3], "58.0": [5, 6, 69.7], "30.0": [3, 4, 46.4], "0.0": [0, 1, 11.6]},
+    "rule": {"60.0": [125.0, 11], "90.0": [83.3, 7], "120.0": [62.5, 5]},
+    "ceiling_bpm": 58.7,
+    "floor_bpm": 129.3,
+}
+
+
+def min_note_length():
+    r = MIN_NOTE_RECIPE
+    frame_s = 256.0 / 22050.0
+    frames = lambda ms: int(np.round(ms / 1000.0 / frame_s))
+    settings = {}
+    for ms in r["settings_ms"]:
+        n = frames(ms)
+        settings[repr(ms)] = {"frames": n, "shortest_kept_frames": n + 1, "shortest_kept_ms": (n + 1) * frame_s * 1000.0}
+    rule = {}
+    for bpm in r["rule_bpm"]:
+        ms = float(np.clip(0.5 * 15000.0 / bpm, 58.0, 127.7))
+        rule[repr(bpm)] = {"ms": ms, "frames": frames(ms)}
+    values = {
+        "settings": settings,
+        "rule": rule,
+        "ceiling_bpm": 0.5 * 15000.0 / 127.7,
+        "floor_bpm": 0.5 * 15000.0 / 58.0,
+    }
+    issue = ISSUE_FIGURES_59
+    reproduced = all(
+        settings[k]["frames"] == f and settings[k]["shortest_kept_frames"] == kept and within(settings[k]["shortest_kept_ms"], ms, 0.0, 0.05)
+        for k, (f, kept, ms) in issue["settings"].items()
+    ) and all(
+        within(rule[k]["ms"], ms, 0.0, 0.05) and rule[k]["frames"] == f for k, (ms, f) in issue["rule"].items()
+    ) and within(values["ceiling_bpm"], issue["ceiling_bpm"], 0.0, 0.05) and within(values["floor_bpm"], issue["floor_bpm"], 0.0, 0.05)
+    return document(
+        "59-min-note-length",
+        59,
+        "Minimum note length settings in model frames, the shortest kept note, and the BPM rule.",
+        "min_note_length",
+        ["python", "numpy"],
+        r,
+        values,
+        {"abs": 1e-9, "rel": 0.0},
+        tag="[own, synthetic]",
+        rounding="the issue prints one decimal",
+        issue_figures={"figures": issue, "reproduced": reproduced},
+    )
+
+
 VECTORS = {
     "window": window_vectors,
     "stft": stft_vectors,
@@ -1089,6 +1186,7 @@ VECTORS = {
     "stereo": stereo_delay,
     "descriptors": descriptor_vectors,
     "lombscargle": lomb_vectors,
+    "midi-timing": midi_timing,
     "prototype/48-peak-accuracy": peak_accuracy,
     "prototype/53-noise-floor": decay_noise_floor,
     "prototype/53-release-reverb": decay_release_reverb,
@@ -1098,6 +1196,7 @@ VECTORS = {
     "prototype/54-sawtooth": sawtooth_table,
     "prototype/54-noise-flatness": noise_flatness,
     "prototype/54-crest": crest_values,
+    "prototype/59-min-note-length": min_note_length,
 }
 
 

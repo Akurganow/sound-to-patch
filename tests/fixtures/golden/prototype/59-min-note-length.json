@@ -1,0 +1,116 @@
+{
+ "description": "Minimum note length settings in model frames, the shortest kept note, and the BPM rule.",
+ "generator": "xtask/golden/generate.py:min_note_length",
+ "issue": 59,
+ "issue_figures": {
+  "figures": {
+   "ceiling_bpm": 58.7,
+   "floor_bpm": 129.3,
+   "rule": {
+    "120.0": [
+     62.5,
+     5
+    ],
+    "60.0": [
+     125.0,
+     11
+    ],
+    "90.0": [
+     83.3,
+     7
+    ]
+   },
+   "settings": {
+    "0.0": [
+     0,
+     1,
+     11.6
+    ],
+    "127.7": [
+     11,
+     12,
+     139.3
+    ],
+    "30.0": [
+     3,
+     4,
+     46.4
+    ],
+    "58.0": [
+     5,
+     6,
+     69.7
+    ]
+   }
+  },
+  "reproduced": true
+ },
+ "name": "59-min-note-length",
+ "recipe": {
+  "frame_s": "256 / 22050",
+  "frames": "round half to even of ms / 1000 * 22050 / 256",
+  "rule": "clamp(0.5 * 15000 / BPM, 58, 127.7) ms",
+  "rule_bpm": [
+   60.0,
+   90.0,
+   120.0
+  ],
+  "settings_ms": [
+   127.7,
+   58.0,
+   30.0,
+   0.0
+  ],
+  "shortest_kept": "frames + 1, because the decoder drops a note of that many frames or fewer"
+ },
+ "rounding": "the issue prints one decimal",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 1e-09,
+  "rel": 0.0
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "ceiling_bpm": 58.73140172278778,
+  "floor_bpm": 129.31034482758622,
+  "rule": {
+   "120.0": {
+    "frames": 5,
+    "ms": 62.5
+   },
+   "60.0": {
+    "frames": 11,
+    "ms": 125.0
+   },
+   "90.0": {
+    "frames": 7,
+    "ms": 83.33333333333333
+   }
+  },
+  "settings": {
+   "0.0": {
+    "frames": 0,
+    "shortest_kept_frames": 1,
+    "shortest_kept_ms": 11.609977324263038
+   },
+   "127.7": {
+    "frames": 11,
+    "shortest_kept_frames": 12,
+    "shortest_kept_ms": 139.31972789115645
+   },
+   "30.0": {
+    "frames": 3,
+    "shortest_kept_frames": 4,
+    "shortest_kept_ms": 46.439909297052154
+   },
+   "58.0": {
+    "frames": 5,
+    "shortest_kept_frames": 6,
+    "shortest_kept_ms": 69.65986394557822
+   }
+  }
+ }
+}

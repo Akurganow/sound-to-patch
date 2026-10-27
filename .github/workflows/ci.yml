@@ -62,6 +62,7 @@ jobs:
       - run: cargo test --workspace --doc
       # Reads the committed golden vectors against the pins; needs no Python.
       - run: cargo xtask golden-check
+      - run: cargo xtask check-no-ort
 
   # Catches platform assumptions. Not a required check: numeric code may
   # differ in the last bits between platforms, and only macOS ships.

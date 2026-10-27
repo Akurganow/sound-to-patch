@@ -1,11 +1,16 @@
-//! The note list that every layer reads, and the harmonic masks built from
-//! it.
+//! The note list that every layer reads, the transcriber and the MIDI
+//! files that produce and store it, and the harmonic masks built from it.
 //!
 //! A note has an onset, an offset, a pitch and, once a pitch track has run,
 //! an f0 contour. Three more fields stay unset until a later step fills
 //! them: the octave flag, the velocity and the overlap flag. The
 //! transcriber and the MIDI reader both produce this type, and every later
 //! step consumes it.
+//!
+//! The transcriber runs the model once per stem ([`Transcriber::run`]) and
+//! decodes that run with [`DecodeSettings`], as many times as needed
+//! ([`ModelRun::decode`]). A [`Profile`] gives fixed settings per kind of
+//! stem. [`write_midi`] stores a list as a format 0 file.
 
 use std::error::Error;
 use std::fmt;
@@ -14,9 +19,20 @@ use crate::units::{Hz, MidiPitch, Seconds};
 
 mod mask;
 mod midi;
+mod profile;
+mod transcribe;
+mod write;
 
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
+pub use profile::{
+    DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
+    Profile, RangeError, min_note_frames,
+};
+pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
+pub use write::{
+    DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, write_midi,
+};
 
 /// A MIDI velocity from 1 to 127. Velocity 0 means a note-off in MIDI, so
 /// it is not a velocity.

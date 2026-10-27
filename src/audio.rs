@@ -59,6 +59,15 @@ impl SampleRate {
             .ok_or(AudioError::ZeroSampleRate)
     }
 
+    /// Builds a rate in a `const` item. Every caller passes a literal above
+    /// zero; zero would read as 1.
+    pub(crate) const fn from_const(rate: u32) -> Self {
+        Self(match NonZeroU32::new(rate) {
+            Some(rate) => rate,
+            None => NonZeroU32::MIN,
+        })
+    }
+
     /// Returns the rate in samples per second.
     #[must_use]
     pub fn get(self) -> u32 {
