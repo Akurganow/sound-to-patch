@@ -134,20 +134,7 @@ pub fn detect_with_window(
         | (Voicing::Monophonic, None, Some((low, high))) => Some((low.get(), high.get())),
         _ => None,
     };
-    let range = register.map_or_else(full_range, |(low, high)| {
-        let margin = REGISTER_MARGIN.get();
-        let clamp = |pitch: f64| {
-            pitch.clamp(
-                f64::from(LOWEST_MODEL_PITCH),
-                f64::from(HIGHEST_MODEL_PITCH),
-            )
-        };
-        PitchRange::new(
-            MidiPitch::clamped(clamp((low - margin).floor())),
-            MidiPitch::clamped(clamp((high + margin).ceil())),
-        )
-        .unwrap_or_else(|_| full_range())
-    });
+    let range = register.map_or_else(full_range, |(low, high)| range_of(low, high));
     Ok(Detection {
         settings: DecodeSettings {
             range,
@@ -164,6 +151,23 @@ pub fn detect_with_window(
         probe_register,
         probe_notes: probe.notes().len(),
     })
+}
+
+/// The decode range of a register: [`REGISTER_MARGIN`] beyond each end,
+/// widened to whole pitches and clamped to the model's range.
+fn range_of(low: f64, high: f64) -> PitchRange {
+    let margin = REGISTER_MARGIN.get();
+    let clamp = |pitch: f64| {
+        pitch.clamp(
+            f64::from(LOWEST_MODEL_PITCH),
+            f64::from(HIGHEST_MODEL_PITCH),
+        )
+    };
+    PitchRange::new(
+        MidiPitch::clamped(clamp((low - margin).floor())),
+        MidiPitch::clamped(clamp((high + margin).ceil())),
+    )
+    .unwrap_or_else(|_| full_range())
 }
 
 /// The share of notes that start within [`CHORD_ONSET_WINDOW`] of a note
@@ -285,6 +289,14 @@ mod tests {
         assert!((low.get() - 40.105).abs() < 0.01, "{}", low.get());
         assert!((high.get() - 49.885).abs() < 0.01, "{}", high.get());
         assert_eq!(f0_register(&track_of(|_| None), REGISTER_WINDOW), None);
+    }
+
+    #[test]
+    fn the_range_reaches_two_semitones_beyond_the_register() {
+        let ends = |range: PitchRange| (range.lowest().get(), range.highest().get());
+        assert_eq!(ends(range_of(40.105, 49.885)), (38.0, 52.0));
+        assert_eq!(ends(range_of(45.0, 45.0)), (43.0, 47.0));
+        assert_eq!(ends(range_of(22.0, 107.5)), (21.0, 108.0));
     }
 
     #[test]
