@@ -205,10 +205,11 @@ unit test with the input bytes inline, next to the code it broke.
   the f0 tracker's generic code compiles at our crate's level, so a debug
   run is about 55 times slower. `--part TEXT` runs the matching parts and
   prints their notes, raw and clean. It fails when a golden of the
-  cleanup breaks: the dry 110 Hz saw must show its octave copy at MIDI 57
-  before the cleanup and none after, and its six notes through reverb
-  must give six notes after it. Those stems take minutes in a debug
-  build, so no test in CI runs them.
+  cleanup breaks. The dry 110 Hz saw must show its octave copy at MIDI 57
+  before the cleanup, and only true notes after it: 5 of its 6, since the
+  model misses one onset. Its six notes through reverb must give the six
+  true notes. Those stems take minutes in a debug build, so no test in CI
+  runs them.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

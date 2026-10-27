@@ -404,9 +404,10 @@ fn detection_row(part: &Part, detection: &Detection) -> String {
     )
 }
 
-/// The goldens of #60 on the bass profile: the dry 110 Hz saw shows the
-/// octave ghost at MIDI 57 before the cleanup and none after it, and its
-/// six notes through reverb give six notes after the cleanup.
+/// The goldens of #60 on the bass profile. The dry 110 Hz saw shows the
+/// octave ghost at MIDI 57 before the cleanup; after it every note is a
+/// true A2, and 5 of the 6 match, because the model misses the onset of the
+/// fourth. Its six notes through reverb give the six true notes.
 fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<()> {
     let at_57 = |list: &NoteList| {
         list.notes()
@@ -414,19 +415,24 @@ fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<
             .filter(|note| (note.pitch().get() - 57.0).abs() < 0.5)
             .count()
     };
+    let found = eval_notes(clean);
+    let matched = onset_score(&part.notes, &found).matched;
     let fail = |what: String| Err(format!("#60 golden, {}: {what}", part.name).into());
-    match part.name.as_str() {
+    let expected = match part.name.as_str() {
         "bass 110 Hz release 0.3 s" if at_57(decoded) == 0 => {
-            fail("the decoder gave no ghost at MIDI 57 to remove".to_owned())
+            return fail("the decoder gave no ghost at MIDI 57 to remove".to_owned());
         }
-        "bass 110 Hz release 0.3 s" if at_57(clean) > 0 => {
-            fail(format!("{} ghosts at MIDI 57 survive", at_57(clean)))
-        }
-        "bass 110 Hz release 0.3 s+reverb" if clean.notes().len() != 6 => fail(format!(
-            "{} notes after the cleanup, not 6",
-            clean.notes().len()
-        )),
-        _ => Ok(()),
+        "bass 110 Hz release 0.3 s" => 5,
+        "bass 110 Hz release 0.3 s+reverb" => 6,
+        _ => return Ok(()),
+    };
+    if found.len() == expected && matched == expected {
+        Ok(())
+    } else {
+        fail(format!(
+            "{} notes after the cleanup, {matched} of them true, not {expected} true notes alone",
+            found.len()
+        ))
     }
 }
 
