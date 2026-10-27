@@ -41,7 +41,7 @@ members = ["xtask"]
 
 [workspace.package]
 # `cargo xtask set-version` rewrites this line in the version commit.
-version = "0.9.0"
+version = "0.10.0"
 edition = "2024"
 # Set for the transcription crates of a later release, which need 1.91.
 # Never below the highest MSRV among the dependencies, dev-dependencies

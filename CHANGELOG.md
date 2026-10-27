@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.10.0](https://github.com/Akurganow/sound-to-patch/compare/2652bceb01fa290e25dbd76ca80dafbb3473ba6c..v0.10.0) - 2026-10-27
+#### Features
+- (**analyze**) add the analyze command with layers.json, its schema and the spectrogram (#236) - ([2652bce](https://github.com/Akurganow/sound-to-patch/commit/2652bceb01fa290e25dbd76ca80dafbb3473ba6c)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.9.0](https://github.com/Akurganow/sound-to-patch/compare/88696c5510bce3995f64a94a832b4d04c60f8705..v0.9.0) - 2026-10-27
 #### Features
 - (**preset**) write any Vital effect order and LFO shapes as outputs (#237) - ([88696c5](https://github.com/Akurganow/sound-to-patch/commit/88696c5510bce3995f64a94a832b4d04c60f8705)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
