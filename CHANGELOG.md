@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.8.0](https://github.com/Akurganow/sound-to-patch/compare/5735b1a97848f7d8a188e43b857168d52a9868d7..v0.8.0) - 2026-10-27
+#### Features
+- (**analyze**) add the stem, stereo screen, descriptors and modulation estimators (#235) - ([5735b1a](https://github.com/Akurganow/sound-to-patch/commit/5735b1a97848f7d8a188e43b857168d52a9868d7)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.7.0](https://github.com/Akurganow/sound-to-patch/compare/0f243de0b3afbc83f0628f1233003a10ff9a5f20..v0.7.0) - 2026-10-27
 #### Features
 - (**preset**) verify Vital presets on the open engine and 1.0.7, and document them (#234) - ([0f243de](https://github.com/Akurganow/sound-to-patch/commit/0f243de0b3afbc83f0628f1233003a10ff9a5f20)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
