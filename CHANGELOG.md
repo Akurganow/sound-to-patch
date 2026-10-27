@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.9.0](https://github.com/Akurganow/sound-to-patch/compare/88696c5510bce3995f64a94a832b4d04c60f8705..v0.9.0) - 2026-10-27
+#### Features
+- (**preset**) write any Vital effect order and LFO shapes as outputs (#237) - ([88696c5](https://github.com/Akurganow/sound-to-patch/commit/88696c5510bce3995f64a94a832b4d04c60f8705)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.8.0](https://github.com/Akurganow/sound-to-patch/compare/5735b1a97848f7d8a188e43b857168d52a9868d7..v0.8.0) - 2026-10-27
 #### Features
 - (**analyze**) add the stem, stereo screen, descriptors and modulation estimators (#235) - ([5735b1a](https://github.com/Akurganow/sound-to-patch/commit/5735b1a97848f7d8a188e43b857168d52a9868d7)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
