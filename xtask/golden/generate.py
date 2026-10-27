@@ -570,7 +570,8 @@ STEREO_RECIPE = {
     "sm_db": "20 log10(rms(S) / rms(M)), M = (L + R) / 2, S = (L - R) / 2; None when either RMS is 0",
     "ipd_deg": "8192-point centred Hann STFT, hop 2048; per frame, at the bin of the largest |L conj R| "
     "within 2 bins of h f0 for h = 1..20, abs(angle(L conj R)) in degrees, averaged with weights "
-    "|L conj R|; then the mean over frames whose mid RMS is within 40 dB of the loudest",
+    "|L conj R|; then the mean over frames whose RMS over both channels, sqrt((rms_L^2 + rms_R^2) / 2), "
+    "is within 40 dB of the loudest",
     "channel_scaling": "none; rows compare the raw channels",
 }
 
@@ -692,9 +693,11 @@ def stereo_stats(left, right, rate, f0):
     n_fft = 8192
     spec_l = librosa.stft(left, n_fft=n_fft, hop_length=n_fft // 4, window="hann", center=True, pad_mode="constant")
     spec_r = librosa.stft(right, n_fft=n_fft, hop_length=n_fft // 4, window="hann", center=True, pad_mode="constant")
-    frames_mid = librosa.util.frame(np.pad(mid, n_fft // 2), frame_length=n_fft, hop_length=n_fft // 4)
-    frame_rms = np.sqrt(np.mean(frames_mid**2, axis=0))
-    active = frame_rms >= frame_rms.max() * 10 ** (-40.0 / 20.0)
+    def rms(x):
+        frames = librosa.util.frame(np.pad(x, n_fft // 2), frame_length=n_fft, hop_length=n_fft // 4)
+        return np.sqrt(np.mean(frames**2, axis=0))
+    frame_rms = np.sqrt((rms(left) ** 2 + rms(right) ** 2) / 2.0)
+    active = (frame_rms > 0) & (frame_rms >= frame_rms.max() * 10 ** (-40.0 / 20.0))
     bin_hz = rate / n_fft
     per_frame = []
     for m in range(spec_l.shape[1]):

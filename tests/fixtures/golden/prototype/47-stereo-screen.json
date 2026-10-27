@@ -101,7 +101,7 @@
   "channel_scaling": "none; rows compare the raw channels",
   "duration_s": 1.5,
   "f0_hz": 220.0,
-  "ipd_deg": "8192-point centred Hann STFT, hop 2048; per frame, at the bin of the largest |L conj R| within 2 bins of h f0 for h = 1..20, abs(angle(L conj R)) in degrees, averaged with weights |L conj R|; then the mean over frames whose mid RMS is within 40 dB of the loudest",
+  "ipd_deg": "8192-point centred Hann STFT, hop 2048; per frame, at the bin of the largest |L conj R| within 2 bins of h f0 for h = 1..20, abs(angle(L conj R)) in degrees, averaged with weights |L conj R|; then the mean over frames whose RMS over both channels, sqrt((rms_L^2 + rms_R^2) / 2), is within 40 dB of the loudest",
   "rho": "Pearson correlation of L and R at zero lag",
   "rows": {
    "chorus": "each channel is saw + saw delayed by 7 ms + 2 ms sin(2 pi 0.8 t + phi), phi = 0 on L and pi on R, per harmonic phase",

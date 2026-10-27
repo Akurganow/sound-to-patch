@@ -62,11 +62,14 @@ pub struct FrameDescriptors {
 
 /// Computes the descriptors of one magnitude frame, already divided by the
 /// window sum, with bins `bin_hz` apart. Returns `None` for an all-zero
-/// frame.
+/// frame, or for one with a negative, NaN or infinite magnitude.
 #[must_use]
 pub fn frame_descriptors(magnitudes: &[f64], bin_hz: Hz) -> Option<FrameDescriptors> {
+    if magnitudes.iter().any(|a| !a.is_finite() || *a < 0.0) {
+        return None;
+    }
     let total: f64 = magnitudes.iter().sum();
-    if total <= 0.0 {
+    if !total.is_finite() || total <= 0.0 {
         return None;
     }
     let width = bin_hz.get();
@@ -340,6 +343,15 @@ mod tests {
             [20.0, 60.0, 250.0, 1000.0, 4000.0, 10_000.0, 20_000.0].map(|v| Hz::new(v).unwrap());
         assert_eq!(BAND_EDGES_HZ, edges);
         assert_eq!(FLATNESS_FLOOR, Normalized::new(1e-5).unwrap());
+    }
+
+    #[test]
+    fn a_frame_with_a_bad_magnitude_has_no_descriptors() {
+        let bin = Hz::new(10.0).unwrap();
+        for bad in [f64::NAN, f64::INFINITY, -1.0] {
+            assert_eq!(frame_descriptors(&[1.0, bad, 1.0], bin), None, "{bad}");
+        }
+        assert_eq!(frame_descriptors(&[f64::MAX, f64::MAX], bin), None);
     }
 
     #[test]

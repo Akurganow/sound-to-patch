@@ -84,6 +84,9 @@ pub fn scan_range(bpm: Bpm) -> (Hz, Hz) {
 /// Butterworth high-pass at `lo` and low-pass at `hi`, the magnitude of the
 /// analytic signal, then the mean of each 5 ms block.
 ///
+/// Pass a note or a passage, not a whole stem: the analytic signal spans
+/// the input in one FFT, see [`AnalyticSignal::new`].
+///
 /// # Errors
 ///
 /// Returns a [`FilterError`] for an edge at 0 Hz or at or above the

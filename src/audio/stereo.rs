@@ -7,10 +7,10 @@
 
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
-use crate::dsp::{ActiveFrames, Complex64, Stft, StftParams};
+use crate::dsp::{ACTIVE_GATE_DB, ActiveFrames, Complex64, Stft, StftParams, frame_rms};
 use crate::units::{Correlation, Decibels, Degrees, Hz};
 
-use super::{SampleRate, mono_mean};
+use super::SampleRate;
 
 /// The upper edge of the sub band.
 pub const SUB_EDGE_HZ: Hz = Hz::from_const(120.0);
@@ -26,7 +26,8 @@ pub const STEREO_CONVENTION: &str = "rho: Pearson correlation at zero lag; sm_db
 20 log10(rms(S) / rms(M)) with M = (L + R) / 2 and S = (L - R) / 2; per band from the \
 8192-point Hann STFT over bins inside the band, DC excluded; ipd_deg: abs(angle(L conj R)) \
 at the largest cross-spectrum bin within 2 bins of h f0, h = 1..20 inside the band, \
-weighted by |L conj R|, then the mean over active frames; bands: sub below 120 Hz, \
+weighted by |L conj R|, then the mean over active frames, whose RMS over both channels, \
+sqrt((rms_L^2 + rms_R^2) / 2), lies within 40 dB of the loudest; bands: sub below 120 Hz, \
 low_mid 120 Hz to 1 kHz, high above 1 kHz";
 
 /// The bands of the screen.
@@ -129,8 +130,14 @@ pub fn stereo_screen(
     let len = left.len().min(right.len());
     let (left, right) = (&left[..len], &right[..len]);
     let params = StftParams::fixed(SCREEN_FRAME_LEN);
-    let mid = mono_mean(&[left.to_vec(), right.to_vec()]);
-    let active = ActiveFrames::of(&mid, params);
+    // Activity from the energy of both channels, so an anti-phase stem with
+    // no mid still counts as sounding.
+    let energy: Vec<f64> = frame_rms(left, params)
+        .iter()
+        .zip(frame_rms(right, params))
+        .map(|(l, r)| f64::midpoint(l * l, r * r).sqrt())
+        .collect();
+    let active = ActiveFrames::from_rms(&energy, ACTIVE_GATE_DB);
     let bin_hz = params.bin_width(rate).get();
     let nyquist = rate.nyquist().get();
     let f0 = f0.map(Hz::get).filter(|f| *f > 0.0);
@@ -310,6 +317,13 @@ mod tests {
         assert!((full.rho.unwrap().get() + 1.0).abs() < 1e-12);
         assert_eq!(full.sm_db, None);
         assert_eq!(full.ipd_deg, None);
+        // No mid, but both channels sound: an estimate, and with an f0 the
+        // phase reads 180 degrees.
+        assert!(screen.confidence().is_estimate());
+        let f0 = Hz::new(0.031 * 44_100.0 / std::f64::consts::TAU).unwrap();
+        let with_f0 = stereo_screen(&x, &negated, rate(), Some(f0)).unwrap();
+        let phase = with_f0.band(Band::Full).ipd_deg.unwrap().get();
+        assert!((phase - 180.0).abs() < 1e-6, "{phase}");
     }
 
     #[test]
