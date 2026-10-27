@@ -93,6 +93,13 @@ reason_codes! {
     /// 2 kHz, in dB. Below the steep-drop threshold the band edge comes from
     /// the margin rule.
     BandEdgeDrop,
+    /// The strongest line of a modulation scan over the median magnitude of
+    /// the scan. Below the prominence threshold no rate is reported.
+    NoModulationLine,
+    /// No bin of the spectrum above 1 kHz rises the band-edge margin above
+    /// its floor, so the band edge is the Nyquist frequency at low
+    /// confidence.
+    NoBandEdge,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

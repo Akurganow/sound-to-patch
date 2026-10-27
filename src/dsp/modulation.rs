@@ -12,10 +12,11 @@ use realfft::RealFftPlanner;
 use crate::audio::{BeatGrid, Division, SampleRate};
 use crate::cast;
 use crate::confidence::{ConfidenceError, Estimate, Level, Reason, ReasonCode, Signal};
-use crate::units::{Bpm, Cents, Hz, Normalized, Seconds};
+use crate::units::{Bpm, Cents, Hz, Normalized, Ratio, Seconds};
 
 use super::Window;
-use super::analytic::{AnalyticSignal, FilterError, band_pass_zero_phase};
+use super::analytic::{FilterError, band_magnitude};
+use super::lomb::lomb_scargle;
 
 /// The rate of envelope tracks: a 5 ms hop, Nyquist at 100 Hz.
 pub const TRACK_RATE_HZ: Hz = Hz::from_const(200.0);
@@ -29,8 +30,16 @@ pub const SPECTRUM_OVERSAMPLE: usize = 8;
 /// A rate needs this many full cycles in the span. A pure count, so a
 /// bare `f64`.
 pub const MIN_CYCLES: f64 = 2.0;
-/// The harmonics of the fundamental-picking sum `S(f) = sum X(h f) / sqrt(h)`.
-pub const SUM_HARMONICS: usize = 4;
+/// How many times above the median amplitude of the scan a rate line must
+/// stand.
+///
+/// On 200 seeded noise tracks the largest line stood at most 4.4 times
+/// above the median; a 10 % LFO stands thousands of times higher.
+pub const LINE_PROMINENCE: Ratio = Ratio::from_const(LINE_PROMINENCE_VALUE);
+const LINE_PROMINENCE_VALUE: f64 = 8.0;
+/// A rate line needs at least this relative depth: the amplitude of its
+/// sine in the log track, about the share by which the level swings.
+pub const MIN_LINE_DEPTH: Normalized = Normalized::from_const(0.005);
 /// The bins of a folded cycle.
 pub const FOLD_BINS: usize = 64;
 /// The tempo scan of the snap, as a share of the BPM on either side.
@@ -69,37 +78,35 @@ impl Track {
     }
 }
 
-/// The scan range at a tempo: from `min(0.2 Hz, the 4-bar rate)` to
-/// 20 Hz, so the 2-bar and 4-bar divisions fall inside it.
+/// The scan range at a tempo: from two semitones below `min(0.2 Hz, the
+/// 4-bar rate)` to 20 Hz.
+///
+/// The 2-bar and 4-bar divisions then fall inside it with room for their
+/// spectral peak, which a picker needs to see rise and fall.
 #[must_use]
 pub fn scan_range(bpm: Bpm) -> (Hz, Hz) {
     let four_bars = Division::ALL[0].rate(bpm).get();
+    let margin = 2.0_f64.powf(-2.0 / 12.0);
     (
-        Hz::clamped(SCAN_BOTTOM_HZ.get().min(four_bars)),
+        Hz::clamped(SCAN_BOTTOM_HZ.get().min(four_bars) * margin),
         SCAN_TOP_HZ,
     )
 }
 
-/// The envelope of one band at 200 Hz: a zero-phase fourth-order
-/// Butterworth high-pass at `lo` and low-pass at `hi`, the magnitude of the
-/// analytic signal, then the mean of each 5 ms block.
-///
-/// Pass a note or a passage, not a whole stem: the analytic signal spans
-/// the input in one FFT, see [`AnalyticSignal::new`].
+/// The envelope of one band at 200 Hz: [`band_magnitude`], then the mean
+/// of each 5 ms block.
 ///
 /// # Errors
 ///
 /// Returns a [`FilterError`] for an edge at 0 Hz or at or above the
-/// Nyquist frequency.
+/// Nyquist frequency, or `hi` not above `lo`.
 pub fn band_envelope(
     samples: &[f64],
     rate: SampleRate,
     lo: Hz,
     hi: Hz,
 ) -> Result<Track, FilterError> {
-    let band = band_pass_zero_phase(samples, rate, lo, hi)?;
-    let pad = cast::floor_to_usize(rate.hz().get() / lo.get()).unwrap_or(0) * 4;
-    let envelope = AnalyticSignal::new(&band, rate, pad).envelope();
+    let envelope = band_magnitude(samples, rate, lo, hi)?;
     Ok(Track::new(
         block_means(&envelope, rate.hz().get() / TRACK_RATE_HZ.get()),
         TRACK_RATE_HZ,
@@ -121,26 +128,61 @@ fn block_means(values: &[f64], ratio: f64) -> Vec<f64> {
         .collect()
 }
 
-/// Removes the least-squares line from a track.
+/// The relative modulation of a track: its natural log, floored 60 dB below
+/// the peak, minus its least-squares line. The log turns a decay or a fade
+/// in decibels times an LFO into a line plus the LFO. A higher-order
+/// polynomial would also take the line of a slow 4-bar LFO: on synthetic
+/// tracks a cubic lost a swell's 5 Hz LFO and a quintic misread a 2-cycle
+/// 4-bar LFO, where the line kept both.
 fn detrend(values: &[f64]) -> Vec<f64> {
-    let n = cast::usize_to_f64(values.len());
-    if values.len() < 2 {
+    let peak = values.iter().copied().fold(0.0_f64, f64::max);
+    if peak <= 0.0 || values.len() < 4 {
         return vec![0.0; values.len()];
     }
-    let mean_x = (n - 1.0) / 2.0;
-    let mean_y = values.iter().sum::<f64>() / n;
-    let (mut sxx, mut sxy) = (0.0, 0.0);
-    for (i, y) in values.iter().enumerate() {
-        let dx = cast::usize_to_f64(i) - mean_x;
-        sxx += dx * dx;
-        sxy += dx * (y - mean_y);
+    let floor = peak * 1e-3;
+    let logs: Vec<f64> = values.iter().map(|v| v.max(floor).ln()).collect();
+    remove_polynomial(&logs, 1)
+}
+
+/// Removes the least-squares line from a track, for the period search,
+/// which reads the waveform itself.
+fn detrend_line(values: &[f64]) -> Vec<f64> {
+    remove_polynomial(values, 1)
+}
+
+/// Subtracts the least-squares polynomial of `degree` in the sample index,
+/// fitted by Gram-Schmidt on the powers of `x` scaled to `[-1, 1]`.
+fn remove_polynomial(values: &[f64], degree: usize) -> Vec<f64> {
+    let n = values.len();
+    let half = cast::usize_to_f64(n.saturating_sub(1)).max(1.0) / 2.0;
+    let x: Vec<f64> = (0..n).map(|i| cast::usize_to_f64(i) / half - 1.0).collect();
+    let mut residual = values.to_vec();
+    let mut basis: Vec<Vec<f64>> = Vec::new();
+    for power in 0..=degree {
+        let mut vector: Vec<f64> = x
+            .iter()
+            .map(|&v| v.powi(i32::try_from(power).unwrap_or(0)))
+            .collect();
+        for done in &basis {
+            let dot: f64 = vector.iter().zip(done).map(|(a, b)| a * b).sum();
+            for (value, base) in vector.iter_mut().zip(done) {
+                *value -= dot * base;
+            }
+        }
+        let norm = vector.iter().map(|v| v * v).sum::<f64>().sqrt();
+        if norm <= f64::EPSILON {
+            continue;
+        }
+        for value in &mut vector {
+            *value /= norm;
+        }
+        let dot: f64 = residual.iter().zip(&vector).map(|(a, b)| a * b).sum();
+        for (value, base) in residual.iter_mut().zip(&vector) {
+            *value -= dot * base;
+        }
+        basis.push(vector);
     }
-    let slope = sxy / sxx;
-    values
-        .iter()
-        .enumerate()
-        .map(|(i, y)| y - mean_y - slope * (cast::usize_to_f64(i) - mean_x))
-        .collect()
+    residual
 }
 
 /// The magnitude spectrum of a detrended, Hann-windowed track, zero-padded
@@ -149,7 +191,9 @@ fn detrend(values: &[f64]) -> Vec<f64> {
 pub struct ModulationSpectrum {
     magnitudes: Vec<f64>,
     bin_hz: f64,
+    rate: f64,
     span: Seconds,
+    detrended: Vec<f64>,
 }
 
 impl ModulationSpectrum {
@@ -159,11 +203,8 @@ impl ModulationSpectrum {
         let len = track.values().len();
         let window = Window::Hann.samples(len);
         let fft_len = (len * SPECTRUM_OVERSAMPLE).max(2);
-        let mut input: Vec<f64> = detrend(track.values())
-            .iter()
-            .zip(&window)
-            .map(|(v, w)| v * w)
-            .collect();
+        let detrended = detrend(track.values());
+        let mut input: Vec<f64> = detrended.iter().zip(&window).map(|(v, w)| v * w).collect();
         input.resize(fft_len, 0.0);
         let fft = RealFftPlanner::<f64>::new().plan_fft_forward(fft_len);
         let mut output = fft.make_output_vec();
@@ -172,7 +213,9 @@ impl ModulationSpectrum {
         Self {
             magnitudes: output.iter().map(|value| value.norm()).collect(),
             bin_hz: track.rate().get() / cast::usize_to_f64(fft_len),
+            rate: track.rate().get(),
             span: track.span(),
+            detrended,
         }
     }
 
@@ -212,22 +255,67 @@ impl ModulationSpectrum {
             .map(|bin| Hz::clamped(cast::usize_to_f64(bin) * self.bin_hz))
     }
 
-    /// Returns the fundamental rate between `lo` and `hi`.
-    ///
-    /// The candidates are the local maxima with at least
-    /// [`CANDIDATE_SHARE`] of the largest magnitude in the range. The pick
-    /// maximises `S(f) = sum_{h=1..4} X(h f) / sqrt(h)`: saw and square
-    /// shapes put energy at `2 f` and `3 f`, and the sum picks `f`.
+    /// Returns the modulation rate between `lo` and `hi`, or `None` when no
+    /// line stands out, as in [`Self::rate`].
     #[must_use]
     pub fn fundamental(&self, lo: Hz, hi: Hz) -> Option<Hz> {
-        let peaks: Vec<(f64, f64)> = self
-            .bins_in(lo, hi)
-            .map(|bin| (cast::usize_to_f64(bin) * self.bin_hz, self.magnitudes[bin]))
-            .collect();
-        pick_fundamental(&peaks, |f| self.magnitude_at(f)).map(Hz::clamped)
+        match self.pick(lo, hi) {
+            Pick::Rate { rate, .. } => Some(Hz::clamped(rate)),
+            Pick::NoLine { .. } => None,
+        }
     }
 
-    fn bins_in(&self, lo: Hz, hi: Hz) -> impl Iterator<Item = usize> + '_ {
+    fn pick(&self, lo: Hz, hi: Hz) -> Pick {
+        // A sine of amplitude `A` peaks at `A N / 4` under a Hann window.
+        let scale = 4.0 / (self.span.get() * self.rate);
+        let bins = self.bins_in(lo, hi);
+        let guarded = bins.start().saturating_sub(1)
+            ..=(*bins.end() + 1).min(self.magnitudes.len().saturating_sub(1));
+        let points: Vec<(f64, f64)> = guarded
+            .map(|bin| {
+                (
+                    cast::usize_to_f64(bin) * self.bin_hz,
+                    self.magnitudes[bin] * scale,
+                )
+            })
+            .collect();
+        match pick_rate(&points) {
+            Pick::Rate { rate, prominence } => Pick::Rate {
+                rate: self.fit_rate(rate),
+                prominence,
+            },
+            none @ Pick::NoLine { .. } => none,
+        }
+    }
+
+    /// Refines a rate by the least-squares sine fit to the detrended track:
+    /// the floating-mean Lomb-Scargle power over one resolution `1 / T` on
+    /// either side, in 64 steps, with a parabola through the best three.
+    /// With two or three cycles in the span, the Hann window's peak sits
+    /// low by up to a tenth of a cycle; the fit has no window.
+    fn fit_rate(&self, rate: f64) -> f64 {
+        let resolution = 1.0 / self.span.get();
+        let times: Vec<Seconds> = (0..self.detrended.len())
+            .map(|i| Seconds::clamped(cast::usize_to_f64(i) / self.rate))
+            .collect();
+        let trials: Vec<Hz> = (0..=64)
+            .map(|k| rate - resolution + cast::usize_to_f64(k) * resolution / 32.0)
+            .filter(|f| *f > 0.0)
+            .map(Hz::clamped)
+            .collect();
+        let power = lomb_scargle(&times, &self.detrended, &trials);
+        let best =
+            (1..power.len().saturating_sub(1)).max_by(|&a, &b| power[a].total_cmp(&power[b]));
+        best.map_or(rate, |i| {
+            refine(&[
+                (trials[i - 1].get(), power[i - 1].sqrt()),
+                (trials[i].get(), power[i].sqrt()),
+                (trials[i + 1].get(), power[i + 1].sqrt()),
+            ])
+        })
+    }
+
+    fn bins_in(&self, lo: Hz, hi: Hz) -> std::ops::RangeInclusive<usize> {
         let first = cast::ceil_to_usize(lo.get() / self.bin_hz)
             .unwrap_or(0)
             .max(1);
@@ -237,74 +325,117 @@ impl ModulationSpectrum {
         first..=last
     }
 
-    /// The modulation rate between `lo` and `hi`, by the harmonic sum.
-    /// No estimate when the span holds fewer than two cycles of it. The
-    /// spread is the resolution, `1 / T`.
+    /// The modulation rate between `lo` and `hi`: the strongest strict
+    /// maximum inside the range, refined by a least-squares sine fit. It
+    /// must stand [`LINE_PROMINENCE`] times above the median amplitude and
+    /// reach [`MIN_LINE_DEPTH`]. No
+    /// estimate when no line stands out or the span holds fewer than two
+    /// cycles of the rate. The spread is the resolution, `1 / T`.
     ///
     /// # Errors
     ///
     /// Never in practice; the reasons are built from counts.
     pub fn rate(&self, lo: Hz, hi: Hz) -> Result<Estimate<Hz, Hz>, ConfidenceError> {
-        rate_estimate(self.fundamental(lo, hi), self.span)
+        rate_estimate(self.pick(lo, hi), self.span)
     }
 }
 
-/// A fundamental candidate needs at least this share of the largest
-/// amplitude in the range. Without it a gap pattern's alias lines lift the
-/// harmonic sum of a subharmonic over the true rate. A proposal.
-pub const CANDIDATE_SHARE: Normalized = Normalized::from_const(0.5);
+/// The outcome of a rate pick, with the prominence of the strongest line:
+/// its magnitude over the median magnitude of the scan.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Pick {
+    /// A line that stands out, at `rate`.
+    Rate { rate: f64, prominence: f64 },
+    /// No line stands out.
+    NoLine { prominence: f64 },
+}
 
-/// Picks the fundamental from `(frequency, amplitude)` points in a range.
+/// Picks the modulation rate from `(frequency, amplitude)` points in a
+/// range, with one guard point just outside each end. An amplitude is
+/// the sine amplitude in the log track, the relative depth of the line.
 ///
-/// The candidates are the local maxima with at least half the largest
-/// amplitude. The pick maximises `S(f) = sum_{h=1..4} X(h f) / sqrt(h)`,
-/// with `amplitude_at` reading `X` at any frequency. Saw and square shapes
-/// put energy at `2 f` and `3 f`; the sum picks `f`.
-pub(crate) fn pick_fundamental(
-    points: &[(f64, f64)],
-    amplitude_at: impl Fn(f64) -> f64,
-) -> Option<f64> {
-    let largest = points.iter().map(|p| p.1).fold(0.0, f64::max);
-    if largest <= 0.0 {
-        return None;
-    }
-    let score = |f: f64| {
-        (1..=SUM_HARMONICS)
-            .map(|h| {
-                let h = cast::usize_to_f64(h);
-                amplitude_at(h * f) / h.sqrt()
-            })
-            .sum::<f64>()
+/// 1. The candidates are the strict maxima inside the range, each higher
+///    than its left neighbour and at least its right one. The guards serve
+///    only as neighbours, so a line at a range end still counts.
+/// 2. The strongest candidate must stand [`LINE_PROMINENCE`] times above the
+///    median amplitude and reach [`MIN_LINE_DEPTH`], else no line stands
+///    out.
+/// 3. The strongest candidate is the rate. Sine, saw, square and triangle
+///    LFOs all put their largest line at the fundamental, and on gated
+///    notes a preference for subharmonics picks the alias lines of the
+///    note rhythm instead.
+pub(crate) fn pick_rate(points: &[(f64, f64)]) -> Pick {
+    let inside = points.get(1..points.len().saturating_sub(1)).unwrap_or(&[]);
+    let mut magnitudes: Vec<f64> = inside.iter().map(|p| p.1).collect();
+    magnitudes.sort_by(f64::total_cmp);
+    let median = magnitudes.get(magnitudes.len() / 2).copied().unwrap_or(0.0);
+    // Each candidate's frequency is refined by a parabola through the log
+    // amplitudes of its bin and both neighbours.
+    let candidates: Vec<(f64, f64)> = points
+        .windows(3)
+        .filter(|w| w[1].1 > w[0].1 && w[1].1 >= w[2].1)
+        .map(|w| (refine(w), w[1].1))
+        .collect();
+    let Some(&(strongest, magnitude)) = candidates.iter().max_by(|a, b| a.1.total_cmp(&b.1)) else {
+        return Pick::NoLine { prominence: 0.0 };
     };
-    (0..points.len())
-        .filter(|&i| {
-            let amplitude = points[i].1;
-            let left = i.checked_sub(1).map_or(0.0, |j| points[j].1);
-            let right = points.get(i + 1).map_or(0.0, |p| p.1);
-            amplitude >= CANDIDATE_SHARE.get() * largest && amplitude >= left && amplitude >= right
-        })
-        .map(|i| points[i].0)
-        .max_by(|&a, &b| score(a).total_cmp(&score(b)))
+    // A median of 0 leaves a lone line infinitely prominent; cap it so the
+    // reason stays finite.
+    let prominence = if median > 0.0 {
+        magnitude / median
+    } else {
+        f64::MAX.sqrt()
+    };
+    if prominence < LINE_PROMINENCE.get() || magnitude < MIN_LINE_DEPTH.get() {
+        return Pick::NoLine { prominence };
+    }
+    Pick::Rate {
+        rate: strongest,
+        prominence,
+    }
 }
 
-/// An estimate of a rate found in a span: none below two cycles.
+/// The vertex of the parabola through three equally spaced points of log
+/// amplitude; the centre point when one of them is not positive.
+fn refine(w: &[(f64, f64)]) -> f64 {
+    let [(f0, a), (f1, b), (f2, c)] = [w[0], w[1], w[2]];
+    if a <= 0.0 || b <= 0.0 || c <= 0.0 {
+        return f1;
+    }
+    let (a, b, c) = (a.ln(), b.ln(), c.ln());
+    let curvature = a - 2.0 * b + c;
+    if curvature >= 0.0 {
+        return f1;
+    }
+    let offset = (0.5 * (a - c) / curvature).clamp(-0.5, 0.5);
+    f1 + offset * (f2 - f0) / 2.0
+}
+
+/// An estimate of a picked rate in a span: none when no line stands out or
+/// the span holds fewer than two cycles.
 pub(crate) fn rate_estimate(
-    rate: Option<Hz>,
+    pick: Pick,
     span: Seconds,
 ) -> Result<Estimate<Hz, Hz>, ConfidenceError> {
-    let Some(rate) = rate else {
-        return Estimate::none(vec![Reason::new(
-            ReasonCode::TooFewCycles,
-            Signal::Number(0.0),
-        )?]);
+    let (rate, prominence) = match pick {
+        Pick::Rate { rate, prominence } => (rate, prominence),
+        Pick::NoLine { prominence } => {
+            return Estimate::none(vec![Reason::new(
+                ReasonCode::NoModulationLine,
+                Signal::Number(prominence),
+            )?]);
+        }
     };
-    let cycles = rate.get() * span.get();
-    let reason = Reason::new(ReasonCode::TooFewCycles, Signal::Number(cycles))?;
+    let cycles = rate * span.get();
+    let reasons = vec![
+        Reason::new(ReasonCode::TooFewCycles, Signal::Number(cycles))?,
+        Reason::new(ReasonCode::NoModulationLine, Signal::Number(prominence))?,
+    ];
     if cycles < MIN_CYCLES {
-        Estimate::none(vec![reason])
+        Estimate::none(reasons)
     } else {
         let resolution = Hz::clamped(1.0 / span.get());
-        Estimate::new(rate, Level::Medium, Some(resolution), vec![reason])
+        Estimate::new(Hz::clamped(rate), Level::Medium, Some(resolution), reasons)
     }
 }
 
@@ -315,7 +446,7 @@ pub(crate) fn rate_estimate(
 /// cycles; `None` when the track is shorter than two periods of `lo`.
 #[must_use]
 pub fn cmndf_period(track: &Track, lo: Hz, hi: Hz) -> Option<Seconds> {
-    let values = detrend(track.values());
+    let values = detrend_line(track.values());
     let rate = track.rate().get();
     let min_lag = cast::ceil_to_usize(rate / hi.get()).unwrap_or(1).max(1);
     let max_lag = cast::floor_to_usize(rate / lo.get())
@@ -350,7 +481,21 @@ pub fn cmndf_period(track: &Track, lo: Hz, hi: Hz) -> Option<Seconds> {
     });
     let lag = dip
         .or_else(|| candidates.min_by(|&a, &b| normalised[a - 1].total_cmp(&normalised[b - 1])))?;
-    Some(Seconds::clamped(cast::usize_to_f64(lag) / rate))
+    // A parabola through the lag and its neighbours places the minimum
+    // between samples; at 200 Hz a whole lag is 0.7 % of a 7 Hz period.
+    let offset = match (normalised.get(lag.wrapping_sub(2)), normalised.get(lag)) {
+        (Some(&before), Some(&after)) if lag >= 2 => {
+            let at = normalised[lag - 1];
+            let curvature = before - 2.0 * at + after;
+            if curvature > 0.0 {
+                (0.5 * (before - after) / curvature).clamp(-0.5, 0.5)
+            } else {
+                0.0
+            }
+        }
+        _ => 0.0,
+    };
+    Some(Seconds::clamped((cast::usize_to_f64(lag) + offset) / rate))
 }
 
 /// Folds a track over a period into 64 bins: bin `b` is the mean of the
@@ -508,7 +653,8 @@ mod tests {
         assert_eq!(SCAN_TOP_HZ, Hz::new(20.0).unwrap());
         assert_eq!(SCAN_BOTTOM_HZ, Hz::new(0.2).unwrap());
         assert_eq!(BPM_SCAN, Normalized::new(0.02).unwrap());
-        assert_eq!(CANDIDATE_SHARE, Normalized::new(0.5).unwrap());
+        assert_eq!(LINE_PROMINENCE, Ratio::new(8.0).unwrap());
+        assert_eq!(MIN_LINE_DEPTH, Normalized::new(0.005).unwrap());
     }
 
     fn track(values: Vec<f64>) -> Track {
@@ -522,11 +668,12 @@ mod tests {
     }
 
     #[test]
-    fn the_scan_starts_at_the_lower_of_02_hz_and_the_4_bar_rate() {
+    fn the_scan_starts_two_semitones_below_the_lower_of_02_hz_and_the_4_bar_rate() {
+        let margin = 2f64.powf(-2.0 / 12.0);
         let (lo, hi) = scan_range(Bpm::new(140.0).unwrap());
-        assert!((lo.get() - 140.0 / 60.0 / 16.0).abs() < 1e-12);
+        assert!((lo.get() - 140.0 / 60.0 / 16.0 * margin).abs() < 1e-12);
         assert_eq!(hi.get(), 20.0);
-        assert_eq!(scan_range(Bpm::new(400.0).unwrap()).0.get(), 0.2);
+        assert!((scan_range(Bpm::new(400.0).unwrap()).0.get() - 0.2 * margin).abs() < 1e-12);
     }
 
     #[test]
@@ -548,10 +695,30 @@ mod tests {
     }
 
     #[test]
+    fn cmndf_places_the_period_between_samples() {
+        // 7.3 Hz at 200 Hz is 27.4 samples a period; a whole lag reads 7.41.
+        let values: Vec<f64> = (0..1600)
+            .map(|i| {
+                1.0 + 0.3 * (std::f64::consts::TAU * 7.3 * cast::usize_to_f64(i) / 200.0).sin()
+            })
+            .collect();
+        let period = cmndf_period(
+            &track(values),
+            Hz::new(1.0).unwrap(),
+            Hz::new(20.0).unwrap(),
+        )
+        .unwrap();
+        let rate = 1.0 / period.get();
+        assert!((rate - 7.3).abs() < 0.01, "{rate}");
+    }
+
+    #[test]
     fn cmndf_finds_the_period_of_a_ramp() {
         let ramp = track(periodic(50, 6, |p| p));
         let period = cmndf_period(&ramp, Hz::new(1.0).unwrap(), Hz::new(20.0).unwrap()).unwrap();
-        assert!((period.get() - 0.25).abs() < 1e-12, "{period:?}");
+        // The ramp's minimum is a cusp, so the parabola moves it by about a
+        // hundredth of a sample.
+        assert!((period.get() - 0.25).abs() < 1e-4, "{period:?}");
     }
 
     proptest! {

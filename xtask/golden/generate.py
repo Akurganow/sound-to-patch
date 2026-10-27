@@ -967,22 +967,40 @@ def crest_values():
     )
 
 
-def stereo_closed_forms():
+STEREO_DELAY_RECIPE = {
+    "sample_rate": 44100,
+    "length": 88200,
+    "signal": "L = sin(2 pi f t), R = sin(2 pi f (t - delay))",
+    "frequency_hz": 200.0,
+    "delay_s": 0.001,
+    "method": "the ipd_deg of 47-stereo-screen with f0 = frequency_hz",
+}
+
+
+def stereo_delay():
+    r = STEREO_DELAY_RECIPE
+    rate, f, delay = r["sample_rate"], r["frequency_hz"], r["delay_s"]
+    t = times(rate, r["length"])
+    left = np.sin(2.0 * np.pi * f * t)
+    right = np.sin(2.0 * np.pi * f * (t - delay))
+    stats = stereo_stats(left, right, rate, f)
     return document(
         "stereo",
         47,
-        "Closed forms of the stereo screen: rho of equal and opposite channels, the phase "
-        "of a pure delay, and side over mid against rho for channels of equal RMS.",
-        "stereo_closed_forms",
-        ["python"],
-        {"kind": "closed_form"},
+        "The cross-spectrum phase of a pure delay through the screen's STFT, against the "
+        "closed form 360 f delay.",
+        "stereo_delay",
+        ["python", "numpy", "librosa"],
+        r,
         {
-            "equal_channels": {"rho": 1.0, "ipd_deg": 0.0},
-            "opposite_channels": {"rho": -1.0},
-            "pure_delay": {"frequency_hz": 200.0, "delay_s": 0.001, "ipd_deg": 360.0 * 200.0 * 0.001},
-            "equal_rms_identity": "(rms_S / rms_M)^2 = (1 - rho) / (1 + rho)",
+            "pure_delay": {
+                "frequency_hz": f,
+                "delay_s": delay,
+                "ipd_deg": stats["ipd_deg"],
+                "closed_form_ipd_deg": 360.0 * f * delay,
+            }
         },
-        {"abs": 1e-9, "rel": 1e-6},
+        {"abs": 0.05, "rel": 0.0},
     )
 
 
@@ -1036,7 +1054,7 @@ LOMB_RECIPE = {
     "duration_s": 8.0,
     "signal": "1.5 + sin(2 pi 4 t + 0.4), kept while (t mod 1) < 0.5",
     "frequencies": "0.2 Hz to 20 Hz in 0.01 Hz steps, passed to SciPy as angular frequency",
-    "centring": "y - mean(y) before the call; normalize=False",
+    "fit": "floating mean: mean, sine and cosine fitted together per frequency (floating_mean=True); normalize=False",
 }
 
 
@@ -1050,7 +1068,7 @@ def lomb_times_values():
 def lomb_vectors():
     t, y = lomb_times_values()
     freqs = np.arange(20, 2001) * 0.01
-    power = scipy.signal.lombscargle(t, y - y.mean(), 2.0 * np.pi * freqs, normalize=False)
+    power = scipy.signal.lombscargle(t, y, 2.0 * np.pi * freqs, normalize=False, floating_mean=True)
     return document(
         "lombscargle",
         52,
@@ -1068,7 +1086,7 @@ VECTORS = {
     "stft": stft_vectors,
     "hilbert": hilbert_vectors,
     "decay": decay_closed_forms,
-    "stereo": stereo_closed_forms,
+    "stereo": stereo_delay,
     "descriptors": descriptor_vectors,
     "lombscargle": lomb_vectors,
     "prototype/48-peak-accuracy": peak_accuracy,

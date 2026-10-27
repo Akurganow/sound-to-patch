@@ -34,9 +34,9 @@ mod stereo;
 pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
 pub use resample::{ResampleError, resample};
 pub use stem::{
-    BAND_EDGE_CONVENTION, BAND_EDGE_MARGIN_DB, BAND_EDGE_STEEP_DROP_DB, BeatGrid,
-    CEILING_TOLERANCE, Division, FLAT_TOP_MIN_RUN_S, FLAT_TOP_MIN_SHARE, Feel,
-    HARD_LIMITED_CONVENTION, LONG_FRAME_BELOW_HZ, NoteValue, Stem, band_edge, is_flat_topped,
+    BAND_EDGE_CONVENTION, BAND_EDGE_MARGIN_DB, BAND_EDGE_PLATEAU_DB, BAND_EDGE_STEEP_DROP_DB,
+    BeatGrid, CEILING_TOLERANCE, CLIP_APPROACH, Division, FLAT_TOP_MIN_RUN_S, FLAT_TOP_MIN_SHARE,
+    Feel, HARD_LIMITED_CONVENTION, LONG_FRAME_BELOW_HZ, NoteValue, Stem, band_edge, is_flat_topped,
 };
 pub use stereo::{
     Band, HIGH_EDGE_HZ, SCREEN_FRAME_LEN, SCREEN_HARMONICS, STEREO_CONVENTION, SUB_EDGE_HZ,

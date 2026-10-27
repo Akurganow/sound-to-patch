@@ -29,7 +29,7 @@ mod window;
 
 pub use analytic::{
     ATTACK_LOW_PASS_HZ, AnalyticSignal, Baseband, FilterError, HeterodyneParams, am_depth,
-    band_pass_zero_phase, heterodyne, low_pass_zero_phase,
+    band_magnitude, band_pass_zero_phase, heterodyne, low_pass_zero_phase,
 };
 pub use decay::{Decay, DecayFailure, FitRange, backward_integral};
 pub use descriptors::{
@@ -39,8 +39,8 @@ pub use descriptors::{
 pub use frames::{ACTIVE_GATE_DB, ActiveFrames, Stats, Summary, frame_rms};
 pub use lomb::{GRID_STEP_HZ, SETTLE_S, gated_samples, grid, lomb_scargle, periodogram_rate};
 pub use modulation::{
-    BPM_SCAN, CANDIDATE_SHARE, FOLD_BINS, MIN_CYCLES, ModulationSpectrum, SCAN_BOTTOM_HZ,
-    SCAN_TOP_HZ, SPECTRUM_OVERSAMPLE, SUM_HARMONICS, Shape, ShapeKind, Snap, TRACK_RATE_HZ, Track,
+    BPM_SCAN, FOLD_BINS, LINE_PROMINENCE, MIN_CYCLES, MIN_LINE_DEPTH, ModulationSpectrum,
+    SCAN_BOTTOM_HZ, SCAN_TOP_HZ, SPECTRUM_OVERSAMPLE, Shape, ShapeKind, Snap, TRACK_RATE_HZ, Track,
     band_envelope, cmndf_period, fold, scan_range, shape, snap, snap_scan,
 };
 pub use peak::{Peak, interpolate, local_maxima, strongest_peak};

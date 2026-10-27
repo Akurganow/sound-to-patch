@@ -3,7 +3,8 @@
 use std::f64::consts::PI;
 
 use sound_to_patch::audio::{Division, Feel, NoteValue, SampleRate};
-use sound_to_patch::dsp::{ModulationSpectrum, band_envelope, scan_range, snap};
+use sound_to_patch::confidence::{ReasonCode, Signal};
+use sound_to_patch::dsp::{ModulationSpectrum, Track, am_depth, band_envelope, scan_range, snap};
 use sound_to_patch::units::{Bpm, Hz};
 
 use crate::support::golden::{Golden, float};
@@ -105,4 +106,71 @@ fn a_4_bar_lfo_needs_two_cycles_in_the_stem() {
     let long = lfo_rate(&tremolo(rate, 14.0), 140.0).unwrap();
     assert!((long - rate).abs() <= 1.0 / 14.0, "{long} vs {rate}");
     assert_eq!(lfo_rate(&tremolo(rate, 10.0), 140.0), None);
+}
+
+/// The modulation estimate of a level track at 200 Hz, scanned at 120 BPM.
+fn track_rate(values: Vec<f64>) -> (Option<f64>, Option<f64>) {
+    let track = Track::new(values, hz(200.0));
+    let (lo, hi) = scan_range(Bpm::new(120.0).unwrap());
+    let estimate = ModulationSpectrum::of(&track).rate(lo, hi).unwrap();
+    let prominence = estimate
+        .confidence()
+        .reasons()
+        .iter()
+        .find(|reason| reason.code() == ReasonCode::NoModulationLine)
+        .map(|reason| match reason.value() {
+            Signal::Number(value) => value,
+            other => panic!("{other:?}"),
+        });
+    (estimate.value().map(|rate| rate.get()), prominence)
+}
+
+fn seconds(i: usize) -> f64 {
+    f64::from(u32::try_from(i).unwrap()) / 200.0
+}
+
+#[test]
+fn a_track_without_modulation_reports_no_rate() {
+    let n = 1600;
+    let steady = vec![1.0; n];
+    let decay: Vec<f64> = (0..n).map(|i| (-seconds(i) / 2.0).exp()).collect();
+    let noise: Vec<f64> = crate::support::rng::gaussian(5100, n)
+        .iter()
+        .map(|v| 1.0 + 0.05 * v)
+        .collect();
+    for (name, values) in [("steady", steady), ("decay", decay), ("noise", noise)] {
+        let (rate, prominence) = track_rate(values);
+        assert_eq!(rate, None, "{name}");
+        assert!(prominence.is_some(), "{name}");
+    }
+}
+
+#[test]
+fn an_lfo_on_a_decaying_or_swelling_note_reads_its_rate() {
+    let n = 1600;
+    let lfo = |i: usize| 1.0 + 0.1 * (2.0 * PI * 5.0 * seconds(i)).sin();
+    let decay: Vec<f64> = (0..n).map(|i| (-seconds(i) / 2.0).exp() * lfo(i)).collect();
+    let swell: Vec<f64> = (0..n)
+        .map(|i| (1.0 - (-seconds(i) / 2.0).exp()) * lfo(i))
+        .collect();
+    for (name, values) in [("decay", decay), ("swell", swell)] {
+        let (rate, _) = track_rate(values);
+        assert!(
+            rate.is_some_and(|r| (r - 5.0).abs() <= 1.0 / 8.0),
+            "{name}: {rate:?}"
+        );
+    }
+}
+
+#[test]
+fn the_band_envelope_keeps_its_depth_to_both_ends() {
+    // 10 % AM on a 55 Hz carrier: the whole track, ends included.
+    let rate = SampleRate::new(RATE).unwrap();
+    let x: Vec<f64> = times(f64::from(RATE), 8 * 48_000)
+        .iter()
+        .map(|&t| (1.0 + 0.1 * (2.0 * PI * 4.0 * t).sin()) * (2.0 * PI * 55.0 * t).sin())
+        .collect();
+    let track = band_envelope(&x, rate, hz(40.0), hz(70.0)).unwrap();
+    let depth = am_depth(track.values()).unwrap().get();
+    assert!((depth - 0.1).abs() < 0.005, "{depth}");
 }

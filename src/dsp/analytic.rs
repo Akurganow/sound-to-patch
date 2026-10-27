@@ -279,14 +279,26 @@ pub fn low_pass_zero_phase(
     cutoff: Hz,
 ) -> Result<Vec<f64>, FilterError> {
     let pad = cast::ceil_to_usize(3.0 * rate.hz().get() / cutoff.get()).unwrap_or(0);
-    zero_phase(samples, pad, || LowPass::new(rate, cutoff))
+    zero_phase(samples, pad, Reflection::Odd, || LowPass::new(rate, cutoff))
+}
+
+/// How [`zero_phase`] extends the ends of a signal.
+#[derive(Clone, Copy)]
+enum Reflection {
+    /// `2 x[0] - x[k]`: keeps the value and the slope, for a smooth signal.
+    Odd,
+    /// `x[k]`: keeps the value only. For a signal with a fast component that
+    /// the filter removes, an odd reflection would turn that component's end
+    /// value into a step the filter passes.
+    Even,
 }
 
 /// Runs a filter forward and backward over `samples` extended at each end
-/// by an odd reflection of up to `pad` samples.
+/// by a reflection of up to `pad` samples.
 fn zero_phase(
     samples: &[f64],
     pad: usize,
+    reflection: Reflection,
     filter: impl Fn() -> Result<LowPass, FilterError>,
 ) -> Result<Vec<f64>, FilterError> {
     let (mut forward, mut backward) = (filter()?, filter()?);
@@ -294,16 +306,20 @@ fn zero_phase(
         return Ok(Vec::new());
     };
     let pad = pad.min(samples.len() - 1);
+    let mirror = |end: f64, x: f64| match reflection {
+        Reflection::Odd => 2.0 * end - x,
+        Reflection::Even => x,
+    };
     let mut out: Vec<f64> = samples[1..=pad]
         .iter()
         .rev()
-        .map(|&x| 2.0 * first - x)
+        .map(|&x| mirror(first, x))
         .chain(samples.iter().copied())
         .chain(
             samples[samples.len() - 1 - pad..samples.len() - 1]
                 .iter()
                 .rev()
-                .map(|&x| 2.0 * last - x),
+                .map(|&x| mirror(last, x)),
         )
         .collect();
     for pass in [&mut forward, &mut backward] {
@@ -338,8 +354,56 @@ pub fn band_pass_zero_phase(
     hi: Hz,
 ) -> Result<Vec<f64>, FilterError> {
     let pad = cast::ceil_to_usize(3.0 * rate.hz().get() / lo.get()).unwrap_or(0);
-    let high = zero_phase(samples, pad, || LowPass::of(Type::HighPass, rate, lo))?;
-    zero_phase(&high, pad, || LowPass::new(rate, hi))
+    let high = zero_phase(samples, pad, Reflection::Odd, || {
+        LowPass::of(Type::HighPass, rate, lo)
+    })?;
+    zero_phase(&high, pad, Reflection::Odd, || LowPass::new(rate, hi))
+}
+
+/// The envelope of the band from `lo` to `hi`.
+///
+/// The signal is mixed down by `2 exp(-j 2 pi f_c t)` at the centre `f_c`,
+/// low-passed forward and backward at half the bandwidth, and the magnitude
+/// taken. A partial of amplitude `A` inside the band reads `A`.
+///
+/// Each low-pass extends the ends by an even reflection of three periods of
+/// its cutoff, so the ends carry no transient, and memory stays linear in
+/// the length, unlike the FFT of [`AnalyticSignal`].
+///
+/// # Errors
+///
+/// Returns a [`FilterError`] when `lo` is not above 0 Hz, `hi` not below
+/// the Nyquist frequency, or `hi` not above `lo`.
+pub fn band_magnitude(
+    samples: &[f64],
+    rate: SampleRate,
+    lo: Hz,
+    hi: Hz,
+) -> Result<Vec<f64>, FilterError> {
+    let nyquist = rate.nyquist().get();
+    if lo.get() <= 0.0 || lo.get() >= nyquist {
+        return Err(FilterError { cutoff: lo, rate });
+    }
+    if hi.get() <= lo.get() || hi.get() >= nyquist {
+        return Err(FilterError { cutoff: hi, rate });
+    }
+    let centre = f64::midpoint(lo.get(), hi.get());
+    let half = Hz::clamped(0.5 * (hi.get() - lo.get()));
+    let step = TAU * centre / rate.hz().get();
+    let (re, im): (Vec<f64>, Vec<f64>) = samples
+        .iter()
+        .enumerate()
+        .map(|(n, &x)| {
+            // Reduce the phase per sample so it stays exact on long stems.
+            let (sin, cos) = ((step * cast::usize_to_f64(n)) % TAU).sin_cos();
+            (2.0 * x * cos, -2.0 * x * sin)
+        })
+        .unzip();
+    let pad = cast::ceil_to_usize(3.0 * rate.hz().get() / half.get()).unwrap_or(0);
+    let filter = || LowPass::new(rate, half);
+    let re = zero_phase(&re, pad, Reflection::Even, filter)?;
+    let im = zero_phase(&im, pad, Reflection::Even, filter)?;
+    Ok(re.iter().zip(&im).map(|(a, b)| a.hypot(*b)).collect())
 }
 
 /// A fourth-order Butterworth low-pass or high-pass as two biquad sections.

@@ -165,6 +165,7 @@ and ideas, from which we copy no code, text or data.
 - Chin-Yun Yu et al., [Improving Inference-Time Optimisation for Vocal Effects Style Transfer with a Gaussian Prior](https://arxiv.org/abs/2505.11315) (arXiv non-exclusive license), WASPAA 2025: a preset-distribution prior for effect parameter search. Inspiration only.
 - Tsugumasa Yutani et al., [Wavetable Synthesis Using CVAE for Timbre Control Based on Semantic Label](https://arxiv.org/abs/2410.18628) (CC BY 4.0), APSIPA ASC 2024: wavetable generation from semantic labels.
 - Pavel Záviška et al., [A survey and an extensive evaluation of popular audio declipping methods](https://arxiv.org/abs/2007.07663) (CC BY-NC-SA 4.0), IEEE JSTSP 2021: declipping methods for clipped distortion. Inspiration only.
+- Mathias Zechmeister and Martin Kürster, [The generalised Lomb-Scargle periodogram](https://doi.org/10.1051/0004-6361:200811296) (in copyright), Astronomy & Astrophysics 2009: the floating-mean periodogram for the gated envelope of note frames. Inspiration only.
 - Haina Zhu et al., [MuQ: Self-Supervised Music Representation Learning with Mel Residual Vector Quantization](https://arxiv.org/abs/2501.01108) (CC BY-NC-SA 4.0), arXiv 2025: music embedding architecture read for the model survey. Inspiration only.
 
 ### Open-source projects

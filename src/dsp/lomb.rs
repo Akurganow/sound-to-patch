@@ -12,7 +12,7 @@ use crate::notes::NoteList;
 use crate::units::{Decibels, Hz, Seconds};
 
 use super::frames::ACTIVE_GATE_DB;
-use super::modulation::{SUM_HARMONICS, Track, pick_fundamental, rate_estimate};
+use super::modulation::{Pick, Track, pick_rate, rate_estimate};
 
 /// The step of the trial frequencies.
 pub const GRID_STEP_HZ: Hz = Hz::from_const(0.01);
@@ -31,9 +31,12 @@ pub fn grid(lo: Hz, hi: Hz) -> Vec<Hz> {
 
 /// The periodogram of `values` at `times`, one power per frequency.
 ///
-/// The power is in the legacy units `A^2 N / 4` for a sine of amplitude `A`
-/// over `N` samples. The values are centred on their mean first, so a
-/// constant offset changes nothing.
+/// Each trial fits a mean, a sine and a cosine to the samples together:
+/// the floating-mean form of Zechmeister and Kürster, the
+/// `floating_mean=True` option of `scipy.signal.lombscargle`. The plain form subtracts the overall mean first, and on
+/// gated notes a rate at the note rate then loses to its harmonics. The
+/// power is in the legacy units `A^2 N / 4` for a sine of amplitude `A`
+/// over `N` samples, and a constant offset changes nothing.
 #[must_use]
 pub fn lomb_scargle(times: &[Seconds], values: &[f64], frequencies: &[Hz]) -> Vec<f64> {
     let len = times.len().min(values.len());
@@ -41,31 +44,41 @@ pub fn lomb_scargle(times: &[Seconds], values: &[f64], frequencies: &[Hz]) -> Ve
         return vec![0.0; frequencies.len()];
     }
     let n = cast::usize_to_f64(len);
-    let mean = values[..len].iter().sum::<f64>() / n;
-    let centred: Vec<f64> = values[..len].iter().map(|v| v - mean).collect();
+    let (times, values) = (&times[..len], &values[..len]);
+    let mean_y = values.iter().sum::<f64>() / n;
     let epsilon = f64::EPSILON / 2.0;
     frequencies
         .iter()
         .map(|frequency| {
             let omega = TAU * frequency.get();
-            let (mut cc, mut cs) = (0.0, 0.0);
-            for time in &times[..len] {
+            let (mut c, mut s, mut cc, mut cs) = (0.0, 0.0, 0.0, 0.0);
+            for time in times {
                 let (sin, cos) = (omega * time.get()).sin_cos();
+                c += cos;
+                s += sin;
                 cc += cos * cos;
                 cs += cos * sin;
             }
-            let (cc, cs) = (cc / n, cs / n);
-            let tau = 0.5 * (2.0 * cs).atan2(cc - (1.0 - cc));
-            let (mut yc, mut ys, mut cc_tau) = (0.0, 0.0, 0.0);
-            for (time, y) in times[..len].iter().zip(&centred) {
+            let (c, s) = (c / n, s / n);
+            let cc_full = cc / n - c * c;
+            let ss_full = 1.0 - cc / n - s * s;
+            let cs = cs / n - c * s;
+            let tau = 0.5 * (2.0 * cs).atan2(cc_full - ss_full);
+            let (mut yc, mut ys, mut c, mut s, mut cc) = (0.0, 0.0, 0.0, 0.0, 0.0);
+            for (time, y) in times.iter().zip(values) {
                 let (sin, cos) = (omega * time.get() - tau).sin_cos();
                 yc += y * cos;
                 ys += y * sin;
-                cc_tau += cos * cos;
+                c += cos;
+                s += sin;
+                cc += cos * cos;
             }
-            let (yc, ys, cc_tau) = (yc / n, ys / n, (cc_tau / n).max(epsilon));
-            let ss_tau = (1.0 - cc_tau).max(epsilon);
-            2.0 * (yc * yc / cc_tau + ys * ys / ss_tau) * n / 4.0
+            let (c, s) = (c / n, s / n);
+            let yc = yc / n - mean_y * c;
+            let ys = ys / n - mean_y * s;
+            let ss = (1.0 - cc / n - s * s).max(epsilon);
+            let cc = (cc / n - c * c).max(epsilon);
+            2.0 * (yc * yc / cc + ys * ys / ss) * n / 4.0
         })
         .collect()
 }
@@ -97,9 +110,9 @@ pub fn gated_samples(track: &Track, notes: &NoteList, settle: Seconds) -> (Vec<S
 
 /// The modulation rate of irregular samples between `lo` and `hi`.
 ///
-/// The harmonic sum of the periodogram amplitude picks it, as in the
-/// modulation spectrum. No estimate when the span holds fewer than two
-/// cycles. The spread is the resolution, `1 / T` of the span.
+/// The periodogram amplitude goes through the same pick as the modulation
+/// spectrum. No estimate when no line stands out or the span holds fewer
+/// than two cycles. The spread is the resolution, `1 / T` of the span.
 ///
 /// # Errors
 ///
@@ -114,29 +127,27 @@ pub fn periodogram_rate(
         (Some(first), Some(last)) => Seconds::clamped(last.get() - first.get()),
         _ => Seconds::clamped(0.0),
     };
-    let top = Hz::clamped(hi.get() * cast::usize_to_f64(SUM_HARMONICS));
-    let all = grid(lo, top);
-    let amplitude: Vec<f64> = lomb_scargle(times, values, &all)
+    if span.get() <= 0.0 {
+        return rate_estimate(Pick::NoLine { prominence: 0.0 }, span);
+    }
+    // The log level, so a line's amplitude is its relative depth as in the
+    // modulation spectrum; `P = A^2 N / 4` gives `A = 2 sqrt(P / N)`.
+    let logs: Vec<f64> = values
         .iter()
-        .map(|p| p.max(0.0).sqrt())
+        .map(|v| v.max(f64::MIN_POSITIVE).ln())
         .collect();
-    let first = all.first().map_or(0.0, |f| f.get());
-    let at = |frequency: f64| {
-        cast::round_to_usize((frequency - first) / GRID_STEP_HZ.get())
-            .and_then(|i| amplitude.get(i))
-            .copied()
-            .unwrap_or(0.0)
-    };
-    let points: Vec<(f64, f64)> = all
+    let n = cast::usize_to_f64(times.len().min(values.len()));
+    // One guard step outside each end, see `pick_rate`.
+    let frequencies = grid(
+        Hz::clamped(lo.get() - GRID_STEP_HZ.get()),
+        Hz::clamped(hi.get() + GRID_STEP_HZ.get()),
+    );
+    let points: Vec<(f64, f64)> = frequencies
         .iter()
-        .zip(&amplitude)
-        .filter(|(f, _)| f.get() <= hi.get())
-        .map(|(f, a)| (f.get(), *a))
+        .zip(lomb_scargle(times, &logs, &frequencies))
+        .map(|(f, p)| (f.get(), 2.0 * (p.max(0.0) / n).sqrt()))
         .collect();
-    let rate = pick_fundamental(&points, at)
-        .filter(|_| span.get() > 0.0)
-        .map(Hz::clamped);
-    rate_estimate(rate, span)
+    rate_estimate(pick_rate(&points), span)
 }
 
 #[cfg(test)]

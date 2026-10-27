@@ -104,7 +104,7 @@ fn a_gentle_roll_off_falls_back_to_the_margin_rule() {
     // A two-pole roll-off at 3 kHz falls about 1 dB per semitone: no cut.
     let dark = shaped_noise(4640, |f| 1.0 / (1.0 + (f / 3000.0).powi(2)));
     let (_, level, drop) = edge_of(dark);
-    assert_eq!(level, Level::Medium);
+    assert_eq!(level, Level::Low);
     assert!(drop < BAND_EDGE_STEEP_DROP_DB.get(), "{drop}");
 }
 
@@ -126,6 +126,26 @@ fn a_hard_clipped_sine_sets_the_flat_top_flag() {
 }
 
 #[test]
+fn square_and_pulse_waves_are_not_hard_limited() {
+    // They sit at their peak for half or a quarter of each cycle, but jump
+    // to it from the other side instead of running into it.
+    for frequency in [55.0, 220.0] {
+        for duty in [0.5, 0.25] {
+            let wave: Vec<f64> = (0..44_100)
+                .map(|n| {
+                    let phase = (frequency * f64::from(n) / 44_100.0).fract();
+                    if phase < duty { 0.8 } else { -0.8 }
+                })
+                .collect();
+            assert!(
+                !stem(vec![wave.clone(), wave], None).hard_limited(),
+                "{frequency} Hz, duty {duty}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_low_note_list_picks_the_long_frame() {
     let note = |pitch| {
         Note::new(
@@ -143,4 +163,33 @@ fn a_low_note_list_picks_the_long_frame() {
     assert_eq!(stem(vec![x.clone()], Some(&high)).frame_len(), 4096);
     let f0 = stem(vec![x], Some(&low)).median_f0().unwrap().get();
     assert!((f0 - 41.203_444_614_108_74).abs() < 1e-9);
+}
+
+#[test]
+fn a_pure_tone_gives_a_low_confidence_edge() {
+    // A sine has no broadband content to show a cut, so its edge comes from
+    // the margin rule at Low confidence.
+    for frequency in [440.0, 12_000.0] {
+        let tone: Vec<f64> = (0..1 << 17)
+            .map(|n| (std::f64::consts::TAU * frequency * f64::from(n) / f64::from(RATE)).sin())
+            .collect();
+        let (_, level, _) = edge_of(tone);
+        assert_eq!(level, Level::Low, "{frequency}");
+    }
+}
+
+#[test]
+fn a_spectrum_without_a_floor_margin_reports_no_edge() {
+    let noise = gaussian(4650, 1 << 17);
+    let stem = stem(vec![noise], None);
+    let estimate = stem.band_edge();
+    assert_eq!(estimate.confidence().level(), Some(Level::Low));
+    assert!(
+        estimate
+            .confidence()
+            .reasons()
+            .iter()
+            .any(|reason| reason.code() == ReasonCode::NoBandEdge)
+    );
+    assert_eq!(estimate.value().unwrap().get(), f64::from(RATE) / 2.0);
 }

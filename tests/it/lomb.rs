@@ -1,8 +1,8 @@
 //! The Lomb-Scargle periodogram (#52).
 
 use proptest::prelude::*;
-use sound_to_patch::dsp::{grid, lomb_scargle, periodogram_rate};
-use sound_to_patch::units::{Hz, Seconds};
+use sound_to_patch::dsp::{grid, lomb_scargle, periodogram_rate, scan_range};
+use sound_to_patch::units::{Bpm, Hz, Seconds};
 
 use crate::support::golden::{Golden, assert_close, floats};
 
@@ -109,6 +109,47 @@ proptest! {
         for ((b, s), g) in base.iter().zip(lomb_scargle(&times, &shifted, &frequencies)).zip(lomb_scargle(&times, &scaled, &frequencies)) {
             prop_assert!((s - b).abs() <= 1e-9 * b.abs().max(1.0));
             prop_assert!((g - gain * gain * b).abs() <= 1e-9 * (gain * gain * b).abs().max(1.0));
+        }
+    }
+}
+
+/// A level track `1 + 0.3 sin(2 pi r t)` at 200 Hz for 8 s, kept while a note
+/// of period `p` and duty `d` sounds.
+fn synced(p: f64, d: f64, r: f64) -> Option<f64> {
+    let (times, values): (Vec<Seconds>, Vec<f64>) = (0..1600)
+        .map(|i| f64::from(i) / 200.0)
+        .filter(|t| t.rem_euclid(p) < d * p)
+        .map(|t| {
+            (
+                Seconds::new(t).unwrap(),
+                1.0 + 0.3 * (std::f64::consts::TAU * r * t).sin(),
+            )
+        })
+        .unzip();
+    let (lo, hi) = scan_range(Bpm::new(120.0).unwrap());
+    periodogram_rate(&times, &values, lo, hi)
+        .unwrap()
+        .value()
+        .map(|rate| rate.get())
+}
+
+#[test]
+fn an_lfo_synced_to_the_notes_reads_its_own_rate() {
+    // The note rhythm puts alias lines at r +- k / p; none may win. The grid
+    // covers rates of 1 to 8 times the note rate and duties of 0.5 to 0.8.
+    for p in [0.25, 0.5, 1.0, 2.0] {
+        for d in [0.5, 0.6, 0.7, 0.8] {
+            for k in [1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0] {
+                let r = k / p;
+                if r > 20.0 || r * 8.0 < 2.0 {
+                    continue;
+                }
+                let measured = synced(p, d, r);
+                assert!(
+                    measured.is_some_and(|m| (m - r).abs() <= 1.0 / 8.0),
+                    "p {p}, d {d}, r {r}: {measured:?}"
+                );
+            }
         }
     }
 }

@@ -20,6 +20,12 @@ pub const LONG_FRAME_BELOW_HZ: Hz = Hz::from_const(100.0);
 /// band edge sits at its half-depth point. Real stems with a cutoff fall 30
 /// to 44 dB there, natural roll-offs 15 to 22 dB.
 pub const BAND_EDGE_STEEP_DROP_DB: Decibels = Decibels::from_const(25.0);
+/// The plateau allowance of a steep fall in the band-edge rule.
+///
+/// A steep fall marks a cut only when the median level over the octave
+/// below it lies within this much of the level where it starts: a cut ends
+/// a band of content, while the fall above a lone tone does not.
+pub const BAND_EDGE_PLATEAU_DB: Decibels = Decibels::from_const(20.0);
 /// The margin above the noise floor that the fallback band-edge rule needs.
 ///
 /// The fallback serves a spectrum without a steep fall. Real stems carry a
@@ -30,19 +36,27 @@ pub const BAND_EDGE_MARGIN_DB: Decibels = Decibels::from_const(30.0);
 pub const CEILING_TOLERANCE: Normalized = Normalized::from_const(1e-5);
 /// The shortest run at the ceiling that counts as a flat top.
 pub const FLAT_TOP_MIN_RUN_S: Seconds = Seconds::from_const(0.001);
+/// The approach share of a flat-top run.
+///
+/// A run counts only when the samples on both sides of it lie at least this
+/// share of the ceiling on the same side: clipping leaves a wave that runs
+/// into the ceiling, while a square or pulse wave jumps to it.
+pub const CLIP_APPROACH: Normalized = Normalized::from_const(0.5);
 /// The share of samples in flat-top runs that marks a stem hard-limited.
 pub const FLAT_TOP_MIN_SHARE: Normalized = Normalized::from_const(0.001);
 
 /// The convention of the band edge.
 pub const BAND_EDGE_CONVENTION: &str = "long-term power spectrum of the mid over the active \
 frames that lie wholly inside the stem, median-smoothed over one semitone on each side; where \
-the smoothed level falls at least 25 dB over one semitone above 2 kHz, the edge is the \
+the smoothed level falls at least 25 dB over one semitone above 2 kHz and the median level of \
+the octave below lies within 20 dB of the level where the fall starts, the edge is the \
 half-depth point of the steepest such fall; otherwise the noise floor is the lowest level above \
-1 kHz and the edge is the highest bin at least 30 dB above it, or the Nyquist frequency when no \
-bin is";
+1 kHz and the edge is the highest bin at least 30 dB above it, at low confidence, or the Nyquist \
+frequency when no bin above 1 kHz is";
 /// The convention of the flat-top flag.
 pub const HARD_LIMITED_CONVENTION: &str = "true when runs of at least 1 ms of samples \
-within 1e-5 of the channel peak cover at least 0.1 % of a channel";
+within 1e-5 of the channel peak, each with its neighbours on both sides at least half the \
+peak on the same side, cover at least 0.1 % of a channel";
 
 /// The length of a note division in beats, before its feel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -416,18 +430,29 @@ pub fn band_edge(
     let (smoothed, bin_hz) = smoothed_spectrum(samples, rate, params, &frames_used);
     let steepest = steepest_edge(&smoothed, bin_hz);
     let depth = steepest.map_or(0.0, |(_, depth)| depth);
+    let mut reasons = vec![
+        frames,
+        Reason::new(ReasonCode::BandEdgeDrop, Signal::Number(depth))?,
+    ];
+    // Without a steep fall the margin rule only bounds where the content
+    // ends, so its edge is Low. A spectrum that never rises the margin above
+    // its floor has no edge below the Nyquist frequency.
     let (edge, level) = match steepest {
         Some((edge, depth)) if depth >= BAND_EDGE_STEEP_DROP_DB.get() => (edge, Level::High),
-        _ => (margin_edge(&smoothed, bin_hz), Level::Medium),
+        _ => {
+            if let Some(edge) = margin_edge(&smoothed, bin_hz) {
+                (edge, Level::Low)
+            } else {
+                reasons.push(Reason::new(ReasonCode::NoBandEdge, Signal::Flag(true))?);
+                (smoothed.len().saturating_sub(1), Level::Low)
+            }
+        }
     };
     Estimate::new(
         Hz::clamped(cast::usize_to_f64(edge) * bin_hz),
         level,
         Some(Hz::clamped(bin_hz)),
-        vec![
-            frames,
-            Reason::new(ReasonCode::BandEdgeDrop, Signal::Number(depth))?,
-        ],
+        reasons,
     )
 }
 
@@ -456,10 +481,9 @@ fn smoothed_spectrum(
 }
 
 /// The fallback rule: the highest bin at least [`BAND_EDGE_MARGIN_DB`]
-/// above the floor, the lowest smoothed level above 1 kHz. A spectrum that
-/// never rises that far above its floor has no edge below the Nyquist
-/// frequency.
-fn margin_edge(smoothed: &[f64], bin_hz: f64) -> usize {
+/// above the floor, the lowest smoothed level above 1 kHz. `None` when no
+/// bin above 1 kHz rises that far.
+fn margin_edge(smoothed: &[f64], bin_hz: f64) -> Option<usize> {
     let first_above_1k = cast::ceil_to_usize(1000.0 / bin_hz).unwrap_or(1).max(1);
     let floor = smoothed
         .get(first_above_1k..)
@@ -468,7 +492,7 @@ fn margin_edge(smoothed: &[f64], bin_hz: f64) -> usize {
     smoothed
         .iter()
         .rposition(|&level| level >= floor + BAND_EDGE_MARGIN_DB.get())
-        .unwrap_or(smoothed.len().saturating_sub(1))
+        .filter(|&edge| edge >= first_above_1k)
 }
 
 /// The steepest fall of the smoothed level over one semitone above 2 kHz:
@@ -488,7 +512,11 @@ fn steepest_edge(smoothed: &[f64], bin_hz: f64) -> Option<(usize, f64)> {
         })?;
     let half = smoothed[start] - depth / 2.0;
     let edge = (start..=stop).rev().find(|&bin| smoothed[bin] >= half)?;
-    Some((edge, depth))
+    // A cut ends a band of content; the edge of a lone tone does not. The
+    // octave below the fall must sit within the plateau allowance of its top.
+    let octave = Summary::of(&smoothed[start / 2..start])?.median();
+    let supported = octave >= smoothed[start] - BAND_EDGE_PLATEAU_DB.get();
+    Some((edge, if supported { depth } else { 0.0 }))
 }
 
 /// A running median of the levels over one semitone on each side of each
@@ -518,23 +546,31 @@ pub fn is_flat_topped(channel: &[f64], rate: SampleRate) -> bool {
     let min_run = cast::ceil_to_usize(FLAT_TOP_MIN_RUN_S.get() * rate.hz().get())
         .unwrap_or(1)
         .max(2);
-    let (mut flat, mut run, mut sign) = (0_usize, 0_usize, 0.0_f64);
-    let close = |run: usize, flat: &mut usize| {
-        if run >= min_run {
-            *flat += run;
-        }
+    // A clipped wave runs into the ceiling and out of it on the same side; a
+    // square or pulse wave jumps to it from the other side.
+    let approaches = |index: Option<usize>, sign: f64| {
+        index
+            .and_then(|i| channel.get(i))
+            .is_some_and(|&x| x * sign >= CLIP_APPROACH.get() * ceiling)
     };
-    for &x in channel {
-        if x.abs() >= ceiling && (run == 0 || (x > 0.0) == (sign > 0.0)) {
-            run += 1;
-            sign = x.signum();
-        } else {
-            close(run, &mut flat);
-            run = usize::from(x.abs() >= ceiling);
-            sign = x.signum();
+    let mut flat = 0_usize;
+    let mut start = 0;
+    while start < channel.len() {
+        let sign = channel[start].signum();
+        if channel[start].abs() < ceiling {
+            start += 1;
+            continue;
         }
+        let end = channel[start..]
+            .iter()
+            .position(|&x| x.abs() < ceiling || x.is_sign_positive() != sign.is_sign_positive())
+            .map_or(channel.len(), |offset| start + offset);
+        let run = end - start;
+        if run >= min_run && approaches(start.checked_sub(1), sign) && approaches(Some(end), sign) {
+            flat += run;
+        }
+        start = end;
     }
-    close(run, &mut flat);
     cast::usize_to_f64(flat) >= FLAT_TOP_MIN_SHARE.get() * cast::usize_to_f64(channel.len())
 }
 
@@ -547,9 +583,11 @@ mod tests {
         assert_eq!(LONG_FRAME_BELOW_HZ, Hz::new(100.0).unwrap());
         assert_eq!(BAND_EDGE_MARGIN_DB, Decibels::new(30.0).unwrap());
         assert_eq!(BAND_EDGE_STEEP_DROP_DB, Decibels::new(25.0).unwrap());
+        assert_eq!(BAND_EDGE_PLATEAU_DB, Decibels::new(20.0).unwrap());
         assert_eq!(CEILING_TOLERANCE, Normalized::new(1e-5).unwrap());
         assert_eq!(FLAT_TOP_MIN_RUN_S, Seconds::new(0.001).unwrap());
         assert_eq!(FLAT_TOP_MIN_SHARE, Normalized::new(0.001).unwrap());
+        assert_eq!(CLIP_APPROACH, Normalized::new(0.5).unwrap());
     }
 
     fn bpm(value: f64) -> Bpm {

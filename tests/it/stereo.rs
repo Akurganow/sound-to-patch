@@ -6,7 +6,7 @@ use sound_to_patch::audio::{Band, SampleRate, StereoStats, stereo_screen};
 use sound_to_patch::units::{Correlation, Decibels, Degrees, Hz};
 
 use crate::support::cast::round_to_usize;
-use crate::support::golden::{Golden, float};
+use crate::support::golden::{Golden, assert_close, float};
 use crate::support::rng::{gaussian, uniform};
 use crate::support::signals::{bandlimited_saw, convolve, times};
 
@@ -56,7 +56,13 @@ fn a_pure_delay_reads_360_f_tau_degrees() {
         .map(|&t| (2.0 * PI * f * (t - tau)).sin())
         .collect();
     let ipd = full(&left, &right, Some(f)).ipd_deg.unwrap().get();
-    assert!((ipd - float(&delay["ipd_deg"])).abs() < 0.05, "{ipd}");
+    // Reference: the generator's STFT pipeline in numpy and librosa, see
+    // stereo.json; the closed form is 360 f tau.
+    assert_close(&[ipd], &[float(&delay["ipd_deg"])], golden.tolerance());
+    assert!(
+        (ipd - float(&delay["closed_form_ipd_deg"])).abs() < 0.05,
+        "{ipd}"
+    );
 }
 
 #[test]
