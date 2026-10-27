@@ -46,7 +46,10 @@ the rectangular window exist for comparison only [fact].
   $q (n - 1)$, the convention of the common numeric libraries [fact]. The
   IQR is the 75th minus the 25th percentile [fact].
 - A statistic without an active frame is no estimate with the reason
-  `silent_stem`, never a number [fact].
+  `silent_stem`, never a number [fact]. One with fewer than 16 active
+  frames is no estimate with the reason `too_few_frames`: the first and
+  last two frames of a clip reach into the zero padding, and a median over
+  few frames follows them [fact, proposal for 16].
 
 ## Conventions next to every number
 

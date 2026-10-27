@@ -47,6 +47,9 @@ Options:
   -o, --out <DIR>
           The output folder [default: a folder named after the stem, next to it]
 
+      --force
+          Replace a report of another stem in the output folder
+
       --synth <SYNTH>
           The target synth that the report names [default: vital]
 
@@ -68,23 +71,35 @@ and writes two files into the output folder, which it creates:
   panels. The [pipeline page](../analysis/pipeline.md#the-report) gives its
   layout.
 
-Both files are overwritten on the next run; nothing else in the folder
-changes. The same stem and flags give the same bytes. The command prints
-one `wrote <path>` line per file and a warning line for each corrupt
-packet that became silence.
+Both files are replaced on the next run of the same stem; nothing else in
+the folder changes. The same stem and flags give the same bytes. Each file
+is written to a temporary sibling and renamed into place, `layers.json`
+last, so an interrupted run never leaves a cut-short file, and a
+`layers.json` that exists belongs to the spectrogram next to it. The
+command prints one `wrote <path>` line per file to standard output, and a
+warning line for each corrupt packet that became silence to standard
+error.
+
+`layers.json` records the stem's file name in `source`. When the folder
+already holds the report of another stem, such as `bass.aiff` next to
+`bass.wav` sharing `bass/`, the command stops and names both; `--out`
+picks another folder, and `--force` replaces the report. An output folder
+path that is a file, such as the default folder of a stem without an
+extension, stops the command with a request for `--out`.
 
 Without `--out`, the folder is named after the stem file and sits next to
 it: `stems/bass.wav` writes `stems/bass/`. With `--notes`, the MIDI file
 gives the note list. Its note times follow the file's tempo map, and every
 tempo in the file must lie within 0.01 BPM of `--bpm`; a file without a
-tempo event plays at the MIDI default of 120 BPM. No transcription runs in
+tempo event plays at the MIDI default of 120 BPM. Notes on channel 10, the
+percussion channel, are left out. No transcription runs in
 this release, so the report's `transcription` group is `null` with or
 without `--notes`.
 
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | Both files were written. |
-| 1 | The stem or the note file cannot be read or is invalid, the selected synth has no adapter yet, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
+| 1 | The stem or the note file cannot be read or is invalid, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
 | 2 | A usage error, such as a missing `--bpm` or a tempo outside 4 to 1000. |
 
 ## preset

@@ -102,6 +102,7 @@ fn request<'a>(stem: &'a Path, notes: Option<&'a Path>, out: &'a Path) -> Analyz
         synth: Synth::Vital,
         notes,
         out: Some(out),
+        force: false,
     }
 }
 
@@ -242,9 +243,74 @@ fn the_default_folder_is_named_after_the_stem() {
         ..request(&path, None, dir.path())
     };
     assert_eq!(request.out_dir(), dir.path().join("bass"));
-    let text = analyze(&request).unwrap();
-    assert!(dir.path().join("bass").join(LAYERS_FILE).is_file());
-    assert!(text.contains("spectrogram.png"), "{text}");
+    let analysis = analyze(&request).unwrap();
+    assert_eq!(analysis.layers, dir.path().join("bass").join(LAYERS_FILE));
+    assert_eq!(
+        analysis.spectrogram,
+        dir.path().join("bass").join(SPECTROGRAM_FILE)
+    );
+    assert!(analysis.layers.is_file() && analysis.skipped.is_empty());
+    // The temporary siblings are renamed away.
+    let names: Vec<String> = fs::read_dir(dir.path().join("bass"))
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names.len(), 2, "{names:?}");
+}
+
+#[test]
+fn an_output_folder_that_is_a_file_fails_with_a_fix() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    // A stem without an extension names its own default folder.
+    let bare = dir.path().join("noext");
+    fs::copy(&wav, &bare).unwrap();
+    let file = dir.path().join("taken");
+    fs::write(&file, b"x").unwrap();
+    for (stem, out) in [(&bare, None), (&wav, Some(file.as_path()))] {
+        let request = AnalyzeRequest {
+            out,
+            ..request(stem, None, dir.path())
+        };
+        let message = analyze(&request).unwrap_err().to_string();
+        let folder = out.map_or(bare.clone(), Path::to_path_buf);
+        assert_eq!(
+            message,
+            format!(
+                "the output folder {} is a file. Pass --out <dir>",
+                folder.display()
+            )
+        );
+    }
+}
+
+#[test]
+fn a_report_of_another_stem_is_kept_unless_forced() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let aiff = dir.path().join("bass.aiff");
+    fs::copy(&wav, &aiff).unwrap();
+    let out = dir.path().join("out");
+    let first = run(&wav, None, &out);
+    assert_eq!(first["source"], "bass.wav");
+    // The same stem again replaces its own report.
+    run(&wav, None, &out);
+    let message = analyze(&request(&aiff, None, &out))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        message.contains("report of `bass.wav`, not of `bass.aiff`"),
+        "{message}"
+    );
+    assert!(message.contains("--force"), "{message}");
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&aiff, None, &out)
+    };
+    analyze(&forced).unwrap();
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
+    assert_eq!(report["source"], "bass.aiff");
 }
 
 #[test]

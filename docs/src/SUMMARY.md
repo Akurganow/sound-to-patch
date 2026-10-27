@@ -4,6 +4,7 @@
 
 # Guide
 
+- [Analysing a stem](guide/analyze.md)
 - [Presets](guide/preset.md)
 
 # Analysis

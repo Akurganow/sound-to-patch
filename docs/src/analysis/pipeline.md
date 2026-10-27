@@ -11,8 +11,6 @@ Every statement carries a tag:
 - **[fact]**: the code does this, or a cited work states it.
 - **[synthetic]**: a figure measured on generated signals. Generated
   signals are a best case: a real stem adds bleed, effects and noise.
-- **[real stems]**: a figure measured on 11 real 48 kHz stereo 16-bit WAV
-  stems of 266.4 s each.
 - **[proposal]**: a threshold or rule chosen for this project that later
   work may tune.
 
@@ -72,14 +70,15 @@ The reason `band_edge_drop` carries the depth of the steepest fall [fact].
 The plateau check of step 3 keeps a lone tone's skirt from counting as a
 cut [fact].
 
-- On the 11 real stems the 8 with a cut fell 30 to 44 dB per semitone,
-  natural roll-offs 15 to 22 dB [real stems]. The steepest-fall rule and the
-  30 dB margin rule agreed within 0.1 semitone on all of them [real stems].
+- Synthetic cuts fall 57 to 91 dB over one semitone, and a 2-pole roll-off
+  at 3 kHz about 1.3 dB, so the 25 dB threshold separates them with room
+  on both sides [synthetic].
 - On white, $1/\sqrt{f}$ and $1/f$ noise cut at 8 and 16 kHz at 44.1 and
   48 kHz, the steepest fall erred +0.01 to +0.07 semitone and the margin
   rule +0.03 to +0.16 [synthetic]. With a noise shelf 60 dB down above a
   16 kHz cut, the margin rule erred +3.2 semitones and the steepest fall
-  +0.02 [synthetic].
+  +0.02 [synthetic]. Full-band white noise and the 2-pole roll-off have no
+  steep fall, and both rules give the same margin value [synthetic].
 
 ### Flat tops
 
@@ -177,7 +176,9 @@ The screen runs on L and R with 8192-point Hann frames for every f0
   cells: bleed plus any note the list missed [fact].
 - `analyze --notes` reads the note list from a Standard MIDI File: note-on
   to the next note-off of the same key and channel, first in, first out,
-  with the times from the file's tempo map [fact].
+  with the times from the file's tempo map [fact]. Notes on channel 10,
+  the percussion channel, are left out, because their keys name drums
+  [fact].
 
 ## Modulation spectrum
 
@@ -196,8 +197,9 @@ The screen runs on L and R with 8192-point Hann frames for every f0
 - The rate is the strongest strict maximum in the scan, with guard points
   outside it as neighbours, refined by a least-squares sine fit [fact]. It
   needs a line 8 times the median amplitude of the scan, a depth of at
-  least 0.5 % and two full cycles, else the reason `no_modulation_line` or
-  `too_few_cycles` [fact, proposal for the thresholds].
+  least 0.5 % and two full cycles, else no rate [fact, proposal for the
+  thresholds]. The reasons `line_prominence` and `cycles_in_span` carry
+  both values, with a rate or without one [fact].
 - On 200 seeded noise tracks the largest line stood at most 4.4 times the
   median [synthetic]. On a 104-case grid of periods, depths and rates the
   strongest line missed 0 sine, 8 saw, 4 square and 4 triangle cases
@@ -262,8 +264,17 @@ frames [fact].
   100 Hz to 10 kHz, each bin floored at $10^{-5}$ after the window-sum
   scale [fact].
 - Band shares use power $|X_k|^2$ summed over active frames per band,
-  divided by the power in all bands; the edges are 20, 60, 250 Hz, 1, 4, 10
-  and 20 kHz [fact, proposal for the edges].
+  divided by the power in the bands reported; the edges are 20, 60, 250
+  Hz, 1, 4, 10 and 20 kHz [fact, proposal for the edges]. A band that
+  starts at or above the Nyquist frequency is left out, and one that
+  crosses it ends there, so a 16 kHz file reports five bands, the last
+  from 4 to 8 kHz [fact].
+- Every statistic over frames, the band shares and the band edge need at
+  least 16 active frames, else no estimate with the reason
+  `too_few_frames` [fact, proposal for 16]. On noise, sawtooth and sine
+  clips at 48 kHz the worst error of the medians against a 10 s run was 4 %
+  at 10 frames and 2 % at 16, and many times the value at 8 or fewer
+  [synthetic].
 - Peak and RMS are of the mono mix over the whole stem in dB re full scale
   1.0, and the crest is their difference [fact]. Digital silence gives no
   estimate with the reason `silent_stem`, never $-\infty$ [fact].
@@ -280,7 +291,12 @@ frames [fact].
   the `transcription` group and the `conventions` group; the
   [layer report page](../reference/formats/layers.md) lists them [fact].
 - Output is deterministic: two runs on the same input write the same bytes
-  [fact].
+  [fact]. `layers.json` names its stem in `source`, and a run of another
+  stem into the same folder stops unless forced [fact].
+- Each file is written to a temporary sibling and renamed into place, and
+  `layers.json` comes last, after the old one is removed. A `layers.json`
+  that exists therefore always belongs to the spectrogram next to it, and
+  neither file is ever cut short [fact].
 - `spectrogram.png` is 1500 by 512 pixels, below the size at which a
   hosted image reader downscales [fact]. The image gives coarse shape; the
   numbers live in the JSON [fact].

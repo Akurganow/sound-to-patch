@@ -9,6 +9,16 @@ use crate::units::Decibels;
 /// lies within 40 dB of the loudest frame.
 pub const ACTIVE_GATE_DB: Decibels = Decibels::from_const(40.0);
 
+/// The fewest active frames a statistic over frames needs; with fewer it
+/// gives no estimate.
+///
+/// The first and last two frames of a clip reach into the zero padding, so
+/// a median over few frames follows the edges. On 48 kHz noise, sawtooth
+/// and sine clips with 4096-point frames, the worst error of the centroid,
+/// spread, rolloff and flatness medians against a 10 s run was 4 % at 10
+/// frames, 3 % at 12, 2 % at 16 and up to 47 times the value at 8 or fewer.
+pub const MIN_ACTIVE_FRAMES: usize = 16;
+
 /// Returns the RMS of each centred frame of an STFT layout, over the raw
 /// samples (no window) with the layout's padding. Frame `m` lines up with
 /// STFT frame `m`.

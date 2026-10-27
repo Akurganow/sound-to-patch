@@ -4,6 +4,7 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
 ---
 {
   "schema": "layers/1",
+  "source": "bass.wav",
   "synth": "vital",
   "stem": {
     "bpm": "<number>",
@@ -247,7 +248,7 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
     "rolloff85_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
     "rolloff95_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
     "flatness": "geometric over arithmetic mean of the magnitude, floored at 1e-5 after the window-sum scale, bins from 100 Hz to 10 kHz",
-    "band_share": "power |X_k|^2 summed over active frames per band, divided by the power in all bands",
+    "band_share": "power |X_k|^2 summed over active frames per band, divided by the power in the bands reported; bands start at 20, 60, 250, 1000, 4000 and 10000 Hz and end at the next start or 20 kHz; a band that starts at or above the Nyquist frequency is left out, and one that crosses it ends there",
     "stereo": "rho: Pearson correlation at zero lag; sm_db: 20 log10(rms(S) / rms(M)) with M = (L + R) / 2 and S = (L - R) / 2; per band from the 8192-point Hann STFT over bins inside the band, DC excluded; ipd_deg: abs(angle(L conj R)) at the largest cross-spectrum bin within 2 bins of h f0, h = 1..20 inside the band, weighted by |L conj R|, then the mean over active frames, whose RMS over both channels, sqrt((rms_L^2 + rms_R^2) / 2), lies within 40 dB of the loudest; bands: sub below 120 Hz, low_mid 120 Hz to 1 kHz, high above 1 kHz",
     "confidence": "level, reasons and spread of each estimate; the spread of a statistic is its interquartile range and that of the band edge one bin width, in the unit of the value; estimate false means no value, with the reasons why"
   }

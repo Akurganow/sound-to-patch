@@ -22,7 +22,8 @@ quantiles by linear interpolation at q (n - 1) between the sorted values; a fram
 when its RMS lies within 40 dB of the loudest frame";
 
 /// Renders the report of a stem as pretty-printed JSON with a final
-/// newline. The same stem always gives the same bytes.
+/// newline. `source` is the stem's file name without its folder. The same
+/// stem always gives the same bytes.
 ///
 /// # Errors
 ///
@@ -32,9 +33,11 @@ pub fn layers_json(
     stem: &Stem,
     descriptors: &Descriptors,
     synth: Synth,
+    source: &str,
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
+        source,
         synth,
         stem: StemGroup::new(stem, descriptors),
         transcription: (),
@@ -48,6 +51,8 @@ pub fn layers_json(
 #[derive(Serialize)]
 struct Layers<'a> {
     schema: &'static str,
+    /// The file name of the stem, without its folder.
+    source: &'a str,
     synth: Synth,
     stem: StemGroup<'a>,
     /// The transcriber's model and settings. No transcriber runs in this

@@ -12,6 +12,7 @@ report against it.
 | Field | Value |
 | :-- | :-- |
 | `schema` | `"layers/1"`. |
+| `source` | The file name of the stem, without its folder. A run of another stem into the same folder stops unless `--force` is given. |
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model hash, crate version, profile and note settings. `null` in this release: no transcriber runs, and with `--notes` none would. |
@@ -56,7 +57,9 @@ The confidence object follows the [units page](../units.md#confidence):
 
 ## The stem group
 
-The ranges are those of the unit types and the schema. Each convention is
+Every statistic over frames, `band_share` and `band_edge_hz` need at
+least 16 active frames; with fewer they give no estimate with the reason
+`too_few_frames`. The ranges are those of the unit types and the schema. Each convention is
 the text that `conventions` holds under the same key; the
 [pipeline page](../../analysis/pipeline.md) explains the rules behind
 them.
@@ -77,7 +80,7 @@ them.
 | `rolloff85_hz` | hertz | 0 to Nyquist | statistic | Frequency below which 85 % of the frame's magnitude lies. |
 | `rolloff95_hz` | hertz | 0 to Nyquist | statistic | The same at 95 %. |
 | `flatness` | ratio | 0 to 1 | statistic | Geometric over arithmetic mean of the magnitude, 100 Hz to 10 kHz, floored at 1e-5. |
-| `band_share` | share | each 0 to 1, sum 1 | value with a list | Power per band over active frames divided by the power in all bands; each item is `{lo_hz, hi_hz, share}` for the bands 20, 60, 250 Hz, 1, 4, 10 and 20 kHz. |
+| `band_share` | share | each 0 to 1, sum 1 | value with a list | Power per band over active frames divided by the power in the bands reported; each item is `{lo_hz, hi_hz, share}` for the bands 20, 60, 250 Hz, 1, 4, 10 and 20 kHz. A band at or above the Nyquist frequency is left out, and one that crosses it ends there. |
 | `stereo` | | | object | See below. |
 
 `stereo` holds `full`, `sub` (below 120 Hz), `low_mid` (120 Hz to 1 kHz)

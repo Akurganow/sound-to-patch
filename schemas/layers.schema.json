@@ -4,10 +4,15 @@
   "title": "layers.json",
   "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _db, _dbfs, _deg) where the value has one. The conventions group names the convention of every number in the stem group.",
   "type": "object",
-  "required": ["schema", "synth", "stem", "transcription", "conventions"],
+  "required": ["schema", "source", "synth", "stem", "transcription", "conventions"],
   "additionalProperties": false,
   "properties": {
     "schema": { "const": "layers/1" },
+    "source": {
+      "description": "The file name of the stem, without its folder. A later run into the same folder refuses a report of another source unless forced.",
+      "type": "string",
+      "minLength": 1
+    },
     "synth": { "enum": ["vital", "serum2"] },
     "stem": { "$ref": "#/$defs/stem" },
     "transcription": { "$ref": "#/$defs/transcription" },

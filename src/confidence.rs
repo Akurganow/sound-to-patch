@@ -80,9 +80,9 @@ reason_codes! {
     OneChannel,
     /// No note list was given, so a value that needs the f0 has none.
     NoNoteList,
-    /// The span holds fewer than two cycles of the rate; the value is the
-    /// number of cycles.
-    TooFewCycles,
+    /// The number of full cycles of a rate in the span. Below two, no rate
+    /// is reported.
+    CyclesInSpan,
     /// The stem is flat-topped at its peak, so its level and crest are
     /// capped by a limiter or by clipping.
     HardLimited,
@@ -95,7 +95,10 @@ reason_codes! {
     BandEdgeDrop,
     /// The strongest line of a modulation scan over the median magnitude of
     /// the scan. Below the prominence threshold no rate is reported.
-    NoModulationLine,
+    LineProminence,
+    /// Fewer active frames than a statistic over frames needs; the value is
+    /// the minimum.
+    TooFewFrames,
     /// No bin of the spectrum above 1 kHz rises the band-edge margin above
     /// its floor, so the band edge is the Nyquist frequency at low
     /// confidence.

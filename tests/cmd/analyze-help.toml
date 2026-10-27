@@ -21,6 +21,9 @@ Options:
   -o, --out <DIR>
           The output folder [default: a folder named after the stem, next to it]
 
+      --force
+          Replace a report of another stem in the output folder
+
       --synth <SYNTH>
           The target synth that the report names [default: vital]
 

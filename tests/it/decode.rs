@@ -113,7 +113,7 @@ fn an_unknown_container_and_a_missing_file_fail_with_a_fix() {
 /// MPEG-1 layer III frames, 128 kbit/s at 44.1 kHz, of silence. A frame in
 /// `bad` declares 511 big values in its side information, more than the 288
 /// a granule holds, so symphonia rejects that packet and decodes the next.
-fn mp3_with_bad_frames(path: &Path, frames: usize, bad: &[usize]) {
+pub(crate) fn mp3_with_bad_frames(path: &Path, frames: usize, bad: &[usize]) {
     let mut bytes = Vec::new();
     for index in 0..frames {
         let mut frame = vec![0u8; 417];

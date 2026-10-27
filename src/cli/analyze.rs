@@ -22,6 +22,9 @@ pub struct AnalyzeArgs {
     /// it]
     #[arg(short, long, value_name = "DIR")]
     pub out: Option<PathBuf>,
+    /// Replace a report of another stem in the output folder
+    #[arg(long)]
+    pub force: bool,
     /// The target synth that the report names [default: vital]
     #[arg(long, value_enum, value_name = "SYNTH")]
     pub synth: Option<Synth>,

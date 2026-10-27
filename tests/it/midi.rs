@@ -14,16 +14,19 @@ enum Ev {
     On(u32, u8, u8),
     Off(u32, u8),
     Tempo(u32, f64),
+    /// A note-on on the percussion channel, channel 10.
+    Drum(u32, u8, u8),
 }
 
 fn track(events: &[Ev]) -> Vec<TrackEvent<'static>> {
-    let midi = |delta: u32, message| TrackEvent {
+    let on_channel = |channel: u8, delta: u32, message| TrackEvent {
         delta: u28::new(delta),
         kind: TrackEventKind::Midi {
-            channel: u4::new(0),
+            channel: u4::new(channel),
             message,
         },
     };
+    let midi = |delta, message| on_channel(0, delta, message);
     let mut track: Vec<TrackEvent<'static>> = events
         .iter()
         .map(|event| match *event {
@@ -39,6 +42,14 @@ fn track(events: &[Ev]) -> Vec<TrackEvent<'static>> {
                 MidiMessage::NoteOff {
                     key: u7::new(key),
                     vel: u7::new(64),
+                },
+            ),
+            Ev::Drum(delta, key, vel) => on_channel(
+                9,
+                delta,
+                MidiMessage::NoteOn {
+                    key: u7::new(key),
+                    vel: u7::new(vel),
                 },
             ),
             Ev::Tempo(delta, bpm) => TrackEvent {
@@ -213,4 +224,38 @@ fn a_sequential_or_empty_file_fails_with_the_cause() {
     );
     let message = read_midi(&path, bpm(120.0)).unwrap_err().to_string();
     assert!(message.contains("holds no notes"), "{message}");
+}
+
+#[test]
+fn drums_on_channel_10_are_left_out() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = save(
+        dir.path(),
+        Format::SingleTrack,
+        PPQ,
+        &[&[
+            Ev::Tempo(0, 120.0),
+            Ev::Drum(0, 36, 100),
+            Ev::On(0, 33, 90),
+            Ev::Drum(480, 38, 100),
+            Ev::Off(480, 33),
+        ]],
+    );
+    let notes = read_midi(&path, bpm(120.0)).unwrap();
+    assert_eq!(summary(&notes), [(0.0, 1.0, 33.0, 90)]);
+    let path = save(
+        dir.path(),
+        Format::SingleTrack,
+        PPQ,
+        &[&[
+            Ev::Tempo(0, 120.0),
+            Ev::Drum(0, 36, 100),
+            Ev::Drum(480, 38, 100),
+        ]],
+    );
+    let message = read_midi(&path, bpm(120.0)).unwrap_err().to_string();
+    assert!(
+        message.contains("only drum notes (2 on channel 10)"),
+        "{message}"
+    );
 }

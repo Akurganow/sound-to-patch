@@ -22,6 +22,9 @@ const DEFAULT_TEMPO_US: u32 = 500_000;
 /// How far a tempo in the file may lie from `--bpm`. A tempo is stored in
 /// whole microseconds per beat, which rounds 140 BPM to 140.00003.
 pub const BPM_TOLERANCE: f64 = 0.01;
+/// The General MIDI percussion channel, channel 10, counted from 0. Its
+/// keys name drums, not pitches.
+pub const DRUM_CHANNEL: u8 = 9;
 
 /// Reads the notes of a MIDI file at `path`, checking its tempo against
 /// `bpm`.
@@ -29,7 +32,9 @@ pub const BPM_TOLERANCE: f64 = 0.01;
 /// Every note-on with a velocity above 0 starts a note, and the next
 /// note-off of the same key on the same channel and track ends it, first
 /// in, first out. A note still sounding at the end of its track ends there.
-/// A note of zero length carries no sound and is left out.
+/// A note of zero length carries no sound and is left out. Notes on the
+/// percussion channel, channel 10 ([`DRUM_CHANNEL`] counted from 0), are
+/// drums whose keys are no pitch, so they are left out too.
 ///
 /// # Errors
 ///
@@ -57,6 +62,7 @@ fn notes_of(smf: &Smf<'_>, bpm: Bpm) -> Result<NoteList, Kind> {
         },
     };
     let mut notes = Vec::new();
+    let mut drums = 0_usize;
     for (track, events) in smf.tracks.iter().enumerate() {
         let mut tick = 0_u64;
         let mut open: HashMap<(u8, u8), Vec<(u64, u8)>> = HashMap::new();
@@ -65,6 +71,12 @@ fn notes_of(smf: &Smf<'_>, bpm: Bpm) -> Result<NoteList, Kind> {
             let TrackEventKind::Midi { channel, message } = event.kind else {
                 continue;
             };
+            if channel.as_int() == DRUM_CHANNEL {
+                if matches!(message, MidiMessage::NoteOn { vel, .. } if vel.as_int() > 0) {
+                    drums += 1;
+                }
+                continue;
+            }
             let slot = |key: midly::num::u7| (channel.as_int(), key.as_int());
             match message {
                 MidiMessage::NoteOn { key, vel } if vel.as_int() > 0 => {
@@ -101,7 +113,7 @@ fn notes_of(smf: &Smf<'_>, bpm: Bpm) -> Result<NoteList, Kind> {
         }
     }
     if notes.is_empty() {
-        return Err(Kind::NoNotes);
+        return Err(Kind::NoNotes { drums });
     }
     Ok(NoteList::new(notes))
 }
@@ -222,7 +234,9 @@ enum Kind {
         track: usize,
         source: NoteError,
     },
-    NoNotes,
+    NoNotes {
+        drums: usize,
+    },
 }
 
 impl fmt::Display for MidiError {
@@ -255,7 +269,13 @@ impl fmt::Display for MidiError {
                 )
             }
             Kind::Note { track, source } => write!(f, "track {track} holds a bad note: {source}"),
-            Kind::NoNotes => write!(f, "the file holds no notes. Export the notes again"),
+            Kind::NoNotes { drums: 0 } => {
+                write!(f, "the file holds no notes. Export the notes again")
+            }
+            Kind::NoNotes { drums } => write!(
+                f,
+                "the file holds only drum notes ({drums} on channel 10), which have no pitch. Export the pitched part"
+            ),
         }
     }
 }
