@@ -287,7 +287,9 @@ cloudpickle==3.1.2 \
 decorator==5.3.1 \
     --hash=sha256:4cbcdd55a6efadb9dbea26b858f4fb3264567b52d69ca0d25b721b553f60ea82 \
     --hash=sha256:f47fe6fdbd2edd623ecfe36875d37aba411624e2670dd395dddae1358689bb3c
-    # via librosa
+    # via
+    #   librosa
+    #   mir-eval
 idna==3.20 \
     --hash=sha256:a7db850025b95ded1eae8a46181a1a6c56c92c96f0e2b005d9ff8dc0210cab44 \
     --hash=sha256:ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
@@ -344,6 +346,10 @@ llvmlite==0.50.0 \
     --hash=sha256:f2a2cd6ec9ffcc1b7147dea0d7a49efebf17a2b434e0c2844fe175999d571eb4 \
     --hash=sha256:ffe46ef508df226e54b5fe1f7bf11122e5297bcdbb3902cc5b670a429d56ff47
     # via numba
+mir-eval==0.8.2 \
+    --hash=sha256:114cda33d8e17408c170598e0b36ed0d71ff4a2fee8eaf9e165b58ecf1c87170 \
+    --hash=sha256:141a3e1193276889fc32e911547e73dcb3e829ee8cfea60f7bbcd633c0792569
+    # via -r xtask/golden/requirements.in
 msgpack==1.2.4 \
     --hash=sha256:0221748c30ace75fde0dec8c470abe65fb5374cd4f37adb9db6aca7a3c362c0a \
     --hash=sha256:0626ea840cce866237c4da08439e9faa9cf79e6e4c62358978ee055961e8cff2 \
@@ -545,6 +551,7 @@ numpy==2.5.4 \
     # via
     #   -r xtask/golden/requirements.in
     #   librosa
+    #   mir-eval
     #   numba
     #   scikit-learn
     #   scipy
@@ -682,6 +689,7 @@ scipy==1.18.1 \
     # via
     #   -r xtask/golden/requirements.in
     #   librosa
+    #   mir-eval
     #   scikit-learn
 soundfile==0.14.0 \
     --hash=sha256:0a6ae43c50c71b4e020cc55382925cb89451c1ed1a0c3d0f5d802da269226849 \

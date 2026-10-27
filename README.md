@@ -131,6 +131,7 @@ and ideas, from which we copy no code, text or data.
 - John Makhoul, [Linear prediction: A tutorial review](https://doi.org/10.1109/PROC.1975.9792) (in copyright), Proceedings of the IEEE 1975: linear prediction for all-pole filter envelopes. Inspiration only.
 - Héctor Martel et al., [Probing Low-Level Acoustic Attribute Encoding in CLAP Audio Embeddings](https://arxiv.org/abs/2607.03806) (CC BY 4.0), DAFx 2026: centroid is not linearly decodable from CLAP.
 - Naotake Masuda and Daisuke Saito, [Quality Diversity for Synthesizer Sound Matching](https://dafx2020.mdw.ac.at/proceedings/papers/DAFx20in21_paper_46.pdf) (CC BY 3.0), DAFx 2021: log-spectral fitness and novelty-based diversity.
+- Matthias Mauch and Simon Dixon, [pYIN: A fundamental frequency estimator using probabilistic threshold distributions](https://doi.org/10.1109/ICASSP.2014.6853678) (in copyright), ICASSP 2014: the probabilistic YIN f0 track with its voiced flag and Viterbi decode. Inspiration only.
 - Kazuki Matsumoto and Kohei Yatabe, [Estimation of the number of unison and degree of detune of SuperSaw in subtractive synthesizers](https://web.tuat.ac.jp/~yatabe/papers/matsumoto_2022_9.pdf) (in copyright, free access), ASJ Autumn Meeting 2022: cost function for unison count and detune. Inspiration only.
 - Robert J. McAulay and Thomas F. Quatieri, [Speech analysis/Synthesis based on a sinusoidal representation](https://doi.org/10.1109/TASSP.1986.1164910) (in copyright), IEEE TASSP 1986: sinusoidal model and partial tracking. Inspiration only.
 - Christopher Mitcheltree and Hideki Koike, [SerumRNN: Step by Step Audio VST Effect Programming](https://arxiv.org/abs/2104.03876) (CC BY-NC-SA 4.0), EvoMUSART 2021: iterative one-block-at-a-time matching with a stop rule. Inspiration only.
@@ -252,6 +253,7 @@ and ideas, from which we copy no code, text or data.
 - [llama-cpp-2](https://github.com/utilityai/llama-cpp-rs) (MIT OR Apache-2.0): Rust binding facts for local audio language models.
 - [LTU](https://github.com/YuanGongND/ltu) (no license): audio language model judged weak on timbre attributes. Inspiration only.
 - [MERT](https://github.com/yizhilll/MERT) (Apache-2.0 code, CC BY-NC 4.0 weights): music embedding model, surveyed for pitch and reverb probes. Inspiration only.
+- [mir_eval](https://github.com/mir-evaluation/mir_eval) (MIT): the note-transcription matching rules, reimplemented in the evaluation matcher (rules only), and the reference scores of its golden cases.
 - [mlx-audio](https://github.com/Blaizzy/mlx-audio) (MIT): facts on running audio models with MLX.
 - [mlx-rs](https://github.com/oxiglade/mlx-rs) (MIT OR Apache-2.0): Rust MLX binding facts for the fallback plan.
 - [mod_discovery](https://github.com/christhetree/mod_discovery) (MPL-2.0): envelope and LFO control signals found with differentiable DSP. Inspiration only.

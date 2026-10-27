@@ -23,7 +23,7 @@ and `preset apply`, the unit types, the confidence type, the synth seam,
 the Vital read and write paths, stem intake, the note list with its masks
 and its MIDI reader, the signal core that the estimators share, and the
 report with the `stem` group and the spectrogram, the transcriber with its
-profiles, and the MIDI writer.
+profiles and its register detection, the f0 track, and the MIDI writer.
 
 ## Synth adapter seam
 
@@ -73,9 +73,12 @@ joins `READY` when its adapter lands.
   Lomb-Scargle periodogram.
 - `notes`: the note list that the transcriber and the MIDI reader produce
   and every layer reads. The transcriber runs the model once per stem and
-  decodes that run with the settings of a profile; the MIDI writer stores
-  a list as a format 0 file. It also holds the MIDI reader behind
-  `analyze --notes` and the harmonic masks built from the list.
+  decodes that run with the settings of a profile or of the register and
+  voicing detection; the f0 track feeds the detection and the note
+  contours, and the quiet-note guard drops notes in near-silent passages.
+  The MIDI writer stores a list as a format 0 file. It also holds the
+  MIDI reader behind `analyze --notes` and the harmonic masks built from
+  the list.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.
@@ -97,10 +100,12 @@ joins `READY` when its adapter lands.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
 - `xtask`: development tasks. It generates the man page and completions,
   fetches pinned datasets, runs the pinned golden-number generator and
-  checks its vectors, checks the credits, this code map, the Rust version
-  named in the docs and pull request descriptions, writes the release
-  version, regenerates the Vital registry data from a local checkout of
-  the open source, and generates the Vital test fixtures.
+  checks its vectors, scores the notes step on generated parts, checks
+  the lock file for the ONNX Runtime crate, checks the credits, this code
+  map and the Rust version named in the docs and pull request
+  descriptions, writes the release version, regenerates the Vital
+  registry data from a local checkout of the open source, and generates
+  the Vital test fixtures.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
   engine. It runs only as a separate Python process with `vita`.

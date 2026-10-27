@@ -54,6 +54,51 @@ layer estimators of later releases call [fact].
   included. The upstream NOTICE text ships in `THIRD-PARTY-LICENSES.html`
   with every release.
 
+## f0 track
+
+- One probabilistic YIN run covers the whole stem at 22050 Hz: frames of
+  2048 samples, a hop of 128 (5.8 ms), pitch bins of a tenth of a
+  semitone, from 25 Hz to 4200 Hz [fact]. The ceiling sits just above C8,
+  the top of the transcription model: with a 400 Hz ceiling every tone
+  above it read as a subharmonic [synthetic].
+- The copy the tracker reads is scaled to a peak of 1, because the
+  tracker treats a frame below a fixed energy as silence [fact]. A sine
+  bank at 30.87, 41.2 and 55 Hz reads within 20 cents with no octave
+  error [synthetic]. Glides of 150 and 400 ms rise within 5 % of their
+  true 10-90 % time; a 50 ms glide reads 35 ms against a true 40 ms
+  [synthetic].
+
+## Register and voicing
+
+- The detection sets the decode settings from a probe decode over the
+  model's whole range and the f0 track [fact].
+- Voicing: a part is polyphonic when 65 % or more of the probe notes start
+  within 50 ms of a note of another pitch class and end within 100 ms of
+  it, or within a quarter of the shorter note [proposal]. On the generated
+  set lines read 0.40 or less and pads 0.88 or more [synthetic]. An
+  octave-up ghost shares its note's pitch class and does not count, and
+  reverb tails do not end together [fact].
+- Register of a monophonic part: the 1st to 99th percentile of the voiced
+  f0 frames within 20 dB of a reference level, plus 2 semitones on each
+  side [proposal]. The reference is the 95th percentile of the voiced
+  frames' levels, so a short loud burst, ring or thump does not move it
+  [synthetic]. A polyphonic part takes the lowest and highest probe notes
+  instead, because the tracker reads a chord as one low common period
+  [synthetic].
+- When the f0 range holds fewer than 80 % of the loud probe notes that
+  sound alone for at least half their span, the range spans the probe
+  notes as well, so a misread f0 track cannot drop the part [proposal]. A
+  line plays one note at a time, so an octave-up ghost or bleed over the
+  line shares its span with another pitch and does not count [synthetic].
+- A monophonic part takes the minimum note length from the BPM; a
+  polyphonic part keeps the decoder's 127.7 ms [proposal].
+- Limit: bleed louder than -20 dB in a passage where the part rests still
+  widens the register, and its notes then fall inside the range
+  [synthetic]. Pass `--profile` for such a stem.
+- Limit: a line with an occasional held double stop reads as monophonic,
+  and the upper note of the stop can fall outside the range [synthetic].
+  Pass `--profile pad` for such a stem.
+
 ## The stem
 
 - Mid and side are $M = (L + R) / 2$ and $S = (L - R) / 2$ [fact]. A

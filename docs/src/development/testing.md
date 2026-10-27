@@ -180,6 +180,12 @@ unit test with the input bytes inline, next to the code it broke.
   recipe file. The same job runs `cargo xtask check-no-ort`, which fails
   when `Cargo.lock` holds the ONNX Runtime crate of the transcription
   model.
+- `cargo run --release -p xtask -- eval` scores the notes step on generated
+  parts with known notes and prints its tables. It stays local, renders
+  its audio on each run and commits nothing. Run it as a release build:
+  the f0 tracker's generic code compiles at our crate's level, so a debug
+  run is about 55 times slower. `--part TEXT` runs the matching parts and
+  prints their notes.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

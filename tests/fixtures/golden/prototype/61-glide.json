@@ -1,0 +1,71 @@
+{
+ "description": "10-90 % rise time of 7-semitone linear saw glides read by librosa pYIN.",
+ "generator": "xtask/golden/generate.py:glide_issue_table",
+ "issue": 61,
+ "issue_figures": {
+  "figures": {
+   "150.0": 116.0,
+   "400.0": 319.0,
+   "50.0": 29.0
+  },
+  "reproduced": true,
+  "rows": {
+   "150.0": true,
+   "400.0": true,
+   "50.0": true
+  }
+ },
+ "name": "61-glide",
+ "recipe": {
+  "glides": {
+   "glide_ms": [
+    50.0,
+    150.0,
+    400.0
+   ],
+   "hold_s": 0.5,
+   "rise": "time between the first voiced frames above 10 % and 90 % of the step, in semitones over the start pitch",
+   "semitones": 7.0,
+   "signal": "0.5 * band-limited saw, harmonic h at 1/h below the Nyquist frequency of the top pitch; phase is the running sum of f / rate; pitch linear in semitones over the glide",
+   "start_hz": 110.0
+  },
+  "note": "the #61 method: frame 2048, hop 128, fmin 30 Hz; the issue states no fmax, so the #61 track ceiling of 400 Hz is used",
+  "settings": {
+   "center": true,
+   "fmax_hz": 400.0,
+   "fmin_hz": 30.0,
+   "frame_length": 2048,
+   "hop_length": 128,
+   "pad_mode": "constant",
+   "resolution": 0.1,
+   "sample_rate": 22050
+  },
+  "tolerance": "a rise is a whole number of hops (5.8 ms), so a row reproduces when it lies within one hop of the issue figure"
+ },
+ "rounding": "the issue prints whole milliseconds",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 5.804988662131519,
+  "rel": 0.0
+ },
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "150.0": {
+   "rise_ms": 116.09977324263039,
+   "true_rise_ms": 120.0
+  },
+  "400.0": {
+   "rise_ms": 319.27437641723355,
+   "true_rise_ms": 320.0
+  },
+  "50.0": {
+   "rise_ms": 23.219954648526077,
+   "true_rise_ms": 40.0
+  }
+ }
+}
