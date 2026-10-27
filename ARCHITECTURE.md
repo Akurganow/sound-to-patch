@@ -91,6 +91,8 @@ joins `READY` when its adapter lands.
   version, regenerates the Vital registry data from a local checkout of
   the open source, and generates the Vital test fixtures.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
+- `tools/vita`: the load check that loads written presets in the open Vital
+  engine. It runs only as a separate Python process with `vita`.
 
 ## Invariants
 

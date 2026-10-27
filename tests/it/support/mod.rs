@@ -10,6 +10,7 @@ pub(crate) mod golden;
 pub(crate) mod memory;
 pub(crate) mod rng;
 pub(crate) mod signals;
+pub(crate) mod vita;
 
 use std::panic::{self, AssertUnwindSafe};
 

@@ -10,7 +10,7 @@ use sound_to_patch::preset::registry::{ParamKind, registry_for};
 use sound_to_patch::preset::{ApplyRequest, apply_file, inspect};
 use sound_to_patch::synth::{Synth, SynthArg};
 
-use crate::support::apply::{TWO_EDITS, changed_keys, run, settings, template, write};
+use crate::support::apply::{THREE_EDITS, changed_keys, run, settings, template, write};
 use crate::support::for_each_ready_synth;
 
 #[test]
@@ -191,9 +191,9 @@ fn an_unverified_effect_order_is_refused() {
 }
 
 #[test]
-fn a_second_inspect_shows_exactly_the_two_edits() {
+fn a_second_inspect_shows_exactly_the_three_edits() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let template = dir.path().join("Init.vital");
     fs::write(
         &template,
@@ -227,17 +227,23 @@ fn a_second_inspect_shows_exactly_the_two_edits() {
                 .trim_end_matches(':')
         })
         .collect();
-    // The two edits, plus the name the output file gives the preset.
+    // The three edits, plus the name the output file gives the preset.
     assert_eq!(
         names,
-        ["name", "preset_name", "env_1_attack", "filter_1_cutoff"]
+        [
+            "name",
+            "preset_name",
+            "env_1_attack",
+            "filter_1_cutoff",
+            "filter_1_on"
+        ]
     );
 }
 
 #[test]
 fn the_output_keeps_the_template_stamp() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let builtin = format_for(Synth::Vital)
         .unwrap()
         .template()
@@ -254,8 +260,9 @@ fn the_output_keeps_the_template_stamp() {
         "{summary}"
     );
     assert!(
-        summary
-            .contains("warning: the template is stamped 1.5.5, newer than the stable build 1.0.7"),
+        summary.contains(
+            "warning: the template is stamped 1.5.5, which the stable build 1.0.7 refuses"
+        ),
         "{summary}"
     );
     let root: Value = serde_json::from_slice(&fs::read(&out).unwrap()).unwrap();
@@ -266,7 +273,7 @@ fn the_output_keeps_the_template_stamp() {
 #[test]
 fn an_old_template_is_refused_with_its_stamp() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let builtin = format_for(Synth::Vital)
         .unwrap()
         .template()
@@ -286,7 +293,7 @@ fn an_old_template_is_refused_with_its_stamp() {
 #[test]
 fn the_template_and_the_edit_list_are_never_overwritten() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let builtin = format_for(Synth::Vital)
         .unwrap()
         .template()
@@ -325,7 +332,7 @@ fn the_template_and_the_edit_list_are_never_overwritten() {
 #[test]
 fn an_existing_output_is_replaced_only_with_force() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let out = write(dir.path(), "Mine.vital", "keep me");
     let message = run(&edits, &out, None).unwrap_err();
     assert!(
@@ -352,7 +359,7 @@ fn an_existing_output_is_replaced_only_with_force() {
 #[test]
 fn a_failed_write_is_an_output_error_and_leaves_no_file() {
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", THREE_EDITS);
     let out = dir.path().join("missing").join("Out.vital");
     let message = run(&edits, &out, None).unwrap_err();
     assert!(message.starts_with("cannot write "), "{message}");

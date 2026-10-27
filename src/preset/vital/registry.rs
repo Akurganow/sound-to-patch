@@ -223,6 +223,22 @@ fn spec(
         evidence.push_str("; the law is confirmed in the value box of Vital ");
         evidence.push_str(RETAIL_BUILD);
     }
+    let rendered = RENDERED.contains(&key.as_str());
+    if rendered {
+        evidence.push_str("; the law is confirmed by a render on the ");
+        evidence.push_str(OPEN_ENGINE);
+    }
+    // Retail 1.0.7 saved every created control at its default. That
+    // confirms the key and the default only; the range is the open
+    // engine's, and the law is the source's unless the evidence says more.
+    if !legacy {
+        evidence.push_str(if ENGINE_DIFFERS.contains(&key.as_str()) {
+            "; the open engine reports a different range or labels"
+        } else {
+            "; the open engine reports the same range"
+        });
+    }
+    let verified_on = (!legacy).then(|| Build(RETAIL_BUILD.to_owned()));
     Ok(ParamSpec {
         key,
         kind: control.kind,
@@ -232,14 +248,14 @@ fn spec(
         law,
         label,
         choices: control.choices.clone(),
-        provenance: match (displayed, note.is_some()) {
-            (true, _) => Provenance::Measured,
-            (false, true) => Provenance::Interim,
-            (false, false) => Provenance::FromFacts,
+        provenance: match (displayed, rendered, note.is_some()) {
+            (true, _, _) | (false, true, false) => Provenance::Measured,
+            (false, _, true) => Provenance::Interim,
+            (false, false, false) => Provenance::FromFacts,
         },
         evidence,
         first_build: Some(Build(since)),
-        verified_on: displayed.then(|| Build(RETAIL_BUILD.to_owned())),
+        verified_on,
         tuning_note: note.map(str::to_owned),
         legacy,
     })
@@ -254,6 +270,41 @@ const DISPLAYED: [&str; 4] = [
     "filter_1_cutoff",
     "osc_1_unison_detune",
     "portamento_time",
+];
+
+/// The engine the render probes of #179 ran on: the open 1.0.x engine
+/// through the `vita` 0.1.0 binding.
+pub const OPEN_ENGINE: &str = "open engine 1.0.x (vita 0.1.0)";
+
+/// Keys whose range or menu labels the open engine reports differently
+/// from the source table. Their ranges stay unconfirmed until a retail
+/// check.
+const ENGINE_DIFFERS: [&str; 9] = [
+    // The binding counts the labels from the range start; the app's
+    // slider indexes them by the value itself.
+    "delay_aux_tempo",
+    "delay_tempo",
+    // The table holds 10 values and 5 labels.
+    "filter_1_style",
+    "filter_2_style",
+    "filter_fx_style",
+    // The table allows 14, which has no label; the engine reports 13.
+    "osc_1_destination",
+    "osc_2_destination",
+    "osc_3_destination",
+    "sample_destination",
+];
+
+/// Controls whose law a render on the open engine confirmed: the level is
+/// the square of the stored value, and the outer unison offset is
+/// `detune_range * detune^2` cents.
+const RENDERED: [&str; 6] = [
+    "osc_1_level",
+    "osc_2_level",
+    "osc_3_level",
+    "osc_1_unison_detune",
+    "osc_2_unison_detune",
+    "osc_3_unison_detune",
 ];
 
 /// The later of two build texts.
@@ -365,6 +416,42 @@ mod tests {
     /// The physical value of a stored value, as a plain number.
     fn physical(key: &str, stored: f64) -> f64 {
         spec(key).physical(stored).unwrap().get()
+    }
+
+    #[test]
+    fn the_retail_build_confirms_every_created_key_and_default() {
+        let registry = &vital().registry;
+        let verified = registry
+            .iter()
+            .filter(|spec| {
+                spec.verified_on
+                    .as_ref()
+                    .is_some_and(|build| build.0 == RETAIL_BUILD)
+            })
+            .count();
+        assert_eq!(verified, 794 - 22);
+        let same = registry
+            .iter()
+            .filter(|spec| {
+                spec.evidence
+                    .ends_with("the open engine reports the same range")
+            })
+            .count();
+        assert_eq!(same, 794 - 22 - ENGINE_DIFFERS.len());
+        for key in ENGINE_DIFFERS {
+            assert!(
+                spec(key).evidence.ends_with("a different range or labels"),
+                "{key}"
+            );
+        }
+        for key in RENDERED {
+            assert_eq!(spec(key).provenance, Provenance::Measured, "{key}");
+            assert!(
+                spec(key).evidence.contains("confirmed by a render"),
+                "{key}"
+            );
+        }
+        assert!(spec("sub_on").verified_on.is_none());
     }
 
     #[test]
@@ -708,7 +795,6 @@ mod tests {
             "filter_2_cutoff",
             "env_1_attack",
             "lfo_1_frequency",
-            "osc_1_level",
             "volume",
             "osc_1_tune",
             "filter_1_model",

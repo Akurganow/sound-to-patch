@@ -1,6 +1,6 @@
 # An existing output is refused without `--force`.
 bin.name = "sound-to-patch"
-args = ["preset", "apply", "tests/cmd/data/two-edits.json", "--template", "tests/fixtures/vital/minimal.vital", "-o", "tests/fixtures/vital/marks.vital"]
+args = ["preset", "apply", "tests/cmd/data/three-edits.json", "--template", "tests/fixtures/vital/minimal.vital", "-o", "tests/fixtures/vital/marks.vital"]
 status.code = 1
 stdout = ""
 stderr = """

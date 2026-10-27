@@ -6,8 +6,9 @@ the target synths, and Vital comes first. The project is MIT-licensed, see
 [LICENSE](LICENSE).
 
 The project is at an early release. `sound-to-patch preset inspect` prints
-the header and the decoded settings of a Vital preset. The commands of both
-paths arrive in later releases.
+the header and the decoded settings of a Vital preset, and
+`sound-to-patch preset apply` writes a Vital preset from an edit list. The
+analysis and the text path arrive in later releases.
 
 Vital and Serum 2 are trademarks of their owners. This project is not
 affiliated with or endorsed by them.
@@ -26,6 +27,30 @@ target/debug/sound-to-patch --version
 The last command prints `sound-to-patch` and the version. The tools, the
 commit hook and the checks for contributing are in
 [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Quick start
+
+Write a Vital preset from an edit list of three controls, then read it back.
+The commands run from the repository root, with `target/debug` on your
+`PATH`. `--force` replaces the file of an earlier run:
+
+```console
+$ sound-to-patch preset apply tests/cmd/data/three-edits.json -o target/Pluck.vital --force
+wrote target/Pluck.vital ("Pluck") from built-in default
+  build 1.0.6, kept from the template
+  set filter_1_on = on, stored 1.0
+  set filter_1_cutoff = 1046.502261 Hz, stored 83.99999999674434
+  set env_1_attack = 1 s, stored 1.0
+
+$ sound-to-patch preset inspect target/Pluck.vital
+build         1.0.6
+name          Pluck
+...
+
+```
+
+The [guide](https://akurganow.github.io/sound-to-patch/guide/preset.html)
+explains each step and how to load the file in Vital.
 
 ## Credits
 

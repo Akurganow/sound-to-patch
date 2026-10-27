@@ -21,3 +21,4 @@ mod stft;
 #[cfg(test)]
 mod support;
 mod synth;
+mod vita;

@@ -566,7 +566,8 @@ pub struct ParamSpec {
     pub evidence: String,
     /// The first build that has the control.
     pub first_build: Option<Build>,
-    /// The build where a load check or a probe confirmed the entry.
+    /// The build where a load check or a probe confirmed the key and its
+    /// default. A confirmed range or law is named in `evidence`.
     pub verified_on: Option<Build>,
     /// How to tune an interim control by ear and what to hear.
     pub tuning_note: Option<String>,

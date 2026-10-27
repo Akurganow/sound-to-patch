@@ -89,13 +89,15 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
     }
     let stamp = root.get("synth_version").and_then(Value::as_str);
     match stamp.map(str::parse::<VitalVersion>) {
+        // The load gate compares only the major and minor (`load_save.cpp`
+        // of 1.0.6), so 1.0.8 loads in 1.0.7 and gets no warning.
         Some(Ok(version))
             if RETAIL_BUILD
                 .parse::<VitalVersion>()
-                .is_ok_and(|retail| version > retail) =>
+                .is_ok_and(|retail| !version.accepted_by(&retail)) =>
         {
             checks.push(warning(
-                format!("the template is stamped {version}, newer than the stable build {RETAIL_BUILD}"),
+                format!("the template is stamped {version}, which the stable build {RETAIL_BUILD} refuses"),
                 format!(
                     "The output keeps the stamp, and Vital {RETAIL_BUILD} refuses a newer major or minor; pass a template saved by the build that loads the file"
                 ),
@@ -416,7 +418,8 @@ mod tests {
             [
                 (
                     Severity::Warning,
-                    "the template is stamped 1.5.5, newer than the stable build 1.0.7".to_owned()
+                    "the template is stamped 1.5.5, which the stable build 1.0.7 refuses"
+                        .to_owned()
                 ),
                 (
                     Severity::Warning,
@@ -424,8 +427,11 @@ mod tests {
                 )
             ]
         );
-        let stable =
-            format!(r#"{{"synth_version":"1.0.7","settings":{{"sample":{{}},{full_shapes}}}}}"#);
-        assert_eq!(texts(checks(&stable)), []);
+        for stamp in ["1.0.7", "1.0.8", "1.0.99"] {
+            let patch = format!(
+                r#"{{"synth_version":"{stamp}","settings":{{"sample":{{}},{full_shapes}}}}}"#
+            );
+            assert_eq!(texts(checks(&patch)), [], "{stamp}");
+        }
     }
 }

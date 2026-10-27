@@ -25,7 +25,7 @@ mod template;
 mod writers;
 
 pub use codec::{VitalFormat, VitalModel};
-pub use registry::EngineScale;
+pub use registry::{EngineScale, OPEN_ENGINE};
 pub use template::VitalTemplate;
 pub use writers::{
     FRAME_BASE64_CHARS, FRAME_SAMPLES, Keyframe, LfoShape, MAX_LFO_POINTS, MAX_POSITION,
@@ -33,11 +33,15 @@ pub use writers::{
 };
 
 /// The `synth_version` stamp of files built from the built-in template:
-/// the version of the open source. A load check on the retail app settles
-/// the final stamp.
+/// the version of the open source.
+///
+/// Stable retail 1.0.7 loads it, since the gate compares only major and
+/// minor. Builds from 1.5 on are unchecked.
 pub const DEFAULT_STAMP: &str = "1.0.6";
 
-/// The stable retail build that written files are checked against.
+/// The stable retail build that written files are checked against: the
+/// load check of #181 ran on it. Its saved default state holds every
+/// created control at the registry default.
 pub const RETAIL_BUILD: &str = "1.0.7";
 
 /// Keys that retail builds from 1.5 on write and the open source cannot
@@ -111,7 +115,7 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
     velocity: VelocityRule {
         default_track: Percent::from_const(0.0),
         amp_path_power: 2,
-        provenance: Provenance::Interim,
+        provenance: Provenance::Measured,
     },
     bend_range_default: Semitones::from_const(2.0),
 };
