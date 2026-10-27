@@ -598,6 +598,19 @@ pub(crate) fn scan(model: &VitalModel, edited: &[&str]) -> Result<Vec<String>, F
             ));
         }
     }
+    for key in edited {
+        if let Some(switch) = module_switch(key)
+            && switch != *key
+            && effective(settings, &switch) == 0.0
+        {
+            let warning = format!(
+                "{key} is edited, but its module is off ({switch} = 0), so the edit is not heard; set {switch} to on"
+            );
+            if !warnings.contains(&warning) {
+                warnings.push(warning);
+            }
+        }
+    }
     for (filter, targets) in [(1, [0.0, 2.0]), (2, [1.0, 2.0])] {
         if effective(settings, &format!("filter_{filter}_on")) == 0.0 {
             continue;
@@ -960,6 +973,24 @@ mod tests {
         assert_eq!(warnings.len(), 2, "{warnings:?}");
         assert!(warnings[0].contains("filter_2_on = 0"));
         assert!(warnings[1].contains("reverb_on = 0"));
+        // An edit of a control whose module is off is not heard; the
+        // switch itself and a module that is on give no warning.
+        let warnings = scan(
+            &model,
+            &[
+                "filter_2_cutoff",
+                "filter_2_cutoff",
+                "filter_2_on",
+                "osc_1_level",
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            warnings[2..],
+            [
+                "filter_2_cutoff is edited, but its module is off (filter_2_on = 0), so the edit is not heard; set filter_2_on to on"
+            ]
+        );
         model.set("filter_2_on", Stored::Float(1.0)).unwrap();
         let warnings = scan(&model, &[]).unwrap();
         assert!(

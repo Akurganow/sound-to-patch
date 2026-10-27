@@ -58,8 +58,8 @@ pub fn unison_outer_offset(detune_range: f64, detune: f64) -> Result<Cents, Rang
 /// `t = (2i + bump) / max(1, voices - 1)`, with `bump` 1 for an even count.
 /// Its offset is `power_scale(t, power)`, one voice up and one down; an odd
 /// count puts one voice at the centre. Renders on the open engine confirm
-/// the offsets for 2, 3, 4 and 8 voices at powers 0 and 1.5 within 0.02
-/// cents.
+/// the offsets for 4 and 8 voices at powers 0 and 1.5 within 0.03 cents.
+/// Odd counts are not rendered.
 #[must_use]
 pub fn unison_offsets(voices: u8, power: f64) -> Vec<f64> {
     let n = usize::from(voices.max(1));
@@ -99,7 +99,8 @@ pub struct UnisonGains {
 /// `ceil(voices / 2)`. A gain belongs to a pair of voices, which share it
 /// equally; the centre gain goes to the centre voice of an odd count, or to
 /// the innermost pair of an even one. Renders on the open engine confirm
-/// this for 2 to 8 voices within 0.05 %.
+/// this for 3, 4, 5 and 8 voices within 0.001 of the single-voice
+/// amplitude.
 #[must_use]
 pub fn unison_gains(voices: u8, blend: f64) -> UnisonGains {
     let pairs = usize::from(voices).div_ceil(2);
@@ -258,6 +259,7 @@ mod tests {
         assert_relative_eq!(outer, 200.0);
         for (voices, power, rendered) in RENDERED_OFFSETS {
             let computed = unison_offsets(voices, power);
+            assert_eq!(computed.len(), rendered.len(), "{voices} voices");
             for (fraction, cents) in computed.iter().zip(rendered) {
                 assert!(
                     (fraction * outer - cents).abs() < 0.03,

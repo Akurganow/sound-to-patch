@@ -18,8 +18,8 @@ Every row names a build, a status and a source.
   - `open`: unknown.
 
 A row verified on the open engine is not verified on retail. The pinned
-retail build is stable 1.0.7. On 2026-10-26 the download page offered
-stable 1.0.7 and early access 1.6.4. The checks still open are listed under
+retail build is stable 1.0.7. The early-access build is 1.6.4 (reported).
+The checks still open are listed under
 [Open items](#open-items).
 
 ## File and top-level keys
@@ -102,19 +102,20 @@ source; the units, laws and provenance are ours.
 | Fact | Build | Status | Source |
 | :-- | :-- | :-- | :-- |
 | The open engine and 1.0.7 create exactly the 772 non-legacy controls. | open engine, 1.0.7 | verified | probe: key sets |
-| Ranges, defaults and the build that added each control match for 763 controls. These carry `verified_on = 1.0.7`. | open engine, 1.0.7 | verified | probe: control details and the 1.0.7 default state |
+| The 1.0.7 default state holds all 772 controls at the registry default. These carry `verified_on = 1.0.7`, which confirms the key and the default only. | 1.0.7 | verified | load check: the 1.0.7 default state |
+| The open engine reports the same range, default and first build as the registry for 763 controls; the other 9 are listed below. The registry evidence says which. | open engine | verified | probe: control details |
 | A filter cutoff follows $f = 8.1758 \cdot 2^{s/12}$ Hz: stored 66.86 shows about 390 Hz. | 1.0.7 | verified | probe: a UI edit read back from the saved file |
 | Display laws read and typed in the value box, each matching the registry law: `portamento_time` is $2^s$ seconds (0.5 s stores -1), `osc_1_unison_detune` is $s^2$ percent (25 % stores 5), `filter_1_cutoff` shows $s - 60$ semitones (12 stores 72), `distortion_drive` is $s$ dB (12 stores 12). The registry tags these four `measured`, with `verified_on = 1.0.7`. | 1.0.7 | verified | probe: values typed in the app and read back from the saved file |
 | A route amount shows in the destination's units, as the amount times the destination's stored span. On `filter_1_cutoff`, span 128, 64 semitones stores 0.5. `preset apply` converts a semitone amount the same way. | 1.0.7 | verified | probe: a value typed in the app; unit tests of the edit list |
 | An LFO tempo menu stores the index of its label: `2/1` is 5 and `1/4` is 8. | 1.0.7 | verified | probe: a UI edit read back from the saved file |
-| The macOS bundles of 1.0.7 are x86_64 only, checked with `lipo -archs` on 2026-10-26. A native arm64 plugin host cannot load them; the standalone app runs under Rosetta. | 1.0.7 | verified | probe 1 |
+| The macOS bundles of 1.0.7 are x86_64 only, checked with `lipo -archs` on 2026-10-26. A plugin host running natively on arm64 cannot load them. On Apple silicon an x86_64 app runs under Rosetta. | 1.0.7 | verified | probe 1; Rosetta is a platform fact |
 | `delay_tempo` and `delay_aux_tempo` show the menu label at the stored value itself. Value 4 is `4/1`. The `vita` binding counts from the range start instead and shows `Freeze`. | source 1.0.6 | checked | `synth_slider.cpp`; the binding differs |
 | `filter_*_style` has values 0 to 9 and five labels. | source 1.0.6 and open engine | verified | probe: control details |
 | `osc_*_destination` and `sample_destination` allow 0 to 14, but only 0 to 13 have labels. The open engine reports 13 as the top. | source 1.0.6 | checked | `synth_parameters.cpp`; the binding differs |
 | An oscillator level is the square of its stored value: $g = s^2$. | open engine | verified | render: halving the stored level quarters the amplitude |
 | The outer unison offset is `detune_range` times `unison_detune` squared, in cents. | open engine | verified | render: range 2 and detune 10 give 200 cents |
-| Unison voice offsets follow `laws::unison_offsets` for 2, 3, 4 and 8 voices at powers 0 and 1.5, within 0.02 cents. | open engine | verified | render, unit test `offsets_match_the_render` |
-| Unison gains follow `laws::unison_gains`. A gain belongs to a pair of voices, which share it equally. | open engine | verified | render, unit test `gains_match_the_render` |
+| Unison voice offsets follow `laws::unison_offsets` for 4 and 8 voices at powers 0 and 1.5, within 0.03 cents. Odd counts are not rendered. | open engine | verified | render, unit test `offsets_match_the_render` |
+| Unison gains follow `laws::unison_gains` for 3, 4, 5 and 8 voices, within 0.001 of the single-voice amplitude. A gain belongs to a pair of voices, which share it equally. | open engine | verified | render, unit test `gains_match_the_render` |
 | The voice gain is $(e \cdot \mathrm{lerp}(1, v, t) \cdot a)^2$, with envelope $e$, velocity $v$, velocity track $t$ and `voice_amplitude` $a$. | open engine | verified | render, unit test `the_amp_gain_squares_like_the_render` |
 | Laws tagged `interim` in the registry: resonance, filter drive, filter shape, distortion except `distortion_drive`, compressor, EQ, effect feedback, depth and mix, reverb, oscillator warp, curve powers, and the controls with no display unit. | source 1.0.6 | checked | `src/preset/vital/registry.rs`; each carries a tuning note |
 
@@ -169,7 +170,7 @@ The round trip read, write, read is checked for every fixture by
 | open engine (`vita` 0.1.0) | probes and load checks of ours |
 | stable 1.0.7 | probes and load checks of ours |
 | 1.5.3, 1.5.5 | sampled presets |
-| early access 1.6.4 | offered on the download page, not checked |
+| early access 1.6.4 | reported, not checked |
 
 ## Terms
 

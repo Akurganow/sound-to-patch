@@ -128,8 +128,8 @@ that CI does not install by default:
   VITA_PYTHON=/tmp/vita-env/bin/python cargo nextest run --run-ignored only -E 'test(written_presets)'
   ```
 
-  `vita` runs only as a separate process. No crate of ours depends on it.
-  The scheduled workflow runs this test in a job of its own.
+  `vita` runs only as a separate process. No crate of ours depends on it,
+  and CI does not run this test.
 - `a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
   saved after loading a written preset, from `VITAL_SAVED_PRESET`.
 

@@ -129,16 +129,16 @@ last sound without a dialog.
 
   | Check | Result |
   | :-- | :-- |
-  | A preset written from the two edits of the README quick start | loads; the attack shows 1 s and the note swells |
+  | A preset with the cutoff and attack edits of the README quick start | loads; the attack shows 1 s and the note swells |
   | The same file stamped `1.5.5`, `1.6.0` or `1.7.0` | refused: the stamp is newer than the app |
   | The same file with keys of later builds | loads |
   | Save it again from the app | every control kept |
 
   The [format page](../reference/formats/vital-preset.md#open-items) lists
   what is still open.
-- The 1.0.7 plugin bundles for macOS are Intel-only. The app runs on Apple
-  silicon under Rosetta, but a plugin host running natively on Apple
-  silicon cannot load the plugin.
+- The 1.0.7 macOS bundles are x86_64 only (`lipo -archs`, 2026-10-26). A
+  plugin host running natively on Apple silicon cannot load the plugin. On
+  Apple silicon, macOS runs an x86_64 app under Rosetta.
 - Presets saved by Vital 1.6 do not open in 1.5.
 - Factory presets, wavetables and samples cannot be shared. Do not share a
   preset that embeds them.

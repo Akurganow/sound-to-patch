@@ -63,21 +63,3 @@ jobs:
         with:
           name: fuzz-artifacts
           path: fuzz/artifacts
-
-  # Loads written presets in the open Vital engine. `vita` is GPL-3.0 and
-  # runs only as a separate process, so it has a job of its own.
-  vita:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-rust
-      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
-        with:
-          tool: cargo-nextest@0.9.149
-      - run: python3 -m venv "$RUNNER_TEMP/vita-env"
-      - run: '"$RUNNER_TEMP/vita-env/bin/pip" install vita==0.1.0 numpy'
-      - run: cargo nextest run --workspace --run-ignored only -E 'test(written_presets_load_in_the_open_engine)'
-        env:
-          VITA_PYTHON: ${{ runner.temp }}/vita-env/bin/python

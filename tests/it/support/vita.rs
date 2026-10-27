@@ -13,7 +13,7 @@ use sound_to_patch::preset::vital::{
 };
 use sound_to_patch::synth::Synth;
 
-use crate::support::apply::{TWO_EDITS, run, template, write};
+use crate::support::apply::{THREE_EDITS, run, template, write};
 
 /// The Python that has the `vita` package, from `VITA_PYTHON`.
 pub(crate) fn python() -> String {
@@ -74,23 +74,23 @@ fn sine(position: u16, harmonic: u16) -> Keyframe {
 
 /// The variants of the load check of #181, each one difference from the
 /// written base file, by name.
-pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
-    let edits = write(dir, "edits.json", TWO_EDITS);
+pub(crate) fn variants(dir: &Path) -> Vec<(String, PathBuf)> {
+    let edits = write(dir, "edits.json", THREE_EDITS);
     let base = dir.join("Bass.vital");
     run(&edits, &base, None).unwrap();
     let fresh = || vital(template(Synth::Vital).as_ref());
     let mut list = vec![
-        ("template", save(dir, "template.vital", &fresh())),
-        ("base", base.clone()),
+        ("template".to_owned(), save(dir, "template.vital", &fresh())),
+        ("base".to_owned(), base.clone()),
         (
-            "unknown keys",
+            "unknown keys".to_owned(),
             edit_json(&base, "unknown.vital", |root| {
                 root["settings"]["zz_unknown"] = 1.0.into();
                 root["zz_top"] = "x".into();
             }),
         ),
         (
-            "no name fields",
+            "no name fields".to_owned(),
             edit_json(&base, "nameless.vital", |root| {
                 let root = root.as_object_mut().unwrap();
                 root.remove("preset_name");
@@ -98,7 +98,7 @@ pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
             }),
         ),
         (
-            "retail-only keys",
+            "retail-only keys".to_owned(),
             edit_json(&base, "retail.vital", |root| {
                 let settings = &mut root["settings"];
                 settings["custom_warps"] = Value::Array(Vec::new());
@@ -111,7 +111,7 @@ pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
     ];
     for stamp in ["1.0.6", "1.0.9", "1.1.0", "1.5.5"] {
         list.push((
-            "stamp",
+            format!("stamp {stamp}"),
             edit_json(&base, &format!("stamp-{stamp}.vital"), |root| {
                 root["synth_version"] = stamp.into();
             }),
@@ -124,7 +124,7 @@ pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
             .unwrap();
     }
     list.push((
-        "a route from every source",
+        "a route from every source".to_owned(),
         save(dir, "routes.vital", &routes),
     ));
     let mut lfo = fresh();
@@ -144,7 +144,10 @@ pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
         },
     )
     .unwrap();
-    list.push(("an LFO of 100 points", save(dir, "lfo.vital", &lfo)));
+    list.push((
+        "an LFO of 100 points".to_owned(),
+        save(dir, "lfo.vital", &lfo),
+    ));
     for (name, count) in [
         ("a wavetable of 1 keyframe", 1_u16),
         ("a wavetable of 257 keyframes", 257),
@@ -160,7 +163,10 @@ pub(crate) fn variants(dir: &Path) -> Vec<(&'static str, PathBuf)> {
                 },
             )
             .unwrap();
-        list.push((name, save(dir, &format!("table-{count}.vital"), &model)));
+        list.push((
+            name.to_owned(),
+            save(dir, &format!("table-{count}.vital"), &model),
+        ));
     }
     list
 }

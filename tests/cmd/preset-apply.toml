@@ -1,10 +1,12 @@
-# Two edits on the routes fixture; the output is named after its file.
+# Three edits on the routes fixture, whose filter is already on; the output
+# is named after its file.
 # `--force` replaces the file of an earlier run.
 bin.name = "sound-to-patch"
-args = ["preset", "apply", "tests/cmd/data/two-edits.json", "--template", "tests/fixtures/vital/routes.vital", "-o", "target/Bass.vital", "--force"]
+args = ["preset", "apply", "tests/cmd/data/three-edits.json", "--template", "tests/fixtures/vital/routes.vital", "-o", "target/Bass.vital", "--force"]
 stdout = """
 wrote target/Bass.vital ("Bass") from tests/fixtures/vital/routes.vital
   build 1.0.6, kept from the template
   set filter_1_cutoff = 1046.502261 Hz, stored 83.99999999674434
   set env_1_attack = 1 s, stored 1.0
+  skipped filter_1_on: equals the template
 """

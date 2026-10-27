@@ -2,6 +2,11 @@
   "synth": "vital",
   "edits": [
     {
+      "param": "filter_1_on",
+      "value": true,
+      "reason": "the cutoff is heard only with the filter on"
+    },
+    {
       "param": "filter_1_cutoff",
       "value": "1046.502261 Hz",
       "reason": "cutoff near C6"

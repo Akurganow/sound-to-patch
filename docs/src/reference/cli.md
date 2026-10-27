@@ -124,8 +124,9 @@ The output file:
 - must not lie inside Vital's own `Factory` folder.
 
 The output keeps the template's stamp, and the summary prints it. A stamp
-newer than the stable build 1.0.7 gives a warning, since that build refuses
-a newer first or second number. A failed run leaves no file.
+with a newer first or second number than the stable build 1.0.7, such as
+1.1.0, gives a warning: that build refuses it. The load gate ignores the
+third number, so 1.0.8 gives none. A failed run leaves no file.
 
 ## The edit list
 

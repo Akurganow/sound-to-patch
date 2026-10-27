@@ -7,7 +7,7 @@ use std::fs;
 use sound_to_patch::preset::format::{PresetFormat, Stored};
 use sound_to_patch::preset::vital::FORMAT;
 
-use crate::support::apply::{TWO_EDITS, run, write};
+use crate::support::apply::{run, write};
 use crate::support::vita::{load_check, variants};
 
 #[test]
@@ -15,6 +15,13 @@ use crate::support::vita::{load_check, variants};
 fn written_presets_load_in_the_open_engine() {
     let dir = tempfile::tempdir().unwrap();
     let variants = variants(dir.path());
+    let names: std::collections::HashSet<&str> =
+        variants.iter().map(|(name, _)| name.as_str()).collect();
+    assert_eq!(
+        names.len(),
+        variants.len(),
+        "every variant has its own name"
+    );
     let files: Vec<_> = variants.iter().map(|(_, path)| path.clone()).collect();
     let report = load_check(&files);
     assert_eq!(report.len(), variants.len());
@@ -22,6 +29,20 @@ fn written_presets_load_in_the_open_engine() {
         println!("{name}: {line}");
         assert_eq!(line["loaded"], true, "{name}");
         assert_eq!(line["changed"], serde_json::json!([]), "{name}");
+        // The engine drops only the keys it does not know, and adds none.
+        let dropped = match name.as_str() {
+            "unknown keys" => serde_json::json!(["zz_unknown"]),
+            "retail-only keys" => serde_json::json!([
+                "custom_warps",
+                "random_values",
+                "osc_1_spectral_morph_phase",
+                "osc_2_spectral_morph_phase",
+                "osc_3_spectral_morph_phase"
+            ]),
+            _ => serde_json::json!([]),
+        };
+        assert_eq!(line["dropped"], dropped, "{name}");
+        assert_eq!(line["added"], serde_json::json!([]), "{name}");
         assert_eq!(line["finite"], true, "{name}");
         assert!(line["rms"].as_f64().unwrap() > 1e-3, "{name} is silent");
         assert!(line["peak"].as_f64().unwrap() < 4.0, "{name} clips hard");
@@ -48,16 +69,19 @@ fn written_presets_load_in_the_open_engine() {
 #[test]
 #[ignore = "needs Vital and a saved copy of the written preset in VITAL_SAVED_PRESET"]
 fn a_preset_saved_by_vital_keeps_the_edits() {
+    // The edits of the re-save checked on 1.0.7. A new re-save must start
+    // from a file written from this list.
+    const RESAVE_EDITS: &str = r#"{"synth":"vital","edits":[{"param":"filter_1_cutoff","value":"1046.502261 Hz","reason":"cutoff near C6"},{"param":"env_1_attack","value":"1 s","reason":"slow swell"}]}"#;
     let saved_path = std::env::var("VITAL_SAVED_PRESET").unwrap_or_else(|_| {
         panic!(
             "set VITAL_SAVED_PRESET to the file Vital saved after loading the preset \
-             that `preset apply tests/cmd/data/two-edits.json -o Bass.vital` writes"
+             that `preset apply` writes to Bass.vital from the edits in RESAVE_EDITS"
         )
     });
     let saved =
         fs::read(&saved_path).unwrap_or_else(|error| panic!("cannot read {saved_path}: {error}"));
     let dir = tempfile::tempdir().unwrap();
-    let edits = write(dir.path(), "edits.json", TWO_EDITS);
+    let edits = write(dir.path(), "edits.json", RESAVE_EDITS);
     let out = dir.path().join("Bass.vital");
     run(&edits, &out, None).unwrap();
     let written = FORMAT.read(&fs::read(&out).unwrap()).unwrap();

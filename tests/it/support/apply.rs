@@ -42,7 +42,7 @@ pub(crate) fn write(dir: &Path, name: &str, text: &str) -> PathBuf {
     path
 }
 
-pub(crate) const TWO_EDITS: &str = r#"{"synth":"vital","edits":[{"param":"filter_1_cutoff","value":"1046.502261 Hz","reason":"cutoff near C6"},{"param":"env_1_attack","value":"1 s","reason":"slow swell"}]}"#;
+pub(crate) const THREE_EDITS: &str = r#"{"synth":"vital","edits":[{"param":"filter_1_on","value":true,"reason":"the cutoff is heard only with the filter on"},{"param":"filter_1_cutoff","value":"1046.502261 Hz","reason":"cutoff near C6"},{"param":"env_1_attack","value":"1 s","reason":"slow swell"}]}"#;
 
 pub(crate) fn run(edits: &Path, out: &Path, template: Option<&Path>) -> Result<String, String> {
     apply_file(&ApplyRequest {
