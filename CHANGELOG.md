@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.12.0](https://github.com/Akurganow/sound-to-patch/compare/cb3b871a47325baf0868db080a6bd4a7104397b2..v0.12.0) - 2026-10-27
+#### Features
+- (**notes**) track f0, detect the register and voicing, and evaluate the notes step (#241) - ([cb3b871](https://github.com/Akurganow/sound-to-patch/commit/cb3b871a47325baf0868db080a6bd4a7104397b2)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.11.0](https://github.com/Akurganow/sound-to-patch/compare/2fa0259b7f60a51587a45f3bda8234b7be6c041f..v0.11.0) - 2026-10-27
 #### Features
 - (**notes**) transcribe a stem and write a MIDI file from a note list (#239) - ([91f2765](https://github.com/Akurganow/sound-to-patch/commit/91f2765f407293e1ee69606d1a18550a52e7b9ad)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
