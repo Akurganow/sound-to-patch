@@ -5,10 +5,12 @@ turn a written description of a sound into a preset. Vital and Serum 2 are
 the target synths, and Vital comes first. The project is MIT-licensed, see
 [LICENSE](LICENSE).
 
-The project is at an early release. `sound-to-patch preset inspect` prints
-the header and the decoded settings of a Vital preset, and
-`sound-to-patch preset apply` writes a Vital preset from an edit list. The
-analysis and the text path arrive in later releases.
+The project is at an early release. `sound-to-patch analyze` reads a stem
+and writes a report of its level, spectrum, band edge and stereo image
+with a spectrogram image. `sound-to-patch preset inspect` prints the header
+and the decoded settings of a Vital preset, and `sound-to-patch preset
+apply` writes a Vital preset from an edit list. The layer estimators and
+the text path arrive in later releases.
 
 Vital and Serum 2 are trademarks of their owners. This project is not
 affiliated with or endorsed by them.
@@ -201,6 +203,8 @@ and ideas, from which we copy no code, text or data.
 - [audio.cpp](https://github.com/0xShug0/audio.cpp) (Apache-2.0): facts on running audio models locally in C++.
 - [auraloss](https://github.com/csteinmetz1/auraloss) (Apache-2.0): multi-resolution STFT loss, reimplemented in Rust.
 - [AutoSynth](https://github.com/Auto-Synth/AutoSynth) (Apache-2.0): perturb-and-render recipe with logged edit masks for the test bench.
+- [Basic Pitch](https://github.com/spotify/basic-pitch) (Apache-2.0): the upstream transcriber and decoder whose figures the notes epic reproduces.
+- [basic-pitch-rs](https://github.com/AThevon/basic-pitch-rs) (Apache-2.0): the input format of the transcription model, a 22050 Hz mono signal, which sets the resample target of the stem intake.
 - [BE-AFX](https://github.com/peladeaucome/ICASSP-2024-BEAFX-using-DDSP) (no license): blind effect-estimation auto-encoder with differentiable effects, read for design. Inspiration only.
 - [BEATs](https://github.com/microsoft/unilm/tree/master/beats) (MIT): audio tagger facts for the model survey.
 - [blind_rt60](https://github.com/nuniz/blind_rt60) (MIT): blind reverb-time formulas, reimplemented in Rust.
