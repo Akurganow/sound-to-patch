@@ -433,3 +433,24 @@ fn a_bad_note_file_names_the_file_and_the_cause() {
     assert!(message.contains("--bpm is 120"), "{message}");
     assert!(!out.exists(), "a failed run writes nothing");
 }
+
+/// The record of a transcription fits the `transcription` group of the
+/// schema, with the crate's parameter names.
+#[test]
+fn a_transcription_record_fits_the_schema() {
+    use sound_to_patch::notes::{MODEL_SHA256, Profile, TranscriptionRecord};
+    let bpm = Bpm::new(120.0).unwrap();
+    for profile in [None, Some(Profile::Bass)] {
+        let settings = profile.map_or(Profile::Lead.settings(bpm), |p| p.settings(bpm));
+        let record = serde_json::to_value(TranscriptionRecord::new(profile, &settings)).unwrap();
+        assert!(definition("transcription").is_valid(&record), "{record}");
+        assert_eq!(record["model_sha256"], MODEL_SHA256);
+        assert_eq!(record["profile"], profile.map_or("detected", Profile::name));
+        assert_eq!(
+            record["note_params"]["minimum_frequency"],
+            settings.range.minimum_frequency().get()
+        );
+        assert_eq!(record["note_params"]["include_pitch_bends"], false);
+        assert_eq!(record["note_params"].as_object().unwrap().len(), 10);
+    }
+}

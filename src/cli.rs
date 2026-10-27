@@ -9,6 +9,7 @@ use std::error::Error;
 use clap::{Parser, Subcommand};
 
 pub mod analyze;
+pub mod notes;
 pub mod preset;
 
 /// Arguments of the `sound-to-patch` command.
@@ -44,6 +45,13 @@ pub enum Command {
     ///
     /// Example: sound-to-patch analyze bass.wav --bpm 140
     Analyze(analyze::AnalyzeArgs),
+    /// Transcribe a stem and write notes.mid.
+    ///
+    /// The pitch range, the voicing and the minimum note length come from
+    /// the stem unless --profile sets them. Each step prints what it found.
+    ///
+    /// Example: sound-to-patch notes bass.wav --bpm 140
+    Notes(notes::NotesArgs),
     /// Read, inspect and write synth presets.
     Preset(preset::PresetArgs),
 }
@@ -92,6 +100,36 @@ impl Command {
                         .map(|path| line(format!("wrote {}", path.display())))
                         .collect(),
                     stderr: analysis
+                        .skipped
+                        .iter()
+                        .map(|packet| {
+                            line(format!(
+                                "warning: {packet} did not decode and became silence"
+                            ))
+                        })
+                        .collect(),
+                })
+            }
+            Self::Notes(args) => {
+                let report = crate::report::notes(
+                    &crate::report::NotesRequest {
+                        stem: &args.stem,
+                        bpm: args.bpm,
+                        profile: args.profile,
+                        out: args.out.as_deref(),
+                        force: args.force,
+                    },
+                    &crate::notes::Transcriber::new()?,
+                )?;
+                let line = |text: String| text + "\n";
+                Ok(Output {
+                    stdout: report
+                        .summary()
+                        .into_iter()
+                        .chain([format!("wrote {}", report.path.display())])
+                        .map(line)
+                        .collect(),
+                    stderr: report
                         .skipped
                         .iter()
                         .map(|packet| {

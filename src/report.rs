@@ -1,8 +1,10 @@
-//! The analysis report of a stem: `layers.json` and `spectrogram.png`.
+//! The outputs of a stem: `layers.json` and `spectrogram.png` from
+//! `analyze`, and `notes.mid` from `notes`.
 //!
 //! [`analyze`] decodes the stem, reads the note list if one is given, runs
 //! the stem estimators and the descriptors, and writes both files into the
-//! output folder. The schema of `layers.json` is committed as
+//! output folder. [`notes`] transcribes the stem and writes its notes into
+//! the same folder. The schema of `layers.json` is committed as
 //! `schemas/layers.schema.json`.
 
 use std::error::Error;
@@ -13,7 +15,10 @@ use std::path::{Path, PathBuf};
 use crate::audio::{self, BeatGrid, DecodeError, SkippedPacket, Stem};
 use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
-use crate::notes::{MidiError, read_midi};
+use crate::notes::{
+    DEFAULT_VELOCITY, MidiError, MidiWriteError, NotesError, Profile, QUIET_GATE, Transcriber,
+    Transcription, Velocities, read_midi, transcribe_stem, write_midi,
+};
 use crate::synth::Synth;
 use crate::units::{Bpm, Seconds};
 
@@ -27,6 +32,27 @@ pub use spectrogram::Spectrogram;
 pub const LAYERS_FILE: &str = "layers.json";
 /// The spectrogram file name.
 pub const SPECTROGRAM_FILE: &str = "spectrogram.png";
+/// The notes file name.
+pub const NOTES_FILE: &str = "notes.mid";
+
+/// The output folder of a stem: `out`, or `<stem folder>/<stem file stem>/`.
+fn out_dir(stem: &Path, out: Option<&Path>) -> PathBuf {
+    out.map_or_else(
+        || {
+            let name = stem.file_stem().unwrap_or(stem.as_os_str());
+            stem.with_file_name(name)
+        },
+        Path::to_path_buf,
+    )
+}
+
+/// The file name of a stem, as a report records it.
+fn source_of(stem: &Path) -> String {
+    stem.file_name()
+        .unwrap_or(stem.as_os_str())
+        .to_string_lossy()
+        .into_owned()
+}
 
 /// What [`analyze`] reads and where it writes.
 #[derive(Clone, Copy, Debug)]
@@ -49,23 +75,13 @@ impl AnalyzeRequest<'_> {
     /// Returns the output folder.
     #[must_use]
     pub fn out_dir(&self) -> PathBuf {
-        self.out.map_or_else(
-            || {
-                let name = self.stem.file_stem().unwrap_or(self.stem.as_os_str());
-                self.stem.with_file_name(name)
-            },
-            Path::to_path_buf,
-        )
+        out_dir(self.stem, self.out)
     }
 
     /// Returns the file name of the stem, as the report records it.
     #[must_use]
     pub fn source(&self) -> String {
-        self.stem
-            .file_name()
-            .unwrap_or(self.stem.as_os_str())
-            .to_string_lossy()
-            .into_owned()
+        source_of(self.stem)
     }
 }
 
@@ -115,7 +131,9 @@ pub fn analyze(request: &AnalyzeRequest<'_>) -> Result<Analysis, AnalyzeError> {
         stem.median_f0(),
         stem.hard_limited(),
     )?;
-    let json = layers_json(&stem, &descriptors, request.synth, &source)?;
+    // `analyze` reads a given note list or none; the transcriber joins it
+    // in a later release.
+    let json = layers_json(&stem, &descriptors, request.synth, &source, None)?;
     let png = Spectrogram::of(stem.mid(), stem.sample_rate()).to_png()?;
 
     std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
@@ -144,6 +162,140 @@ pub fn analyze(request: &AnalyzeRequest<'_>) -> Result<Analysis, AnalyzeError> {
     Ok(Analysis {
         layers,
         spectrogram,
+        skipped,
+    })
+}
+
+/// What [`notes`] reads and where it writes.
+#[derive(Clone, Copy, Debug)]
+pub struct NotesRequest<'a> {
+    /// The audio stem.
+    pub stem: &'a Path,
+    /// The tempo of the stem.
+    pub bpm: Bpm,
+    /// The profile that overrides detection, if any.
+    pub profile: Option<Profile>,
+    /// The output folder; by default `<stem folder>/<stem file stem>/`.
+    pub out: Option<&'a Path>,
+    /// Write next to a report of another stem.
+    pub force: bool,
+}
+
+/// What [`notes`] found and wrote.
+#[derive(Clone, Debug)]
+pub struct NotesReport {
+    /// The path of `notes.mid`.
+    pub path: PathBuf,
+    /// The notes step: the model run, the track, the settings and the
+    /// counts of each cleanup step.
+    pub transcription: Transcription,
+    /// The packets that did not decode and became silence.
+    pub skipped: Vec<SkippedPacket>,
+}
+
+impl NotesReport {
+    /// Returns the lines that tell what each step found and kept, in
+    /// order.
+    #[must_use]
+    pub fn summary(&self) -> Vec<String> {
+        let t = &self.transcription;
+        let detection = &t.detection;
+        let range = |range: crate::notes::PitchRange| {
+            format!("MIDI {} to {}", range.lowest().get(), range.highest().get())
+        };
+        let settings = &t.settings;
+        let steps = &t.steps;
+        vec![
+            format!(
+                "detected range: {}, from the {}",
+                range(detection.settings.range),
+                detection.source.name()
+            ),
+            format!(
+                "detected voicing: {}, chord share {:.2}",
+                detection.voicing.name(),
+                detection.chord_share
+            ),
+            format!("register window: {} dB", detection.window.get()),
+            format!(
+                "settings: {}, {}, minimum note {} frames ({:.1} ms), melodia {}",
+                t.profile
+                    .map_or_else(|| "detected".to_owned(), |p| format!("profile {p}")),
+                range(settings.range),
+                settings.min_note_frames,
+                settings.note_params().minimum_note_length_ms,
+                if settings.melodia { "on" } else { "off" }
+            ),
+            format!("decoded: {} notes", steps.decoded),
+            format!(
+                "octave check: {} notes, {} moved down an octave, {} flagged, {} unchecked",
+                steps.decoded, steps.octaves.moved, steps.octaves.flagged, steps.octaves.unchecked
+            ),
+            format!("ghost merge: {} notes", steps.merged),
+            format!("split join: {} notes", steps.joined),
+            format!(
+                "quiet-note guard: {} notes, {} dropped below {} dB",
+                steps.kept,
+                steps.quiet,
+                QUIET_GATE.get()
+            ),
+        ]
+    }
+}
+
+/// Transcribes a stem and writes `notes.mid` into the output folder,
+/// creating it.
+///
+/// The stem runs through [`transcribe_stem`] with the detected settings,
+/// or those of the profile. The file is written to a temporary sibling
+/// and renamed into place, and nothing else in the folder changes.
+///
+/// # Errors
+///
+/// Returns an [`AnalyzeError`] when the output folder is a file or holds
+/// the report of another stem (without `force`), when the stem cannot be
+/// decoded or transcribed, when it gives no note, or when the file cannot
+/// be written.
+pub fn notes(
+    request: &NotesRequest<'_>,
+    transcriber: &Transcriber,
+) -> Result<NotesReport, AnalyzeError> {
+    let dir = out_dir(request.stem, request.out);
+    let source = source_of(request.stem);
+    check_out_dir(&dir, &source, request.force)?;
+    let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
+    let skipped = decoded.skipped().to_vec();
+    let stem_audio = decoded.into_audio();
+    let transcription = transcribe_stem(
+        transcriber,
+        &stem_audio.mono(),
+        stem_audio.sample_rate(),
+        request.bpm,
+        request.profile,
+    )
+    .map_err(AnalyzeError::Transcription)?;
+    if transcription.notes.is_empty() {
+        return Err(AnalyzeError::NoNotes { source });
+    }
+    let bytes = write_midi(
+        &transcription.notes,
+        request.bpm,
+        Velocities::Constant(DEFAULT_VELOCITY),
+    )
+    .map_err(AnalyzeError::Midi)?;
+    std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
+        path: dir.clone(),
+        source,
+    })?;
+    let path = dir.join(NOTES_FILE);
+    let staged = stage(&dir, NOTES_FILE, &bytes)?;
+    std::fs::rename(&staged, &path).map_err(|source| AnalyzeError::Write {
+        path: path.clone(),
+        source,
+    })?;
+    Ok(NotesReport {
+        path,
+        transcription,
         skipped,
     })
 }
@@ -210,6 +362,15 @@ pub enum AnalyzeError {
         /// The stem of this run.
         source: String,
     },
+    /// The model run, a decode or the f0 track failed.
+    Transcription(NotesError),
+    /// The stem gave no note.
+    NoNotes {
+        /// The file name of the stem.
+        source: String,
+    },
+    /// The notes cannot be stored as MIDI.
+    Midi(MidiWriteError),
     /// An output file or folder cannot be written.
     Write {
         /// The path that failed.
@@ -246,6 +407,13 @@ impl fmt::Display for AnalyzeError {
                     path.display()
                 )
             }
+            Self::Transcription(error) => write!(f, "{error}"),
+            Self::NoNotes { source } => write!(
+                f,
+                "`{source}` gave no note, so nothing was written: it is silent, or no note sounds within {} dB of its loudest passage. Check the stem, or pass --profile bass|lead|pad",
+                QUIET_GATE.get()
+            ),
+            Self::Midi(error) => write!(f, "{error}"),
             Self::Write { path, source } => write!(
                 f,
                 "cannot write {}: {source}. Check the folder and its permissions, or pass another --out",
@@ -264,8 +432,13 @@ impl Error for AnalyzeError {
         match self {
             Self::Notes(error) => Some(error),
             Self::Decode(error) => Some(error),
+            Self::Transcription(error) => Some(error),
+            Self::Midi(error) => Some(error),
             Self::Write { source, .. } => Some(source),
-            Self::OutIsFile { .. } | Self::OtherSource { .. } | Self::Internal(_) => None,
+            Self::OutIsFile { .. }
+            | Self::OtherSource { .. }
+            | Self::NoNotes { .. }
+            | Self::Internal(_) => None,
         }
     }
 }

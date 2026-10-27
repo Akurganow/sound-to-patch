@@ -159,6 +159,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb3451e4cab45754c5e23241aef4dc22d31c2efb0f41b8b876e1f4fcd17c53ca"
 dependencies = [
+ "serde",
  "thiserror 2.0.21",
  "tract-onnx",
 ]

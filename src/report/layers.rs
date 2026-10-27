@@ -10,6 +10,7 @@ use crate::confidence::{Confidence, Estimate, NoSpread, Spread};
 use crate::dsp::{
     BAND_CONVENTION, Descriptors, FLATNESS_CONVENTION, LEVEL_CONVENTION, SHAPE_CONVENTION, Stats,
 };
+use crate::notes::TranscriptionRecord;
 use crate::synth::Synth;
 use crate::units::{Bpm, Correlation, Decibels, Degrees, Hz, Normalized, Ratio, Seconds};
 
@@ -22,8 +23,11 @@ quantiles by linear interpolation at q (n - 1) between the sorted values; a fram
 when its RMS lies within 40 dB of the loudest frame";
 
 /// Renders the report of a stem as pretty-printed JSON with a final
-/// newline. `source` is the stem's file name without its folder. The same
-/// stem always gives the same bytes.
+/// newline. The same stem always gives the same bytes.
+///
+/// `source` is the stem's file name without its folder, and
+/// `transcription` the record of the transcriber that gave the notes, or
+/// `None` when none ran.
 ///
 /// # Errors
 ///
@@ -34,13 +38,14 @@ pub fn layers_json(
     descriptors: &Descriptors,
     synth: Synth,
     source: &str,
+    transcription: Option<&TranscriptionRecord>,
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
         source,
         synth,
         stem: StemGroup::new(stem, descriptors),
-        transcription: (),
+        transcription,
         conventions: Conventions::new(descriptors.frame_len),
     };
     let mut text = serde_json::to_string_pretty(&report)?;
@@ -55,9 +60,8 @@ struct Layers<'a> {
     source: &'a str,
     synth: Synth,
     stem: StemGroup<'a>,
-    /// The transcriber's model and settings. No transcriber runs in this
-    /// release, and with `--notes` none runs at all, so it is `null`.
-    transcription: (),
+    /// The transcriber's model and settings, `null` when none ran.
+    transcription: Option<&'a TranscriptionRecord>,
     conventions: Conventions,
 }
 

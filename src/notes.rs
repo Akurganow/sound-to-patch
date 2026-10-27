@@ -22,15 +22,21 @@ use std::fmt;
 
 use crate::units::{Hz, MidiPitch, Seconds};
 
+mod cleanup;
 mod detect;
 mod mask;
 mod midi;
 mod profile;
 mod quiet;
+mod stem;
 mod track;
 mod transcribe;
 mod write;
 
+pub use cleanup::{
+    COPY_SHARE, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES, OCTAVE_TOLERANCE,
+    OctaveCheck, SPLIT_GAP, SPLIT_ONSET, check_octaves, join_splits, merge_overlaps,
+};
 pub use detect::{
     CHORD_OFFSET_WINDOW, CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, PROBE_HOLD_SHARE,
     REFERENCE_PERCENTILE, REGISTER_MARGIN, REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource,
@@ -43,6 +49,10 @@ pub use profile::{
     Profile, RangeError, min_note_frames,
 };
 pub use quiet::{QUIET_FRAME, QUIET_GATE, drop_quiet};
+pub use stem::{
+    CleanupSteps, NotesError, TRANSCRIBER_VERSION, Transcription, TranscriptionRecord, clean_up,
+    transcribe_stem,
+};
 pub use track::{
     PitchTrack, TRACK_FMAX, TRACK_FMIN, TRACK_FRAME, TRACK_HOP, TrackError, TrackFrame,
 };

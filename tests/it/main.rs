@@ -4,6 +4,8 @@
 #[cfg(test)]
 mod analytic;
 mod apply;
+#[cfg(test)]
+mod cleanup;
 mod cli;
 #[cfg(test)]
 mod decay;
