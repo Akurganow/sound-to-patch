@@ -28,8 +28,9 @@ pub use codec::{VitalFormat, VitalModel};
 pub use registry::{EngineScale, OPEN_ENGINE};
 pub use template::VitalTemplate;
 pub use writers::{
-    FRAME_BASE64_CHARS, FRAME_SAMPLES, Keyframe, LfoShape, MAX_LFO_POINTS, MAX_POSITION,
-    ROUTE_SOURCES, Wavetable, default_polarity,
+    EFFECT_ORDER, EFFECT_ORDERS, FRAME_BASE64_CHARS, FRAME_SAMPLES, Keyframe, LfoShape,
+    MAX_LFO_POINTS, MAX_POSITION, ROUTE_SOURCES, Wavetable, default_polarity, effect_order,
+    effect_order_code,
 };
 
 /// The `synth_version` stamp of files built from the built-in template:

@@ -201,10 +201,8 @@ impl PresetFormat for VitalFormat {
         writers::default_polarity(source)
     }
 
-    fn check_value(&self, key: &str, stored: f64) -> Result<(), FormatError> {
-        if key == "effect_chain_order" {
-            writers::check_effect_order(stored)?;
-        }
+    fn check_value(&self, _key: &str, _stored: f64) -> Result<(), FormatError> {
+        // The registry range covers every effect order code.
         Ok(())
     }
 
