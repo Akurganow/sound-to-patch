@@ -20,8 +20,8 @@ of a Vital preset, and `sound-to-patch preset apply` writes one from an
 edit list, as the [preset guide](guide/preset.md) shows. The layer
 estimators and the text path arrive in later releases.
 
-Vital and Serum 2 are trademarks of their owners. This project is not
-affiliated with or endorsed by them.
-
 The [API documentation](api/sound_to_patch/index.html) covers the library.
 The development chapters describe how the project is tested and released.
+
+Vital and Serum 2 are trademarks of their owners. This project is not
+affiliated with or endorsed by them.
