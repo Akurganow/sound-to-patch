@@ -200,6 +200,10 @@ impl Tally {
             let Some(profile) = right_profile(class) else {
                 continue;
             };
+            // A class with no part in the selection has nothing to compare.
+            if !self.by_class.contains_key(&(class, profile)) {
+                continue;
+            }
             let manual = self
                 .by_class
                 .get(&(class, profile))
@@ -269,16 +273,24 @@ impl Tally {
 pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
     let transcriber = Transcriber::new()?;
     let rate = SampleRate::new(RATE)?;
+    let parts: Vec<Part> = evaluation_set()
+        .into_iter()
+        .filter(|part| only.is_none_or(|text| part.name.contains(text)))
+        .collect();
+    if parts.is_empty() {
+        return Err(format!(
+            "no part name holds {:?}. Run `cargo xtask eval` without --part to list every part",
+            only.unwrap_or_default()
+        )
+        .into());
+    }
     println!("Scores per part (onset tolerance 50 ms, pitch 50 cents, offsets 20 % or 50 ms)\n");
     println!(
         "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>5}",
         "part", "settings", "est", "P", "R", "F1", "F1off", "F1pc", "oct", "F1g"
     );
     let mut tally = Tally::default();
-    for part in evaluation_set()
-        .iter()
-        .filter(|part| only.is_none_or(|text| part.name.contains(text)))
-    {
+    for part in &parts {
         tally.part(&transcriber, part, rate, only.is_some())?;
     }
     let worse = tally.verdict();
