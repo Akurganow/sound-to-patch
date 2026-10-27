@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.11.0](https://github.com/Akurganow/sound-to-patch/compare/2fa0259b7f60a51587a45f3bda8234b7be6c041f..v0.11.0) - 2026-10-27
+#### Features
+- (**notes**) transcribe a stem and write a MIDI file from a note list (#239) - ([91f2765](https://github.com/Akurganow/sound-to-patch/commit/91f2765f407293e1ee69606d1a18550a52e7b9ad)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.10.0](https://github.com/Akurganow/sound-to-patch/compare/2652bceb01fa290e25dbd76ca80dafbb3473ba6c..v0.10.0) - 2026-10-27
 #### Features
 - (**analyze**) add the analyze command with layers.json, its schema and the spectrogram (#236) - ([2652bce](https://github.com/Akurganow/sound-to-patch/commit/2652bceb01fa290e25dbd76ca80dafbb3473ba6c)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
