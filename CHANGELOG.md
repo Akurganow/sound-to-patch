@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.7.0](https://github.com/Akurganow/sound-to-patch/compare/0f243de0b3afbc83f0628f1233003a10ff9a5f20..v0.7.0) - 2026-10-27
+#### Features
+- (**preset**) verify Vital presets on the open engine and 1.0.7, and document them (#234) - ([0f243de](https://github.com/Akurganow/sound-to-patch/commit/0f243de0b3afbc83f0628f1233003a10ff9a5f20)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.6.0](https://github.com/Akurganow/sound-to-patch/compare/78147273d99bb76d62c17c466dcb3284be1cb6c2..v0.6.0) - 2026-10-26
 #### Features
 - (**preset**) write Vital presets with preset apply (#232) - ([7814727](https://github.com/Akurganow/sound-to-patch/commit/78147273d99bb76d62c17c466dcb3284be1cb6c2)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
