@@ -129,6 +129,7 @@ and ideas, from which we copy no code, text or data.
 - Hazounne Lee et al., [Wavespace: A Highly Explorable Wavetable Generator](https://arxiv.org/abs/2407.19862) (CC BY 4.0), arXiv 2024: wavetable descriptors such as brightness, richness, fullness, undulation and symmetry.
 - Ying-Shuo Lee et al., [Distortion Recovery: A Two-Stage Method for Guitar Effect Removal](https://arxiv.org/abs/2407.16639) (CC BY 4.0), DAFx 2024: two-stage restoration of overdrive and amp effects.
 - Yizhi Li et al., [MERT: Acoustic Music Understanding Model with Large-Scale Self-supervised Training](https://arxiv.org/abs/2306.00107) (CC BY-SA 4.0), ICLR 2024: music embedding architecture read for the model survey. Inspiration only.
+- N. R. Lomb, [Least-squares frequency analysis of unequally spaced data](https://doi.org/10.1007/BF00648343) (in copyright), Astrophysics and Space Science 1976: the periodogram for the gappy envelope track of note frames. Inspiration only.
 - John Makhoul, [Linear prediction: A tutorial review](https://doi.org/10.1109/PROC.1975.9792) (in copyright), Proceedings of the IEEE 1975: linear prediction for all-pole filter envelopes. Inspiration only.
 - Héctor Martel et al., [Probing Low-Level Acoustic Attribute Encoding in CLAP Audio Embeddings](https://arxiv.org/abs/2607.03806) (CC BY 4.0), DAFx 2026: centroid is not linearly decodable from CLAP.
 - Naotake Masuda and Daisuke Saito, [Quality Diversity for Synthesizer Sound Matching](https://dafx2020.mdw.ac.at/proceedings/papers/DAFx20in21_paper_46.pdf) (CC BY 3.0), DAFx 2021: log-spectral fitness and novelty-based diversity.
@@ -160,6 +161,7 @@ and ideas, from which we copy no code, text or data.
 - Hiroaki Sakoe and Seibi Chiba, [Dynamic programming algorithm optimization for spoken word recognition](https://doi.org/10.1109/TASSP.1978.1163055) (in copyright), IEEE TASSP 1978: dynamic time warping for aligning renders. Inspiration only.
 - S Sakshi et al., [MMAU: A Massive Multi-Task Audio Understanding and Reasoning Benchmark](https://arxiv.org/abs/2410.19168) (CC BY 4.0), arXiv 2024: perception, not reasoning, limits audio language models.
 - Amir Salimi et al., [Evaluating Sound Similarity Metrics for Differentiable, Iterative Sound-Matching](https://arxiv.org/abs/2506.22628) (CC BY 4.0), arXiv 2025: the case for several named distances.
+- Jeffrey D. Scargle, [Studies in astronomical time series analysis. II. Statistical aspects of spectral analysis of unevenly spaced data](https://doi.org/10.1086/160554) (in copyright), The Astrophysical Journal 1982: the normalised form of the Lomb periodogram. Inspiration only.
 - Ralph O. Schmidt, [Multiple emitter location and signal parameter estimation](https://doi.org/10.1109/TAP.1986.1143830) (in copyright), IEEE TAP 1986: MUSIC subspace method for line spectra. Inspiration only.
 - Manfred R. Schroeder, [New Method of Measuring Reverberation Time](https://doi.org/10.1121/1.1909343) (in copyright), JASA 1965: backward integration of decay curves. Inspiration only.
 - Xavier Serra and Julius O. Smith, [Spectral Modeling Synthesis: A Sound Analysis/Synthesis System Based on a Deterministic Plus Stochastic Decomposition](https://doi.org/10.2307/3680788) (in copyright), Computer Music Journal 1990: sines-plus-noise decomposition. Inspiration only.
@@ -188,6 +190,7 @@ and ideas, from which we copy no code, text or data.
 - Chin-Yun Yu et al., [Improving Inference-Time Optimisation for Vocal Effects Style Transfer with a Gaussian Prior](https://arxiv.org/abs/2505.11315) (arXiv non-exclusive license), WASPAA 2025: a preset-distribution prior for effect parameter search. Inspiration only.
 - Tsugumasa Yutani et al., [Wavetable Synthesis Using CVAE for Timbre Control Based on Semantic Label](https://arxiv.org/abs/2410.18628) (CC BY 4.0), APSIPA ASC 2024: wavetable generation from semantic labels.
 - Pavel Záviška et al., [A survey and an extensive evaluation of popular audio declipping methods](https://arxiv.org/abs/2007.07663) (CC BY-NC-SA 4.0), IEEE JSTSP 2021: declipping methods for clipped distortion. Inspiration only.
+- Mathias Zechmeister and Martin Kürster, [The generalised Lomb-Scargle periodogram](https://doi.org/10.1051/0004-6361:200811296) (in copyright), Astronomy & Astrophysics 2009: the floating-mean periodogram for the gated envelope of note frames. Inspiration only.
 - Haina Zhu et al., [MuQ: Self-Supervised Music Representation Learning with Mel Residual Vector Quantization](https://arxiv.org/abs/2501.01108) (CC BY-NC-SA 4.0), arXiv 2025: music embedding architecture read for the model survey. Inspiration only.
 
 ### Open-source projects

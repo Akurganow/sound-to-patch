@@ -57,7 +57,8 @@ joins `READY` when its adapter lands.
 
 - `audio`: stem intake. It decodes a file at its native rate with every
   channel kept, mixes to mono as the channel mean and resamples for a
-  consumer with a fixed rate.
+  consumer with a fixed rate. The `Stem` adds the beat grid and note
+  divisions, the band edge, the flat-top flag and the stereo screen.
 - `cast`: the audited numeric casts. Every `as` between number types goes
   through one function here, with its reason and a test.
 - `cli`: the command-line definition, one module per command. The binary
@@ -65,7 +66,9 @@ joins `READY` when its adapter lands.
   from the same tree.
 - `dsp`: the signal core: periodic windows, the centred STFT, the peak
   picker, active frames with median and interquartile range, the analytic
-  signal with the heterodyne, and decay fits by backward integration.
+  signal with the heterodyne, decay fits by backward integration, the stem
+  descriptors, the modulation spectrum with the division snap, and the
+  Lomb-Scargle periodogram.
 - `notes`: the note list that the transcriber and the MIDI reader produce
   and every layer reads, and the harmonic masks built from it.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is

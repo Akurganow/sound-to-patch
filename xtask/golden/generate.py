@@ -570,7 +570,8 @@ STEREO_RECIPE = {
     "sm_db": "20 log10(rms(S) / rms(M)), M = (L + R) / 2, S = (L - R) / 2; None when either RMS is 0",
     "ipd_deg": "8192-point centred Hann STFT, hop 2048; per frame, at the bin of the largest |L conj R| "
     "within 2 bins of h f0 for h = 1..20, abs(angle(L conj R)) in degrees, averaged with weights "
-    "|L conj R|; then the mean over frames whose mid RMS is within 40 dB of the loudest",
+    "|L conj R|; then the mean over frames whose RMS over both channels, sqrt((rms_L^2 + rms_R^2) / 2), "
+    "is within 40 dB of the loudest",
     "channel_scaling": "none; rows compare the raw channels",
 }
 
@@ -692,9 +693,11 @@ def stereo_stats(left, right, rate, f0):
     n_fft = 8192
     spec_l = librosa.stft(left, n_fft=n_fft, hop_length=n_fft // 4, window="hann", center=True, pad_mode="constant")
     spec_r = librosa.stft(right, n_fft=n_fft, hop_length=n_fft // 4, window="hann", center=True, pad_mode="constant")
-    frames_mid = librosa.util.frame(np.pad(mid, n_fft // 2), frame_length=n_fft, hop_length=n_fft // 4)
-    frame_rms = np.sqrt(np.mean(frames_mid**2, axis=0))
-    active = frame_rms >= frame_rms.max() * 10 ** (-40.0 / 20.0)
+    def rms(x):
+        frames = librosa.util.frame(np.pad(x, n_fft // 2), frame_length=n_fft, hop_length=n_fft // 4)
+        return np.sqrt(np.mean(frames**2, axis=0))
+    frame_rms = np.sqrt((rms(left) ** 2 + rms(right) ** 2) / 2.0)
+    active = (frame_rms > 0) & (frame_rms >= frame_rms.max() * 10 ** (-40.0 / 20.0))
     bin_hz = rate / n_fft
     per_frame = []
     for m in range(spec_l.shape[1]):
@@ -964,11 +967,128 @@ def crest_values():
     )
 
 
+STEREO_DELAY_RECIPE = {
+    "sample_rate": 44100,
+    "length": 88200,
+    "signal": "L = sin(2 pi f t), R = sin(2 pi f (t - delay))",
+    "frequency_hz": 200.0,
+    "delay_s": 0.001,
+    "method": "the ipd_deg of 47-stereo-screen with f0 = frequency_hz",
+}
+
+
+def stereo_delay():
+    r = STEREO_DELAY_RECIPE
+    rate, f, delay = r["sample_rate"], r["frequency_hz"], r["delay_s"]
+    t = times(rate, r["length"])
+    left = np.sin(2.0 * np.pi * f * t)
+    right = np.sin(2.0 * np.pi * f * (t - delay))
+    stats = stereo_stats(left, right, rate, f)
+    return document(
+        "stereo",
+        47,
+        "The cross-spectrum phase of a pure delay through the screen's STFT, against the "
+        "closed form 360 f delay.",
+        "stereo_delay",
+        ["python", "numpy", "librosa"],
+        r,
+        {
+            "pure_delay": {
+                "frequency_hz": f,
+                "delay_s": delay,
+                "ipd_deg": stats["ipd_deg"],
+                "closed_form_ipd_deg": 360.0 * f * delay,
+            }
+        },
+        {"abs": 0.05, "rel": 0.0},
+    )
+
+
+DESCRIPTOR_SIGNAL = {
+    "kind": "tones",
+    "sample_rate": 22050,
+    "length": 11025,
+    "tones": [
+        {"frequency_hz": 220.0 * h, "amplitude": 1.0 / h, "phase": 0.1 * h}
+        for h in range(1, 40)
+        if 220.0 * h < 11025.0
+    ],
+    "noise": {"seed": 54, "std": 0.003},
+}
+
+
+def descriptor_vectors():
+    r = DESCRIPTOR_SIGNAL
+    rate = r["sample_rate"]
+    n_fft = 1024
+    x = tones(r)
+    magnitude, freqs = spectral_frames(x, rate, n_fft)
+    band = (freqs >= 100.0) & (freqs <= 10000.0)
+    values = {
+        "frame_len": n_fft,
+        "centroid_hz": floats(librosa.feature.spectral_centroid(S=magnitude, sr=rate, n_fft=n_fft)[0]),
+        "spread_hz": floats(librosa.feature.spectral_bandwidth(S=magnitude, sr=rate, n_fft=n_fft, p=2)[0]),
+        "rolloff85_hz": floats(librosa.feature.spectral_rolloff(S=magnitude, sr=rate, n_fft=n_fft, roll_percent=0.85)[0]),
+        "rolloff95_hz": floats(librosa.feature.spectral_rolloff(S=magnitude, sr=rate, n_fft=n_fft, roll_percent=0.95)[0]),
+        "flatness": floats(librosa.feature.spectral_flatness(S=magnitude[band], power=1.0, amin=1e-5)[0]),
+    }
+    return document(
+        "descriptors",
+        54,
+        "Per-frame centroid, spread, rolloff and flatness on magnitude weights.",
+        "descriptor_vectors",
+        ["python", "numpy", "scipy", "librosa"],
+        {
+            "signal": r,
+            "frames": "1024-point centred Hann STFT, hop 256, zero padding, magnitude divided by the window sum",
+            "flatness_band_hz": [100.0, 10000.0],
+            "flatness_floor": 1e-5,
+        },
+        values,
+        {"abs": 1e-6, "rel": 1e-9},
+    )
+
+
+LOMB_RECIPE = {
+    "track_rate_hz": 200.0,
+    "duration_s": 8.0,
+    "signal": "1.5 + sin(2 pi 4 t + 0.4), kept while (t mod 1) < 0.5",
+    "frequencies": "0.2 Hz to 20 Hz in 0.01 Hz steps, passed to SciPy as angular frequency",
+    "fit": "floating mean: mean, sine and cosine fitted together per frequency (floating_mean=True); normalize=False",
+}
+
+
+def lomb_times_values():
+    t = np.arange(int(8.0 * 200)) / 200.0
+    keep = np.mod(t, 1.0) < 0.5
+    t = t[keep]
+    return t, 1.5 + np.sin(2.0 * np.pi * 4.0 * t + 0.4)
+
+
+def lomb_vectors():
+    t, y = lomb_times_values()
+    freqs = np.arange(20, 2001) * 0.01
+    power = scipy.signal.lombscargle(t, y, 2.0 * np.pi * freqs, normalize=False, floating_mean=True)
+    return document(
+        "lombscargle",
+        52,
+        "Lomb-Scargle power of a gated 4 Hz sinusoid with a mean offset.",
+        "lomb_vectors",
+        ["python", "numpy", "scipy"],
+        LOMB_RECIPE,
+        {"frequencies_hz": floats(freqs), "power": floats(power)},
+        {"abs": 1e-9, "rel": 1e-9},
+    )
+
+
 VECTORS = {
     "window": window_vectors,
     "stft": stft_vectors,
     "hilbert": hilbert_vectors,
     "decay": decay_closed_forms,
+    "stereo": stereo_delay,
+    "descriptors": descriptor_vectors,
+    "lombscargle": lomb_vectors,
     "prototype/48-peak-accuracy": peak_accuracy,
     "prototype/53-noise-floor": decay_noise_floor,
     "prototype/53-release-reverb": decay_release_reverb,

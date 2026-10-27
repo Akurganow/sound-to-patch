@@ -1,0 +1,31 @@
+{
+ "description": "The cross-spectrum phase of a pure delay through the screen's STFT, against the closed form 360 f delay.",
+ "generator": "xtask/golden/generate.py:stereo_delay",
+ "issue": 47,
+ "name": "stereo",
+ "recipe": {
+  "delay_s": 0.001,
+  "frequency_hz": 200.0,
+  "length": 88200,
+  "method": "the ipd_deg of 47-stereo-screen with f0 = frequency_hz",
+  "sample_rate": 44100,
+  "signal": "L = sin(2 pi f t), R = sin(2 pi f (t - delay))"
+ },
+ "tolerance": {
+  "abs": 0.05,
+  "rel": 0.0
+ },
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "pure_delay": {
+   "closed_form_ipd_deg": 72.0,
+   "delay_s": 0.001,
+   "frequency_hz": 200.0,
+   "ipd_deg": 71.99963792201771
+  }
+ }
+}

@@ -132,6 +132,39 @@ impl Summary {
     }
 }
 
+impl Summary {
+    /// Carries the median and the IQR into a unit type.
+    #[must_use]
+    pub fn to_stats<T>(self, unit: impl Fn(f64) -> T) -> Stats<T> {
+        Stats {
+            median: unit(self.median),
+            iqr: unit(self.iqr),
+        }
+    }
+}
+
+/// The median and the interquartile range of a value over active frames, in
+/// its unit type.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Stats<T> {
+    median: T,
+    iqr: T,
+}
+
+impl<T: Copy> Stats<T> {
+    /// Returns the median.
+    #[must_use]
+    pub fn median(&self) -> T {
+        self.median
+    }
+
+    /// Returns the interquartile range.
+    #[must_use]
+    pub fn iqr(&self) -> T {
+        self.iqr
+    }
+}
+
 /// Linear-interpolation quantile of sorted, non-empty values.
 fn quantile(sorted: &[f64], q: f64) -> f64 {
     let position = q * cast::usize_to_f64(sorted.len() - 1);

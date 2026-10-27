@@ -47,3 +47,56 @@ pub(crate) fn sine(frequency: f64, phase: f64, rate: f64, length: usize) -> Vec<
         .map(|t| (2.0 * PI * frequency * t + phase).sin())
         .collect()
 }
+
+/// Linear convolution by FFT, cut to the length of `x`.
+pub(crate) fn convolve(x: &[f64], h: &[f64]) -> Vec<f64> {
+    use realfft::RealFftPlanner;
+    let len = (x.len() + h.len()).next_power_of_two();
+    let mut planner = RealFftPlanner::<f64>::new();
+    let forward = planner.plan_fft_forward(len);
+    let inverse = planner.plan_fft_inverse(len);
+    let spectrum = |signal: &[f64]| {
+        let mut input = vec![0.0; len];
+        input[..signal.len()].copy_from_slice(signal);
+        let mut output = forward.make_output_vec();
+        forward.process(&mut input, &mut output).unwrap();
+        output
+    };
+    let mut product: Vec<_> = spectrum(x)
+        .iter()
+        .zip(spectrum(h))
+        .map(|(a, b)| a * b)
+        .collect();
+    let mut out = vec![0.0; len];
+    inverse.process(&mut product, &mut out).unwrap();
+    let scale = f64::from(u32::try_from(len).unwrap());
+    out.truncate(x.len());
+    out.iter().map(|v| v / scale).collect()
+}
+
+/// A band-limited sawtooth as the generator builds it: harmonic `h` at
+/// amplitude `1 / h` below the Nyquist frequency, `sin(2 pi h f0 t - shift(h))`.
+pub(crate) fn bandlimited_saw(
+    f0: f64,
+    rate: f64,
+    t: &[f64],
+    shift: impl Fn(f64) -> f64,
+) -> Vec<f64> {
+    let mut x = vec![0.0; t.len()];
+    let mut h = 1.0;
+    while h * f0 < rate / 2.0 {
+        let s = shift(h);
+        for (sample, &time) in x.iter_mut().zip(t) {
+            *sample += (2.0 * PI * h * f0 * time - s).sin() / h;
+        }
+        h += 1.0;
+    }
+    x
+}
+
+/// A naive sawtooth ramp, `2 (f t mod 1) - 1`.
+pub(crate) fn naive_saw(f: f64, t: &[f64]) -> Vec<f64> {
+    t.iter()
+        .map(|&time| 2.0 * (f * time).rem_euclid(1.0) - 1.0)
+        .collect()
+}

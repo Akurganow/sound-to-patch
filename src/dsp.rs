@@ -1,6 +1,8 @@
-//! The signal core that every estimator uses: windows, the STFT, peak
-//! picking, active frames with their statistics, the analytic signal and
-//! decay fits.
+//! The signal core that every estimator uses.
+//!
+//! It holds windows, the STFT, peak picking, active frames with their
+//! statistics, the analytic signal, decay fits, the stem descriptors, the
+//! modulation spectrum and the Lomb-Scargle periodogram.
 //!
 //! Conventions that bind every estimator:
 //!
@@ -17,17 +19,30 @@
 
 mod analytic;
 mod decay;
+mod descriptors;
 mod frames;
+mod lomb;
+mod modulation;
 mod peak;
 mod stft;
 mod window;
 
 pub use analytic::{
     ATTACK_LOW_PASS_HZ, AnalyticSignal, Baseband, FilterError, HeterodyneParams, am_depth,
-    heterodyne, low_pass_zero_phase,
+    band_magnitude, band_pass_zero_phase, heterodyne, low_pass_zero_phase,
 };
 pub use decay::{Decay, DecayFailure, FitRange, backward_integral};
-pub use frames::{ACTIVE_GATE_DB, ActiveFrames, Summary, frame_rms};
+pub use descriptors::{
+    BAND_CONVENTION, BAND_EDGES_HZ, BandShare, Descriptors, FLATNESS_CONVENTION, FLATNESS_FLOOR,
+    FrameDescriptors, LEVEL_CONVENTION, SHAPE_CONVENTION, describe, frame_descriptors,
+};
+pub use frames::{ACTIVE_GATE_DB, ActiveFrames, Stats, Summary, frame_rms};
+pub use lomb::{GRID_STEP_HZ, SETTLE_S, gated_samples, grid, lomb_scargle, periodogram_rate};
+pub use modulation::{
+    BPM_SCAN, FOLD_BINS, LINE_PROMINENCE, MIN_CYCLES, MIN_LINE_DEPTH, ModulationSpectrum,
+    SCAN_BOTTOM_HZ, SCAN_TOP_HZ, SPECTRUM_OVERSAMPLE, Shape, ShapeKind, Snap, TRACK_RATE_HZ, Track,
+    band_envelope, cmndf_period, fold, scan_range, shape, snap, snap_scan,
+};
 pub use peak::{Peak, interpolate, local_maxima, strongest_peak};
 pub use realfft::num_complex::Complex64;
 pub use stft::{Padding, Stft, StftError, StftParams};
