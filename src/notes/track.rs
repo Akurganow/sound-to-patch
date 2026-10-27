@@ -5,8 +5,8 @@
 //! the octave check of the notes and the f0 contour of each note. It runs
 //! at the model rate with frames of 2048 samples, a hop of 128 samples
 //! (5.8 ms) and pitch bins of a tenth of a semitone, over the whole stem
-//! at once. Its cost grows with the stem: memory and time are reported in
-//! the bench docs and not reduced.
+//! at once. Its cost grows with the stem: #64 reports its memory and time,
+//! which this epic does not reduce.
 
 use std::error::Error;
 use std::fmt;
@@ -15,7 +15,6 @@ use pyin::{Framing, PYINExecutor, PadMode};
 
 use super::{Contour, ContourPoint, MODEL_RATE, Note, NoteList};
 use crate::audio::{ResampleError, SampleRate, resample};
-use crate::cast;
 use crate::dsp::{StftParams, frame_rms};
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
@@ -64,7 +63,6 @@ impl PitchTrack {
     /// Returns a [`TrackError`] when resampling fails or a sample is not
     /// finite.
     pub fn of(mono: &[f64], rate: SampleRate) -> Result<Self, TrackError> {
-        check_params()?;
         let mut samples = resample(mono, rate, MODEL_RATE).map_err(TrackError::Resample)?;
         if let Some(index) = samples.iter().position(|x| !x.is_finite()) {
             return Err(TrackError::NotFinite(index));
@@ -90,9 +88,10 @@ impl PitchTrack {
         // The same centred frames as the tracker's, so frame m lines up.
         let rms = frame_rms(
             &samples,
+            // A hop above zero never fails; the test of the settings pins it.
             StftParams::fixed(TRACK_FRAME)
                 .with_hop(TRACK_HOP)
-                .map_err(|_| TrackError::Settings)?,
+                .unwrap_or(StftParams::fixed(TRACK_FRAME)),
         );
         let loudest = rms.iter().copied().fold(0.0, f64::max);
         let frames = times
@@ -144,16 +143,8 @@ impl PitchTrack {
     /// pitches.
     #[must_use]
     pub fn voiced_pitches(&self) -> Vec<MidiPitch> {
-        self.voiced_pitches_within(Decibels::clamped(f64::MAX))
-    }
-
-    /// Returns the pitches of the voiced frames whose level lies within
-    /// `window` of the loudest frame, as fractional MIDI pitches.
-    #[must_use]
-    pub fn voiced_pitches_within(&self, window: Decibels) -> Vec<MidiPitch> {
         self.frames
             .iter()
-            .filter(|frame| frame.level.get() >= -window.get().abs())
             .filter_map(|frame| frame.f0)
             .filter_map(|f0| MidiPitch::try_from(f0).ok())
             .collect()
@@ -186,25 +177,6 @@ impl PitchTrack {
     }
 }
 
-/// Fails unless the tracker accepts the settings: it panics on bad ones,
-/// and a frame too short for the lowest period silently raises `fmin`.
-fn check_params() -> Result<(), TrackError> {
-    let rate = f64::from(MODEL_RATE.get());
-    let (fmin, fmax) = (TRACK_FMIN.get(), TRACK_FMAX.get());
-    let window = TRACK_FRAME / 2;
-    let longest_period = cast::ceil_to_usize(rate / fmin).unwrap_or(usize::MAX);
-    let valid = 0.0 < fmin
-        && fmin < fmax
-        && fmax <= rate / 2.0
-        && TRACK_HOP > 0
-        && longest_period + window < TRACK_FRAME;
-    if valid {
-        Ok(())
-    } else {
-        Err(TrackError::Settings)
-    }
-}
-
 /// An f0 track that could not be built.
 #[derive(Debug)]
 pub enum TrackError {
@@ -212,8 +184,6 @@ pub enum TrackError {
     Resample(ResampleError),
     /// A sample at this index is NaN or infinite.
     NotFinite(usize),
-    /// The tracker settings break its own rules.
-    Settings,
 }
 
 impl fmt::Display for TrackError {
@@ -223,10 +193,6 @@ impl fmt::Display for TrackError {
                 write!(f, "cannot prepare the stem for the f0 track: {source}")
             }
             Self::NotFinite(index) => write!(f, "cannot track f0: sample {index} is not finite"),
-            Self::Settings => write!(
-                f,
-                "the f0 track settings are invalid: the frame must hold the longest period plus the window"
-            ),
         }
     }
 }
@@ -235,7 +201,7 @@ impl Error for TrackError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Resample(source) => Some(source),
-            _ => None,
+            Self::NotFinite(_) => None,
         }
     }
 }
@@ -243,11 +209,29 @@ impl Error for TrackError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cast;
 
+    /// The constructor of the tracker panics unless these hold; the
+    /// settings are constants, so this test is their only check.
     #[test]
-    fn the_settings_keep_the_lowest_period_inside_the_frame() {
-        check_params().unwrap();
-        assert_eq!(TRACK_FMIN, Hz::new(25.0).unwrap());
-        assert_eq!(TRACK_FMAX, Hz::new(4200.0).unwrap());
+    fn the_settings_meet_every_rule_of_the_tracker() {
+        let rate = f64::from(MODEL_RATE.get());
+        let (fmin, fmax) = (TRACK_FMIN.get(), TRACK_FMAX.get());
+        assert!(0.0 < fmin && fmin < fmax && fmax <= rate / 2.0);
+        let window = TRACK_FRAME / 2;
+        // The longest period, ceil(22050 / 25) = 882 lags, fits the frame,
+        // so the frame does not raise fmin silently.
+        let longest = cast::ceil_to_usize(rate / fmin).unwrap();
+        assert!(longest < TRACK_FRAME - window - 1);
+        let shortest = cast::floor_to_usize(rate / fmax).unwrap().max(1);
+        assert!(longest - shortest >= 2);
+        // Pitch bins against the widest transition of 35.92 octaves per
+        // second.
+        let bins =
+            cast::floor_to_usize(12.0 * BINS_PER_SEMITONE * (fmax / fmin).log2()).unwrap() + 1;
+        let per_frame =
+            cast::round_to_usize(35.92 * 12.0 * cast::usize_to_f64(TRACK_HOP) / rate).unwrap();
+        assert!(bins > per_frame * 10);
+        assert!(TRACK_HOP > 0 && window > 0);
     }
 }

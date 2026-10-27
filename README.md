@@ -253,7 +253,7 @@ and ideas, from which we copy no code, text or data.
 - [llama-cpp-2](https://github.com/utilityai/llama-cpp-rs) (MIT OR Apache-2.0): Rust binding facts for local audio language models.
 - [LTU](https://github.com/YuanGongND/ltu) (no license): audio language model judged weak on timbre attributes. Inspiration only.
 - [MERT](https://github.com/yizhilll/MERT) (Apache-2.0 code, CC BY-NC 4.0 weights): music embedding model, surveyed for pitch and reverb probes. Inspiration only.
-- [mir_eval](https://github.com/mir-evaluation/mir_eval) (MIT): the note-transcription matching rules, copied in the evaluation matcher, and the reference scores of its golden cases.
+- [mir_eval](https://github.com/mir-evaluation/mir_eval) (MIT): the note-transcription matching rules, reimplemented in the evaluation matcher (rules only), and the reference scores of its golden cases.
 - [mlx-audio](https://github.com/Blaizzy/mlx-audio) (MIT): facts on running audio models with MLX.
 - [mlx-rs](https://github.com/oxiglade/mlx-rs) (MIT OR Apache-2.0): Rust MLX binding facts for the fallback plan.
 - [mod_discovery](https://github.com/christhetree/mod_discovery) (MPL-2.0): envelope and LFO control signals found with differentiable DSP. Inspiration only.

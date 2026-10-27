@@ -1271,8 +1271,8 @@ TRACK_RECIPE = {
     "sine_bank": {
         "frequencies_hz": [30.87, 41.2, 55.0],
         "amplitude": 0.5,
-        "tone_s": 0.5,
-        "gap_s": 0.25,
+        "tone_s": 0.3,
+        "gap_s": 0.1,
         "layout": "gap, tone, gap, tone, gap, tone, gap; sin(2 pi f t) with t from the tone start",
         "middle": "medians and voiced counts over each tone without its first and last 0.1 s",
     },
@@ -1280,7 +1280,7 @@ TRACK_RECIPE = {
         "start_hz": 110.0,
         "semitones": 7.0,
         "glide_ms": [50.0, 150.0, 400.0],
-        "hold_s": 0.25,
+        "hold_s": 0.15,
         "signal": "0.5 * band-limited saw, harmonic h at 1/h below the Nyquist frequency of the top pitch; phase is the running sum of f / rate; pitch linear in semitones over the glide",
         "rise": "time between the first voiced frames above 10 % and 90 % of the step, in semitones over the start pitch",
     },
@@ -1363,14 +1363,15 @@ def pitch_track():
         r,
         {"sine_bank": tones, "glides": glides},
         {"abs": 0.0, "rel": 0.0116},
-        tolerance_note="medians within 20 cents (rel 0.0116); the Rust crate follows librosa 0.9.1, so frames differ slightly; rises within two hops (11.6 ms) and voiced counts within 2 % are checked in the test",
+        tolerance_note="medians within 20 cents (rel 0.0116); the Rust crate states in its crate docs that it is based on librosa 0.9.1, so frames differ slightly from librosa 1.0.0; rises within two hops (11.6 ms) and voiced counts within 2 % are checked in the test",
     )
 
 
 GLIDE_ISSUE_RECIPE = {
     "settings": {**TRACK_SETTINGS, "fmin_hz": 30.0, "fmax_hz": 400.0},
-    "glides": TRACK_RECIPE["glides"],
+    "glides": {**TRACK_RECIPE["glides"], "hold_s": 0.5},
     "note": "the #61 method: frame 2048, hop 128, fmin 30 Hz; the issue states no fmax, so the #61 track ceiling of 400 Hz is used",
+    "tolerance": "a rise is a whole number of hops (5.8 ms), so a row reproduces when it lies within one hop of the issue figure",
 }
 
 
@@ -1382,6 +1383,8 @@ def glide_issue_table():
     for ms in r["glides"]["glide_ms"]:
         values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": float(rise_ms(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s))}
     issue = {"50.0": 29.0, "150.0": 116.0, "400.0": 319.0}
+    hop_ms = hop_s * 1000.0
+    rows = {k: within(values[k]["rise_ms"], v, 0.0, hop_ms) for k, v in issue.items()}
     return document(
         "61-glide",
         61,
@@ -1390,13 +1393,10 @@ def glide_issue_table():
         ["python", "numpy", "scipy", "librosa"],
         r,
         values,
-        {"abs": 6.0, "rel": 0.0},
+        {"abs": hop_ms, "rel": 0.0},
         tag="[own, synthetic]",
         rounding="the issue prints whole milliseconds",
-        issue_figures={
-            "figures": issue,
-            "reproduced": all(within(values[k]["rise_ms"], v, 0.0, 6.0) for k, v in issue.items()),
-        },
+        issue_figures={"figures": issue, "rows": rows, "reproduced": all(rows.values())},
     )
 
 

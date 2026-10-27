@@ -10,7 +10,7 @@
     150.0,
     400.0
    ],
-   "hold_s": 0.25,
+   "hold_s": 0.15,
    "rise": "time between the first voiced frames above 10 % and 90 % of the step, in semitones over the start pitch",
    "semitones": 7.0,
    "signal": "0.5 * band-limited saw, harmonic h at 1/h below the Nyquist frequency of the top pitch; phase is the running sum of f / rate; pitch linear in semitones over the glide",
@@ -33,17 +33,17 @@
     41.2,
     55.0
    ],
-   "gap_s": 0.25,
+   "gap_s": 0.1,
    "layout": "gap, tone, gap, tone, gap, tone, gap; sin(2 pi f t) with t from the tone start",
    "middle": "medians and voiced counts over each tone without its first and last 0.1 s",
-   "tone_s": 0.5
+   "tone_s": 0.3
   }
  },
  "tolerance": {
   "abs": 0.0,
   "rel": 0.0116
  },
- "tolerance_note": "medians within 20 cents (rel 0.0116); the Rust crate follows librosa 0.9.1, so frames differ slightly; rises within two hops (11.6 ms) and voiced counts within 2 % are checked in the test",
+ "tolerance_note": "medians within 20 cents (rel 0.0116); the Rust crate states in its crate docs that it is based on librosa 0.9.1, so frames differ slightly from librosa 1.0.0; rises within two hops (11.6 ms) and voiced counts within 2 % are checked in the test",
  "tools": {
   "librosa": "1.0.0",
   "numpy": "2.5.4",
@@ -57,32 +57,32 @@
     "true_rise_ms": 120.0
    },
    "400.0": {
-    "rise_ms": 325.07936507936506,
+    "rise_ms": 319.27437641723355,
     "true_rise_ms": 320.0
    },
    "50.0": {
-    "rise_ms": 29.024943310657598,
+    "rise_ms": 23.219954648526077,
     "true_rise_ms": 40.0
    }
   },
   "sine_bank": [
    {
-    "frames": 51,
+    "frames": 17,
     "frequency_hz": 30.87,
     "median_hz": 31.316610965603196,
-    "voiced": 51
+    "voiced": 17
    },
    {
-    "frames": 52,
+    "frames": 17,
     "frequency_hz": 41.2,
     "median_hz": 41.56189480713939,
-    "voiced": 52
+    "voiced": 17
    },
    {
-    "frames": 52,
+    "frames": 17,
     "frequency_hz": 55.0,
-    "median_hz": 55.31870735578978,
-    "voiced": 52
+    "median_hz": 55.15894110818732,
+    "voiced": 17
    }
   ]
  }

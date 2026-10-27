@@ -8,7 +8,12 @@
    "400.0": 319.0,
    "50.0": 29.0
   },
-  "reproduced": true
+  "reproduced": true,
+  "rows": {
+   "150.0": true,
+   "400.0": true,
+   "50.0": true
+  }
  },
  "name": "61-glide",
  "recipe": {
@@ -18,7 +23,7 @@
     150.0,
     400.0
    ],
-   "hold_s": 0.25,
+   "hold_s": 0.5,
    "rise": "time between the first voiced frames above 10 % and 90 % of the step, in semitones over the start pitch",
    "semitones": 7.0,
    "signal": "0.5 * band-limited saw, harmonic h at 1/h below the Nyquist frequency of the top pitch; phase is the running sum of f / rate; pitch linear in semitones over the glide",
@@ -34,12 +39,13 @@
    "pad_mode": "constant",
    "resolution": 0.1,
    "sample_rate": 22050
-  }
+  },
+  "tolerance": "a rise is a whole number of hops (5.8 ms), so a row reproduces when it lies within one hop of the issue figure"
  },
  "rounding": "the issue prints whole milliseconds",
  "tag": "[own, synthetic]",
  "tolerance": {
-  "abs": 6.0,
+  "abs": 5.804988662131519,
   "rel": 0.0
  },
  "tools": {
@@ -50,7 +56,7 @@
  },
  "values": {
   "150.0": {
-   "rise_ms": 121.9047619047619,
+   "rise_ms": 116.09977324263039,
    "true_rise_ms": 120.0
   },
   "400.0": {
@@ -58,7 +64,7 @@
    "true_rise_ms": 320.0
   },
   "50.0": {
-   "rise_ms": 29.024943310657598,
+   "rise_ms": 23.219954648526077,
    "true_rise_ms": 40.0
   }
  }

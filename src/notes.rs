@@ -1,5 +1,6 @@
-//! The note list that every layer reads, the transcriber and the MIDI
-//! files that produce and store it, and the harmonic masks built from it.
+//! The note list that every layer reads, the transcriber, the f0 track and
+//! the MIDI files that produce and store it, and the harmonic masks built
+//! from it.
 //!
 //! A note has an onset, an offset, a pitch and, once a pitch track has run,
 //! an f0 contour. Three more fields stay unset until a later step fills
@@ -10,7 +11,11 @@
 //! The transcriber runs the model once per stem ([`Transcriber::run`]) and
 //! decodes that run with [`DecodeSettings`], as many times as needed
 //! ([`ModelRun::decode`]). A [`Profile`] gives fixed settings per kind of
-//! stem. [`write_midi`] stores a list as a format 0 file.
+//! stem; [`detect()`] derives them from the stem instead, from a probe decode
+//! and the [`PitchTrack`], the stem's f0 track, which also fills the note
+//! contours. [`drop_quiet`] drops notes that sound only far below the
+//! stem's loudest passage. [`write_midi`] stores a list as a format 0
+//! file.
 
 use std::error::Error;
 use std::fmt;
@@ -27,8 +32,9 @@ mod transcribe;
 mod write;
 
 pub use detect::{
-    CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, REGISTER_MARGIN, REGISTER_PERCENTILES,
-    REGISTER_WINDOW, Voicing, detect, detect_with_window, probe_settings,
+    CHORD_OFFSET_WINDOW, CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, PROBE_HOLD_SHARE,
+    REFERENCE_PERCENTILE, REGISTER_MARGIN, REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource,
+    Voicing, detect, detect_with_window, probe_settings,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};

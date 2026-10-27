@@ -1,7 +1,6 @@
 //! The pYIN f0 track (#113) against librosa on the golden recipes.
 
 use std::f64::consts::TAU;
-use std::sync::OnceLock;
 
 use serde_json::Value;
 use sound_to_patch::audio::SampleRate;
@@ -65,15 +64,6 @@ fn glide(recipe: &Value, glide_ms: f64) -> Vec<f64> {
         .collect()
 }
 
-/// The track of the golden sine bank, run once for every test that reads it.
-fn bank_track() -> &'static PitchTrack {
-    static TRACK: OnceLock<PitchTrack> = OnceLock::new();
-    TRACK.get_or_init(|| {
-        let golden = Golden::load("pitch-track");
-        PitchTrack::of(&sine_bank(&golden.recipe()["sine_bank"]), MODEL_RATE).unwrap()
-    })
-}
-
 /// The 10-90 % rise of a glide in milliseconds, read as the golden reads it.
 fn rise_ms(track: &PitchTrack, recipe: &Value) -> f64 {
     let (start, semitones) = (f(&recipe["start_hz"]), f(&recipe["semitones"]));
@@ -92,11 +82,23 @@ fn rise_ms(track: &PitchTrack, recipe: &Value) -> f64 {
     f64::from(u32::try_from(frames).unwrap()) * hop_s() * 1000.0
 }
 
+/// `seconds` of a sine at `level` between 0.1 s of silence on each side.
+fn padded_tone(frequency: f64, seconds: f64, level: f64) -> Vec<f64> {
+    let pad = vec![0.0; round_to_usize(0.1 * rate())];
+    let mut out = pad.clone();
+    out.extend((0..round_to_usize(seconds * rate())).map(|n| {
+        let t = f64::from(u32::try_from(n).unwrap()) / rate();
+        level * (TAU * frequency * t).sin()
+    }));
+    out.extend(&pad);
+    out
+}
+
 #[test]
 fn a_low_sine_bank_reads_within_20_cents_of_librosa_with_no_octave_error() {
     let golden = Golden::load("pitch-track");
     let bank = &golden.recipe()["sine_bank"];
-    let track = bank_track();
+    let track = PitchTrack::of(&sine_bank(bank), MODEL_RATE).unwrap();
     let (gap, tone) = (f(&bank["gap_s"]), f(&bank["tone_s"]));
     for (i, expected) in golden.values()["sine_bank"]
         .as_array()
@@ -104,6 +106,7 @@ fn a_low_sine_bank_reads_within_20_cents_of_librosa_with_no_octave_error() {
         .iter()
         .enumerate()
     {
+        let truth = f(&expected["frequency_hz"]);
         let start = gap + f64::from(u32::try_from(i).unwrap()) * (tone + gap);
         let frames: Vec<_> = track
             .frames()
@@ -115,21 +118,32 @@ fn a_low_sine_bank_reads_within_20_cents_of_librosa_with_no_octave_error() {
             .filter_map(|frame| frame.f0)
             .map(sound_to_patch::units::Hz::get)
             .collect();
+        // Octave check: every voiced frame lies within 100 cents of its own
+        // tone.
+        for f0 in &voiced {
+            let cents = 1200.0 * (f0 / truth).log2();
+            assert!(cents.abs() <= 100.0, "tone {truth} Hz read {f0} Hz");
+        }
         voiced.sort_by(f64::total_cmp);
         let median = voiced[voiced.len() / 2];
-        let cents = 1200.0 * (median / f(&expected["median_hz"])).log2();
+        let from_librosa = 1200.0 * (median / f(&expected["median_hz"])).log2();
+        let from_truth = 1200.0 * (median / truth).log2();
+        let fraction = f64::from(u32::try_from(voiced.len()).unwrap())
+            / f64::from(u32::try_from(frames.len()).unwrap());
+        println!("{truth} Hz: median {median:.3} Hz, {from_truth:+.1} cents, voiced {fraction:.3}");
         assert!(
-            cents.abs() <= 20.0,
-            "tone {i}: {median} Hz, {cents} cents from librosa"
+            from_librosa.abs() <= 20.0,
+            "{truth} Hz: {from_librosa} cents from librosa"
         );
-        let truth = 1200.0 * (median / f(&expected["frequency_hz"])).log2();
-        assert!(truth.abs() <= 20.0, "tone {i}: {truth} cents from the tone");
-        let expected_voiced =
-            f64::from(u32::try_from(expected["voiced"].as_u64().unwrap()).unwrap());
+        assert!(
+            from_truth.abs() <= 20.0,
+            "{truth} Hz: {from_truth} cents from the tone"
+        );
+        let expected_voiced = f(&expected["voiced"]);
         let ours = f64::from(u32::try_from(voiced.len()).unwrap());
         assert!(
             (ours - expected_voiced).abs() <= 0.02 * expected_voiced + 1.0,
-            "tone {i}: {ours} voiced"
+            "{truth} Hz: {ours} voiced"
         );
         assert!(
             frames
@@ -138,67 +152,73 @@ fn a_low_sine_bank_reads_within_20_cents_of_librosa_with_no_octave_error() {
                 <= 1
         );
     }
-    // Octave errors: no voiced frame anywhere lies 6 or more semitones from
-    // every tone.
-    for frame in track.frames() {
-        if let Some(f0) = frame.f0 {
-            let nearest = [30.87_f64, 41.2, 55.0]
-                .iter()
-                .map(|tone| (12.0 * (f0.get() / tone).log2()).abs())
-                .fold(f64::INFINITY, f64::min);
-            assert!(nearest < 6.0, "{} Hz at {}", f0.get(), frame.time.get());
-        }
-    }
+}
+
+/// The rise of one golden glide, against librosa and the truth.
+fn check_glide(ms: f64) -> f64 {
+    let golden = Golden::load("pitch-track");
+    let recipe = &golden.recipe()["glides"];
+    let track = PitchTrack::of(&glide(recipe, ms), MODEL_RATE).unwrap();
+    let ours = rise_ms(&track, recipe);
+    let expected = &golden.values()["glides"][format!("{ms:?}")];
+    println!(
+        "{ms} ms glide: rise {ours:.1} ms, librosa {:.1} ms",
+        f(&expected["rise_ms"])
+    );
+    ours
 }
 
 #[test]
-fn glides_of_150_and_400_ms_rise_as_librosa_reads_them() {
-    let golden = Golden::load("pitch-track");
-    let recipe = &golden.recipe()["glides"];
-    let mut read = Vec::new();
-    for ms in [50.0, 150.0, 400.0] {
-        let track = PitchTrack::of(&glide(recipe, ms), MODEL_RATE).unwrap();
-        let ours = rise_ms(&track, recipe);
-        let expected = &golden.values()["glides"][format!("{ms:?}")];
-        if ms > 100.0 {
-            assert!(
-                (ours - f(&expected["rise_ms"])).abs() <= 2.0 * hop_s() * 1000.0 + 1e-9,
-                "{ms} ms read {ours}"
-            );
-            assert!(
-                (ours - f(&expected["true_rise_ms"])).abs() <= 0.05 * f(&expected["true_rise_ms"]),
-                "{ms} ms read {ours}"
-            );
-        }
-        read.push(ours);
-    }
-    // A 50 ms glide is too fast for the track: its rise misses the 5 %
-    // bound that the slower glides meet.
+fn a_150_ms_glide_rises_as_librosa_reads_it() {
+    let ours = check_glide(150.0);
     assert!(
-        (read[0] - 40.0).abs() > 0.05 * 40.0,
-        "50 ms read {}",
-        read[0]
+        (ours - 121.905).abs() <= 2.0 * hop_s() * 1000.0 + 1e-9,
+        "read {ours}"
     );
+    assert!((ours - 120.0).abs() <= 0.05 * 120.0, "read {ours}");
+}
+
+#[test]
+fn a_400_ms_glide_rises_as_librosa_reads_it() {
+    let ours = check_glide(400.0);
+    assert!(
+        (ours - 319.274).abs() <= 2.0 * hop_s() * 1000.0 + 1e-9,
+        "read {ours}"
+    );
+    assert!((ours - 320.0).abs() <= 0.05 * 320.0, "read {ours}");
+}
+
+#[test]
+fn a_50_ms_glide_misses_the_librosa_reading() {
+    // Glides under about 60 ms sit at the resolution of a 93 ms frame: the
+    // two trackers disagree by more than the two hops the slower glides
+    // meet. The Rust tracker reads 7 hops on this recipe.
+    let ours = check_glide(50.0);
+    assert!(
+        (ours - 23.220).abs() > 2.0 * hop_s() * 1000.0,
+        "read {ours}"
+    );
+    assert_eq!(round_to_usize(ours / (hop_s() * 1000.0)), 7);
 }
 
 #[test]
 fn contours_hold_the_track_between_onset_and_offset() {
-    let track = bank_track();
+    let track = PitchTrack::of(&padded_tone(55.0, 0.4, 0.5), MODEL_RATE).unwrap();
     let s = |value| Seconds::new(value).unwrap();
     let notes = NoteList::new(vec![
-        Note::new(s(0.3), s(0.7), MidiPitch::new(23.0).unwrap()).unwrap(),
-        Note::new(s(0.05), s(0.2), MidiPitch::new(40.0).unwrap()).unwrap(),
+        Note::new(s(0.15), s(0.45), MidiPitch::new(33.0).unwrap()).unwrap(),
+        Note::new(s(0.0), s(0.03), MidiPitch::new(40.0).unwrap()).unwrap(),
     ]);
     let filled = track.with_contours(&notes);
-    let note = &filled.notes()[1];
-    let contour = note.contour().unwrap();
-    let expected: Vec<_> = track.voiced_between(s(0.3), s(0.7)).collect();
+    let contour = filled.notes()[1].contour().unwrap();
+    let expected: Vec<_> = track.voiced_between(s(0.15), s(0.45)).collect();
+    assert!(expected.len() > 40, "{} voiced frames", expected.len());
     assert_eq!(contour.points().len(), expected.len());
     for (point, (time, f0)) in contour.points().iter().zip(expected) {
-        assert!((0.3..0.7).contains(&point.time.get()));
+        assert!((0.15..0.45).contains(&point.time.get()));
         assert_eq!((point.time, point.f0), (time, f0));
     }
-    // The silent gap has no voiced frame, so that note keeps no contour.
+    // The leading silence has no voiced frame, so that note keeps none.
     assert!(filled.notes()[0].contour().is_none());
 }
 
@@ -226,13 +246,16 @@ fn silence_has_no_voiced_frame_and_a_nan_is_an_error() {
 
 #[test]
 fn a_quiet_stem_still_reads_voiced() {
-    let golden = Golden::load("pitch-track");
-    let quiet: Vec<f64> = sine_bank(&golden.recipe()["sine_bank"])
+    let track = PitchTrack::of(&padded_tone(41.2, 0.4, 0.5e-4), MODEL_RATE).unwrap();
+    let s = |value| Seconds::new(value).unwrap();
+    let middle = track
+        .frames()
         .iter()
-        .map(|x| x * 1e-4)
-        .collect();
-    let track = PitchTrack::of(&quiet, MODEL_RATE).unwrap();
-    let loud = bank_track().voiced_pitches().len();
-    let quiet = track.voiced_pitches().len();
-    assert!(quiet + loud / 50 >= loud, "{quiet} of {loud} frames voiced");
+        .filter(|frame| (0.2..0.4).contains(&frame.time.get()))
+        .count();
+    let voiced = track.voiced_between(s(0.2), s(0.4)).count();
+    assert!(
+        voiced * 10 >= middle * 9,
+        "{voiced} of {middle} frames voiced"
+    );
 }

@@ -515,6 +515,63 @@ fn pad_parts() -> Vec<Part> {
     ]
 }
 
+/// A quiet bass line, MIDI 36 to 48 at 0.02, with one loud event at 3 s:
+/// a noise burst of 1000 samples, a 1.5 kHz ring of 3000 samples, or a
+/// 60 Hz thump of 6000 samples, each at full scale.
+fn transient_parts() -> Vec<Part> {
+    let saw = Voice::Saw { release: 0.05 };
+    let line: Vec<Score> = [36.0, 38.0, 40.0, 41.0, 43.0, 45.0, 47.0, 48.0]
+        .iter()
+        .enumerate()
+        .map(|(i, &pitch)| n(1.0 + count(i), 0.75, pitch))
+        .collect();
+    let rate = f64::from(RATE);
+    let bits = splitmix(4242, 1001);
+    let events: [(&str, Vec<f64>); 3] = [
+        (
+            "noise burst",
+            (0..1000)
+                .map(|i| {
+                    let (u1, u2) = (unit(bits[i]).max(f64::MIN_POSITIVE), unit(bits[i + 1]));
+                    ((-2.0 * u1.ln()).sqrt() * (TAU * u2).cos()).clamp(-1.0, 1.0)
+                })
+                .collect(),
+        ),
+        (
+            "1.5 kHz ring",
+            (0..3000)
+                .map(|i| (TAU * 1500.0 * count(i) / rate).sin())
+                .collect(),
+        ),
+        (
+            "60 Hz thump",
+            (0..6000)
+                .map(|i| (TAU * 60.0 * count(i) / rate).sin() * (-count(i) / rate / 0.05).exp())
+                .collect(),
+        ),
+    ];
+    events
+        .into_iter()
+        .map(|(name, event)| {
+            let mut audio = Vec::new();
+            let notes = render(&mut audio, 120.0, saw, 0.02, &line);
+            audio.extend(std::iter::repeat_n(0.0, index(0.5)));
+            let at = index(3.0);
+            for (sample, x) in audio.iter_mut().skip(at).zip(&event) {
+                *sample += x;
+            }
+            Part {
+                name: format!("bass transient {name}"),
+                class: Class::Bass,
+                bpm: 120.0,
+                notes,
+                bleed: Vec::new(),
+                audio,
+            }
+        })
+        .collect()
+}
+
 /// The whole set, in report order.
 pub(crate) fn evaluation_set() -> Vec<Part> {
     let saw = Voice::Saw { release: 0.05 };
@@ -565,6 +622,7 @@ pub(crate) fn evaluation_set() -> Vec<Part> {
             audio,
         });
     }
+    parts.extend(transient_parts());
     parts.push(Part {
         name: "silence".to_owned(),
         class: Class::Silence,

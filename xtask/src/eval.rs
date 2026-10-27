@@ -242,7 +242,7 @@ impl Tally {
             "{:<11} {:<9} {:>22} {:>22}",
             "group", "settings", "raw", "guarded"
         );
-        for group in ["bass clean", "bass bleed", "lead", "pad"] {
+        for group in ["bass clean", "bass bleed", "bass transient", "lead", "pad"] {
             for name in COLUMNS {
                 let cell = |guarded| {
                     let score = self
@@ -326,6 +326,7 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
 /// without bleed.
 fn group(part: &Part) -> &'static str {
     match part.class {
+        Class::Bass if part.name.starts_with("bass transient") => "bass transient",
         Class::Bass if part.bleed.is_empty() => "bass clean",
         Class::Bass => "bass bleed",
         Class::Lead => "lead",
