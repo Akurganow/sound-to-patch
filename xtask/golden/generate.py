@@ -1141,7 +1141,10 @@ ISSUE_FIGURES_59 = {
 def min_note_length():
     r = MIN_NOTE_RECIPE
     frame_s = 256.0 / 22050.0
-    frames = lambda ms: int(np.round(ms / 1000.0 / frame_s))
+
+    def frames(ms):
+        return int(np.round(ms / 1000.0 / frame_s))
+
     settings = {}
     for ms in r["settings_ms"]:
         n = frames(ms)
