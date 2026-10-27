@@ -1,5 +1,6 @@
 //! One model run per stem and its decodes (#57, #59).
 
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -7,8 +8,8 @@ use basic_pitch::Posteriorgrams;
 use basic_pitch::model::TractBackend;
 use sound_to_patch::audio::SampleRate;
 use sound_to_patch::notes::{
-    Backend, DecodeSettings, MODEL_RATE, NoteList, PitchRange, Profile, TranscribeError,
-    Transcriber, min_note_frames,
+    Backend, DecodeSettings, MODEL_RATE, MODEL_SHA256, NoteList, PitchRange, Profile,
+    TranscribeError, Transcriber, min_note_frames,
 };
 use sound_to_patch::units::{Bpm, MidiPitch};
 
@@ -68,6 +69,41 @@ fn tone(frequency: f64, seconds: f64) -> Vec<f64> {
         &pad,
     ]
     .concat()
+}
+
+#[test]
+fn the_thread_count_does_not_change_the_posteriorgrams() {
+    let samples = tone(220.0, 4.0);
+    let bits = |threads: usize| {
+        let (transcriber, _) = counting();
+        let run = transcriber
+            .with_threads(NonZeroUsize::new(threads).unwrap())
+            .run(&samples, MODEL_RATE)
+            .unwrap();
+        let p = run.posteriorgrams();
+        [&p.note, &p.onset, &p.contour]
+            .iter()
+            .flat_map(|m| m.as_slice().iter().map(|x| x.to_bits()))
+            .collect::<Vec<u32>>()
+    };
+    let one = bits(1);
+    assert!(one.len() > 1000, "{} values", one.len());
+    assert_eq!(one, bits(8));
+}
+
+#[test]
+fn the_bundled_model_is_the_upstream_file() {
+    use std::fmt::Write;
+
+    use sha2::{Digest, Sha256};
+    let upstream = "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec";
+    assert_eq!(MODEL_SHA256, upstream);
+    let digest = Sha256::digest(basic_pitch::model::MODEL_ONNX);
+    let hex = digest.iter().fold(String::new(), |mut hex, byte| {
+        write!(hex, "{byte:02x}").unwrap();
+        hex
+    });
+    assert_eq!(hex, upstream);
 }
 
 #[test]
@@ -139,6 +175,25 @@ fn a_nan_sample_is_rejected_before_the_model_runs() {
         error.to_string(),
         "the transcription model failed: audio sample 100 is not finite (NaN)"
     );
+}
+
+#[test]
+fn a_non_finite_sample_at_another_rate_fails_before_the_model_runs() {
+    let (transcriber, windows) = counting();
+    let native = SampleRate::new(48_000).unwrap();
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        let mut samples = vec![0.1; 48_000];
+        samples[5] = bad;
+        let error = transcriber.run(&samples, native).unwrap_err();
+        assert!(matches!(error, TranscribeError::Resample(_)), "{error:?}");
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "cannot prepare the stem for the transcription model: cannot resample from 48000 Hz to 22050 Hz: sample 5 is not finite ({bad})"
+            )
+        );
+    }
+    assert_eq!(windows.load(Ordering::SeqCst), 0);
 }
 
 #[test]

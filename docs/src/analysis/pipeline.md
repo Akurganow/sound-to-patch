@@ -36,7 +36,23 @@ layer estimators of later releases call [fact].
   22050 Hz transcription model [fact]. It is a band-limited FFT conversion
   with $\lceil n \cdot f_{to} / f_{from} \rceil$ output samples [fact]. Some
   rate pairs, among them 48 kHz to 22050 Hz, lag half an output sample, 23
-  µs; the lag is documented and not compensated [synthetic].
+  µs; the lag is documented and not compensated [synthetic]. A NaN or
+  infinite sample stops the conversion with its index [fact].
+
+## Transcription model
+
+- The notes come from a transcription model that ships inside the binary
+  and runs on a pure-Rust inference engine, with no native library
+  [fact]. The model and its decoder are credited on the
+  [credits page](../credits.md).
+- Licence of the weights [fact]. The bundled model file has no licence
+  statement of its own. It equals the file in the upstream repository
+  byte for byte: both have the SHA-256
+  `2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec`,
+  and a test pins that hash against the bundled bytes. The upstream
+  repository grants Apache-2.0 to every file it holds, the model
+  included. The upstream NOTICE text ships in `THIRD-PARTY-LICENSES.html`
+  with every release.
 
 ## The stem
 

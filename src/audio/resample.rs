@@ -31,7 +31,9 @@ const CHUNK: usize = 1024;
 ///
 /// # Errors
 ///
-/// Returns a [`ResampleError`] when rubato rejects the rates or fails.
+/// Returns a [`ResampleError`] when a sample is NaN or infinite, which
+/// would make rubato panic, and when rubato rejects the rates or fails.
+/// Equal rates copy the samples unchecked.
 pub fn resample(
     samples: &[f64],
     from: SampleRate,
@@ -41,6 +43,9 @@ pub fn resample(
         return Ok(samples.to_vec());
     }
     let fail = |message: String| ResampleError { from, to, message };
+    if let Some((index, value)) = samples.iter().enumerate().find(|(_, x)| !x.is_finite()) {
+        return Err(fail(format!("sample {index} is not finite ({value})")));
+    }
     let rate = |rate: SampleRate| usize::try_from(rate.get()).map_err(|e| fail(e.to_string()));
     let mut resampler = Fft::<f64>::new(rate(from)?, rate(to)?, CHUNK, 1, FixedSync::Input)
         .map_err(|e| fail(e.to_string()))?;
@@ -127,6 +132,23 @@ mod tests {
         }
         for (from, to) in [(44_100, 22_050), (48_000, 44_100), (22_050, 48_000)] {
             assert!(lag(from, to).abs() < 1e-3, "{from} {to}");
+        }
+    }
+
+    #[test]
+    fn a_non_finite_sample_is_an_error_at_any_rate_pair() {
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut input = vec![0.1; 48_000];
+            input[5] = bad;
+            for (from, to) in [(48_000, 22_050), (8_000, 22_050), (22_050, 48_000)] {
+                let error = resample(&input, rate(from), rate(to)).unwrap_err();
+                assert_eq!(
+                    error.to_string(),
+                    format!(
+                        "cannot resample from {from} Hz to {to} Hz: sample 5 is not finite ({bad})"
+                    )
+                );
+            }
         }
     }
 

@@ -31,7 +31,7 @@ pub struct Transcriber {
 
 impl Transcriber {
     /// Loads the bundled model on the pure-Rust engine and spreads the
-    /// windows over every core. The thread count never changes the result.
+    /// windows over every core.
     ///
     /// # Errors
     ///
@@ -43,6 +43,15 @@ impl Transcriber {
                 .map_err(TranscribeError::Model)?
                 .with_threads(threads),
         })
+    }
+
+    /// Spreads the windows over this many threads. The thread count never
+    /// changes the result.
+    #[must_use]
+    pub fn with_threads(self, threads: NonZeroUsize) -> Self {
+        Self {
+            model: self.model.with_threads(threads),
+        }
     }
 
     /// Runs the model on another engine, such as one that counts its calls

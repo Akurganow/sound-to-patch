@@ -4,6 +4,7 @@
 //! and every note on channel 1. A DAW opens it as one part at the stem's
 //! tempo. Bar lines assume 4/4, because the input gives only a BPM.
 
+use std::cmp::Reverse;
 use std::error::Error;
 use std::fmt;
 
@@ -17,8 +18,8 @@ use crate::units::{Bpm, Seconds};
 /// The resolution of the file in ticks per quarter note.
 pub const TICKS_PER_BEAT: u16 = 480;
 
-/// The velocity of a note that carries none, and of every note under
-/// [`Velocities::Constant`] with the default.
+/// The velocity that the `notes` command passes to
+/// [`Velocities::Constant`].
 pub const DEFAULT_VELOCITY: Velocity = Velocity(100);
 
 /// The shortest note the file holds. A shorter note is lengthened to it,
@@ -40,22 +41,27 @@ pub enum Velocities {
 ///
 /// Times become ticks with `round(seconds * BPM / 60 * 480)`, so each lies
 /// within half a tick of the note. The tempo event at tick 0 holds
-/// `round(60,000,000 / BPM)` microseconds per beat. Three rules any player
-/// needs come first: a note shorter than [`MIN_NOTE_LENGTH`] or one tick
-/// is lengthened, a note that still sounds when the same pitch starts again
-/// ends there, and a note left with no length is dropped. At one tick a
+/// `round(60,000,000 / BPM)` microseconds per beat. A fractional pitch
+/// rounds to the nearest key. Three rules any player needs come first: a
+/// note shorter than [`MIN_NOTE_LENGTH`] or one tick is lengthened, of two
+/// notes with one key and one start only the longer stays, and a note that
+/// still sounds when its key starts again ends there. At one tick a
 /// note-off comes before a note-on, so two touching notes of one pitch
 /// stay two. The file has no program change and no pitch bend.
 ///
 /// # Errors
 ///
-/// Returns a [`MidiWriteError`] when two events lie further apart than a
-/// MIDI delta time holds, about nine hours at 1000 BPM.
+/// Returns a [`MidiWriteError`] for an empty list, which no reader of ours
+/// accepts, and when two events lie further apart than a MIDI delta time
+/// holds, about nine hours at 1000 BPM.
 pub fn write_midi(
     notes: &NoteList,
     bpm: Bpm,
     velocities: Velocities,
 ) -> Result<Vec<u8>, MidiWriteError> {
+    if notes.is_empty() {
+        return Err(MidiWriteError::NoNotes);
+    }
     let ticks_per_second = bpm.get() / 60.0 * f64::from(TICKS_PER_BEAT);
     let tick = |seconds: Seconds| {
         cast::round_to_usize(seconds.get() * ticks_per_second)
@@ -70,6 +76,7 @@ pub fn write_midi(
         let key = cast::round_to_usize(note.pitch().get())
             .and_then(|key| u8::try_from(key).ok())
             .and_then(u7::try_from)
+            // Unreachable: a `MidiPitch` lies in 0 to 127, so its key fits.
             .unwrap_or(u7::max_value());
         let velocity = match velocities {
             Velocities::Constant(velocity) => velocity,
@@ -77,19 +84,18 @@ pub fn write_midi(
         };
         spans.push((key, start, end, velocity));
     }
-    // Sorted by key, then start: a note ends no later than the next one of
-    // its key.
-    spans.sort_by_key(|&(key, start, ..)| (key, start));
+    // Sorted by key, then start, longest first: the first of one key and
+    // start stays, and a note ends no later than the next one of its key.
+    spans.sort_by_key(|&(key, start, end, _)| (key, start, Reverse(end)));
+    spans.dedup_by_key(|&mut (key, start, ..)| (key, start));
     let mut events = Vec::with_capacity(2 * spans.len());
     for (i, &(key, start, end, velocity)) in spans.iter().enumerate() {
         let end = match spans.get(i + 1) {
             Some(&(next_key, next_start, ..)) if next_key == key => end.min(next_start),
             _ => end,
         };
-        if end > start {
-            events.push((start, true, key, velocity));
-            events.push((end, false, key, velocity));
-        }
+        events.push((start, true, key, velocity));
+        events.push((end, false, key, velocity));
     }
     // Note-offs sort before note-ons at one tick.
     events.sort_by_key(|&(at, on, key, _)| (at, on, key));
@@ -150,6 +156,8 @@ fn meta(message: MetaMessage<'static>) -> TrackEvent<'static> {
 /// A note list that cannot become a MIDI file.
 #[derive(Clone, Debug, PartialEq)]
 pub enum MidiWriteError {
+    /// The list holds no note.
+    NoNotes,
     /// A note lies too far from the previous event for a MIDI delta time.
     TooLong(Seconds),
     /// The encoder failed.
@@ -159,6 +167,7 @@ pub enum MidiWriteError {
 impl fmt::Display for MidiWriteError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::NoNotes => write!(f, "cannot write a MIDI file without notes"),
             Self::TooLong(at) => write!(
                 f,
                 "cannot write a note at {at}: it lies further from the previous note than a MIDI file can hold. Split the stem"

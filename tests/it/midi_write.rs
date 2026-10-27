@@ -144,7 +144,7 @@ fn overlaps_are_cut_and_short_notes_lengthened() {
         // Cut at the next onset of its pitch.
         note(0.0, 1.0, 60.0),
         note(0.5, 1.5, 60.0),
-        // A second note at the same onset and pitch leaves nothing to cut.
+        // Of two notes at one onset and pitch the longer stays.
         note(2.0, 2.2, 62.0),
         note(2.0, 2.5, 62.0),
         // 3 ms becomes 10 ms: 9.6 ticks at 120 BPM, 10 after rounding.
@@ -206,9 +206,27 @@ fn a_173_5_bpm_file_reads_back_with_its_notes() {
 }
 
 #[test]
-fn an_empty_list_writes_a_file_with_only_the_tempo() {
-    let (tempos, events, other) =
-        read(&write_midi(&NoteList::default(), bpm(120.0), constant()).unwrap());
-    assert_eq!(tempos, vec![500_000]);
-    assert!(events.is_empty() && other.is_empty());
+fn the_longer_of_two_notes_at_one_key_and_start_stays_in_either_order() {
+    for list in [
+        vec![note(0.0, 1.0, 60.0), note(0.0, 0.3, 60.0)],
+        vec![note(0.0, 0.3, 60.0), note(0.0, 1.0, 60.0)],
+    ] {
+        let (_, events, _) =
+            read(&write_midi(&NoteList::new(list), bpm(120.0), constant()).unwrap());
+        assert_eq!(events, vec![(0, true, 60, 100), (960, false, 60, 0)]);
+    }
+}
+
+#[test]
+fn a_fractional_pitch_rounds_to_the_nearest_key() {
+    let list = NoteList::new(vec![note(0.0, 0.5, 59.4), note(0.5, 1.0, 59.6)]);
+    let (_, events, _) = read(&write_midi(&list, bpm(120.0), constant()).unwrap());
+    let keys: Vec<u8> = events.iter().filter(|e| e.1).map(|e| e.2).collect();
+    assert_eq!(keys, vec![59, 60]);
+}
+
+#[test]
+fn an_empty_list_is_an_error() {
+    let error = write_midi(&NoteList::default(), bpm(120.0), constant()).unwrap_err();
+    assert_eq!(error.to_string(), "cannot write a MIDI file without notes");
 }
