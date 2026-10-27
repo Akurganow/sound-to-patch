@@ -48,3 +48,30 @@ fn a_closed_pipe_is_not_an_error() {
     drop(child.stdout.take());
     assert!(child.wait().unwrap().success());
 }
+
+/// The success case of `analyze`, on a generated WAV in a temporary
+/// folder, which a trycmd case cannot name.
+#[test]
+fn analyze_writes_both_files_for_a_generated_wav() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = crate::report::stem(dir.path());
+    let out = dir.path().join("cli");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .arg("analyze")
+        .arg(&path)
+        .args(["--bpm", "120", "--out"])
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(
+        stdout,
+        format!(
+            "wrote {}\nwrote {}\n",
+            out.join("layers.json").display(),
+            out.join("spectrogram.png").display()
+        )
+    );
+    assert!(out.join("spectrogram.png").is_file());
+}

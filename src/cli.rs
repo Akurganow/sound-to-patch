@@ -8,6 +8,7 @@ use std::error::Error;
 
 use clap::{Parser, Subcommand};
 
+pub mod analyze;
 pub mod preset;
 
 /// Arguments of the `sound-to-patch` command.
@@ -39,6 +40,10 @@ pub struct Cli {
 /// The commands, one variant per line.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Analyse a stem and write layers.json and spectrogram.png.
+    ///
+    /// Example: sound-to-patch analyze bass.wav --bpm 140
+    Analyze(analyze::AnalyzeArgs),
     /// Read, inspect and write synth presets.
     Preset(preset::PresetArgs),
 }
@@ -52,6 +57,13 @@ impl Command {
     /// and the fix.
     pub fn run(&self) -> Result<String, Box<dyn Error + Send + Sync>> {
         match self {
+            Self::Analyze(args) => Ok(crate::report::analyze(&crate::report::AnalyzeRequest {
+                stem: &args.stem,
+                bpm: args.bpm,
+                synth: args.synth()?,
+                notes: args.notes.as_deref(),
+                out: args.out.as_deref(),
+            })?),
             Self::Preset(args) => match &args.command {
                 preset::PresetCommand::Inspect(inspect) => Ok(crate::preset::inspect(
                     &inspect.file,

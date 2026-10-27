@@ -1,0 +1,10 @@
+# A tempo outside 4 to 1000 BPM is a usage error.
+bin.name = "sound-to-patch"
+args = ["analyze", "tests/cmd/data/layer2.mp2", "--bpm", "2"]
+status.code = 2
+stdout = ""
+stderr = """
+error: invalid value '2' for '--bpm <BPM>': Bpm out of range: got 2.0, expected 4.0 to 1000.0
+
+For more information, try '--help'.
+"""

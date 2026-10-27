@@ -9,6 +9,7 @@ accepted = [
     "Apache-2.0",
     "MPL-2.0",
     "Unicode-3.0",
+    "Unlicense",
     "Zlib",
 ]
 

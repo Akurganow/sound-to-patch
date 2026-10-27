@@ -20,8 +20,12 @@ mod mapper;
 #[cfg(test)]
 mod masks;
 #[cfg(test)]
+mod midi;
+#[cfg(test)]
 mod modulation;
 mod preset;
+#[cfg(test)]
+mod report;
 #[cfg(test)]
 mod stem;
 #[cfg(test)]

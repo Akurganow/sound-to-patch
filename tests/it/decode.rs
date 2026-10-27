@@ -6,24 +6,7 @@ use std::path::Path;
 use sound_to_patch::audio::{self, SampleRate};
 use sound_to_patch::dsp::{Stft, StftParams, strongest_peak};
 
-use crate::support::cast::pcm16;
-use crate::support::signals::sine;
-
-fn write_wav16(path: &Path, rate: u32, channels: &[Vec<f64>]) {
-    let spec = hound::WavSpec {
-        channels: u16::try_from(channels.len()).unwrap(),
-        sample_rate: rate,
-        bits_per_sample: 16,
-        sample_format: hound::SampleFormat::Int,
-    };
-    let mut writer = hound::WavWriter::create(path, spec).unwrap();
-    for frame in 0..channels[0].len() {
-        for channel in channels {
-            writer.write_sample(pcm16(channel[frame])).unwrap();
-        }
-    }
-    writer.finalize().unwrap();
-}
+use crate::support::signals::{sine, write_wav16};
 
 #[test]
 fn a_stereo_wav_decodes_at_its_rate_with_both_channels() {

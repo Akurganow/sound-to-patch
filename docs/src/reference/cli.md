@@ -13,14 +13,79 @@ Turn an audio stem or a written sound description into a starting point in Vital
 Usage: sound-to-patch <COMMAND>
 
 Commands:
-  preset  Read, inspect and write synth presets
-  help    Print this message or the help of the given subcommand(s)
+  analyze  Analyse a stem and write layers.json and spectrogram.png
+  preset   Read, inspect and write synth presets
+  help     Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
   -V, --version  Print version
 
 ```
+
+## analyze
+
+```console
+$ sound-to-patch analyze --help
+Analyse a stem and write layers.json and spectrogram.png.
+
+Example: sound-to-patch analyze bass.wav --bpm 140
+
+Usage: sound-to-patch analyze [OPTIONS] --bpm <BPM> <STEM>
+
+Arguments:
+  <STEM>
+          The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A
+
+Options:
+      --bpm <BPM>
+          The tempo of the stem in beats per minute, 4 to 1000
+
+      --notes <FILE>
+          A MIDI file with the stem's notes. Its tempo must match --bpm
+
+  -o, --out <DIR>
+          The output folder [default: a folder named after the stem, next to it]
+
+      --synth <SYNTH>
+          The target synth that the report names [default: vital]
+
+          Possible values:
+          - vital:  Vital, with `.vital` preset files
+          - serum2: Serum 2, with `.SerumPreset` preset files
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+```
+
+`analyze` decodes the stem at its native rate, runs the stem estimators
+and writes two files into the output folder, which it creates:
+
+- `layers.json`: the report. The [layer report page](formats/layers.md)
+  lists every field.
+- `spectrogram.png`: a 1500 by 512 pixel image of the busiest 10 s, in two
+  panels. The [pipeline page](../analysis/pipeline.md#the-report) gives its
+  layout.
+
+Both files are overwritten on the next run; nothing else in the folder
+changes. The same stem and flags give the same bytes. The command prints
+one `wrote <path>` line per file and a warning line for each corrupt
+packet that became silence.
+
+Without `--out`, the folder is named after the stem file and sits next to
+it: `stems/bass.wav` writes `stems/bass/`. With `--notes`, the MIDI file
+gives the note list. Its note times follow the file's tempo map, and every
+tempo in the file must lie within 0.01 BPM of `--bpm`; a file without a
+tempo event plays at the MIDI default of 120 BPM. No transcription runs in
+this release, so the report's `transcription` group is `null` with or
+without `--notes`.
+
+| Exit code | Meaning |
+| :-- | :-- |
+| 0 | Both files were written. |
+| 1 | The stem or the note file cannot be read, or an output cannot be written. The message names the file, the cause and the fix. |
+| 2 | A usage error, such as a missing `--bpm` or a tempo outside 4 to 1000. |
 
 ## preset
 

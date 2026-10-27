@@ -12,6 +12,16 @@ pub(crate) fn usize_to_f64(n: usize) -> f64 {
     n as f64
 }
 
+/// A tick count of a MIDI file as `f64`. Exact up to 2^53 ticks, years of
+/// music at any resolution.
+#[expect(
+    clippy::cast_precision_loss,
+    reason = "tick counts stay far below 2^53, where f64 is exact"
+)]
+pub(crate) fn u64_to_f64(n: u64) -> f64 {
+    n as f64
+}
+
 /// A signed integer read from a file as `f64`. Exact up to ±2^53; larger
 /// values round to the nearest `f64`, as a JSON reader does.
 #[expect(

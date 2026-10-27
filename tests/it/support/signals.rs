@@ -1,9 +1,11 @@
 //! Test signals built from the recipes that the golden generator also reads.
 
 use std::f64::consts::PI;
+use std::path::Path;
 
 use serde_json::Value;
 
+use super::cast::pcm16;
 use super::rng::gaussian;
 
 /// `n / rate` for each sample index.
@@ -99,4 +101,21 @@ pub(crate) fn naive_saw(f: f64, t: &[f64]) -> Vec<f64> {
     t.iter()
         .map(|&time| 2.0 * (f * time).rem_euclid(1.0) - 1.0)
         .collect()
+}
+
+/// Writes 16-bit PCM WAV with one channel per slice.
+pub(crate) fn write_wav16(path: &Path, rate: u32, channels: &[Vec<f64>]) {
+    let spec = hound::WavSpec {
+        channels: u16::try_from(channels.len()).unwrap(),
+        sample_rate: rate,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
+    };
+    let mut writer = hound::WavWriter::create(path, spec).unwrap();
+    for frame in 0..channels[0].len() {
+        for channel in channels {
+            writer.write_sample(pcm16(channel[frame])).unwrap();
+        }
+    }
+    writer.finalize().unwrap();
 }

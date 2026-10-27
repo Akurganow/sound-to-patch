@@ -21,6 +21,8 @@
 //!   traits, the parameter registry with its laws, the template, the edit
 //!   list and its applier, the mapper trait that turns layer values into
 //!   edits, and the Vital adapter.
+//! - [`report`]: the analysis report of a stem, `layers.json` and the
+//!   spectrogram image, and the `analyze` pipeline that writes them.
 //! - [`synth`]: the target synth, the shared `--synth` argument and what
 //!   each synth offers in structure.
 //! - [`units`]: unit newtypes, checked once when built, with their
@@ -33,5 +35,6 @@ pub mod confidence;
 pub mod dsp;
 pub mod notes;
 pub mod preset;
+pub mod report;
 pub mod synth;
 pub mod units;
