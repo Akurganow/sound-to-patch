@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/layers.schema.json",
+  "title": "layers.json",
+  "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _db, _dbfs, _deg) where the value has one. The conventions group names the convention of every number in the stem group.",
+  "type": "object",
+  "required": ["schema", "source", "synth", "stem", "transcription", "conventions"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "layers/1" },
+    "source": {
+      "description": "The file name of the stem, without its folder. A later run into the same folder refuses a report of another source unless forced.",
+      "type": "string",
+      "minLength": 1
+    },
+    "synth": { "enum": ["vital", "serum2"] },
+    "stem": { "$ref": "#/$defs/stem" },
+    "transcription": { "$ref": "#/$defs/transcription" },
+    "conventions": { "$ref": "#/$defs/conventions" }
+  },
+  "$defs": {
+    "name": {
+      "description": "A field name: snake_case ASCII.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(_[a-z0-9]+)*$"
+    },
+    "reason": {
+      "type": "object",
+      "required": ["code", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "$ref": "#/$defs/name" },
+        "value": { "type": ["number", "boolean"] }
+      }
+    },
+    "confidence": {
+      "description": "An estimate has a level, at least one reason and an optional spread in the unit of its spread type. No estimate has at least one reason and neither a level nor a spread.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["level", "reasons", "estimate"],
+          "additionalProperties": false,
+          "properties": {
+            "level": { "enum": ["low", "medium", "high"] },
+            "reasons": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reason" } },
+            "spread": { "type": "number" },
+            "estimate": { "const": true }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["reasons", "estimate"],
+          "additionalProperties": false,
+          "properties": {
+            "reasons": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/reason" } },
+            "estimate": { "const": false }
+          }
+        }
+      ]
+    },
+    "no_estimate": {
+      "properties": { "confidence": { "properties": { "estimate": { "const": false } } } }
+    },
+    "value": {
+      "description": "One number and its confidence; the number is null exactly when there is no estimate.",
+      "type": "object",
+      "required": ["value", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": ["number", "null"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "value": { "type": "null" } } },
+      "else": { "properties": { "value": { "type": "number" } } }
+    },
+    "statistic": {
+      "description": "The median and interquartile range over active frames; both are null exactly when there is no estimate.",
+      "type": "object",
+      "required": ["median", "iqr", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "median": { "type": ["number", "null"] },
+        "iqr": { "type": ["number", "null"], "minimum": 0 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "median": { "type": "null" }, "iqr": { "type": "null" } } },
+      "else": { "properties": { "median": { "type": "number" }, "iqr": { "type": "number" } } }
+    },
+    "unit_statistic": {
+      "allOf": [
+        { "$ref": "#/$defs/statistic" },
+        { "properties": { "median": { "minimum": 0 } } }
+      ]
+    },
+    "band_share": {
+      "type": "object",
+      "required": ["value", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": ["array", "null"],
+          "items": {
+            "type": "object",
+            "required": ["lo_hz", "hi_hz", "share"],
+            "additionalProperties": false,
+            "properties": {
+              "lo_hz": { "type": "number", "minimum": 0 },
+              "hi_hz": { "type": "number", "minimum": 0 },
+              "share": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "value": { "type": "null" } } },
+      "else": { "properties": { "value": { "type": "array" } } }
+    },
+    "stereo_band": {
+      "description": "A value is null when it does not exist: a one-channel file, a silent channel, a zero mid or side, or, for ipd_deg, no note list.",
+      "type": "object",
+      "required": ["rho", "sm_db", "ipd_deg"],
+      "additionalProperties": false,
+      "properties": {
+        "rho": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+        "sm_db": { "type": ["number", "null"] },
+        "ipd_deg": { "type": ["number", "null"] }
+      }
+    },
+    "stereo": {
+      "type": "object",
+      "required": ["full", "sub", "low_mid", "high", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "full": { "$ref": "#/$defs/stereo_band" },
+        "sub": { "$ref": "#/$defs/stereo_band" },
+        "low_mid": { "$ref": "#/$defs/stereo_band" },
+        "high": { "$ref": "#/$defs/stereo_band" },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "stem": {
+      "type": "object",
+      "required": [
+        "bpm", "duration_s", "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs",
+        "rms_dbfs", "crest_db", "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz",
+        "rolloff95_hz", "flatness", "band_share", "stereo"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "bpm": { "type": "number", "minimum": 4, "maximum": 1000 },
+        "duration_s": { "type": "number", "minimum": 0 },
+        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "band_edge_hz": { "$ref": "#/$defs/value" },
+        "hard_limited": { "type": "boolean" },
+        "peak_dbfs": { "$ref": "#/$defs/value" },
+        "rms_dbfs": { "$ref": "#/$defs/value" },
+        "crest_db": { "$ref": "#/$defs/value" },
+        "centroid_hz": { "$ref": "#/$defs/unit_statistic" },
+        "centroid_over_f0": {
+          "description": "Null without a note list.",
+          "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/unit_statistic" }]
+        },
+        "spread_hz": { "$ref": "#/$defs/unit_statistic" },
+        "rolloff85_hz": { "$ref": "#/$defs/unit_statistic" },
+        "rolloff95_hz": { "$ref": "#/$defs/unit_statistic" },
+        "flatness": {
+          "allOf": [
+            { "$ref": "#/$defs/statistic" },
+            { "properties": { "median": { "minimum": 0, "maximum": 1 } } }
+          ]
+        },
+        "band_share": { "$ref": "#/$defs/band_share" },
+        "stereo": { "$ref": "#/$defs/stereo" }
+      }
+    },
+    "transcription": {
+      "description": "The transcriber's model and settings, or null when no transcriber ran, as with a given note list.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["model_sha256", "crate_version", "profile", "note_params"],
+          "additionalProperties": false,
+          "properties": {
+            "model_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+            "crate_version": { "type": "string" },
+            "profile": { "type": "string" },
+            "note_params": {
+              "type": "object",
+              "propertyNames": { "$ref": "#/$defs/name" },
+              "additionalProperties": { "type": ["number", "boolean"] }
+            }
+          }
+        }
+      ]
+    },
+    "conventions": {
+      "type": "object",
+      "required": [
+        "frame_size", "statistics", "spectral", "bpm", "duration_s", "sample_rate_hz",
+        "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db", "centroid_hz",
+        "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz", "flatness",
+        "band_share", "stereo", "confidence"
+      ],
+      "propertyNames": { "$ref": "#/$defs/name" },
+      "properties": {
+        "frame_size": { "enum": [4096, 8192] }
+      },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "layer_group": {
+      "description": "The shape of the layer groups that later releases add at the top level. values is null when the evidence is too thin, and the confidence then says why. suggested_edits maps a parameter name with its unit suffix to a plain number, such as filter1_cutoff_hz: 410.",
+      "type": "object",
+      "required": ["values", "confidence", "flags", "needs_render", "suggested_edits"],
+      "additionalProperties": false,
+      "properties": {
+        "values": {
+          "type": ["object", "null"],
+          "propertyNames": { "$ref": "#/$defs/name" }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" },
+        "flags": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "type": "boolean" }
+        },
+        "needs_render": { "type": "boolean" },
+        "suggested_edits": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/name" },
+          "additionalProperties": { "type": "number" }
+        }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "values": { "type": "null" } } }
+    }
+  }
+}

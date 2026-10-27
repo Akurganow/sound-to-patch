@@ -1,0 +1,13 @@
+# The tempo is required: it is a usage error, exit code 2.
+bin.name = "sound-to-patch"
+args = ["analyze", "tests/cmd/data/layer2.mp2"]
+status.code = 2
+stdout = ""
+stderr = """
+error: the following required arguments were not provided:
+  --bpm <BPM>
+
+Usage: sound-to-patch analyze --bpm <BPM> <STEM>
+
+For more information, try '--help'.
+"""

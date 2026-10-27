@@ -18,10 +18,11 @@ code validates the edit list against a template preset of the target synth and
 writes the preset file. The text path skips the analysis: the agent writes the
 edit list from the description.
 
-The library so far holds the command line with `preset inspect` and
-`preset apply`, the unit types, the confidence type, the synth seam, the
-Vital read and write paths, stem intake, the note list with its masks and
-the signal core that the estimators share.
+The library so far holds the command line with `analyze`, `preset inspect`
+and `preset apply`, the unit types, the confidence type, the synth seam,
+the Vital read and write paths, stem intake, the note list with its masks
+and its MIDI reader, the signal core that the estimators share, and the
+report with the `stem` group and the spectrogram.
 
 ## Synth adapter seam
 
@@ -70,7 +71,8 @@ joins `READY` when its adapter lands.
   descriptors, the modulation spectrum with the division snap, and the
   Lomb-Scargle periodogram.
 - `notes`: the note list that the transcriber and the MIDI reader produce
-  and every layer reads, and the harmonic masks built from it.
+  and every layer reads, the MIDI reader behind `analyze --notes`, and the
+  harmonic masks built from the list.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.
@@ -83,6 +85,9 @@ joins `READY` when its adapter lands.
   adapter: the JSON codec, the registry built from `registry.json`, the
   built-in template, the writers of routes, wavetables and LFO shapes, the
   capabilities and the laws that span controls.
+- `report`: the `analyze` pipeline and its outputs. `layers` writes
+  `layers.json`, whose committed schema is `schemas/layers.schema.json`,
+  and `spectrogram` draws the two-panel spectrogram PNG.
 - `synth`: the `Synth` enum, the shared `--synth` argument and
   `SynthCapabilities`.
 - `src/lib.rs`: the crate root and the crate docs.

@@ -13,8 +13,10 @@ use std::fmt;
 use crate::units::{Hz, MidiPitch, Seconds};
 
 mod mask;
+mod midi;
 
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
+pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
 
 /// A MIDI velocity from 1 to 127. Velocity 0 means a note-off in MIDI, so
 /// it is not a velocity.

@@ -1,0 +1,8 @@
+# A missing stem fails with the path and a fix.
+bin.name = "sound-to-patch"
+args = ["analyze", "no-such-stem.wav", "--bpm", "120"]
+status.code = 1
+stdout = ""
+stderr = """
+error: cannot decode no-such-stem.wav: cannot open the file (No such file or directory (os error 2)). Check the path
+"""

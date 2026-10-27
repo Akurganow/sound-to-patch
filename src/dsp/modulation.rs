@@ -421,15 +421,15 @@ pub(crate) fn rate_estimate(
         Pick::Rate { rate, prominence } => (rate, prominence),
         Pick::NoLine { prominence } => {
             return Estimate::none(vec![Reason::new(
-                ReasonCode::NoModulationLine,
+                ReasonCode::LineProminence,
                 Signal::Number(prominence),
             )?]);
         }
     };
     let cycles = rate * span.get();
     let reasons = vec![
-        Reason::new(ReasonCode::TooFewCycles, Signal::Number(cycles))?,
-        Reason::new(ReasonCode::NoModulationLine, Signal::Number(prominence))?,
+        Reason::new(ReasonCode::CyclesInSpan, Signal::Number(cycles))?,
+        Reason::new(ReasonCode::LineProminence, Signal::Number(prominence))?,
     ];
     if cycles < MIN_CYCLES {
         Estimate::none(reasons)

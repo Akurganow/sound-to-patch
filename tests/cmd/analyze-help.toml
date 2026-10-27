@@ -1,0 +1,36 @@
+bin.name = "sound-to-patch"
+args = ["analyze", "--help"]
+stdout = """
+Analyse a stem and write layers.json and spectrogram.png.
+
+Example: sound-to-patch analyze bass.wav --bpm 140
+
+Usage: sound-to-patch analyze [OPTIONS] --bpm <BPM> <STEM>
+
+Arguments:
+  <STEM>
+          The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A
+
+Options:
+      --bpm <BPM>
+          The tempo of the stem in beats per minute, 4 to 1000
+
+      --notes <FILE>
+          A MIDI file with the stem's notes. Its tempo must match --bpm
+
+  -o, --out <DIR>
+          The output folder [default: a folder named after the stem, next to it]
+
+      --force
+          Replace a report of another stem in the output folder
+
+      --synth <SYNTH>
+          The target synth that the report names [default: vital]
+
+          Possible values:
+          - vital:  Vital, with `.vital` preset files
+          - serum2: Serum 2, with `.SerumPreset` preset files
+
+  -h, --help
+          Print help (see a summary with '-h')
+"""

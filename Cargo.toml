@@ -16,6 +16,10 @@ workspace = true
 base64 = { version = "0.23.1", default-features = false, features = ["std"] }
 biquad = "0.6.0"
 clap = { version = "4.6.7", features = ["derive"] }
+colorous = "1.0.16"
+font8x8 = "0.3.1"
+midly = { version = "0.5.3", default-features = false, features = ["std"] }
+png = "0.18.1"
 realfft = "3.5.0"
 rubato = "=5.0.1"
 rustfft = "6.4.1"
@@ -27,6 +31,7 @@ symphonia = { version = "0.6.1", features = ["mp3", "aac", "isomp4", "aiff"] }
 approx = "0.5.1"
 hound = "3.5.1"
 insta = "1.49.0"
+jsonschema = { version = "0.60.2", default-features = false }
 proptest = "1.12.0"
 tempfile = "3.27.0"
 trycmd = "1.2.1"

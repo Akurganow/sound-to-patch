@@ -4,7 +4,13 @@
 
 # Guide
 
+- [Analysing a stem](guide/analyze.md)
 - [Presets](guide/preset.md)
+
+# Analysis
+
+- [Pipeline](analysis/pipeline.md)
+- [Common methods](analysis/methods.md)
 
 # Reference
 
@@ -12,6 +18,7 @@
 - [Units](reference/units.md)
 - [Formats]()
   - [Vital preset](reference/formats/vital-preset.md)
+  - [Layer report](reference/formats/layers.md)
 
 # Development
 

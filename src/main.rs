@@ -9,10 +9,11 @@ use sound_to_patch::cli::Cli;
 
 fn main() -> ExitCode {
     match Cli::parse().command.run() {
-        Ok(text) => {
+        Ok(output) => {
+            eprint!("{}", output.stderr);
             let mut stdout = std::io::stdout().lock();
             match stdout
-                .write_all(text.as_bytes())
+                .write_all(output.stdout.as_bytes())
                 .and_then(|()| stdout.flush())
             {
                 // A closed pipe, as with `| head`, is not an error of the command.

@@ -1,0 +1,255 @@
+---
+source: tests/it/report.rs
+expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
+---
+{
+  "schema": "layers/1",
+  "source": "bass.wav",
+  "synth": "vital",
+  "stem": {
+    "bpm": "<number>",
+    "duration_s": "<number>",
+    "sample_rate_hz": "<integer>",
+    "band_edge_hz": {
+      "value": "<number>",
+      "confidence": {
+        "level": "low",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          },
+          {
+            "code": "band_edge_drop",
+            "value": "<number>"
+          },
+          {
+            "code": "no_band_edge",
+            "value": true
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "hard_limited": false,
+    "peak_dbfs": {
+      "value": "<number>",
+      "confidence": {
+        "level": "high",
+        "reasons": [
+          {
+            "code": "hard_limited",
+            "value": false
+          }
+        ],
+        "estimate": true
+      }
+    },
+    "rms_dbfs": {
+      "value": "<number>",
+      "confidence": {
+        "level": "high",
+        "reasons": [
+          {
+            "code": "hard_limited",
+            "value": false
+          }
+        ],
+        "estimate": true
+      }
+    },
+    "crest_db": {
+      "value": "<number>",
+      "confidence": {
+        "level": "high",
+        "reasons": [
+          {
+            "code": "hard_limited",
+            "value": false
+          }
+        ],
+        "estimate": true
+      }
+    },
+    "centroid_hz": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "high",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "centroid_over_f0": null,
+    "spread_hz": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "rolloff85_hz": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "rolloff95_hz": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "flatness": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "band_share": {
+      "value": [
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        },
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        },
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        },
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        },
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        },
+        {
+          "lo_hz": "<number>",
+          "hi_hz": "<number>",
+          "share": "<number>"
+        }
+      ],
+      "confidence": {
+        "level": "high",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "estimate": true
+      }
+    },
+    "stereo": {
+      "full": {
+        "rho": "<number>",
+        "sm_db": "<number>",
+        "ipd_deg": null
+      },
+      "sub": {
+        "rho": "<number>",
+        "sm_db": "<number>",
+        "ipd_deg": null
+      },
+      "low_mid": {
+        "rho": "<number>",
+        "sm_db": "<number>",
+        "ipd_deg": null
+      },
+      "high": {
+        "rho": "<number>",
+        "sm_db": "<number>",
+        "ipd_deg": null
+      },
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "stereo_blind_spot",
+            "value": true
+          },
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "estimate": true
+      }
+    }
+  },
+  "transcription": null,
+  "conventions": {
+    "frame_size": "<integer>",
+    "statistics": "median and interquartile range over active frames, quantiles by linear interpolation at q (n - 1) between the sorted values; a frame is active when its RMS lies within 40 dB of the loudest frame",
+    "spectral": "magnitude weights for shape, power for band shares; periodic Hann frames of frame_size samples, hop frame_size / 4, centred and zero-padded; frame_size is 8192 when the note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list",
+    "bpm": "given by --bpm, not estimated",
+    "duration_s": "decoded frames over the sample rate",
+    "sample_rate_hz": "the native rate of the file; no resampling",
+    "band_edge_hz": "long-term power spectrum of the mid over the active frames that lie wholly inside the stem, median-smoothed over one semitone on each side; where the smoothed level falls at least 25 dB over one semitone above 2 kHz and the median level of the octave below lies within 20 dB of the level where the fall starts, the edge is the half-depth point of the steepest such fall; otherwise the noise floor is the lowest level above 1 kHz and the edge is the highest bin at least 30 dB above it, at low confidence, or the Nyquist frequency when no bin above 1 kHz is",
+    "hard_limited": "true when runs of at least 1 ms of samples within 1e-5 of the channel peak, each with its neighbours on both sides at least half the peak on the same side, cover at least 0.1 % of a channel",
+    "peak_dbfs": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",
+    "rms_dbfs": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",
+    "crest_db": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",
+    "centroid_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
+    "centroid_over_f0": "the centroid of each active frame over the median f0 of the note list, MIDI pitch to hertz with A4 = 440 Hz; null without a note list",
+    "spread_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
+    "rolloff85_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
+    "rolloff95_hz": "magnitude weights |X_k| divided by the window sum, periodic Hann frames, statistics over active frames as median and interquartile range",
+    "flatness": "geometric over arithmetic mean of the magnitude, floored at 1e-5 after the window-sum scale, bins from 100 Hz to 10 kHz",
+    "band_share": "power |X_k|^2 summed over active frames per band, divided by the power in the bands reported; bands start at 20, 60, 250, 1000, 4000 and 10000 Hz and end at the next start or 20 kHz; a band that starts at or above the Nyquist frequency is left out, and one that crosses it ends there",
+    "stereo": "rho: Pearson correlation at zero lag; sm_db: 20 log10(rms(S) / rms(M)) with M = (L + R) / 2 and S = (L - R) / 2; per band from the 8192-point Hann STFT over bins inside the band, DC excluded; ipd_deg: abs(angle(L conj R)) at the largest cross-spectrum bin within 2 bins of h f0, h = 1..20 inside the band, weighted by |L conj R|, then the mean over active frames, whose RMS over both channels, sqrt((rms_L^2 + rms_R^2) / 2), lies within 40 dB of the loudest; bands: sub below 120 Hz, low_mid 120 Hz to 1 kHz, high above 1 kHz",
+    "confidence": "level, reasons and spread of each estimate; the spread of a statistic is its interquartile range and that of the band edge one bin width, in the unit of the value; estimate false means no value, with the reasons why"
+  }
+}

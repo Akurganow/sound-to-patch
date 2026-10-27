@@ -12,11 +12,13 @@ paths:
   agent turns the description into a preset and its explanation, and into
   notes when the description asks for them.
 
-The project is at an early release. `sound-to-patch preset inspect` prints
-the header and the decoded settings of a Vital preset, and
-`sound-to-patch preset apply` writes one from an edit list, as the
-[preset guide](guide/preset.md) shows. The analysis and the text path
-arrive in later releases.
+The project is at an early release. `sound-to-patch analyze` reads a stem
+and writes a report of its level, spectrum, band edge and stereo image with
+a spectrogram, as the [analysis guide](guide/analyze.md) shows.
+`sound-to-patch preset inspect` prints the header and the decoded settings
+of a Vital preset, and `sound-to-patch preset apply` writes one from an
+edit list, as the [preset guide](guide/preset.md) shows. The layer
+estimators and the text path arrive in later releases.
 
 Vital and Serum 2 are trademarks of their owners. This project is not
 affiliated with or endorsed by them.

@@ -117,7 +117,7 @@ fn track_rate(values: Vec<f64>) -> (Option<f64>, Option<f64>) {
         .confidence()
         .reasons()
         .iter()
-        .find(|reason| reason.code() == ReasonCode::NoModulationLine)
+        .find(|reason| reason.code() == ReasonCode::LineProminence)
         .map(|reason| match reason.value() {
             Signal::Number(value) => value,
             other => panic!("{other:?}"),

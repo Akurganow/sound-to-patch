@@ -5,7 +5,8 @@ use std::fmt;
 
 use crate::cast;
 use crate::confidence::{ConfidenceError, Estimate, Level, Reason, ReasonCode, Signal};
-use crate::dsp::{ActiveFrames, Stft, StftParams, Summary, Window};
+use crate::dsp::descriptors::too_few_frames;
+use crate::dsp::{ActiveFrames, MIN_ACTIVE_FRAMES, Stft, StftParams, Summary, Window};
 use crate::notes::NoteList;
 use crate::units::{Bpm, Decibels, Hz, Normalized, Seconds};
 
@@ -17,8 +18,8 @@ use super::{Audio, SampleRate};
 /// need `N >= 4 fs / f0`.
 pub const LONG_FRAME_BELOW_HZ: Hz = Hz::from_const(100.0);
 /// A fall of at least this much over one semitone marks a cutoff, and the
-/// band edge sits at its half-depth point. Real stems with a cutoff fall 30
-/// to 44 dB there, natural roll-offs 15 to 22 dB.
+/// band edge sits at its half-depth point. Synthetic cuts fall 57 to 91 dB
+/// there, a 2-pole roll-off about 1.3 dB.
 pub const BAND_EDGE_STEEP_DROP_DB: Decibels = Decibels::from_const(25.0);
 /// The plateau allowance of a steep fall in the band-edge rule.
 ///
@@ -28,9 +29,10 @@ pub const BAND_EDGE_STEEP_DROP_DB: Decibels = Decibels::from_const(25.0);
 pub const BAND_EDGE_PLATEAU_DB: Decibels = Decibels::from_const(20.0);
 /// The margin above the noise floor that the fallback band-edge rule needs.
 ///
-/// The fallback serves a spectrum without a steep fall. Real stems carry a
-/// shelf of noise up to 21 dB above the floor beyond their cut, so the
-/// margin is 30 dB.
+/// The fallback serves a spectrum without a steep fall. A cut can leave a
+/// shelf of noise above it, which a small margin reads as content; with a
+/// shelf 60 dB down above a 16 kHz cut this margin still misses the cut by
+/// 3.2 semitones, which is why the steep-fall rule comes first.
 pub const BAND_EDGE_MARGIN_DB: Decibels = Decibels::from_const(30.0);
 /// Samples within this share of the peak count as at the ceiling.
 pub const CEILING_TOLERANCE: Normalized = Normalized::from_const(1e-5);
@@ -409,6 +411,9 @@ pub fn band_edge(
             Reason::new(ReasonCode::SilentStem, Signal::Flag(true))?,
             frames,
         ]);
+    }
+    if active.count() < MIN_ACTIVE_FRAMES {
+        return Estimate::none(vec![frames, too_few_frames()?]);
     }
     // A frame that reaches into the padding sees the signal start or stop as
     // a step, whose broadband energy would hide a low-pass. Such frames count

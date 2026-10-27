@@ -189,3 +189,61 @@ fn descriptors_of_a_tone_carry_frame_counts_and_band_shares() {
     let centroid = d.centroid.value().unwrap().median().get();
     assert!((ratio - centroid / 220.0).abs() < 1e-9);
 }
+
+#[test]
+fn too_few_active_frames_give_no_statistic() {
+    use sound_to_patch::confidence::ReasonCode;
+    use sound_to_patch::dsp::MIN_ACTIVE_FRAMES;
+    let rate = SampleRate::new(48_000).unwrap();
+    let params = StftParams::new(4096).unwrap();
+    let noise: Vec<f64> = gaussian(5, 48_000).iter().map(|v| 0.1 * v).collect();
+    // A centred frame every 1024 samples: `k` frames need `(k - 1) 1024 + 1`
+    // samples. One sample is one frame; 0.2 s at 48 kHz is 10.
+    for frames in [1, 10, MIN_ACTIVE_FRAMES - 1] {
+        let d = describe(&noise[..=(frames - 1) * 1024], rate, params, None, false).unwrap();
+        assert_eq!(d.active_frames, frames);
+        for estimate in [&d.centroid, &d.spread, &d.rolloff85, &d.rolloff95] {
+            assert!(estimate.value().is_none(), "{frames} frames");
+            let codes: Vec<_> = estimate
+                .confidence()
+                .reasons()
+                .iter()
+                .map(|r| r.code())
+                .collect();
+            assert!(codes.contains(&ReasonCode::TooFewFrames), "{codes:?}");
+        }
+        assert!(d.flatness.value().is_none() && d.band_share.value().is_none());
+        // Levels need no frames.
+        assert!(d.peak_dbfs.value().is_some());
+    }
+    let d = describe(
+        &noise[..=(MIN_ACTIVE_FRAMES - 1) * 1024],
+        rate,
+        params,
+        None,
+        false,
+    )
+    .unwrap();
+    assert_eq!(d.active_frames, MIN_ACTIVE_FRAMES);
+    assert!(d.centroid.value().is_some() && d.band_share.value().is_some());
+}
+
+#[test]
+fn bands_above_nyquist_are_dropped_and_the_crossing_band_ends_there() {
+    let params = StftParams::new(4096).unwrap();
+    let noise: Vec<f64> = gaussian(6, 32_000).iter().map(|v| 0.1 * v).collect();
+    for (rate, count, top) in [
+        (8_000, 4, 4000.0),
+        (16_000, 5, 8000.0),
+        (44_100, 6, 20_000.0),
+    ] {
+        let d = describe(&noise, SampleRate::new(rate).unwrap(), params, None, false).unwrap();
+        let shares = d.band_share.value().unwrap();
+        assert_eq!(shares.len(), count, "{rate} Hz");
+        assert!((shares[count - 1].hi.get() - top).abs() < 1e-9, "{rate} Hz");
+        let total: f64 = shares.iter().map(|b| b.share.get()).sum();
+        assert!((total - 1.0).abs() < 1e-12);
+        // White noise puts power in every band that remains.
+        assert!(shares.iter().all(|b| b.share.get() > 0.0), "{rate} Hz");
+    }
+}

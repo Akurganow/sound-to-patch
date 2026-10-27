@@ -11,15 +11,17 @@ use crate::cast;
 use crate::confidence::{ConfidenceError, Estimate, Level, Reason, ReasonCode, Signal, Spread};
 use crate::units::{Decibels, Hz, Normalized, Ratio};
 
-use super::frames::{ActiveFrames, Stats, Summary};
+use super::frames::{ActiveFrames, MIN_ACTIVE_FRAMES, Stats, Summary};
 use super::{Stft, StftParams, Window};
 
 /// The convention of the shape descriptors.
 pub const SHAPE_CONVENTION: &str = "magnitude weights |X_k| divided by the window sum, \
 periodic Hann frames, statistics over active frames as median and interquartile range";
 /// The convention of the band shares.
-pub const BAND_CONVENTION: &str =
-    "power |X_k|^2 summed over active frames per band, divided by the power in all bands";
+pub const BAND_CONVENTION: &str = "power |X_k|^2 summed over active frames per band, divided \
+by the power in the bands reported; bands start at 20, 60, 250, 1000, 4000 and 10000 Hz and end \
+at the next start or 20 kHz; a band that starts at or above the Nyquist frequency is left out, \
+and one that crosses it ends there";
 /// The convention of the flatness.
 pub const FLATNESS_CONVENTION: &str = "geometric over arithmetic mean of the magnitude, \
 floored at 1e-5 after the window-sum scale, bins from 100 Hz to 10 kHz";
@@ -185,6 +187,9 @@ pub fn describe(
     let evidence = Evidence {
         frames: Reason::new(ReasonCode::ActiveFrames, Signal::Count(count))?,
         silent: Reason::new(ReasonCode::SilentStem, Signal::Flag(true))?,
+        short: (active.count() > 0 && active.count() < MIN_ACTIVE_FRAMES)
+            .then(too_few_frames)
+            .transpose()?,
     };
     let (per_frame, band_power) = frame_values(samples, rate, params, &active);
     let pick = |f: fn(&FrameDescriptors) -> f64| per_frame.iter().map(f).collect::<Vec<_>>();
@@ -225,7 +230,7 @@ pub fn describe(
             Level::Medium,
             Normalized::clamped,
         )?,
-        band_share: evidence.band_share(&band_power)?,
+        band_share: evidence.band_share(&band_power, rate.nyquist())?,
         peak_dbfs: evidence.level(peak_db, hard_limited)?,
         rms_dbfs: evidence.level(rms_db, hard_limited)?,
         crest_db: evidence.level(crest, hard_limited)?,
@@ -267,21 +272,34 @@ fn frame_values(
     (per_frame, band_power)
 }
 
+/// The reason of a statistic with fewer than [`MIN_ACTIVE_FRAMES`] frames.
+pub(crate) fn too_few_frames() -> Result<Reason, ConfidenceError> {
+    Reason::new(
+        ReasonCode::TooFewFrames,
+        Signal::Count(u64::try_from(MIN_ACTIVE_FRAMES).unwrap_or(u64::MAX)),
+    )
+}
+
 /// The reasons every descriptor cites.
 struct Evidence {
     frames: Reason,
     silent: Reason,
+    /// Set when the active frames are too few for a statistic.
+    short: Option<Reason>,
 }
 
 impl Evidence {
     /// The median and IQR of per-frame values, the IQR as the spread; no
-    /// estimate without a frame.
+    /// estimate without a frame or with fewer than [`MIN_ACTIVE_FRAMES`].
     fn stats<T: Spread>(
         &self,
         values: &[f64],
         level: Level,
         unit: fn(f64) -> T,
     ) -> Result<Estimate<Stats<T>, T>, ConfidenceError> {
+        if let Some(short) = self.short {
+            return Estimate::none(vec![self.frames, short]);
+        }
         match Summary::of(values) {
             Some(summary) => Estimate::new(
                 summary.to_stats(unit),
@@ -293,20 +311,33 @@ impl Evidence {
         }
     }
 
+    /// The share of each band. A band that starts at or above the Nyquist
+    /// frequency holds no bin and is left out; a band that crosses it ends
+    /// there.
     fn band_share(
         &self,
         band_power: &[f64],
+        nyquist: Hz,
     ) -> Result<Estimate<Vec<BandShare>, Normalized>, ConfidenceError> {
-        let total: f64 = band_power.iter().sum();
+        if let Some(short) = self.short {
+            return Estimate::none(vec![self.frames, short]);
+        }
+        let kept: Vec<(&[Hz], f64)> = BAND_EDGES_HZ
+            .windows(2)
+            .zip(band_power.iter().copied())
+            .filter(|(edge, _)| edge[0] < nyquist)
+            .collect();
+        // Over the kept bands, so the shares sum to 1; a band that starts
+        // exactly at the Nyquist frequency held only its bin.
+        let total: f64 = kept.iter().map(|(_, power)| power).sum();
         if total <= 0.0 {
             return Estimate::none(vec![self.silent, self.frames]);
         }
-        let shares = BAND_EDGES_HZ
-            .windows(2)
-            .zip(band_power)
+        let shares = kept
+            .into_iter()
             .map(|(edge, power)| BandShare {
                 lo: edge[0],
-                hi: edge[1],
+                hi: if edge[1] < nyquist { edge[1] } else { nyquist },
                 share: Normalized::clamped(power / total),
             })
             .collect();
