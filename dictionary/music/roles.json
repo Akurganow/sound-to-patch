@@ -239,11 +239,11 @@
     "group": "role",
     "word": "keys",
     "aliases": [],
-    "meaning": "Piano-like parts played with both hands: left hand 36 to 60, right hand 60 to 84, so the core spans 40 to 84. The hard limits cover the whole model range, so only the core can fail.",
+    "meaning": "Piano-like parts played with both hands. The core spans 40 to 80, the range of the piano tracks in a large MIDI corpus, around a median of 62. The hard limits cover the whole model range, so only the core can fail.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "register", "core": [40, 84], "hard": [21, 108], "voice": "poly"},
+    "rule": {"kind": "register", "core": [40, 80], "hard": [21, 108], "voice": "poly"},
     "example_pass": {
       "root": null,
       "bpm": null,

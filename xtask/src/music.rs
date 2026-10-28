@@ -360,7 +360,12 @@ fn cycle_text(roots: &[u8], chords: &[String], bars_per_chord: Option<f64>) -> S
         .collect();
     let mut text = format!("roots and chords: {}", pairs.join(", "));
     if let Some(bars) = bars_per_chord {
-        let _ = write!(text, "; {bars} bars per chord");
+        let unit = if (bars - 1.0).abs() < f64::EPSILON {
+            "bar"
+        } else {
+            "bars"
+        };
+        let _ = write!(text, "; {bars} {unit} per chord");
     }
     text
 }

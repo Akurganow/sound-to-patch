@@ -680,7 +680,7 @@
     "group": "key",
     "word": "spelling",
     "aliases": ["flat or sharp spelling", "enharmonic spelling"],
-    "meaning": "Spell with flats for F, Bb, Eb, Ab and Db major and for Dm, Gm, Cm, Fm, Bbm, Ebm and Abm. Spell with sharps for G, D, A, E and B major and for Am, Em, Bm, F#m and C#m.",
+    "meaning": "Spell with flats for F, Bb, Eb, Ab and Db major and for Dm, Gm, Cm, Fm, Bbm and Ebm. Spell with sharps for G, D, A, E and B major and for Am, Em, Bm, F#m, C#m and G#m.",
     "sense": null,
     "default": true,
     "conflicts": [],

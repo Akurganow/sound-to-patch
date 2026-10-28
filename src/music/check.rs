@@ -150,19 +150,14 @@ fn entry_problems(
         if entry.group != Group::Progression {
             found.push("only progression entries name a scale".into());
         }
-        match (
+        if !is_scale(dictionary, scale) {
+            found.push(format!("scale `{scale}` is no scale entry"));
+        } else if let (Some(Rule::PitchSet { offsets, .. }), Rule::Cycle { roots, .. }) = (
             dictionary.entry(scale).map(|picked| &picked.rule),
             &entry.rule,
-        ) {
-            (Some(Rule::PitchSet { offsets, .. }), Rule::Cycle { roots, .. }) => {
-                if roots.iter().any(|root| !offsets.contains(root)) {
-                    found.push(format!("a cycle root lies outside its scale `{scale}`"));
-                }
-            }
-            _ if !is_scale(dictionary, scale) => {
-                found.push(format!("scale `{scale}` is no scale entry"));
-            }
-            _ => {}
+        ) && roots.iter().any(|root| !offsets.contains(root))
+        {
+            found.push(format!("a cycle root lies outside its scale `{scale}`"));
         }
     }
     if let Some(pick) = &entry.default_pick {
@@ -619,6 +614,23 @@ mod tests {
             problems
                 .iter()
                 .any(|problem| problem.contains("may choose its tones")),
+            "{problems:?}"
+        );
+    }
+
+    #[test]
+    fn a_progression_scale_must_be_a_scale_entry() {
+        let dictionary = crate::music::dictionary().unwrap();
+        let mut entry = dictionary
+            .entry("progression.mixolydian-loop")
+            .unwrap()
+            .clone();
+        entry.scale = Some("key.techno-key".into());
+        let problems = entry_problems(&entry, dictionary, &BTreeSet::new());
+        assert!(
+            problems
+                .iter()
+                .any(|problem| problem.contains("`key.techno-key` is no scale entry")),
             "{problems:?}"
         );
     }
