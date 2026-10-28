@@ -123,7 +123,7 @@ Checked on 2026-10-28, in a local session:
 | `marketplace add <path>` and `install` | the plugin's skill loads; a local folder is read in place |
 | Installing a plugin whose `plugin.json` lists another in `dependencies` | installs both; uninstalling it marks the other as no longer needed |
 | A zip of the plugin folder, nested or flat, as `--plugin-dir` | loads the skill |
-| A plugin folder under `.claude/skills/` as `<name>@skills-dir` | not listed by `plugin list` or `plugin details`; the docs say it loads after the trust prompt, in the session's own folder only. Not used |
+| A plugin folder under `.claude/skills/` as `<name>@skills-dir` | not listed by `plugin list` or `plugin details`. The docs say it loads once the folder is trusted, from the primary working folder only, and in a worktree from the main checkout. Not used |
 | The linked project skill `.claude/skills/synth-reference` in a clean export of a commit | a headless session lists `synth-reference`, and its `reference` link resolves into `reference/` |
 | Cloud sessions | not a target and not run. The docs say a committed project skill loads there and an installed plugin does not |
 
@@ -132,16 +132,18 @@ Which install paths carry `reference/`:
 | Install path | Carries `reference/`? |
 | :-- | :-- |
 | `marketplace add Akurganow/sound-to-patch` and `install` (a copy from GitHub into the cache) | yes, checked: the link is copied as the folder |
-| A release zip, through `--plugin-dir` or an `archive` source | yes, checked: `zip` stores the linked files, and the release checks it |
-| `marketplace add <local folder>` and `install` | yes, checked: the folder is read in place, so the link resolves |
+| A release zip, through `--plugin-dir` | yes, checked: `zip` stores the linked files, and the release checks it |
+| `marketplace add <local folder>` and `install` | yes, checked: the plugin is read in place, and its `reference/` lists `README.md` and every file of `vital/` |
 | A plugin copied from a local path, or a `command` source in its default copy mode | no: the docs say such a copy keeps only links inside the plugin's own folder |
 | A clone of the repository, for the project skill | yes, where the checkout makes symbolic links |
 
 Windows: with symbolic links off in git (`core.symlinks=false`), both links
 check out as small text files. The plugin then installs with no reference,
-and the project skill does not load. Enable symbolic links before you
-clone or install from GitHub: turn on Developer Mode or use `mklink`, and
-set `core.symlinks=true`. `cargo xtask check-plugins` reports such a file
+and the project skill does not load. Before you clone or install from
+GitHub, let git create symbolic links: enable Developer Mode (or run the
+shell elevated), then clone with `git clone -c core.symlinks=true …`, or
+set `git config --global core.symlinks true` so the clone the agent
+harness makes gets it too. `cargo xtask check-plugins` reports such a file
 as "symlink not checked out".
 
 ## Sources

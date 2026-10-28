@@ -240,7 +240,7 @@ fn check_link(root: &Path, link: &Path, target: &Path, problems: &mut Vec<String
             "{at} is missing; make it a relative link to {want}"
         )),
         Ok(meta) if meta.is_file() => Some(format!(
-            "{at} is a plain file: symlink not checked out. Enable symbolic links (on Windows, Developer Mode or mklink, and git core.symlinks), then check out again"
+            "{at} is a plain file: symlink not checked out. Let git create symbolic links (on Windows, enable Developer Mode or use an elevated shell, and set `git config --global core.symlinks true`), then clone again"
         )),
         Ok(meta) if !meta.file_type().is_symlink() => Some(format!(
             "{at} must be a relative link to {want}, not a folder of its own"
@@ -387,7 +387,7 @@ fn check_reference_folder(root: &Path, problems: &mut Vec<String>) -> crate::Res
         let known = file
             .extension()
             .is_some_and(|ext| ext == "md" || ext == "json");
-        // Finder writes this file into folders it opens; git never holds it.
+        // macOS writes this file into folders it opens; git never holds it.
         let finder = file.file_name().is_some_and(|name| name == ".DS_Store");
         if !known && !finder {
             problems.push(format!(

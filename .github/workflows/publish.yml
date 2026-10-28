@@ -102,7 +102,7 @@ jobs:
             for link in "$dir"skills/*/reference; do
               [ -L "$link" ] || continue
               skill="$(basename "$(dirname "$link")")"
-              unzip -l "$zip" | grep -q " $plugin/skills/$skill/reference/README.md$" \
+              unzip -l "$zip" | grep -q " $plugin/skills/$skill/reference/README\.md$" \
                 || { echo "::error::$zip lacks skills/$skill/reference/README.md"; exit 1; }
             done
           done
