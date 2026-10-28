@@ -27,8 +27,9 @@
 //!   list and its applier, the mapper trait that turns layer values into
 //!   edits, and the Vital adapter.
 //! - [`render`]: rendering a preset and its notes to audio: the recipe, the
-//!   render job and record, the renderer trait and a fake renderer for
-//!   tests.
+//!   render job and record, the renderer trait, a fake renderer for tests,
+//!   the plug-in state of a preset and the renderer that drives the plug-in
+//!   host process.
 //! - [`report`]: the outputs of a stem: `layers.json` and the spectrogram
 //!   image with the `analyze` pipeline that writes them, and `notes.mid`
 //!   with the `notes` command.

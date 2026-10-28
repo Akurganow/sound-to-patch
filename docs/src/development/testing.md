@@ -156,6 +156,29 @@ that CI does not install by default:
 - `a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
   saved after loading a written preset, from `VITAL_SAVED_PRESET`.
 
+## The Vital plug-in
+
+The `render_vital` tests render generated presets through the installed
+Vital plug-in, in the plug-in host process. The host loads the plug-in as
+a library and opens no window. The tests need:
+
+- Vital in a standard VST3 folder: `/Library/Audio/Plug-Ins/VST3`, or the
+  same folder under the user's `Library`.
+- `SOUND_TO_PATCH_HOST`, the path of a `sound-to-patch-host` binary that
+  loads Vital. Vital 1.0.7 holds x86_64 code only, so on Apple silicon the
+  host needs an x86_64 slice and runs under Rosetta.
+
+```sh
+rustup target add x86_64-apple-darwin
+cargo build --release -p sound-to-patch-host --target x86_64-apple-darwin
+SOUND_TO_PATCH_HOST="$PWD/target/x86_64-apple-darwin/release/sound-to-patch-host" \
+  cargo nextest run --run-ignored only -E 'test(render_vital)'
+```
+
+They run the renderer contract suite, check that the state Vital saves
+back matches the sent one, and check that every render uses 2x
+oversampling. CI lints the host for x86_64 but loads no plug-in.
+
 ## Fuzzing
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated

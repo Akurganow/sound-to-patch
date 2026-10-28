@@ -25,8 +25,9 @@ refinement, the note list with its masks and its MIDI reader, the signal
 core that the estimators share, and the report with the `stem` group and the
 spectrogram, the transcriber with its profiles and its register detection,
 the f0 track, the note cleanup, the MIDI writer, the layer map of the agent
-reference, and the render core: the recipe, the renderer trait and a fake
-renderer. The reference itself is the folder `reference/`, which an agent
+reference, and the render core: the recipe, the renderer trait, a fake
+renderer, the Vital plug-in state and the renderer that drives the plug-in
+host. The reference itself is the folder `reference/`, which an agent
 plugin and a project skill both read.
 
 ## Synth adapter seam
@@ -48,7 +49,9 @@ synth lives in its adapter, never in the neutral core.
   `unrepresentable` list with the residual for what the synth cannot reach.
   The trait and the fitting helper exist; the layer groups join with the
   estimators.
-- `RenderStateAdapter`, planned: sets the plugin state in the VST3 host.
+- `preset_state` (`render::state`): builds the plug-in state of a preset
+  for the VST3 host. Vital's is the preset JSON with the recipe's
+  oversampling, followed by a NUL.
 - The agent reference: the controls, the gotchas and the word-to-control
   maps of the synth.
 
@@ -108,7 +111,11 @@ joins `READY` when its adapter lands.
 - `render`: rendering a preset and its notes to audio. `recipe` holds the
   versioned render recipe and the tail rule that sets the clip length,
   `fake` a seeded additive synth that stands in for a plug-in in tests,
+  `state` the plug-in state of a preset and the check of a saved state,
+  `wire` the protocol of the host process, `plugin` the renderer that
+  starts that process and picks its architecture from the plug-in bundle,
   and the module root the render job, the record and the `Renderer` trait.
+  The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
   with `notes.mid`. `layers` writes `layers.json`, whose committed schema
@@ -119,6 +126,11 @@ joins `READY` when its adapter lands.
   60.
 - `src/lib.rs`: the crate root and the crate docs.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
+- `host`: the crate of `sound-to-patch-host`, the process that loads a
+  VST3 plug-in headless through `vst3-host` and renders through it. Only
+  it depends on `vst3-host`. It speaks `render::wire` and uses the
+  library's recipe, note events and tail watch, so both sides render by
+  one rule.
 - `xtask`: development tasks. It generates the man page and completions,
   fetches pinned datasets, runs the pinned golden-number generator and
   checks its vectors, scores the notes step on generated parts, checks
@@ -151,8 +163,8 @@ joins `READY` when its adapter lands.
 
 - The library never prints. Only the binary writes to the terminal.
 - The binary holds no logic beyond parsing arguments and printing.
-- No `unsafe` code. The workspace forbids it; code that hosts a plugin
-  through FFI will live in a crate of its own.
+- No `unsafe` code. The workspace forbids it; the FFI of plug-in hosting
+  stays inside the `vst3-host` dependency of the `host` crate.
 - No test needs the network, a synth plugin (Vital or Serum 2) or a dataset
   unless it is `#[ignore]` with a reason.
 - Estimators report physical units with a confidence. They never round a
@@ -167,6 +179,8 @@ joins `READY` when its adapter lands.
 
 - Library: all logic, behind unit-typed public APIs.
 - Binary: argument parsing and printing.
+- Host: `host/`, the plug-in host process. A plug-in crash or hang ends
+  that process, never the caller.
 - `xtask`: tasks for developers and CI. Nothing in it ships.
 - Tests: unit tests next to the code, one integration-test binary in
   `tests/it/`, command-line cases in `tests/cmd/`, fixtures in

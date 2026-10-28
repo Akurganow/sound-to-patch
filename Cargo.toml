@@ -27,6 +27,7 @@ rubato = "=5.0.1"
 rustfft = "6.4.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip", "preserve_order"] }
+sha2 = "0.11.1"
 symphonia = { version = "0.6.1", features = ["mp3", "aac", "isomp4", "aiff"] }
 
 [dev-dependencies]
@@ -47,7 +48,7 @@ name = "notes"
 harness = false
 
 [workspace]
-members = ["xtask"]
+members = ["host", "xtask"]
 
 [workspace.package]
 # `cargo xtask set-version` rewrites this line in the version commit.

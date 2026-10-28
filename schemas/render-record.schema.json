@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/render-record.schema.json",
+  "title": "render record",
+  "description": "Everything one render depends on, so a consumer can cite it and analyze the audio with the same notes. Times are in seconds, the tempo in beats per minute.",
+  "type": "object",
+  "required": [
+    "identity",
+    "recipe_version",
+    "sample_rate",
+    "block_size",
+    "process_mode",
+    "settle",
+    "oversampling",
+    "bpm",
+    "last_note_off",
+    "length",
+    "tail_capped"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "identity": {
+      "description": "What rendered.",
+      "type": "object",
+      "required": ["synth", "build", "host", "arch"],
+      "additionalProperties": false,
+      "properties": {
+        "synth": { "enum": ["vital", "serum2"] },
+        "build": { "description": "The synth's build, such as 1.0.7.", "type": "string", "minLength": 1 },
+        "host": { "description": "The host and its version.", "type": "string", "minLength": 1 },
+        "arch": { "description": "The architecture of the host process, such as x86_64.", "type": "string", "minLength": 1 }
+      }
+    },
+    "recipe_version": { "description": "The version of the render recipe; any change to the recipe raises it.", "type": "integer", "minimum": 1 },
+    "sample_rate": { "type": "integer", "minimum": 1 },
+    "block_size": { "type": "integer", "minimum": 1 },
+    "process_mode": { "enum": ["offline"] },
+    "settle": { "description": "The silence rendered after the state load.", "type": "number", "minimum": 0 },
+    "oversampling": { "description": "The oversampling of a Vital render.", "enum": ["1x", "2x", "4x", "8x"] },
+    "bpm": { "type": "number", "exclusiveMinimum": 0 },
+    "last_note_off": { "description": "The end of the last note.", "type": "number", "minimum": 0 },
+    "length": { "description": "The clip length.", "type": "number", "exclusiveMinimum": 0 },
+    "tail_capped": { "description": "Whether the tail reached its cap before it went quiet.", "type": "boolean" },
+    "midi_sha256": {
+      "description": "The SHA-256 of the MIDI file the notes came from. Absent for notes that came from no file.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}
