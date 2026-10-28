@@ -30,6 +30,7 @@ mod decode;
 mod resample;
 mod stem;
 mod stereo;
+mod tempo;
 
 pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
 pub use resample::{ResampleError, resample};
@@ -41,6 +42,10 @@ pub use stem::{
 pub use stereo::{
     Band, HIGH_EDGE_HZ, SCREEN_FRAME_LEN, SCREEN_HARMONICS, STEREO_CONVENTION, SUB_EDGE_HZ,
     StereoScreen, StereoStats, stereo_screen,
+};
+pub use tempo::{
+    BPM_STEP, MAX_BEAT_LAGS, MIN_BEAT_LAGS, OVERLAP_BEATS, PEAK_RATIO_MIN, PERIODICITY_MIN,
+    SEARCH_SHARE, TEMPO_CONVENTION, Tempo,
 };
 
 /// A sample rate in samples per second: a whole number above zero.

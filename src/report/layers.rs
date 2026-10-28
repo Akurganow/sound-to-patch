@@ -5,6 +5,7 @@ use serde::Serialize;
 
 use crate::audio::{
     BAND_EDGE_CONVENTION, Band, HARD_LIMITED_CONVENTION, STEREO_CONVENTION, Stem, StereoScreen,
+    TEMPO_CONVENTION, Tempo,
 };
 use crate::confidence::{Confidence, Estimate, NoSpread, Spread};
 use crate::dsp::{
@@ -25,9 +26,9 @@ when its RMS lies within 40 dB of the loudest frame";
 /// Renders the report of a stem as pretty-printed JSON with a final
 /// newline. The same stem always gives the same bytes.
 ///
-/// `source` is the stem's file name without its folder, and
-/// `transcription` the record of the transcriber that gave the notes, or
-/// `None` when none ran.
+/// `source` is the stem's file name without its folder, `tempo` the
+/// given and refined tempo, and `transcription` the record of the
+/// transcriber that gave the notes, or `None` when none ran.
 ///
 /// # Errors
 ///
@@ -38,13 +39,14 @@ pub fn layers_json(
     descriptors: &Descriptors,
     synth: Synth,
     source: &str,
+    tempo: &Tempo,
     transcription: Option<&TranscriptionRecord>,
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
         source,
         synth,
-        stem: StemGroup::new(stem, descriptors),
+        stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
         conventions: Conventions::new(descriptors.frame_len),
     };
@@ -68,6 +70,8 @@ struct Layers<'a> {
 #[derive(Serialize)]
 struct StemGroup<'a> {
     bpm: Bpm,
+    bpm_given: Bpm,
+    bpm_refined: Value<'a, Bpm, NoSpread>,
     duration_s: Seconds,
     sample_rate_hz: u32,
     band_edge_hz: Value<'a, Hz, Hz>,
@@ -87,9 +91,11 @@ struct StemGroup<'a> {
 }
 
 impl<'a> StemGroup<'a> {
-    fn new(stem: &'a Stem, descriptors: &'a Descriptors) -> Self {
+    fn new(stem: &'a Stem, descriptors: &'a Descriptors, tempo: &'a Tempo) -> Self {
         Self {
             bpm: stem.grid().bpm(),
+            bpm_given: tempo.given(),
+            bpm_refined: Value::of(tempo.refined()),
             duration_s: stem.duration(),
             sample_rate_hz: stem.sample_rate().get(),
             band_edge_hz: Value::of(stem.band_edge()),
@@ -125,6 +131,7 @@ impl<'a> StemGroup<'a> {
 
 /// One value and its confidence; `value` is `null` for no estimate.
 #[derive(Serialize)]
+#[serde(bound = "V: Serialize")]
 struct Value<'a, V, S: Spread> {
     value: Option<&'a V>,
     confidence: &'a Confidence<S>,
@@ -214,6 +221,8 @@ struct Conventions {
     statistics: &'static str,
     spectral: &'static str,
     bpm: &'static str,
+    bpm_given: &'static str,
+    bpm_refined: &'static str,
     duration_s: &'static str,
     sample_rate_hz: &'static str,
     band_edge_hz: &'static str,
@@ -240,7 +249,10 @@ impl Conventions {
             spectral: "magnitude weights for shape, power for band shares; periodic Hann frames \
 of frame_size samples, hop frame_size / 4, centred and zero-padded; frame_size is 8192 when the \
 note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list",
-            bpm: "given by --bpm, not estimated",
+            bpm: "the tempo of the beat grid and of every later step: bpm_refined when its \
+confidence is high, else bpm_given",
+            bpm_given: "given by --bpm",
+            bpm_refined: TEMPO_CONVENTION,
             duration_s: "decoded frames over the sample rate",
             sample_rate_hz: "the native rate of the file; no resampling",
             band_edge_hz: BAND_EDGE_CONVENTION,

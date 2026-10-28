@@ -3,6 +3,8 @@ args = ["analyze", "--help"]
 stdout = """
 Analyse a stem and write layers.json and spectrogram.png.
 
+The tempo is refined from the stem near --bpm, and the stem is transcribed unless --notes gives its notes. Each step prints what it found.
+
 Example: sound-to-patch analyze bass.wav --bpm 140
 
 Usage: sound-to-patch analyze [OPTIONS] --bpm <BPM> <STEM>
@@ -13,10 +15,21 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem within 3 % unless --bpm-exact is given
+
+      --bpm-exact
+          Use --bpm as it is, without refining it from the stem
 
       --notes <FILE>
-          A MIDI file with the stem's notes. Its tempo must match --bpm
+          A MIDI file with the stem's notes, instead of transcribing the stem. Its tempo must match --bpm or the refined tempo
+
+      --profile <PROFILE>
+          Decode with the settings of this kind of stem instead of the detected ones
+
+          Possible values:
+          - bass: B0 to F#4, with the minimum length from the BPM
+          - lead: C2 to B6, with the minimum length from the BPM. Plucks use it too
+          - pad:  C2 to B6, with the decoder's default minimum length. Chords use it too
 
   -o, --out <DIR>
           The output folder [default: a folder named after the stem, next to it]

@@ -44,6 +44,8 @@ mod stft;
 mod support;
 mod synth;
 #[cfg(test)]
+mod tempo;
+#[cfg(test)]
 mod track;
 #[cfg(test)]
 mod transcribe;

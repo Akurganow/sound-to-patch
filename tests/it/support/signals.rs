@@ -119,3 +119,31 @@ pub(crate) fn write_wav16(path: &Path, rate: u32, channels: &[Vec<f64>]) {
     }
     writer.finalize().unwrap();
 }
+
+/// A sawtooth at `f0` from 0 to `length` samples, with a `PolyBLEP` step
+/// correction at each wrap so its aliasing stays low, at a cost of one
+/// sample of work. The aliasing left over flickers with the fraction of a
+/// sample at which each wrap falls, so a steady tone from it is not free
+/// of onsets; build one from whole harmonics instead.
+pub(crate) fn polyblep_saw(f0: f64, rate: f64, length: usize) -> Vec<f64> {
+    let step = f0 / rate;
+    let mut phase = 0.0_f64;
+    let mut out = Vec::with_capacity(length);
+    for _ in 0..length {
+        let blep = if phase < step {
+            let t = phase / step;
+            2.0 * t - t * t - 1.0
+        } else if phase > 1.0 - step {
+            let t = (phase - 1.0) / step;
+            t * t + 2.0 * t + 1.0
+        } else {
+            0.0
+        };
+        out.push(2.0 * phase - 1.0 - blep);
+        phase += step;
+        if phase >= 1.0 {
+            phase -= 1.0;
+        }
+    }
+    out
+}

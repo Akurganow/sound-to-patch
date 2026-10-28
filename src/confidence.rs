@@ -103,6 +103,17 @@ reason_codes! {
     /// its floor, so the band edge is the Nyquist frequency at low
     /// confidence.
     NoBandEdge,
+    /// The best score of the tempo search over its median score. Below the
+    /// trust threshold the given tempo stays; 0 when the stem has no
+    /// onsets.
+    TempoPeak,
+    /// The share of the onset strength that repeats at the refined beat: the
+    /// best score of the tempo search over its lag count times the
+    /// zero-lag autocorrelation. Below the trust threshold the given tempo
+    /// stays.
+    BeatPeriodicity,
+    /// `--bpm-exact` was given, so the tempo was not refined.
+    BpmExact,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

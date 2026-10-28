@@ -43,7 +43,7 @@ pub use detect::{
     probe_settings,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
-pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
+pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi, read_midi_near};
 pub use profile::{
     DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
     Profile, RangeError, min_note_frames,

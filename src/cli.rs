@@ -43,6 +43,10 @@ pub struct Cli {
 pub enum Command {
     /// Analyse a stem and write layers.json and spectrogram.png.
     ///
+    /// The tempo is refined from the stem near --bpm, and the stem is
+    /// transcribed unless --notes gives its notes. Each step prints what it
+    /// found.
+    ///
     /// Example: sound-to-patch analyze bass.wav --bpm 140
     Analyze(analyze::AnalyzeArgs),
     /// Transcribe a stem and write notes.mid.
@@ -85,19 +89,30 @@ impl Command {
     pub fn run(&self) -> Result<Output, Box<dyn Error + Send + Sync>> {
         match self {
             Self::Analyze(args) => {
-                let analysis = crate::report::analyze(&crate::report::AnalyzeRequest {
-                    stem: &args.stem,
-                    bpm: args.bpm,
-                    synth: args.synth()?,
-                    notes: args.notes.as_deref(),
-                    out: args.out.as_deref(),
-                    force: args.force,
-                })?;
+                let analysis = crate::report::analyze(
+                    &crate::report::AnalyzeRequest {
+                        stem: &args.stem,
+                        bpm: args.bpm,
+                        bpm_exact: args.bpm_exact,
+                        synth: args.synth()?,
+                        notes: args.notes.as_deref(),
+                        profile: args.profile,
+                        out: args.out.as_deref(),
+                        force: args.force,
+                    },
+                    &crate::notes::Transcriber::new()?,
+                )?;
                 let line = |text: String| text + "\n";
                 Ok(Output {
-                    stdout: [&analysis.layers, &analysis.spectrogram]
-                        .iter()
-                        .map(|path| line(format!("wrote {}", path.display())))
+                    stdout: analysis
+                        .summary()
+                        .into_iter()
+                        .chain(
+                            [&analysis.layers, &analysis.spectrogram]
+                                .iter()
+                                .map(|path| format!("wrote {}", path.display())),
+                        )
+                        .map(line)
                         .collect(),
                     stderr: analysis
                         .skipped
@@ -115,6 +130,7 @@ impl Command {
                     &crate::report::NotesRequest {
                         stem: &args.stem,
                         bpm: args.bpm,
+                        bpm_exact: args.bpm_exact,
                         profile: args.profile,
                         out: args.out.as_deref(),
                         force: args.force,

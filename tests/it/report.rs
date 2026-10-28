@@ -3,11 +3,13 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 use serde_json::{Value, json};
 use sound_to_patch::audio::SampleRate;
+use sound_to_patch::notes::Transcriber;
 use sound_to_patch::report::spectrogram::{PLOT_HEIGHT, PLOT_WIDTH, Spectrogram};
 use sound_to_patch::report::{AnalyzeRequest, LAYERS_FILE, SPECTROGRAM_FILE, analyze};
 use sound_to_patch::synth::Synth;
@@ -95,19 +97,32 @@ fn midi(dir: &Path, file_bpm: f64) -> PathBuf {
     path
 }
 
+/// The notes of [`stem`] at 120 BPM. A report test passes them, so the
+/// notes step, whose f0 track is slow in a debug build, runs only where a
+/// test needs it.
+pub(crate) fn given(dir: &Path) -> PathBuf {
+    midi(dir, 120.0)
+}
+
 fn request<'a>(stem: &'a Path, notes: Option<&'a Path>, out: &'a Path) -> AnalyzeRequest<'a> {
     AnalyzeRequest {
         stem,
         bpm: Bpm::new(120.0).unwrap(),
+        bpm_exact: false,
         synth: Synth::Vital,
         notes,
+        profile: None,
         out: Some(out),
         force: false,
     }
 }
 
+fn transcriber() -> Transcriber {
+    Transcriber::new().unwrap()
+}
+
 fn run(stem: &Path, notes: Option<&Path>, out: &Path) -> Value {
-    analyze(&request(stem, notes, out)).unwrap();
+    analyze(&request(stem, notes, out), &transcriber()).unwrap();
     serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap()
 }
 
@@ -146,7 +161,11 @@ fn shape(value: &Value) -> Value {
 #[test]
 fn the_report_has_a_stable_shape_with_the_synth() {
     let dir = tempfile::tempdir().unwrap();
-    let report = run(&stem(dir.path()), None, &dir.path().join("out"));
+    let report = run(
+        &stem(dir.path()),
+        Some(&given(dir.path())),
+        &dir.path().join("out"),
+    );
     assert_eq!(report["synth"], "vital");
     assert_eq!(report["schema"], "layers/1");
     insta::assert_snapshot!(serde_json::to_string_pretty(&shape(&report)).unwrap());
@@ -155,18 +174,26 @@ fn the_report_has_a_stable_shape_with_the_synth() {
 #[test]
 fn every_stem_field_has_a_convention() {
     let dir = tempfile::tempdir().unwrap();
-    let report = run(&stem(dir.path()), None, &dir.path().join("out"));
+    let report = run(
+        &stem(dir.path()),
+        Some(&given(dir.path())),
+        &dir.path().join("out"),
+    );
     let conventions = report["conventions"].as_object().unwrap();
     for key in report["stem"].as_object().unwrap().keys() {
         assert!(conventions.contains_key(key), "{key} has no convention");
     }
-    assert_eq!(conventions["frame_size"], 4096);
+    assert_eq!(conventions["frame_size"], 8192);
 }
 
 #[test]
 fn the_schema_accepts_the_report_and_rejects_broken_ones() {
     let dir = tempfile::tempdir().unwrap();
-    let report = run(&stem(dir.path()), None, &dir.path().join("out"));
+    let report = run(
+        &stem(dir.path()),
+        Some(&given(dir.path())),
+        &dir.path().join("out"),
+    );
     let validator = validator();
     let errors: Vec<String> = validator
         .iter_errors(&report)
@@ -222,9 +249,10 @@ fn the_layer_group_shape_takes_numbers_as_suggested_edits() {
 fn two_runs_write_identical_files() {
     let dir = tempfile::tempdir().unwrap();
     let path = stem(dir.path());
+    let notes = given(dir.path());
     let (a, b) = (dir.path().join("a"), dir.path().join("b"));
-    run(&path, None, &a);
-    run(&path, None, &b);
+    run(&path, Some(&notes), &a);
+    run(&path, Some(&notes), &b);
     for name in [LAYERS_FILE, SPECTROGRAM_FILE] {
         assert_eq!(
             fs::read(a.join(name)).unwrap(),
@@ -238,12 +266,13 @@ fn two_runs_write_identical_files() {
 fn the_default_folder_is_named_after_the_stem() {
     let dir = tempfile::tempdir().unwrap();
     let path = stem(dir.path());
+    let notes = given(dir.path());
     let request = AnalyzeRequest {
         out: None,
-        ..request(&path, None, dir.path())
+        ..request(&path, Some(&notes), dir.path())
     };
     assert_eq!(request.out_dir(), dir.path().join("bass"));
-    let analysis = analyze(&request).unwrap();
+    let analysis = analyze(&request, &transcriber()).unwrap();
     assert_eq!(analysis.layers, dir.path().join("bass").join(LAYERS_FILE));
     assert_eq!(
         analysis.spectrogram,
@@ -272,7 +301,7 @@ fn an_output_folder_that_is_a_file_fails_with_a_fix() {
             out,
             ..request(stem, None, dir.path())
         };
-        let message = analyze(&request).unwrap_err().to_string();
+        let message = analyze(&request, &transcriber()).unwrap_err().to_string();
         let folder = out.map_or(bare.clone(), Path::to_path_buf);
         assert_eq!(
             message,
@@ -291,11 +320,12 @@ fn a_report_of_another_stem_is_kept_unless_forced() {
     let aiff = dir.path().join("bass.aiff");
     fs::copy(&wav, &aiff).unwrap();
     let out = dir.path().join("out");
-    let first = run(&wav, None, &out);
+    let notes = given(dir.path());
+    let first = run(&wav, Some(&notes), &out);
     assert_eq!(first["source"], "bass.wav");
     // The same stem again replaces its own report.
-    run(&wav, None, &out);
-    let message = analyze(&request(&aiff, None, &out))
+    run(&wav, Some(&notes), &out);
+    let message = analyze(&request(&aiff, Some(&notes), &out), &transcriber())
         .unwrap_err()
         .to_string();
     assert!(
@@ -305,9 +335,9 @@ fn a_report_of_another_stem_is_kept_unless_forced() {
     assert!(message.contains("--force"), "{message}");
     let forced = AnalyzeRequest {
         force: true,
-        ..request(&aiff, None, &out)
+        ..request(&aiff, Some(&notes), &out)
     };
-    analyze(&forced).unwrap();
+    analyze(&forced, &transcriber()).unwrap();
     let report: Value =
         serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
     assert_eq!(report["source"], "bass.aiff");
@@ -317,7 +347,7 @@ fn a_report_of_another_stem_is_kept_unless_forced() {
 fn the_png_is_1500_by_512() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("out");
-    run(&stem(dir.path()), None, &out);
+    run(&stem(dir.path()), Some(&given(dir.path())), &out);
     let png = fs::read(out.join(SPECTROGRAM_FILE)).unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
     // IHDR: width and height, big-endian, after the chunk length and type.
@@ -392,7 +422,13 @@ fn given_notes_reach_the_report_and_run_no_transcriber() {
     let dir = tempfile::tempdir().unwrap();
     let path = stem(dir.path());
     let notes = midi(dir.path(), 120.0);
-    let report = run(&path, Some(&notes), &dir.path().join("out"));
+    let out = dir.path().join("out");
+    let (counting, windows) = crate::transcribe::counting();
+    let analysis = analyze(&request(&path, Some(&notes), &out), &counting).unwrap();
+    assert_eq!(windows.load(Ordering::SeqCst), 0);
+    assert!(analysis.transcription.is_none());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
     let ratio = &report["stem"]["centroid_over_f0"];
     assert!(ratio["median"].as_f64().unwrap() > 1.0, "{ratio}");
     // A 55 Hz median f0 selects 8192-point frames, and the stereo phase
@@ -401,8 +437,6 @@ fn given_notes_reach_the_report_and_run_no_transcriber() {
     assert!(report["stem"]["stereo"]["full"]["ipd_deg"].is_number());
     assert_eq!(report["transcription"], Value::Null);
     assert!(validator().is_valid(&report));
-    let without = run(&path, None, &dir.path().join("plain"));
-    assert_eq!(without["stem"]["centroid_over_f0"], Value::Null);
 }
 
 #[test]
@@ -412,26 +446,78 @@ fn a_bad_note_file_names_the_file_and_the_cause() {
     let out = dir.path().join("out");
     let broken = dir.path().join("broken.mid");
     fs::write(&broken, b"MThd not really").unwrap();
-    let message = analyze(&request(&path, Some(&broken), &out))
+    let message = analyze(&request(&path, Some(&broken), &out), &transcriber())
         .unwrap_err()
         .to_string();
     assert!(message.contains("broken.mid"), "{message}");
     assert!(message.contains("not a valid MIDI file"), "{message}");
 
     let missing = dir.path().join("absent.mid");
-    let message = analyze(&request(&path, Some(&missing), &out))
+    let message = analyze(&request(&path, Some(&missing), &out), &transcriber())
         .unwrap_err()
         .to_string();
     assert!(message.contains("absent.mid"), "{message}");
     assert!(message.contains("cannot open the file"), "{message}");
 
     let fast = midi(dir.path(), 140.0);
-    let message = analyze(&request(&path, Some(&fast), &out))
+    let message = analyze(&request(&path, Some(&fast), &out), &transcriber())
         .unwrap_err()
         .to_string();
     assert!(message.contains("140.000 BPM"), "{message}");
     assert!(message.contains("--bpm is 120"), "{message}");
     assert!(!out.exists(), "a failed run writes nothing");
+}
+
+/// Without a note list, `analyze` runs the notes step once: one model run
+/// for the whole command, and the `transcription` group holds the model
+/// hash, the profile and the decode settings.
+#[test]
+fn the_notes_step_runs_the_model_once_and_fills_the_transcription_group() {
+    use sound_to_patch::notes::MODEL_SHA256;
+    let dir = tempfile::tempdir().unwrap();
+    let (path, truth) = crate::cli::saw_notes(dir.path());
+    let out = dir.path().join("out");
+    let (counting, windows) = crate::transcribe::counting();
+    let analysis = analyze(&request(&path, None, &out), &counting).unwrap();
+    // 1.2 s at 22,050 Hz is one model window.
+    assert_eq!(windows.load(Ordering::SeqCst), 1);
+    let transcription = analysis.transcription.as_ref().unwrap();
+    assert_eq!(transcription.notes.notes().len(), truth.len());
+    assert!(analysis.summary()[0].starts_with("tempo: 120 BPM as given"));
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
+    assert_eq!(report["transcription"]["model_sha256"], MODEL_SHA256);
+    assert_eq!(report["transcription"]["profile"], "detected");
+    assert_eq!(
+        report["transcription"]["note_params"],
+        serde_json::to_value(transcription.settings.note_params()).unwrap()
+    );
+    // The transcribed notes give the f0 that picks the frame and the ratio.
+    assert!(report["stem"]["centroid_over_f0"]["median"].is_number());
+    assert_eq!(report["stem"]["bpm_given"], 120.0);
+    assert_eq!(report["stem"]["bpm_refined"]["value"], Value::Null);
+    let errors: Vec<String> = validator()
+        .iter_errors(&report)
+        .map(|e| e.to_string())
+        .collect();
+    assert!(errors.is_empty(), "{errors:?}");
+}
+
+/// A note file written at the refined tempo reads under the given one.
+#[test]
+fn a_note_file_at_the_refined_tempo_is_accepted() {
+    use sound_to_patch::notes::read_midi_near;
+    let dir = tempfile::tempdir().unwrap();
+    let refined = midi(dir.path(), 119.62);
+    let given = Bpm::new(120.0).unwrap();
+    assert!(read_midi_near(&refined, given, Some(Bpm::new(119.62).unwrap())).is_ok());
+    let message = read_midi_near(&refined, given, Some(Bpm::new(121.0).unwrap()))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        message.contains("--bpm is 120 and the tempo refined from the stem is 121"),
+        "{message}"
+    );
 }
 
 /// The record of a transcription fits the `transcription` group of the

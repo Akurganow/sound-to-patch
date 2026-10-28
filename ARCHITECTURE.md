@@ -20,7 +20,8 @@ edit list from the description.
 
 The library so far holds the command line with `analyze`, `notes`,
 `preset inspect` and `preset apply`, the unit types, the confidence type,
-the synth seam, the Vital read and write paths, stem intake, the note list
+the synth seam, the Vital read and write paths, stem intake with the tempo
+refinement, the note list
 with its masks and its MIDI reader, the signal core that the estimators
 share, and the report with the `stem` group and the spectrogram, the
 transcriber with its profiles and its register detection, the f0 track,
@@ -63,8 +64,9 @@ joins `READY` when its adapter lands.
 
 - `audio`: stem intake. It decodes a file at its native rate with every
   channel kept, mixes to mono as the channel mean and resamples for a
-  consumer with a fixed rate. The `Stem` adds the beat grid and note
-  divisions, the band edge, the flat-top flag and the stereo screen.
+  consumer with a fixed rate. The `Tempo` refines the given BPM from the
+  onsets. The `Stem` adds the beat grid and note divisions, the band
+  edge, the flat-top flag and the stereo screen.
 - `cast`: the audited numeric casts. Every `as` between number types goes
   through one function here, with its reason and a test.
 - `cli`: the command-line definition, one module per command. The binary

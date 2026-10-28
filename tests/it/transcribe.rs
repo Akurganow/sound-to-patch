@@ -31,7 +31,7 @@ impl Backend for Counting {
     }
 }
 
-fn counting() -> (Transcriber, Arc<AtomicUsize>) {
+pub(crate) fn counting() -> (Transcriber, Arc<AtomicUsize>) {
     let windows = Arc::new(AtomicUsize::new(0));
     let backend = Counting {
         inner: TractBackend::new().unwrap(),

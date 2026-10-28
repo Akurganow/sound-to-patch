@@ -15,8 +15,9 @@ Every statement carries a tag:
 - **[proposal]**: a threshold or rule chosen for this project that later
   work may tune.
 
-`analyze` runs decoding, the stem, the stereo screen, the descriptors and
-the report today [fact]. The analytic signal, the masks, the modulation
+`analyze` runs decoding, the tempo, the notes step (unless `--notes` gives
+the notes), the stem, the stereo screen, the descriptors and the report
+today [fact]. `notes` runs decoding, the tempo and the notes step [fact]. The analytic signal, the masks, the modulation
 spectrum, the periodogram and the decay fits are library stages that the
 layer estimators of later releases call [fact].
 
@@ -40,11 +41,59 @@ layer estimators of later releases call [fact].
   µs; the lag is documented and not compensated [synthetic]. A NaN or
   infinite sample stops the conversion with its index [fact].
 
+## Tempo
+
+`--bpm` is close to the stem's tempo, not exact: a tempo taken from a file
+name is often 1 to 2 % off, and that drifts notes off the grid within a few
+bars [proposal]. Both commands refine it from the stem before any step that
+reads it: the minimum note length, the MIDI tempo and the beat grid
+[fact]. `--bpm-exact` skips the search and uses `--bpm` as given [fact].
+
+- Onset strength: the mono mix in periodic Hann frames of 46.4 ms (2048
+  samples at 44.1 kHz; the power of two nearest 46.4 ms at other rates)
+  with a hop of about 1 ms [fact]. The bins sum to power bands a third of
+  an octave wide from 30 Hz, each at least 6 bins, so a band holds whole
+  main lobes and a steady partial keeps its energy from frame to frame
+  [fact]. Each band power is compressed as
+  $\ln(1 + P / P_{knee})$, with the knee 60 dB below a full-scale bin
+  [fact]. The strength is the summed rise of every band against the frame
+  10 ms earlier [fact].
+- The strength is low-passed at 20 Hz forward and backward, its centred
+  mean over 100 ms is removed, and what stays below 10 % of the largest
+  rise becomes 0, so only onsets remain [fact].
+- Search: every tempo $t$ in steps of 0.01 BPM with
+  $|t_{given} / t - 1| \le 0.03$ [fact]. Each scores the unbiased
+  autocorrelation of the strength, read by linear interpolation at
+  $k \cdot 60 / t$ seconds and summed over $k = 1$ to $K$ beats, with
+  $K = \min(32, \lfloor \text{beats} \rfloor - 4)$ [fact]. The window is so
+  narrow that half and double the tempo lie outside it [fact].
+- Trust: the best tempo replaces `--bpm` when its score is at least 1.5
+  times the median score of the search (`tempo_peak`) and the best score is
+  at least 0.4 of $K$ times the zero-lag autocorrelation
+  (`beat_periodicity`) [proposal]. Otherwise it is reported at low
+  confidence and `--bpm` stays [fact]. A stem of fewer than 8 beats, or one
+  without onsets, keeps `--bpm` and reports no refined tempo [fact].
+- Generated drum, bass and lead parts at 70.3, 97.55, 123.4, 147.81 and
+  178.2 BPM, 37 beats each at 22,050 Hz, with `--bpm` off by -3, -1, +1
+  and +3 %: every refined tempo lies within 0.05 BPM of the truth
+  [synthetic]. Their `beat_periodicity` reads 0.78 to 0.99; pad chords that
+  change once a bar read 0.04 at most and keep `--bpm` [synthetic]. The
+  0.4 threshold sits between the two [proposal].
+- A steady tone whose period divides the beat, such as 110 Hz at 120 BPM,
+  finds no onset and keeps `--bpm` [synthetic].
+- The beat offset stays 0: only the period is refined [fact]. A stem whose
+  tempo drifts is not followed [fact].
+
+The command prints one line for the step: the tempo used and why.
+
 ## The notes step
 
 `sound-to-patch notes` turns a stem into `notes.mid`: one model run, one f0
 track, the decode settings, the decode, the cleanup and the MIDI file, in
-that order [fact]. `analyze` does not call it in this release [fact].
+that order [fact]. `analyze` runs the same step once, without the MIDI file,
+unless `--notes` gives the notes, and the model then never runs [fact]. The
+notes set the frame length of the stem and fill `centroid_over_f0` and the
+stereo phase [fact].
 
 ### Transcription model
 

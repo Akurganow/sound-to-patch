@@ -8,6 +8,19 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
   "synth": "vital",
   "stem": {
     "bpm": "<number>",
+    "bpm_given": "<number>",
+    "bpm_refined": {
+      "value": null,
+      "confidence": {
+        "reasons": [
+          {
+            "code": "cycles_in_span",
+            "value": "<integer>"
+          }
+        ],
+        "estimate": false
+      }
+    },
     "duration_s": "<number>",
     "sample_rate_hz": "<integer>",
     "band_edge_hz": {
@@ -87,7 +100,21 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
         "estimate": true
       }
     },
-    "centroid_over_f0": null,
+    "centroid_over_f0": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "active_frames",
+            "value": "<integer>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
     "spread_hz": {
       "median": "<number>",
       "iqr": "<number>",
@@ -196,22 +223,22 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
       "full": {
         "rho": "<number>",
         "sm_db": "<number>",
-        "ipd_deg": null
+        "ipd_deg": "<number>"
       },
       "sub": {
         "rho": "<number>",
         "sm_db": "<number>",
-        "ipd_deg": null
+        "ipd_deg": "<number>"
       },
       "low_mid": {
         "rho": "<number>",
         "sm_db": "<number>",
-        "ipd_deg": null
+        "ipd_deg": "<number>"
       },
       "high": {
         "rho": "<number>",
         "sm_db": "<number>",
-        "ipd_deg": null
+        "ipd_deg": "<number>"
       },
       "confidence": {
         "level": "medium",
@@ -234,7 +261,9 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
     "frame_size": "<integer>",
     "statistics": "median and interquartile range over active frames, quantiles by linear interpolation at q (n - 1) between the sorted values; a frame is active when its RMS lies within 40 dB of the loudest frame",
     "spectral": "magnitude weights for shape, power for band shares; periodic Hann frames of frame_size samples, hop frame_size / 4, centred and zero-padded; frame_size is 8192 when the note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list",
-    "bpm": "given by --bpm, not estimated",
+    "bpm": "the tempo of the beat grid and of every later step: bpm_refined when its confidence is high, else bpm_given",
+    "bpm_given": "given by --bpm",
+    "bpm_refined": "onset strength: the rise of each third-octave band power from 30 Hz, compressed as ln(1 + P / knee) with the knee 60 dB below full scale, against the frame 10 ms earlier, in 46.4 ms Hann frames on a 1 ms hop, low-passed at 20 Hz, less its 100 ms mean, below 10 % of its largest rise set to 0; each tempo within 3 % of the given one, in 0.01 BPM steps, scores the unbiased autocorrelation summed at 1 to 32 beats; the refined tempo is used when its score is at least 1.5 times the median score (tempo_peak) and 0.4 of the lag count times the zero-lag autocorrelation (beat_periodicity); cycles_in_span counts the whole beats of the stem",
     "duration_s": "decoded frames over the sample rate",
     "sample_rate_hz": "the native rate of the file; no resampling",
     "band_edge_hz": "long-term power spectrum of the mid over the active frames that lie wholly inside the stem, median-smoothed over one semitone on each side; where the smoothed level falls at least 25 dB over one semitone above 2 kHz and the median level of the octave below lies within 20 dB of the level where the fall starts, the edge is the half-depth point of the steepest such fall; otherwise the noise floor is the lowest level above 1 kHz and the edge is the highest bin at least 30 dB above it, at low confidence, or the Nyquist frequency when no bin above 1 kHz is",
