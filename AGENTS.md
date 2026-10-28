@@ -1,7 +1,6 @@
 # Agent notes
 
-`CONTRIBUTING.md` holds the rules. These notes are facts learned while
-working on this repository.
+Facts learned while working on this repository.
 
 - A `feat` or `fix` merge starts a release commit that bumps the version in
   `Cargo.lock` and `fuzz/Cargo.lock`. An open pull request that adds a
