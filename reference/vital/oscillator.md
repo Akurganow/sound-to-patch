@@ -15,7 +15,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Oscillator N Distortion Phase | `osc_N_distortion_phase` | 1, 2, 3 | none | stored 0 to 1 | stored 0.5 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Oscillator N Distortion Spread | `osc_N_distortion_spread` | 1, 2, 3 | Percent (-100 to 100) | -100% to 100% | 0% | uncalibrated | 1.0.7 | The sound change of this oscillator warp is not measured. Sweep it while a note holds and stop where the timbre matches the stem. |
 | Oscillator N Distortion Type | `osc_N_distortion_type` | 1, 2, 3 | none | menu: None, Sync, Formant, Quantize, Bend, Squeeze, Pulse, FM <- Osc, FM <- Osc, FM <- Sample, RM <- Osc, RM <- Osc, RM <- Sample | None | from facts | 1.0.7 |  |
-| Oscillator N Level | `osc_N_level` | 1, 2, 3 | Decibels | stored 0 to 1 | -6.0206 dB | measured | 1.0.7 |  |
+| Oscillator N Level | `osc_N_level` | 1, 2, 3 | Decibels | silence (-inf dB) to 0 dB | -6.0206 dB | measured | 1.0.7 |  |
 | Oscillator N Midi Track | `osc_N_midi_track` | 1, 2, 3 | none | off or on | on | from facts | 1.0.7 |  |
 | Oscillator N Switch | `osc_N_on` | 1, 2, 3 | none | off or on | on (1); off (2, 3) | from facts | 1.0.7 |  |
 | Oscillator N Pan | `osc_N_pan` | 1, 2, 3 | Percent (-100 to 100) | -100% to 100% | 0% | from facts | 1.0.7 |  |
@@ -38,7 +38,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Sample Bounce | `sample_bounce` | - | none | off or on | off | from facts | 1.0.7 |  |
 | Sample Destination | `sample_destination` | - | none | stored 0 to 14 | stored 3 | from facts | 1.0.7 |  |
 | Sample Keytrack | `sample_keytrack` | - | none | off or on | off | from facts | 1.0.7 |  |
-| Sample Level | `sample_level` | - | Decibels | stored 0 to 1 | -6.0206 dB | from facts | 1.0.7 |  |
+| Sample Level | `sample_level` | - | Decibels | silence (-inf dB) to 0 dB | -6.0206 dB | from facts | 1.0.7 |  |
 | Sample Loop | `sample_loop` | - | none | off or on | on | from facts | 1.0.7 |  |
 | Sample Switch | `sample_on` | - | none | off or on | off | from facts | 1.0.7 |  |
 | Sample Pan | `sample_pan` | - | Percent (-100 to 100) | -100% to 100% | 0% | from facts | 1.0.7 |  |

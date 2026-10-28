@@ -12,7 +12,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use sound_to_patch::preset::catalogue::{Layer, placement, unread_keys};
-use sound_to_patch::preset::registry::{ParamKind, ParamSpec, Physical, Provenance, registry_for};
+use sound_to_patch::preset::registry::{
+    Law, ParamKind, ParamSpec, Physical, Provenance, UnitLaw, registry_for,
+};
 use sound_to_patch::synth::Synth;
 
 /// The shared reference folder, relative to the repository root. The
@@ -141,7 +143,7 @@ impl Catalogue {
         }
         for layer_rows in rows.values_mut() {
             for row in layer_rows.iter_mut() {
-                row.instances.sort_by_key(|id| (id.len(), id.clone()));
+                sort_instances(row);
             }
             layer_rows.sort_by(|a, b| {
                 (&a.pattern, tag(&a.specs[0])).cmp(&(&b.pattern, tag(&b.specs[0])))
@@ -308,22 +310,62 @@ fn row_line(row: &Row) -> String {
     format!("| {} |\n", cells.join(" | "))
 }
 
+/// Sorts the instances of a row by number, keeping each with its entry.
+/// The registry sorts keys as text, so `10` comes before `2` there.
+fn sort_instances(row: &mut Row) {
+    if row.instances.len() != row.specs.len() {
+        return;
+    }
+    let mut pairs: Vec<(String, ParamSpec)> =
+        row.instances.drain(..).zip(row.specs.drain(..)).collect();
+    pairs.sort_by_key(|(id, _)| (id.len(), id.clone()));
+    (row.instances, row.specs) = pairs.into_iter().unzip();
+}
+
 fn range(spec: &ParamSpec) -> String {
     match spec.kind {
         ParamKind::Flag => "off or on".to_owned(),
         ParamKind::Choice => format!("menu: {}", spec.choices.join(", ")),
+        ParamKind::Float | ParamKind::Count if spec.law.is_none() => {
+            format!("stored {}", stored_range(spec))
+        }
         ParamKind::Float | ParamKind::Count => {
             match (
                 spec.physical(spec.stored_min),
                 spec.physical(spec.stored_max),
             ) {
-                (Ok(low), Ok(high)) if low.get() <= high.get() => {
-                    format!("{} to {}", shown(low), shown(high))
+                (Ok(low), Ok(high)) if low.get() > high.get() => {
+                    format!("{} to {}", shown(high), shown(low))
                 }
-                (Ok(low), Ok(high)) => format!("{} to {}", shown(high), shown(low)),
-                _ => format!("stored {}", stored_range(spec)),
+                _ => format!(
+                    "{} to {}",
+                    bound(spec, spec.stored_min),
+                    bound(spec, spec.stored_max)
+                ),
             }
         }
+    }
+}
+
+/// A range bound in the unit of the control. A bound the law cannot convert
+/// is named: a level law gives no decibel value for a stored 0, which is
+/// silence.
+fn bound(spec: &ParamSpec, stored: f64) -> String {
+    match (spec.physical(stored), &spec.law) {
+        (Ok(value), _) => shown(value),
+        (
+            Err(_),
+            Some(UnitLaw {
+                law: Law::DbOfPower { .. },
+                ..
+            }),
+        ) if stored <= 0.0 => "silence (-inf dB)".to_owned(),
+        (Err(_), Some(law)) => format!(
+            "stored {} (no {} value)",
+            five(stored),
+            law.unit.type_name()
+        ),
+        (Err(_), None) => format!("stored {}", five(stored)),
     }
 }
 
@@ -445,6 +487,55 @@ mod tests {
             assert!(text.lines().count() <= 300, "{}", path.display());
             assert!(text.starts_with(HEADER));
         }
+    }
+
+    #[test]
+    fn instances_keep_their_entries_when_sorted() {
+        let registry = registry_for(Synth::Vital).unwrap();
+        let spec = |key: &str, default: f64| {
+            let mut spec = registry.get(key).unwrap().clone();
+            spec.default = default;
+            spec
+        };
+        // The registry order: `10` sorts before `2` as text.
+        let mut row = Row {
+            label: "Modulation N Amount".to_owned(),
+            pattern: "modulation_N_amount".to_owned(),
+            instances: vec!["1".to_owned(), "10".to_owned(), "2".to_owned()],
+            specs: vec![
+                spec("modulation_1_amount", 0.0),
+                spec("modulation_10_amount", 0.5),
+                spec("modulation_2_amount", 0.0),
+            ],
+        };
+        sort_instances(&mut row);
+        assert_eq!(row.instances, ["1", "2", "10"]);
+        let keys: Vec<&str> = row.specs.iter().map(|spec| spec.key.as_str()).collect();
+        assert_eq!(
+            keys,
+            [
+                "modulation_1_amount",
+                "modulation_2_amount",
+                "modulation_10_amount"
+            ]
+        );
+        assert_eq!(defaults(&row), "stored 0 (1, 2); stored 0.5 (10)");
+    }
+
+    #[test]
+    fn a_bound_without_a_value_in_the_unit_is_named() {
+        let registry = registry_for(Synth::Vital).unwrap();
+        assert_eq!(
+            range(registry.get("osc_1_level").unwrap()),
+            "silence (-inf dB) to 0 dB"
+        );
+        let mut attack = registry.get("env_1_attack").unwrap().clone();
+        attack.stored_min = -1.0;
+        assert!(
+            range(&attack).starts_with("stored -1 (no Seconds value) to "),
+            "{}",
+            range(&attack)
+        );
     }
 
     #[test]
