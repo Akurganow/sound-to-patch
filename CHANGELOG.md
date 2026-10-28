@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.13.0](https://github.com/Akurganow/sound-to-patch/compare/3d3fdccb51727878d3da0c4dc33153fd3a238cd4..v0.13.0) - 2026-10-28
+#### Features
+- (**notes**) add the notes command, clean up decoded notes and bench the step (#242) - ([3d3fdcc](https://github.com/Akurganow/sound-to-patch/commit/3d3fdccb51727878d3da0c4dc33153fd3a238cd4)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.12.0](https://github.com/Akurganow/sound-to-patch/compare/cb3b871a47325baf0868db080a6bd4a7104397b2..v0.12.0) - 2026-10-27
 #### Features
 - (**notes**) track f0, detect the register and voicing, and evaluate the notes step (#241) - ([cb3b871](https://github.com/Akurganow/sound-to-patch/commit/cb3b871a47325baf0868db080a6bd4a7104397b2)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
