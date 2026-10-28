@@ -186,27 +186,59 @@ mod tests {
     #[test]
     fn set_writes_the_crate_version_into_the_fuzz_lock() {
         let dir = tempfile::tempdir().unwrap();
-        for (crate_dir, manifest) in [
-            (
-                dir.path().to_path_buf(),
-                "[package]\nname = \"sound-to-patch\"\nversion.workspace = true\n\
-                 edition = \"2024\"\n\n[workspace]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
-            ),
-            (
-                dir.path().join("fuzz"),
-                "[package]\nname = \"probe-fuzz\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n\
-                 [workspace]\n\n[dependencies]\nsound-to-patch = { path = \"..\" }\n",
-            ),
-        ] {
-            fs::create_dir_all(crate_dir.join("src")).unwrap();
-            fs::write(crate_dir.join("src/lib.rs"), "").unwrap();
-            fs::write(crate_dir.join("Cargo.toml"), manifest).unwrap();
-        }
-        set(dir.path(), "0.1.0").unwrap();
-        set(dir.path(), "0.2.0").unwrap();
-        let lock = fs::read_to_string(dir.path().join("fuzz/Cargo.lock")).unwrap();
+        let root = dir.path();
+        let write = |path: &str, text: &str| {
+            let path = root.join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "Cargo.toml",
+            "[package]\nname = \"sound-to-patch\"\nversion.workspace = true\n\
+             edition = \"2024\"\n\n[workspace]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
+        );
+        write("src/lib.rs", "");
+        write(
+            "fuzz/Cargo.toml",
+            "[package]\nname = \"probe-fuzz\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n\
+             [workspace]\n\n[dependencies]\nsound-to-patch = { path = \"..\" }\n\
+             probe-dep = \"0.1\"\n",
+        );
+        write("fuzz/src/lib.rs", "");
+        // A vendored registry in place of crates.io, so the fuzz crate
+        // locks a registry dependency without the network.
+        write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"vendored\"\n\n\
+             [source.vendored]\ndirectory = \"vendor\"\n",
+        );
+        let vendor = |version: &str| {
+            let folder = format!("vendor/probe-dep-{version}");
+            write(
+                &format!("{folder}/Cargo.toml"),
+                &format!(
+                    "[package]\nname = \"probe-dep\"\nversion = \"{version}\"\nedition = \"2024\"\n"
+                ),
+            );
+            write(&format!("{folder}/src/lib.rs"), "");
+            write(
+                &format!("{folder}/.cargo-checksum.json"),
+                &format!("{{\"files\":{{}},\"package\":\"{}\"}}", "0".repeat(64)),
+            );
+        };
+        vendor("0.1.0");
+        set(root, "0.1.0").unwrap();
+        // A newer release of the other dependency appears; the version
+        // commit leaves its lock entry alone.
+        vendor("0.1.1");
+        set(root, "0.2.0").unwrap();
+        let lock = fs::read_to_string(root.join("fuzz/Cargo.lock")).unwrap();
         assert!(
             lock.contains("name = \"sound-to-patch\"\nversion = \"0.2.0\""),
+            "{lock}"
+        );
+        assert!(
+            lock.contains("name = \"probe-dep\"\nversion = \"0.1.0\""),
             "{lock}"
         );
     }

@@ -16,11 +16,10 @@ one tags or uploads by hand.
      project is below 1.0;
    - any other type alone bumps nothing. The job ends green and the change
      ships with the next release.
-3. A bump runs `cargo xtask set-version`, which writes the version into
-   `Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, updates
-   `CHANGELOG.md` and creates the commit `chore(version): vX.Y.Z` with the
-   tag `vX.Y.Z`. The `test` job runs `cargo xtask check-fuzz-lock`, which
-   fails when the two lock files name different versions of the crate.
+3. A bump runs `cargo xtask set-version` as its pre-bump hook, which
+   writes the version into `Cargo.toml`, `Cargo.lock` and
+   `fuzz/Cargo.lock`. Cog then updates `CHANGELOG.md` and creates the
+   commit `chore(version): vX.Y.Z` with the tag `vX.Y.Z`.
 4. The job pushes the commit and the tag in one atomic push with the
    release deploy key. The main ruleset lets only that key push to `main`
    directly. The private key is a secret of the `release` environment,
@@ -35,6 +34,9 @@ one tags or uploads by hand.
 
 The version commit starts the CI workflow again. The `release` job skips a
 commit whose subject starts with `chore(version)`, so the loop stops there.
+
+The `test` job runs `cargo xtask check-fuzz-lock`, which fails when
+`Cargo.lock` and `fuzz/Cargo.lock` name different versions of the crate.
 
 ## The release archive
 
