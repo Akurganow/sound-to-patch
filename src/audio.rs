@@ -31,6 +31,7 @@ mod resample;
 mod stem;
 mod stereo;
 mod tempo;
+mod wav;
 
 pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
 pub use resample::{ResampleError, resample};
@@ -48,6 +49,7 @@ pub use tempo::{
     SEARCH_SHARE, SHARPNESS_MIN, SPARSE_ONSETS_MAX, SPARSE_PERIODICITY_MIN, TEMPO_CONVENTION,
     Tempo,
 };
+pub use wav::write_wav;
 
 /// A sample rate in samples per second: a whole number above zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

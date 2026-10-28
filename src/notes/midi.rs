@@ -54,12 +54,39 @@ pub fn read_midi(path: &Path, bpm: Bpm) -> Result<NoteList, MidiError> {
 /// As [`read_midi`], with a tempo that matches neither `bpm` nor
 /// `refined`.
 pub fn read_midi_near(path: &Path, bpm: Bpm, refined: Option<Bpm>) -> Result<NoteList, MidiError> {
+    let bytes = std::fs::read(path).map_err(|source| MidiError {
+        path: path.to_path_buf(),
+        kind: Kind::Open(source),
+    })?;
+    notes_near(path, &bytes, bpm, refined)
+}
+
+/// Reads the notes of a MIDI file at `path` as [`read_midi`] does, and
+/// returns the file's bytes with them, so a caller can hash the very bytes
+/// it read.
+///
+/// # Errors
+///
+/// As [`read_midi`].
+pub fn read_midi_bytes(path: &Path, bpm: Bpm) -> Result<(NoteList, Vec<u8>), MidiError> {
+    let bytes = std::fs::read(path).map_err(|source| MidiError {
+        path: path.to_path_buf(),
+        kind: Kind::Open(source),
+    })?;
+    Ok((notes_near(path, &bytes, bpm, None)?, bytes))
+}
+
+fn notes_near(
+    path: &Path,
+    bytes: &[u8],
+    bpm: Bpm,
+    refined: Option<Bpm>,
+) -> Result<NoteList, MidiError> {
     let fail = |kind| MidiError {
         path: path.to_path_buf(),
         kind,
     };
-    let bytes = std::fs::read(path).map_err(|source| fail(Kind::Open(source)))?;
-    let smf = Smf::parse(&bytes).map_err(|source| fail(Kind::Parse(source.to_string())))?;
+    let smf = Smf::parse(bytes).map_err(|source| fail(Kind::Parse(source.to_string())))?;
     match (notes_of(&smf, bpm), refined) {
         (Err(Kind::Tempo { .. }), Some(refined)) if refined != bpm => notes_of(&smf, refined)
             .map_err(|kind| match kind {

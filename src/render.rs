@@ -11,21 +11,28 @@
 //! spread, never sample by sample.
 //!
 //! [`fake::FakeRenderer`] is a seeded additive synth, so the render code runs
-//! in CI with no plug-in.
+//! in CI with no plug-in. [`plugin::PluginRenderer`] renders through a real
+//! plug-in in the `sound-to-patch-host` process, with the state that
+//! [`state::preset_state`] builds.
 
 use std::error::Error;
 use std::fmt;
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
 use crate::audio::{AudioError, SampleRate};
 use crate::cast;
-use crate::notes::{NoteList, Velocity};
-use crate::synth::Synth;
+use crate::notes::{MidiError, NoteList, Velocity, read_midi_bytes};
+use crate::preset::format::FormatError;
+use crate::synth::{Synth, SynthError};
 use crate::units::{Bpm, Seconds};
 
 pub mod fake;
+pub mod plugin;
 pub mod recipe;
+pub mod state;
+pub mod wire;
 
 pub use recipe::{
     ClipEnd, Material, Oversampling, PreRoll, ProcessMode, RECIPE_VERSION, Recipe, TailWatch,
@@ -193,10 +200,25 @@ pub fn note_events(notes: &[RenderNote], rate: SampleRate) -> Vec<NoteEvent> {
     events
 }
 
+/// The SHA-256 of `bytes` in lower-case hex.
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+    Sha256::digest(bytes)
+        .iter()
+        .fold(String::with_capacity(64), |mut hex, byte| {
+            let _ = write!(hex, "{byte:02x}");
+            hex
+        })
+}
+
 /// The frame of a time: the time times the rate, rounded to the nearest
-/// sample. A time too large for a frame index gives `usize::MAX`; note
-/// times are at most [`MAX_NOTE_END`], so the fallback does not act on them.
-pub(crate) fn frame_of(time: Seconds, rate: SampleRate) -> usize {
+/// sample.
+///
+/// A time too large for a frame index gives `usize::MAX`; note times are at
+/// most [`MAX_NOTE_END`], so the fallback does not act on them.
+#[must_use]
+pub fn frame_of(time: Seconds, rate: SampleRate) -> usize {
     cast::round_to_usize(time.get() * f64::from(rate.get())).unwrap_or(usize::MAX)
 }
 
@@ -235,6 +257,7 @@ pub struct RenderJob {
     notes: Vec<RenderNote>,
     bpm: Bpm,
     recipe: Recipe,
+    midi_sha256: Option<String>,
 }
 
 impl RenderJob {
@@ -252,7 +275,25 @@ impl RenderJob {
             notes,
             bpm,
             recipe: Recipe::current(),
+            midi_sha256: None,
         })
+    }
+
+    /// Builds a job that plays the notes of a MIDI file. The file is read
+    /// as `analyze --notes` reads it, so every tempo in it must match
+    /// `bpm`. Notes without a velocity take the recipe's velocity. The
+    /// record carries the SHA-256 of the file.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RenderError::Midi`] for a file the MIDI reader refuses, and
+    /// the errors of [`RenderNote::from_list`] and [`RenderJob::new`].
+    pub fn from_midi(state: PresetState, path: &Path, bpm: Bpm) -> Result<Self, RenderError> {
+        let (list, bytes) = read_midi_bytes(path, bpm).map_err(RenderError::Midi)?;
+        let notes = RenderNote::from_list(&list, Recipe::current().velocity())?;
+        let mut job = Self::new(state, notes, bpm)?;
+        job.midi_sha256 = Some(sha256_hex(&bytes));
+        Ok(job)
     }
 
     /// Builds a job that plays the recipe's notes for `material`.
@@ -264,6 +305,7 @@ impl RenderJob {
             notes: recipe.notes(material),
             bpm,
             recipe,
+            midi_sha256: None,
         }
     }
 
@@ -289,6 +331,12 @@ impl RenderJob {
     #[must_use]
     pub fn recipe(&self) -> &Recipe {
         &self.recipe
+    }
+
+    /// Returns the SHA-256 of the MIDI file the notes came from, in hex.
+    #[must_use]
+    pub fn midi_sha256(&self) -> Option<&str> {
+        self.midi_sha256.as_deref()
     }
 
     /// Returns the end of the last note.
@@ -341,6 +389,10 @@ pub struct RenderRecord {
     pub length: Seconds,
     /// Whether the tail reached its cap before it went quiet.
     pub tail_capped: bool,
+    /// The SHA-256 of the MIDI file the notes came from, in hex. Absent for
+    /// notes that came from no file, such as the recipe's notes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub midi_sha256: Option<String>,
 }
 
 impl RenderRecord {
@@ -361,6 +413,7 @@ impl RenderRecord {
             last_note_off: job.last_note_off(),
             length: rate.seconds(end.frames),
             tail_capped: end.capped,
+            midi_sha256: job.midi_sha256.clone(),
         }
     }
 }
@@ -417,9 +470,28 @@ pub enum RenderError {
     /// The process that hosts the plug-in stopped.
     Crashed(String),
     /// The process that hosts the plug-in stopped answering.
-    TimedOut(Seconds),
+    TimedOut {
+        /// How long the renderer waited.
+        after: Seconds,
+        /// The host's last output.
+        output: String,
+    },
     /// The plug-in gave audio that is not valid.
     Audio(AudioError),
+    /// The preset file is not a valid preset.
+    Preset(FormatError),
+    /// The synth has no renderer yet.
+    Synth(SynthError),
+    /// The MIDI file cannot be read.
+    Midi(MidiError),
+    /// The plug-in host cannot start, cannot load the plug-in or refused a
+    /// request.
+    Host {
+        /// Why.
+        cause: String,
+        /// How to fix it.
+        fix: String,
+    },
 }
 
 impl fmt::Display for RenderError {
@@ -442,14 +514,20 @@ impl fmt::Display for RenderError {
                 f,
                 "the plug-in host stopped: {cause}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
-            Self::TimedOut(after) => write!(
+            Self::TimedOut { after, output } => write!(
                 f,
-                "the plug-in host stopped answering after {after}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
+                "the plug-in host stopped answering after {after}; its last output: {output}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
             Self::Audio(source) => write!(
                 f,
                 "the plug-in gave audio that is not valid: {source}. Report it with the preset"
             ),
+            Self::Preset(source) => write!(f, "{source}"),
+            Self::Synth(source) => write!(f, "{source}"),
+            Self::Midi(source) => write!(f, "{source}"),
+            Self::Host { cause, fix } => {
+                write!(f, "the plug-in host failed: {cause}. {fix}")
+            }
         }
     }
 }
@@ -458,6 +536,9 @@ impl Error for RenderError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Audio(source) => Some(source),
+            Self::Preset(source) => Some(source),
+            Self::Synth(source) => Some(source),
+            Self::Midi(source) => Some(source),
             _ => None,
         }
     }

@@ -40,6 +40,10 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # The host loads x86_64-only plug-ins under Rosetta, so it also builds
+      # for x86_64.
+      - run: rustup target add x86_64-apple-darwin
+      - run: cargo clippy -p sound-to-patch-host --all-targets --target x86_64-apple-darwin -- -D warnings
       # Checks the fuzz targets on stable. Running them needs the nightly
       # pinned in fuzz/rust-toolchain.toml.
       - run: cargo clippy --manifest-path fuzz/Cargo.toml --all-targets -- -D warnings

@@ -4,15 +4,16 @@
 
 use std::fmt::Write as _;
 
+use serde_json::Value;
 use sha2::{Digest, Sha256};
-use sound_to_patch::notes::Velocity;
+use sound_to_patch::notes::{Note, NoteList, Velocities, Velocity, write_midi};
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer, Fault};
 use sound_to_patch::render::{
-    HostIdentity, Material, PresetState, Recipe, RenderError, RenderJob, RenderNote, RenderRecord,
-    Rendered, Renderer,
+    EventKind, HostIdentity, Material, PresetState, Recipe, RenderError, RenderJob, RenderNote,
+    RenderRecord, Rendered, Renderer, note_events,
 };
 use sound_to_patch::synth::Synth;
-use sound_to_patch::units::{Bpm, Seconds};
+use sound_to_patch::units::{Bpm, MidiPitch, Seconds};
 
 use crate::support::render::check_renderer;
 
@@ -163,7 +164,7 @@ fn faults_fail_the_render_they_hit_and_no_other() {
     ));
     assert!(matches!(
         renderer.render(&job(0.3)),
-        Err(RenderError::TimedOut(_))
+        Err(RenderError::TimedOut { .. })
     ));
     let silent = renderer.render(&job(0.3)).unwrap();
     assert!(silent.audio.channels().iter().flatten().all(|s| *s == 0.0));
@@ -208,6 +209,100 @@ fn the_record_survives_a_json_round_trip() {
     let json = serde_json::to_string(&record).unwrap();
     let back: RenderRecord = serde_json::from_str(&json).unwrap();
     assert_eq!(back, record);
+}
+
+/// Writes a MIDI file of three notes at 120 BPM: MIDI 36 at 0.25 to 1 s,
+/// 48 at 1.0625 to 1.5 s, and 60 at 2 to 3 s. Each time lies on the tick
+/// grid, and 1.0625 s is 46 856.25 frames.
+fn midi_file(dir: &tempfile::TempDir) -> std::path::PathBuf {
+    let note = |onset, offset, pitch| {
+        Note::new(
+            Seconds::new(onset).unwrap(),
+            Seconds::new(offset).unwrap(),
+            MidiPitch::new(pitch).unwrap(),
+        )
+        .unwrap()
+    };
+    let list = NoteList::new(vec![
+        note(0.25, 1.0, 36.0),
+        note(1.0625, 1.5, 48.0),
+        note(2.0, 3.0, 60.0),
+    ]);
+    let bytes = write_midi(
+        &list,
+        Bpm::new(120.0).unwrap(),
+        Velocities::Constant(Velocity::new(90).unwrap()),
+    )
+    .unwrap();
+    let path = dir.path().join("notes.mid");
+    std::fs::write(&path, bytes).unwrap();
+    path
+}
+
+#[test]
+fn a_midi_file_gives_frames_within_one_sample_and_its_hash() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = midi_file(&dir);
+    let job = RenderJob::from_midi(state(0.3), &path, Bpm::new(120.0).unwrap()).unwrap();
+    let rate = job.recipe().sample_rate();
+    let ons: Vec<(usize, u8, u8)> = note_events(job.notes(), rate)
+        .iter()
+        .filter(|event| event.kind == EventKind::On)
+        .map(|event| (event.frame, event.key, event.velocity.get()))
+        .collect();
+    for ((frame, key, velocity), (expected, want_key)) in
+        ons.iter()
+            .zip([(11_025.0, 36), (46_856.25, 48), (88_200.0, 60)])
+    {
+        assert_eq!((*key, *velocity), (want_key, 90));
+        assert!(
+            (f64::from(u32::try_from(*frame).unwrap()) - expected).abs() <= 1.0,
+            "key {key} starts at frame {frame}, not near {expected}"
+        );
+    }
+    let hash = Sha256::digest(std::fs::read(&path).unwrap()).iter().fold(
+        String::new(),
+        |mut hex, byte| {
+            write!(hex, "{byte:02x}").unwrap();
+            hex
+        },
+    );
+    assert_eq!(job.midi_sha256(), Some(hash.as_str()));
+    let record = FakeRenderer::new(Synth::Vital, 7)
+        .render(&job)
+        .unwrap()
+        .record;
+    assert_eq!(record.midi_sha256.as_deref(), Some(hash.as_str()));
+}
+
+#[test]
+fn a_tempo_that_differs_from_the_file_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = midi_file(&dir);
+    let error = RenderJob::from_midi(state(0.3), &path, Bpm::new(140.0).unwrap()).unwrap_err();
+    assert!(matches!(error, RenderError::Midi(_)), "{error}");
+}
+
+fn record_schema() -> jsonschema::Validator {
+    let schema: Value = serde_json::from_str(
+        &std::fs::read_to_string("schemas/render-record.schema.json").unwrap(),
+    )
+    .unwrap();
+    jsonschema::validator_for(&schema).unwrap()
+}
+
+#[test]
+fn records_match_the_committed_schema() {
+    let schema = record_schema();
+    let dir = tempfile::tempdir().unwrap();
+    let from_file =
+        RenderJob::from_midi(state(0.3), &midi_file(&dir), Bpm::new(120.0).unwrap()).unwrap();
+    let mut renderer = FakeRenderer::new(Synth::Vital, 7);
+    for job in [job(0.3), from_file] {
+        let record = serde_json::to_value(renderer.render(&job).unwrap().record).unwrap();
+        let errors: Vec<String> = schema.iter_errors(&record).map(|e| e.to_string()).collect();
+        assert_eq!(errors, Vec::<String>::new(), "{record}");
+    }
 }
 
 /// The SHA-256 of the recipe's JSON at each version. A changed field
