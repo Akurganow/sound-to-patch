@@ -171,6 +171,8 @@ pub fn analyze(
         let notes = (!transcription.notes.is_empty()).then(|| transcription.notes.clone());
         (notes, Some(transcription))
     };
+    // The stem and descriptor steps read the channels, not the mono mix.
+    drop(mono);
     let grid = BeatGrid::new(tempo.used(), Seconds::clamped(0.0));
     let stem = Stem::new(stem_audio, grid, notes.as_ref())?;
     let params = StftParams::fixed(stem.frame_len());

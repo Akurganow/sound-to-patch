@@ -55,8 +55,32 @@ pub const PERIODICITY_MIN: f64 = 0.4;
 /// a bar or every other beat read 0.875 or more; the threshold sits
 /// between them.
 pub const SPARSE_PERIODICITY_MIN: f64 = 0.75;
+/// How far either side of a peak of the onset strength the sharpness reads.
+const SHARP_HALF_S: f64 = 0.025;
+/// How far either side a peak of the onset strength is the largest value:
+/// under the 84 ms between sixteenth notes at 178 BPM.
+const PEAK_REACH_S: f64 = 0.03;
 /// The beat spacings of the sparse periodicity.
 const SPARSE_BEATS: [usize; 2] = [2, 4];
+/// The lowest onset sharpness that trusts a refined tempo.
+///
+/// A pad under a smooth tremolo repeats as well as a drum part does, so
+/// its beat or sparse periodicity reads near 1. Its onsets are swells, not
+/// hits: the rise of each band spreads over 180 ms or more. Generated
+/// tremolo pads read 0.87 at most and chord pads 0.76; generated drum,
+/// hat, bass, lead and kick parts, swung or humanised, read 0.985 or more.
+/// The threshold sits between them.
+pub const SHARPNESS_MIN: f64 = 0.9;
+/// The most onsets per beat for which the sparse periodicity trusts a
+/// tempo.
+///
+/// A dense grid lines up with any spacing that is a whole number of its
+/// steps: sixteenth notes at 70.3 BPM read a sparse periodicity of 0.98 at
+/// 16/15 of the tempo, where 4 beats are 15 sixteenths. Generated parts
+/// with one kick a bar read 0.19 to 0.26 onsets per beat, kicks on every
+/// other beat 0.48 to 0.52, and leads 1.23 or more; the threshold sits
+/// between them.
+pub const SPARSE_ONSETS_MAX: f64 = 0.8;
 /// The convention of the refined tempo in `layers.json`.
 pub const TEMPO_CONVENTION: &str = "onset strength: the rise of each third-octave band power \
 from 30 Hz, compressed as ln(1 + P / knee) with the knee 60 dB below full scale, against the \
@@ -65,8 +89,11 @@ frame 10 ms earlier, in 46.4 ms Hann frames on a 1 ms hop, low-passed at 20 Hz, 
 most 3 % (2.91 % below to 3.09 % above the given one), in 0.01 BPM steps, scores the unbiased \
 autocorrelation summed at 1 to 32 beats; the refined tempo is used when its score is at least \
 1.5 times the median score (tempo_peak) and either 0.4 of the lag count times the zero-lag \
-autocorrelation (beat_periodicity) or 0.75 of that on every second or fourth beat lag alone \
-(sparse_periodicity); cycles_in_span counts the whole beats of the stem";
+autocorrelation (beat_periodicity), or 0.75 of that on every second or fourth beat lag alone \
+(sparse_periodicity) with at most 0.8 peaks of the onset strength per beat (onsets_per_beat), \
+and at least 0.9 of the energy of the rise before its low-pass lies within 25 ms of its peaks, \
+each the largest within 30 ms (onset_sharpness); both shares stop at 1; cycles_in_span counts \
+the whole beats of the stem";
 
 /// The hop of the onset strength.
 const ONSET_HOP_S: f64 = 0.001;
@@ -125,7 +152,9 @@ impl Tempo {
     /// [`PEAK_RATIO_MIN`] times the median of the search, and either at
     /// least [`PERIODICITY_MIN`] of the score that onsets on every beat
     /// give or at least [`SPARSE_PERIODICITY_MIN`] of it on every second
-    /// or fourth beat lag. Otherwise it is reported at low confidence and
+    /// or fourth beat lag with at most [`SPARSE_ONSETS_MAX`] onsets per
+    /// beat. Either way the onset sharpness needs [`SHARPNESS_MIN`].
+    /// Otherwise it is reported at low confidence and
     /// the given tempo stays. A stem shorter than [`MIN_BEAT_LAGS`] plus
     /// [`OVERLAP_BEATS`] beats, or one without onsets, keeps the given
     /// tempo and reports no refined one.
@@ -149,7 +178,8 @@ impl Tempo {
         let (Some(&slowest), Some(_)) = (candidates.first(), candidates.last()) else {
             return keep(Reason::new(ReasonCode::TempoPeak, Signal::Number(0.0))?);
         };
-        let onsets = smooth(&onset_strength(mono, rate, hop), fps);
+        let flux = onset_strength(mono, rate, hop);
+        let onsets = smooth(&flux, fps);
         let beats = cast::usize_to_f64(onsets.len()) / fps * slowest / 60.0;
         let whole_beats = cast::floor_to_usize(beats).unwrap_or(0);
         let lags = whole_beats.saturating_sub(OVERLAP_BEATS).min(MAX_BEAT_LAGS);
@@ -179,7 +209,9 @@ impl Tempo {
             return keep(Reason::new(ReasonCode::TempoPeak, Signal::Number(0.0))?);
         }
         let ratio = best / median;
-        let periodicity = best / (cast::usize_to_f64(lags) * acf[0]);
+        // The unbiased lags can sum a little above the zero lag; a share
+        // stops at 1.
+        let periodicity = (best / (cast::usize_to_f64(lags) * acf[0])).min(1.0);
         let period = 60.0 / candidates[best_at] * fps;
         let sparse = SPARSE_BEATS
             .iter()
@@ -191,14 +223,21 @@ impl Tempo {
                     .sum();
                 sum / (cast::usize_to_f64(count) * acf[0])
             })
-            .fold(0.0, f64::max);
+            .fold(0.0, f64::max)
+            .min(1.0);
+        let sharp = sharpness(&flux, fps);
+        let per_beat = cast::usize_to_f64(peaks(&onsets, fps).len()) / beats;
         let refined_bpm = Bpm::clamped(candidates[best_at]);
         let trusted = ratio >= PEAK_RATIO_MIN
-            && (periodicity >= PERIODICITY_MIN || sparse >= SPARSE_PERIODICITY_MIN);
+            && sharp >= SHARPNESS_MIN
+            && (periodicity >= PERIODICITY_MIN
+                || (sparse >= SPARSE_PERIODICITY_MIN && per_beat <= SPARSE_ONSETS_MAX));
         let reasons = vec![
             Reason::new(ReasonCode::TempoPeak, Signal::Number(ratio))?,
             Reason::new(ReasonCode::BeatPeriodicity, Signal::Number(periodicity))?,
             Reason::new(ReasonCode::SparsePeriodicity, Signal::Number(sparse))?,
+            Reason::new(ReasonCode::OnsetSharpness, Signal::Number(sharp))?,
+            Reason::new(ReasonCode::OnsetsPerBeat, Signal::Number(per_beat))?,
             Reason::new(
                 ReasonCode::CyclesInSpan,
                 Signal::Count(u64::try_from(whole_beats).unwrap_or(u64::MAX)),
@@ -266,10 +305,12 @@ impl Tempo {
                     _ => 0.0,
                 };
                 format!(
-                    "tempo: {given} BPM as given; the refined {} BPM is not trusted (peak ratio {ratio:.2}, needs {PEAK_RATIO_MIN}; beat periodicity {:.2}, needs {PERIODICITY_MIN}, or {:.2} at 2 or 4 beats, needs {SPARSE_PERIODICITY_MIN})",
+                    "tempo: {given} BPM as given; the refined {} BPM is not trusted (peak ratio {ratio:.2}, needs {PEAK_RATIO_MIN}; onset sharpness {:.2}, needs {SHARPNESS_MIN}; beat periodicity {:.2}, needs {PERIODICITY_MIN}, or {:.2} at 2 or 4 beats with {:.2} onsets per beat, needs {SPARSE_PERIODICITY_MIN} with {SPARSE_ONSETS_MAX} at most)",
                     refined.get(),
+                    share(ReasonCode::OnsetSharpness),
                     share(ReasonCode::BeatPeriodicity),
                     share(ReasonCode::SparsePeriodicity),
+                    share(ReasonCode::OnsetsPerBeat),
                 )
             }
             _ if signal(ReasonCode::BpmExact).is_some() => {
@@ -411,6 +452,45 @@ fn smooth(onsets: &[f64], fps: f64) -> Vec<f64> {
     rises
         .into_iter()
         .map(|v| if v >= floor { v } else { 0.0 })
+        .collect()
+}
+
+/// The share of the energy of `onsets` within [`SHARP_HALF_S`] of its
+/// peaks: values that are the largest within [`PEAK_REACH_S`] either side.
+/// A hit or a plucked note leaves a narrow peak and reads near 1; a swell
+/// leaves a broad hump and reads low.
+fn sharpness(onsets: &[f64], fps: f64) -> f64 {
+    let total: f64 = onsets.iter().map(|v| v * v).sum();
+    if total <= 0.0 {
+        return 0.0;
+    }
+    let half = cast::round_to_usize(SHARP_HALF_S * fps).unwrap_or(0);
+    let mut near = vec![false; onsets.len()];
+    for i in peaks(onsets, fps) {
+        let end = (i + half + 1).min(onsets.len());
+        near[i.saturating_sub(half)..end].fill(true);
+    }
+    let peaked: f64 = onsets
+        .iter()
+        .zip(&near)
+        .filter(|&(_, &near)| near)
+        .map(|(v, _)| v * v)
+        .sum();
+    peaked / total
+}
+
+/// The positive values of `onsets` that are the largest within
+/// [`PEAK_REACH_S`] either side, by index; the first of equal values.
+fn peaks(onsets: &[f64], fps: f64) -> Vec<usize> {
+    let reach = cast::round_to_usize(PEAK_REACH_S * fps).unwrap_or(1).max(1);
+    (0..onsets.len())
+        .filter(|&i| {
+            let value = onsets[i];
+            let (lo, hi) = (i.saturating_sub(reach), (i + reach + 1).min(onsets.len()));
+            value > 0.0
+                && onsets[lo..i].iter().all(|&other| other < value)
+                && onsets[i + 1..hi].iter().all(|&other| other <= value)
+        })
         .collect()
 }
 
@@ -564,6 +644,8 @@ mod tests {
             Reason::new(ReasonCode::TempoPeak, Signal::Number(322.03)).unwrap(),
             Reason::new(ReasonCode::BeatPeriodicity, Signal::Number(0.24)).unwrap(),
             Reason::new(ReasonCode::SparsePeriodicity, Signal::Number(0.5)).unwrap(),
+            Reason::new(ReasonCode::OnsetSharpness, Signal::Number(1.0)).unwrap(),
+            Reason::new(ReasonCode::OnsetsPerBeat, Signal::Number(0.25)).unwrap(),
         ];
         let tempo = Tempo {
             given: bpm(120.0),
@@ -574,7 +656,8 @@ mod tests {
         assert_eq!(
             tempo.summary(),
             "tempo: 120 BPM as given; the refined 120 BPM is not trusted (peak ratio 322.03, \
-needs 1.5; beat periodicity 0.24, needs 0.4, or 0.50 at 2 or 4 beats, needs 0.75)"
+needs 1.5; onset sharpness 1.00, needs 0.9; beat periodicity 0.24, needs 0.4, or 0.50 at 2 \
+or 4 beats with 0.25 onsets per beat, needs 0.75 with 0.8 at most)"
         );
     }
 }

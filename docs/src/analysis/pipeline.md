@@ -70,16 +70,25 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   spans 2.91 % below to 3.09 % above `--bpm`, so a `--bpm` 3 % off either
   way still holds the truth [fact]. The window is so narrow that half and
   double the tempo lie outside it [fact].
-- Trust: the best tempo replaces `--bpm` when its score is at least 1.5
-  times the median score of the search (`tempo_peak`) and one of two shares
-  is high enough [proposal]. The beat share is the best score over $K$
-  times the zero-lag autocorrelation, and needs 0.4 (`beat_periodicity`)
-  [proposal]. The sparse share reads the same sum on every second or every
-  fourth beat lag alone, the better of the two, and needs 0.75
-  (`sparse_periodicity`) [proposal]. It counts only when the stem holds 4
-  such lags, 12 or 20 beats [fact]. Otherwise the tempo is reported at low
-  confidence and `--bpm` stays [fact]. A stem of fewer than 8 beats, or one
-  without onsets, keeps `--bpm` and reports no refined tempo [fact].
+- Trust: the best tempo replaces `--bpm` when three things hold
+  [proposal]:
+  - Its score is at least 1.5 times the median score of the search
+    (`tempo_peak`).
+  - The onsets are hits, not swells: at least 0.9 of the energy of the
+    band rise, before its low-pass, lies within 25 ms of its peaks, each
+    the largest within 30 ms (`onset_sharpness`).
+  - One of two shares is high enough. The beat share is the best score over
+    $K$ times the zero-lag autocorrelation, and needs 0.4
+    (`beat_periodicity`). The sparse share reads the same sum on every
+    second or every fourth beat lag alone, the better of the two, and needs
+    0.75 (`sparse_periodicity`), with at most 0.8 peaks of the onset
+    strength per beat (`onsets_per_beat`). Both shares stop at 1.
+
+  The sparse share is read once the stem holds 4 such lags, 12 beats for
+  every second lag and 20 for every fourth [fact]. Otherwise the tempo is
+  reported at low confidence and `--bpm` stays [fact]. A stem of fewer
+  than 8 beats, or one without onsets, keeps `--bpm` and reports no
+  refined tempo [fact].
 - Generated drum, bass and lead parts at 70.3, 97.55, 123.4, 147.81 and
   178.2 BPM, 37 beats each at 22,050 Hz, with `--bpm` off by -3, -1, +1
   and +3 %: every refined tempo lies within 0.05 BPM of the truth
@@ -88,18 +97,35 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   0.4 threshold sits between the two [proposal].
 - One kick a bar repeats on a quarter of the beat lags, so its
   `beat_periodicity` reads 0.22 to 0.24 and its `sparse_periodicity` 0.95
-  to 0.97 [synthetic]. Kicks a bar and kicks on every other beat, on the
-  same grid, refine to the exact tempo [synthetic]. The sparse share needs
-  more than the beat share, because its fewer lags line up by chance more
-  often [fact]. A drum part with `--bpm` 3.5 % off reads 0.46 at a tempo
-  16/15 of the truth, where every eighth beat meets an eighth note
-  [synthetic]. Across the parts, the cases that keep `--bpm` read at most
-  0.47, and a tempo ramp of 1 % at most 0.62; sparse parts read 0.875 or
-  more [synthetic]. The 0.75 threshold sits between them [proposal].
+  to 0.97 at 37 beats [synthetic]. Kicks a bar and kicks on every other
+  beat, on the same grid, refine to the exact tempo [synthetic]. A kick a
+  bar clears 0.75 from about 24 beats: 0.81 at 24, 0.34 at 20 [synthetic].
+- The sparse share needs more than the beat share, because its fewer lags
+  line up by chance more often [fact]. Kick parts that keep `--bpm`, with
+  it 3.5 % or 4 % off or under a tempo ramp of 1 %, read at most 0.63;
+  sparse parts read 0.8 or more, swung or with onsets moved by 8 ms
+  [synthetic]. The 0.75 threshold sits between them [proposal].
+- A dense grid lines up with any spacing that is a whole number of its
+  steps [fact]. Sixteenth hats at 70.3 BPM with `--bpm` 3.5 % off read a
+  `sparse_periodicity` of 0.98 at 16/15 of the truth, where 4 beats are 15
+  sixteenths [synthetic]. Kick-a-bar parts read 0.19 to 0.26 onsets per
+  beat, kicks on every other beat 0.48 to 0.52, leads 1.23 or more and
+  hats 3 or more [synthetic]. The 0.8 limit sits between them, so a lead or
+  a hat part needs the beat share [proposal].
+- A pad under a smooth tremolo of 1, 2 or 4 beats repeats as well as a
+  drum part, and reads a beat or sparse share near 1 [synthetic]. Its rises
+  spread over 180 ms or more, and its `onset_sharpness` reads 0.87 at most;
+  chord pads read 0.76 at most, and drum, hat, bass, lead and kick parts
+  0.985 or more [synthetic]. The 0.9 threshold sits between them
+  [proposal]. Every tremolo case keeps `--bpm` [synthetic].
 - Swing at two thirds of the beat refines within 0.05 BPM, and onsets moved
   by up to 8 ms at random within 0.1 BPM [synthetic]. A `--bpm` 3.5 % or
   4 % off, and a tempo ramp of 2 % or 3 % either way, keep `--bpm`
   [synthetic].
+- A loop whose bar is not 4 beats long but lies within 3 % of it, such as
+  a kick every 3.9 or 4.1 beats, refines to the tempo at which the loop is
+  4 beats [fact]. The onsets cannot tell such a loop from one at that
+  tempo [fact].
 - A steady tone whose period divides the beat, such as 110 Hz at 120 BPM,
   finds no onset and keeps `--bpm` [synthetic].
 - The beat offset stays 0: only the period is refined [fact]. A stem whose

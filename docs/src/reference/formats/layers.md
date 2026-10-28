@@ -80,7 +80,7 @@ them.
 | :-- | :-- | :-- | :-- | :-- |
 | `bpm` | beats per minute | 4 to 1000 | number | The tempo of the beat grid and of every later step: `bpm_refined` when its confidence is high, else `bpm_given`. |
 | `bpm_given` | beats per minute | 4 to 1000 | number | Given by `--bpm`. |
-| `bpm_refined` | beats per minute | 4 to 1000 | value | The tempo refined from the onsets, from 2.91 % below to 3.09 % above `bpm_given`, in 0.01 BPM steps; see the [tempo section](../../analysis/pipeline.md#tempo). Its reasons give `tempo_peak`, `beat_periodicity`, `sparse_periodicity` and the whole beats of the stem as `cycles_in_span`. No value with `--bpm-exact` (`bpm_exact`), for a stem of fewer than 8 beats or for one without onsets. |
+| `bpm_refined` | beats per minute | 4 to 1000 | value | The tempo refined from the onsets, from 2.91 % below to 3.09 % above `bpm_given`, in 0.01 BPM steps; see the [tempo section](../../analysis/pipeline.md#tempo). Its reasons give `tempo_peak`, `beat_periodicity`, `sparse_periodicity`, `onset_sharpness`, `onsets_per_beat` and the whole beats of the stem as `cycles_in_span`. No value with `--bpm-exact` (`bpm_exact`), for a stem of fewer than 8 beats or for one without onsets. |
 | `duration_s` | seconds | 0 or more | number | Decoded frames over the sample rate. |
 | `sample_rate_hz` | hertz | 1 or more | integer | The native rate of the file; no resampling. |
 | `band_edge_hz` | hertz | 0 to Nyquist | value | The steepest fall of at least 25 dB per semitone above 2 kHz on a plateau, else the highest bin 30 dB above the floor at low confidence. |

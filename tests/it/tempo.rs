@@ -24,6 +24,8 @@ enum Part {
     BarKick,
     /// One kick on every other beat.
     HalfKick,
+    /// Kicks on the beat and hats on every sixteenth.
+    Hats16,
 }
 
 /// Where the beats of a part fall.
@@ -164,6 +166,10 @@ fn part(kind: Part, clock: Clock) -> Vec<f64> {
         Part::Drums => render_drums(&every(1, 0.0), &every(1, 0.5), clock),
         Part::BarKick => render_drums(&every(4, 0.0), &[], clock),
         Part::HalfKick => render_drums(&every(2, 0.0), &[], clock),
+        Part::Hats16 => {
+            let hats: Vec<f64> = (0..beats * 4).map(|n| f(n) / 4.0).collect();
+            render_drums(&every(1, 0.0), &hats, clock)
+        }
         Part::Bass => {
             let keys = [33.0, 33.0, 36.0, 33.0, 40.0, 33.0, 31.0, 33.0];
             let notes: Vec<Note> = (0..beats * 2)
@@ -332,7 +338,7 @@ fn onsets_on_every_other_beat_keep_the_tempo_near_the_given_one() {
 #[test]
 fn swing_keeps_the_refined_tempo() {
     let truth = TEMPOS[2];
-    for kind in [Part::Drums, Part::Bass, Part::Lead] {
+    for kind in [Part::Drums, Part::Bass, Part::Lead, Part::BarKick] {
         let swing = Clock {
             swing: 0.667,
             ..Clock::steady(truth)
@@ -356,12 +362,47 @@ fn humanised_onsets_keep_the_refined_tempo() {
     }
 }
 
-/// A `--bpm` 3.5 % off puts the true tempo outside the search, and the
-/// edge of the search is not trusted.
+/// A `--bpm` 3.5 % or 4 % off puts the true tempo outside the search, and
+/// the edge of the search is not trusted. At 70.3 BPM, drum and bass parts
+/// line up every 8 beats at 16/15 of the truth, and sixteenth hats every 4,
+/// so these cases pin the sparse thresholds.
+fn check_outside(kind: Part, truth: f64) {
+    let samples = part(kind, Clock::steady(truth));
+    for offset in [-0.04, -0.035, 0.035, 0.04] {
+        let tempo = refine(&samples, truth * (1.0 + offset));
+        assert_kept(
+            &tempo,
+            &format!("{kind:?} at {truth} BPM, --bpm offset {offset}"),
+        );
+    }
+}
+
+/// One test per part and tempo, so the cases run in parallel.
+macro_rules! outside {
+    ($($name:ident: $kind:ident, $tempo:literal;)+) => {
+        $(
+            #[test]
+            fn $name() {
+                check_outside(Part::$kind, TEMPOS[$tempo]);
+            }
+        )+
+    };
+}
+
+outside! {
+    outside_drums_70: Drums, 0; outside_drums_98: Drums, 1; outside_drums_123: Drums, 2;
+    outside_drums_148: Drums, 3; outside_drums_178: Drums, 4;
+    outside_bass_70: Bass, 0; outside_bass_98: Bass, 1; outside_bass_123: Bass, 2;
+    outside_bass_148: Bass, 3; outside_bass_178: Bass, 4;
+    outside_hats_70: Hats16, 0; outside_hats_98: Hats16, 1; outside_hats_123: Hats16, 2;
+    outside_hats_148: Hats16, 3; outside_hats_178: Hats16, 4;
+}
+
+/// The lead and the kick a bar keep `--bpm` 3.5 % off too.
 #[test]
 fn a_given_tempo_outside_the_search_is_kept() {
     let truth = TEMPOS[2];
-    let samples: Vec<(Part, Vec<f64>)> = [Part::Drums, Part::Bass, Part::Lead, Part::BarKick]
+    let samples: Vec<(Part, Vec<f64>)> = [Part::Lead, Part::BarKick]
         .into_iter()
         .map(|kind| (kind, part(kind, Clock::steady(truth))))
         .collect();
@@ -417,4 +458,84 @@ pub(crate) fn bass_line(bpm: f64, beats: usize) -> (u32, Vec<f64>) {
         ..Clock::steady(bpm)
     };
     (RATE, part(Part::Bass, clock))
+}
+
+/// A chord of four sines from 220 to 440 Hz under a tremolo
+/// `(0.5 (1 - cos))^power` with a period of `period_beats` beats at
+/// `lfo_bpm`, `beats` long.
+pub(crate) fn lfo_pad(lfo_bpm: f64, period_beats: f64, power: i32, beats: usize) -> Vec<f64> {
+    let rate = f64::from(RATE);
+    let len = round_to_usize(f(beats) * 60.0 / lfo_bpm * rate);
+    let period = period_beats * 60.0 / lfo_bpm;
+    (0..len)
+        .map(|n| {
+            let t = f(n) / rate;
+            let env = (0.5 * (1.0 - (2.0 * std::f64::consts::PI * t / period).cos())).powi(power);
+            let tone: f64 = [220.0, 277.18, 329.63, 440.0]
+                .iter()
+                .map(|hz| (2.0 * std::f64::consts::PI * hz * t).sin())
+                .sum();
+            0.1 * env * tone
+        })
+        .collect()
+}
+
+/// A sparse part whose tempo moves by 1 % either way keeps `--bpm`: its
+/// sparse periodicity reads up to 0.63, under the 0.75 it needs.
+#[test]
+fn a_sparse_part_under_a_ramp_of_1_percent_keeps_the_given_tempo() {
+    for truth in [TEMPOS[3], TEMPOS[4]] {
+        for kind in [Part::BarKick, Part::HalfKick] {
+            let ramp = Clock {
+                bpm: truth * 0.99,
+                end_bpm: truth * 1.01,
+                ..Clock::steady(truth)
+            };
+            let tempo = refine(&part(kind, ramp), truth);
+            assert_kept(&tempo, &format!("{kind:?} at {truth} BPM, ramp of 1 %"));
+        }
+    }
+}
+
+/// A pad under a smooth tremolo repeats like a drum part at the tremolo's
+/// tempo, but its onsets are swells, so it keeps `--bpm`.
+fn check_tremolo(power: i32) {
+    for period in [4.0, 2.0, 1.0] {
+        let lfo = 120.0 * 1.025;
+        let tempo = refine(&lfo_pad(lfo, period, power, 64), 120.0);
+        assert_kept(&tempo, &format!("tremolo of {period} beats, power {power}"));
+    }
+}
+
+#[test]
+fn a_pad_under_a_smooth_tremolo_keeps_the_given_tempo() {
+    check_tremolo(1);
+}
+
+#[test]
+fn a_pad_under_a_peaked_tremolo_keeps_the_given_tempo() {
+    check_tremolo(4);
+}
+
+/// A limit: a loop whose bar lies within 3 % of 4 beats, such as a kick
+/// every 3.9 or 4.1 beats, refines to the tempo at which it is 4 beats.
+#[test]
+fn a_loop_off_its_bar_refines_to_the_loop_tempo() {
+    let clock = Clock {
+        beats: 64,
+        ..Clock::steady(120.0)
+    };
+    for bar in [3.9, 4.1] {
+        let kicks: Vec<f64> = (0..64)
+            .map(|n| f(n) * bar)
+            .take_while(|&beat| beat < 64.0)
+            .collect();
+        let tempo = refine(&render_drums(&kicks, &[], clock), 120.0);
+        assert_refined(
+            &tempo,
+            120.0 * 4.0 / bar,
+            0.05,
+            &format!("a kick every {bar} beats"),
+        );
+    }
 }

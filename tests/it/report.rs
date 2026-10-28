@@ -717,3 +717,62 @@ fn bpm_exact_leaves_the_refined_tempo_empty() {
     let message = analyze(&exact, &transcriber()).unwrap_err().to_string();
     assert!(message.contains("but --bpm is 120. Export"), "{message}");
 }
+
+/// `analyze` without `--notes` decodes at the refined tempo: 117 BPM keeps
+/// notes of 6 frames or more and 120 BPM of 5.
+#[test]
+fn analyze_decodes_at_the_refined_tempo() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 117.0, 9);
+    let out = dir.path().join("out");
+    let request = AnalyzeRequest {
+        profile: Some(Profile::Bass),
+        ..request(&stem, None, &out)
+    };
+    let analysis = analyze(&request, &untracked(transcriber())).unwrap();
+    assert_eq!(analysis.tempo.trusted(), Some(Bpm::new(117.0).unwrap()));
+    let settings = &analysis.transcription.as_ref().unwrap().settings;
+    assert_eq!(
+        settings.min_note_frames,
+        min_note_frames(Bpm::new(117.0).unwrap())
+    );
+    assert_ne!(
+        settings.min_note_frames,
+        min_note_frames(Bpm::new(120.0).unwrap())
+    );
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
+    assert_eq!(
+        report["transcription"]["note_params"],
+        serde_json::to_value(settings.note_params()).unwrap()
+    );
+}
+
+/// A refined tempo that is not trusted is not one a note file may match:
+/// a file at it fails, and the error names `--bpm` only.
+#[test]
+fn a_note_file_at_an_untrusted_refined_tempo_is_rejected() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = dir.path().join("pad.wav");
+    let samples = crate::tempo::lfo_pad(123.0, 1.0, 1, 37);
+    write_wav16(&stem, 22_050, std::slice::from_ref(&samples));
+    let mono = sound_to_patch::audio::decode(&stem)
+        .unwrap()
+        .into_audio()
+        .mono();
+    let tempo = Tempo::refine(
+        &mono,
+        SampleRate::new(22_050).unwrap(),
+        Bpm::new(120.0).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(tempo.trusted(), None, "{}", tempo.summary());
+    let refined = tempo.refined().value().unwrap().get();
+    assert!((refined - 120.0).abs() > 0.5, "{refined}");
+    let notes = midi(dir.path(), refined);
+    let out = dir.path().join("out");
+    let message = analyze(&request(&stem, Some(&notes), &out), &transcriber())
+        .unwrap_err()
+        .to_string();
+    assert!(message.contains("but --bpm is 120. Export"), "{message}");
+}
