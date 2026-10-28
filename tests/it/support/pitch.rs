@@ -29,15 +29,15 @@ fn saw_voice(f: impl Fn(f64) -> f64, top: f64, rate: f64, length: usize, phase0:
 }
 
 /// `voices` saws detuned evenly over `±detune_ct` cents, each with a seeded
-/// random start phase, summed and scaled to a peak near 0.5. One voice
-/// plays the pitch itself.
+/// random start phase unless `in_phase`, summed and scaled to a peak near
+/// 0.5. One voice plays the pitch itself.
 fn unison(
     f: impl Fn(f64) -> f64 + Copy,
     top: f64,
     rate: f64,
     length: usize,
-    voices: usize,
-    detune_ct: f64,
+    (voices, detune_ct): (usize, f64),
+    in_phase: bool,
 ) -> Vec<f64> {
     let phases = uniform(17, voices);
     let mut out = vec![0.0; length];
@@ -51,7 +51,7 @@ fn unison(
                     - 1.0)
         };
         let ratio = 2f64.powf(offset / 1200.0);
-        let start = if voices == 1 { 0.0 } else { random };
+        let start = if voices == 1 || in_phase { 0.0 } else { random };
         for (sample, x) in out.iter_mut().zip(saw_voice(
             move |t| f(t) * ratio,
             top * ratio,
@@ -82,6 +82,9 @@ pub(crate) struct Glide {
     pub(crate) hold_s: f64,
     pub(crate) voices: usize,
     pub(crate) detune_ct: f64,
+    /// Every voice starts at phase 0, so the unison beats hardest at the
+    /// start.
+    pub(crate) in_phase: bool,
 }
 
 impl Glide {
@@ -95,6 +98,7 @@ impl Glide {
             hold_s: 0.5,
             voices: 1,
             detune_ct: 0.0,
+            in_phase: false,
         }
     }
 
@@ -115,7 +119,7 @@ impl Glide {
             me.start_hz * 2f64.powf(me.semitones * curve(x, me.p) / 12.0)
         };
         let top = me.start_hz * 2f64.powf(me.semitones / 12.0);
-        unison(f, top, rate, length, me.voices, me.detune_ct)
+        unison(f, top, rate, length, (me.voices, me.detune_ct), me.in_phase)
     }
 }
 
@@ -167,6 +171,60 @@ impl PitchDrop {
     }
 }
 
+/// 808 hits without a pitch drop, one per MIDI pitch: a sine that
+/// restarts its phase at each hit, driven through `tanh(drive x)` when
+/// `drive` is above zero, with a 3 ms attack, times `exp(-t / decay_s)`,
+/// `hit_s` long and followed by `gap_s` of silence. `lead_s` of silence
+/// comes before the first hit and after the last.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Hits {
+    pub(crate) pitches: &'static [f64],
+    pub(crate) hit_s: f64,
+    pub(crate) decay_s: f64,
+    pub(crate) gap_s: f64,
+    pub(crate) lead_s: f64,
+    pub(crate) drive: f64,
+}
+
+impl Hits {
+    /// Hits of 0.3 s with a 0.25 s decay.
+    pub(crate) fn new(pitches: &'static [f64], gap_s: f64) -> Self {
+        Self {
+            pitches,
+            hit_s: 0.3,
+            decay_s: 0.25,
+            gap_s,
+            lead_s: 0.2,
+            drive: 0.0,
+        }
+    }
+
+    pub(crate) fn render(&self, rate: f64) -> Vec<f64> {
+        let hit = round_to_usize(rate * self.hit_s);
+        let attack = round_to_usize(rate * 0.003);
+        let mut out = vec![0.0; round_to_usize(rate * self.lead_s)];
+        for &pitch in self.pitches {
+            let f = 440.0 * 2f64.powf((pitch - 69.0) / 12.0);
+            out.extend((0..hit).map(|n| {
+                let t = f64::from(u32::try_from(n).unwrap()) / rate;
+                let ramp = (f64::from(u32::try_from(n).unwrap())
+                    / f64::from(u32::try_from(attack).unwrap()))
+                .min(1.0);
+                let x = (TAU * f * t).sin();
+                let x = if self.drive > 0.0 {
+                    (self.drive * x).tanh()
+                } else {
+                    x
+                };
+                0.5 * ramp * x * (-t / self.decay_s).exp()
+            }));
+            out.extend(std::iter::repeat_n(0.0, round_to_usize(rate * self.gap_s)));
+        }
+        out.extend(std::iter::repeat_n(0.0, round_to_usize(rate * self.lead_s)));
+        out
+    }
+}
+
 /// A saw at `f0_hz` whose pitch moves as `extent_ct sin(2 pi rate_hz t)`
 /// cents, for `length_s` after `lead_s` of silence.
 #[derive(Clone, Copy, Debug)]
@@ -211,9 +269,52 @@ impl Vibrato {
             me.f0_hz * 2f64.powf(me.extent_ct * (TAU * me.rate_hz * t).sin() / 1200.0)
         };
         let top = me.f0_hz * 2f64.powf(me.extent_ct / 1200.0);
-        let tone = unison(f, top, rate, length, me.voices, me.detune_ct);
+        let tone = unison(f, top, rate, length, (me.voices, me.detune_ct), false);
         let mut out = vec![0.0; lead];
         out.extend(tone);
+        out.extend(std::iter::repeat_n(0.0, lead));
+        out
+    }
+}
+
+/// A saw that alternates between `f0_hz` and a semitone above it,
+/// `rate_hz` times a second, for `length_s` after `lead_s` of silence.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Trill {
+    pub(crate) f0_hz: f64,
+    pub(crate) rate_hz: f64,
+    pub(crate) length_s: f64,
+    pub(crate) lead_s: f64,
+}
+
+impl Trill {
+    /// A 1 s trill at 220 Hz.
+    pub(crate) fn new(rate_hz: f64) -> Self {
+        Self {
+            f0_hz: 220.0,
+            rate_hz,
+            length_s: 1.0,
+            lead_s: 0.2,
+        }
+    }
+
+    pub(crate) fn render(&self, rate: f64) -> Vec<f64> {
+        let me = *self;
+        let lead = round_to_usize(rate * me.lead_s);
+        let f = move |t: f64| {
+            let upper = (2.0 * me.rate_hz * t).floor() % 2.0;
+            me.f0_hz * 2f64.powf(upper / 12.0)
+        };
+        let top = me.f0_hz * 2f64.powf(1.0 / 12.0);
+        let mut out = vec![0.0; lead];
+        out.extend(unison(
+            f,
+            top,
+            rate,
+            round_to_usize(rate * me.length_s),
+            (1, 0.0),
+            false,
+        ));
         out.extend(std::iter::repeat_n(0.0, lead));
         out
     }
@@ -256,7 +357,14 @@ impl BassLine {
         let f =
             move |t: f64| 55.0 * 2f64.powf(semitones * curve((t + 1.2 - start) / full, p) / 12.0);
         let length = round_to_usize(1.3 * rate);
-        let saw = unison(f, 55.0 * 2f64.powf(semitones / 12.0), rate, length, 1, 0.0);
+        let saw = unison(
+            f,
+            55.0 * 2f64.powf(semitones / 12.0),
+            rate,
+            length,
+            (1, 0.0),
+            false,
+        );
         out.extend(
             saw.iter().enumerate().map(|(n, x)| {
                 0.8 * x * fade(f64::from(u32::try_from(n).unwrap()) / rate, 0.0, 1.3)

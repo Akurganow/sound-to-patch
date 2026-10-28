@@ -28,6 +28,12 @@ records in the edit-list format, each a `param` or a `route` with unit
 strings, so a route keeps its source, amount and polarity; the mapping
 step fills it in a later release, and until then the list is empty.
 
+The pitch group breaks reports of `layers/1` from releases up to 0.16:
+`suggested_edits` changed from an object of numbers to a list of records,
+`pitch` is a new required top-level key, and `conventions` requires the
+keys `pitch`, `glides`, `drops`, `sub_band_line` and `vibrato`. A reader of
+older reports keeps their schema.
+
 ## The transcription group
 
 The group records what produced the notes, so a note that flips between
@@ -119,7 +125,10 @@ silent channel, or a zero mid or side.
 The pitch layer of a monophonic line; the
 [pitch layer page](../../analysis/pitch.md) explains each method. Every
 record carries its own confidence, always an estimate. The group's own
-confidence gives the voiced frames of the f0 track as `voiced_frames`.
+confidence is medium, or low when fewer than half of the track frames
+inside the notes are voiced within 100 cents of a sounding note, as under
+noise or DC. Its reasons are `voiced_frames`, the voiced frames of the f0
+track, and `note_frames`, that share.
 
 `values` is `null` when the line plays chords (reason `polyphonic_line`)
 or the stem has no notes (reason `no_note_list`). Otherwise it holds three
@@ -133,9 +142,9 @@ A glide:
 | :-- | :-- | :-- | :-- |
 | `start_s` | seconds | 0 or more | The fitted start of the motion. |
 | `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
-| `time_s` | seconds | above 0 | The full 0 to 100 % time. |
-| `curve` | power | 0.2 to 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. |
-| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run. |
+| `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
+| `curve` | power | 0.21 to 4.76 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the search bounds 0.2 and 5 is no glide. |
+| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. |
 
 Its reasons are `motion_span` (seconds), `fit_residual` (cents) and
 `pitch_jitter` (cents).
@@ -146,9 +155,9 @@ A drop:
 | :-- | :-- | :-- | :-- |
 | `onset_s` | seconds | 0 or more | The onset of the strike from the band envelope. |
 | `f_end_hz` | hertz | above 0 | The settled frequency. |
-| `df_st` | semitones | above 2 | The drop at the onset, `12 log2((f_end + df) / f_end)`. |
+| `df_st` | semitones | above 2, at most 36 | The drop at the onset, `12 log2((f_end + df) / f_end)`. |
 | `df_hz` | hertz | above 0 | The same in hertz above `f_end_hz`. |
-| `tau_s` | seconds | above 0 | The time constant of `f_end + df exp(-t / tau)`. |
+| `tau_s` | seconds | above 0.003 | The time constant of `f_end + df exp(-t / tau)`, above the 3.04 ms floor of the search. |
 | `residual` | share | 0 to 0.15 | The RMS residual of the fit over the fall it shows from 7 ms on, `df_hz exp(-7 ms / tau_s)`. |
 
 Its reason is `fit_residual`.
@@ -164,12 +173,15 @@ A vibrato:
 | `extent_factor` | ratio | above 0 | The correction for the track's smoothing at this rate; `extent_ct = extent_raw_ct * extent_factor`. |
 | `share` | share | 0.5 to 1 | The power the fitted sine explains over the power left after the line alone. |
 
-Its reasons are `sine_share` and `cycles_in_span`.
+Its reasons are `sine_share`, `cycles_in_span` and `contour_kurtosis`. A
+kurtosis below 1.25 reads low: the contour jumps between two levels, as a
+trill does.
 
 `flags` holds four booleans: `chord_skipped`, `glide_too_short` (a motion
-between two notes lasted 35 to 90 ms), `weak_fundamental` (a low note's
-second harmonic outweighed its fundamental, so its drop was not reported)
-and `no_notes`. `needs_render` is `false`.
+between two notes lasted 35 to 90 ms, over its detected span or its fitted
+time), `weak_fundamental` (a low note's second harmonic exceeded its
+fundamental by 6 dB, so its drop was not reported) and `no_notes`.
+`needs_render` is `false`.
 
 ## Conventions
 

@@ -59,6 +59,10 @@ expression: "serde_json::to_string_pretty(&shape(pitch)).unwrap()"
       {
         "code": "voiced_frames",
         "value": "<integer>"
+      },
+      {
+        "code": "note_frames",
+        "value": "<number>"
       }
     ],
     "estimate": true

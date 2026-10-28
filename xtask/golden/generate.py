@@ -1438,7 +1438,7 @@ def drop_fit(line, onset, rate):
     fit = scipy.optimize.least_squares(
         lambda p: y - model(p),
         [y[-1], y[0] - y[-1], 0.02],
-        bounds=([-np.inf, -np.inf, 0.0005], [np.inf, np.inf, 1.0]),
+        bounds=([-np.inf, -np.inf, 0.007 / math.log(10)], [np.inf, np.inf, 1.0]),
         xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=10000,
     )
     f_end, df, tau = fit.x

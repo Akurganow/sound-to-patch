@@ -10,7 +10,7 @@ use crate::units::{Cents, Hz, Seconds, Semitones};
 /// semitone per second, the floor of a published portamento detector.
 /// Untuned.
 pub const GLIDE_SLOPE_MIN: f64 = 86.0;
-/// The shortest glide, over its full detected span.
+/// The shortest glide, over its detected span and over its fitted time.
 pub const GLIDE_TIME_MIN: Seconds = Seconds::from_const(0.09);
 /// Motion shorter than this over its detected span is a step between two
 /// notes.
@@ -36,6 +36,22 @@ pub const NOTE_MATCH: Cents = Cents::from_const(50.0);
 pub const SMOOTH_FRAMES: usize = 5;
 /// The range of the curve power `p`.
 pub const CURVE_RANGE: (f64, f64) = (0.2, 5.0);
+/// A fitted `p` within this factor of a bound of [`CURVE_RANGE`] sits on
+/// the bound.
+pub const CURVE_EDGE: f64 = 1.05;
+/// The largest RMS residual of a glide of 90 ms or more. The glides of the
+/// generated set fit within 22 cents.
+pub const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
+/// The longest unvoiced gap between two voiced runs that the glide search
+/// bridges. A beating unison can leave the track unvoiced for 75 ms inside
+/// a glide.
+pub const GAP_BRIDGE_MAX: Seconds = Seconds::from_const(0.1);
+/// The smallest jump across a bridged gap, and the smallest motion over
+/// the two frames after it: two steps of the tracker's 10-cent grid.
+pub const GAP_MOTION_MIN: Cents = Cents::from_const(20.0);
+/// A glide from silence needs a sound to start at most this long before
+/// its voiced run.
+pub const ONSET_LOOKBACK: Seconds = Seconds::from_const(0.1);
 /// The fit reads this much of each stable pitch next to the motion.
 const FIT_MARGIN: f64 = 0.05;
 
@@ -71,9 +87,14 @@ cents per second or less; a glide joins two stable pitches 100 cents or more apa
 notes of different pitch within 50 cents, where the slope of the 5-frame moving average stays \
 at 86 cents per second or more, in the direction of the motion, over 90 ms or more; s(x) = 1 - \
 (1 - x)^p is fitted between the two stable pitches by least squares over the motion and 50 ms of \
-each; start_s is the fitted start less the track's lag of a quarter frame, 23.2 ms; time_s is \
-the full 0 to 100 % time; from_silence marks a glide into the first stable pitch of a voiced \
-run, whose start pitch the fit also finds; motion of 35 to 90 ms counts as too short";
+each; start_s is the fitted start less the track's lag of a quarter frame, 23.2 ms, less half \
+a period; time_s is the full 0 to 100 % time; from_silence marks a glide into the first stable \
+pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 100 ms before \
+it, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
+before joins it when the full-band RMS does not rise 6 dB in the gap and the pitch keeps moving \
+after the gap the way it jumped; motion of 35 to 90 ms, over the detected span or the fitted \
+time, counts as too short; a fit of 90 ms or more with p within 5 % of 0.2 or 5, or an RMS \
+residual above 40 cents, is no glide";
 
 /// A fitted glide.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -124,17 +145,41 @@ struct Plateau {
     median: f64,
 }
 
-/// Finds the glides of a monophonic line. `skip_from_silence` names the
-/// times at which a glide from silence is something else, such as a pitch
-/// drop the sub-band line reads.
+/// Finds the glides of a monophonic line.
+///
+/// `struck` tells whether a sound starts or is struck again inside a span
+/// of the audio, and `from_silence` whether a glide from silence may start
+/// a voiced run whose sound starts inside a span. A voiced run that starts
+/// within [`GAP_BRIDGE_MAX`] of the previous one joins it when nothing is
+/// struck in the gap and the pitch keeps moving after the gap in the
+/// direction of its jump across it: the track can go unvoiced inside a
+/// glide, and at a step between two notes.
 #[must_use]
 pub fn find_glides(
     track: &PitchTrack,
     notes: &NoteList,
-    skip_from_silence: impl Fn(Seconds) -> bool,
+    struck: impl Fn(Seconds, Seconds) -> bool,
+    from_silence: impl Fn(Seconds, Seconds) -> bool,
 ) -> GlideRead {
     let mut read = GlideRead::default();
+    let audio = |frame: &Frame| frame.time - lag_at(frame.cents);
+    let mut runs: Vec<Vec<Frame>> = Vec::new();
     for run in voiced_runs(track) {
+        if let Some(previous) = runs.last_mut()
+            && let Some(last) = previous.last()
+            && run[0].time - last.time <= GAP_BRIDGE_MAX.get()
+            && moves_on(last, &run)
+            && !struck(
+                Seconds::clamped(audio(last)),
+                Seconds::clamped(audio(&run[0])),
+            )
+        {
+            previous.extend(run);
+        } else {
+            runs.push(run);
+        }
+    }
+    for run in runs {
         let smooth = moving_average(&run);
         let slope = slopes(&run, &smooth);
         let plateaus = plateaus(&run, &smooth);
@@ -151,7 +196,10 @@ pub fn find_glides(
         };
         if let Some(first) = plateaus.first()
             && first.first > 0
-            && !skip_from_silence(Seconds::clamped(run[0].time - lag_at(run[0].cents)))
+            && from_silence(
+                Seconds::clamped(audio(&run[0]) - ONSET_LOOKBACK.get()),
+                Seconds::clamped(audio(&run[0])),
+            )
             && note_of(first).is_some()
         {
             let motion = detected(
@@ -234,16 +282,54 @@ pub fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds
 }
 
 /// Counts a motion as a step, a glide too short, or a glide.
+///
+/// A motion whose detected span is shorter than [`GLIDE_STEP_MAX`] is a
+/// step. Otherwise the fitted time decides, with the same bounds: the
+/// track smears a step between two 808 notes over a detected span of 100
+/// to 450 ms, while the fit finds the motion short. A fit of
+/// [`GLIDE_TIME_MIN`] or more whose `p` sits on a bound of [`CURVE_RANGE`],
+/// or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does not follow the
+/// curve, so the motion is no glide. A motion whose fit fails is too short
+/// when its detected span is.
 fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option<GlideFit>) {
     let length = span.1 - span.0;
     if length < GLIDE_STEP_MAX.get() {
         return;
     }
-    if length < GLIDE_TIME_MIN.get() {
+    let Some(glide) = fit() else {
+        if length < GLIDE_TIME_MIN.get() {
+            read.too_short += 1;
+        }
+        return;
+    };
+    if glide.time < GLIDE_STEP_MAX {
+        return;
+    }
+    if glide.time < GLIDE_TIME_MIN {
         read.too_short += 1;
-    } else if let Some(glide) = fit() {
+        return;
+    }
+    let (lo, hi) = CURVE_RANGE;
+    if glide.curve > CURVE_EDGE * lo
+        && glide.curve < hi / CURVE_EDGE
+        && glide.residual <= GLIDE_MAX_RESIDUAL
+    {
         read.glides.push(glide);
     }
+}
+
+/// Whether the pitch keeps moving after an unvoiced gap: the jump from
+/// `last` across the gap and the motion over the next two frames of `run`
+/// go the same way, each by [`GAP_MOTION_MIN`] or more. At a step the
+/// track lands on the new pitch and holds it, or swings back.
+fn moves_on(last: &Frame, run: &[Frame]) -> bool {
+    let [first, _, third, ..] = run else {
+        return false;
+    };
+    let (jump, then) = (first.cents - last.cents, third.cents - first.cents);
+    jump.abs() >= GAP_MOTION_MIN.get()
+        && then.abs() >= GAP_MOTION_MIN.get()
+        && jump.signum() == then.signum()
 }
 
 /// Splits the track into runs of consecutive voiced frames.
@@ -583,7 +669,7 @@ mod tests {
     fn a_curve_on_the_tracker_grid_reads_its_time_and_power() {
         let line = notes(&[(0.0, 0.55, 45.0), (0.55, 1.6, 52.0)]);
         for (full, p) in [(0.15, 1.0), (0.15, 2.5), (0.4, 1.0), (0.4, 2.5), (0.3, 0.5)] {
-            let read = find_glides(&glide_track(full, p), &line, |_| false);
+            let read = find_glides(&glide_track(full, p), &line, |_, _| false, |_, _| true);
             assert_eq!(read.glides.len(), 1, "{full} {p}: {read:?}");
             let glide = read.glides[0];
             assert!(
@@ -603,9 +689,9 @@ mod tests {
     #[test]
     fn a_step_reports_nothing_and_a_short_glide_is_too_short() {
         let line = notes(&[(0.0, 0.5, 45.0), (0.5, 1.6, 52.0)]);
-        let step = find_glides(&glide_track(0.001, 1.0), &line, |_| false);
+        let step = find_glides(&glide_track(0.001, 1.0), &line, |_, _| false, |_, _| true);
         assert_eq!(step, GlideRead::default());
-        let short = find_glides(&glide_track(0.05, 1.0), &line, |_| false);
+        let short = find_glides(&glide_track(0.05, 1.0), &line, |_, _| false, |_, _| true);
         assert!(short.glides.is_empty(), "{short:?}");
         assert_eq!(short.too_short, 1);
     }
@@ -615,7 +701,12 @@ mod tests {
         let vibrato = track(1.6, |t| {
             Some(5700.0 + 60.0 * (std::f64::consts::TAU * 3.0 * t).sin())
         });
-        let read = find_glides(&vibrato, &notes(&[(0.0, 1.6, 57.0)]), |_| false);
+        let read = find_glides(
+            &vibrato,
+            &notes(&[(0.0, 1.6, 57.0)]),
+            |_, _| false,
+            |_, _| true,
+        );
         assert_eq!(read, GlideRead::default());
     }
 
@@ -628,12 +719,12 @@ mod tests {
             })
         });
         let line = notes(&[(0.2, 1.0, 50.0)]);
-        let read = find_glides(&rising, &line, |_| false);
+        let read = find_glides(&rising, &line, |_, _| false, |_, _| true);
         assert_eq!(read.glides.len(), 1, "{read:?}");
         let glide = read.glides[0];
         assert!(glide.from_silence);
         assert!((glide.interval.get() - 5.0).abs() < 0.3, "{glide:?}");
-        let skipped = find_glides(&rising, &line, |_| true);
+        let skipped = find_glides(&rising, &line, |_, _| false, |_, _| false);
         assert_eq!(skipped.glides, []);
     }
 }

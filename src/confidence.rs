@@ -147,6 +147,14 @@ reason_codes! {
     PitchJitter,
     /// The share of a contour's power that a fitted sine explains.
     SineShare,
+    /// The kurtosis of a vibrato's contour after its line, the fourth
+    /// moment over the squared second: 1.5 for a sine, 1.0 for a square
+    /// wave such as a trill between two notes.
+    ContourKurtosis,
+    /// The share of the track frames inside the notes that are voiced
+    /// within 100 cents of a sounding note. Noise or DC under a note list
+    /// reads near 0.
+    NoteFrames,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

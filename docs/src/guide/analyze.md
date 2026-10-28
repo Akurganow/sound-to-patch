@@ -2,8 +2,8 @@
 
 `sound-to-patch analyze` reads one stem and writes a report of its tempo,
 notes, level, spectrum, band edge, stereo image, glides, pitch drops and
-vibrato, with a spectrogram image. The report is what an agent reads before it writes an edit list for
-the [preset commands](preset.md). The
+vibrato, with a spectrogram image. The report is what an agent reads
+before it writes an edit list for the [preset commands](preset.md). The
 [CLI reference](../reference/cli.md#analyze) lists every flag, and the
 [layer report page](../reference/formats/layers.md) every field.
 
@@ -57,12 +57,12 @@ sound-to-patch analyze bass.wav --bpm 120 --notes bass.mid
 
 The file's notes replace the notes step, and the transcription model does
 not run. The f0 track still reads the stem, for the pitch layer, and it
-takes most of the time. The notes set the frame length, 8192 samples for a bass below
-100 Hz, and let the report fill `centroid_over_f0` and the stereo phase
-`ipd_deg`. The file's tempo must match `--bpm` or the refined tempo, so a
-file that `notes` wrote at the refined tempo reads too. Notes on MIDI
-channel 10, the drum channel, are left out, because their keys name drums,
-not pitches.
+takes most of the time. The notes set the frame length, 8192 samples for a
+bass below 100 Hz, and let the report fill `centroid_over_f0` and the
+stereo phase `ipd_deg`. The file's tempo must match `--bpm` or the refined
+tempo, so a file that `notes` wrote at the refined tempo reads too. Notes
+on MIDI channel 10, the drum channel, are left out, because their keys
+name drums, not pitches.
 
 ## Read the report
 

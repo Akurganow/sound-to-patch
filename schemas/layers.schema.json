@@ -293,8 +293,8 @@
       "properties": {
         "start_s": { "type": "number", "minimum": 0 },
         "interval_st": { "type": "number" },
-        "time_s": { "type": "number", "exclusiveMinimum": 0 },
-        "curve": { "type": "number", "minimum": 0.2, "maximum": 5 },
+        "time_s": { "type": "number", "minimum": 0.09 },
+        "curve": { "type": "number", "exclusiveMinimum": 0.21, "exclusiveMaximum": 4.762 },
         "from_silence": { "type": "boolean" },
         "confidence": { "$ref": "#/$defs/estimate" }
       }
@@ -306,9 +306,9 @@
       "properties": {
         "onset_s": { "type": "number", "minimum": 0 },
         "f_end_hz": { "type": "number", "exclusiveMinimum": 0 },
-        "df_st": { "type": "number", "exclusiveMinimum": 2 },
+        "df_st": { "type": "number", "exclusiveMinimum": 2, "maximum": 36 },
         "df_hz": { "type": "number", "exclusiveMinimum": 0 },
-        "tau_s": { "type": "number", "exclusiveMinimum": 0 },
+        "tau_s": { "type": "number", "exclusiveMinimum": 0.003 },
         "residual": { "type": "number", "minimum": 0, "exclusiveMaximum": 0.15 },
         "confidence": { "$ref": "#/$defs/estimate" }
       }

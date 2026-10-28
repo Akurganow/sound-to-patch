@@ -61,7 +61,8 @@ the truth at 110 Hz [synthetic].
   after the fit span [fact].
 - A tone switched on from silence overshoots the line too: by about 11 Hz
   at 3 ms after the onset, 1 to 4 Hz at 7 ms, and within 1 Hz by 30 ms,
-  at 30 to 150 Hz [synthetic].
+  at 30 to 150 Hz [synthetic]. A plain 41.2 Hz tone reads 9.4 Hz high at
+  3 ms and 0.9 Hz high at 7 ms [synthetic].
 - The band keeps the fundamental only. When the second harmonic is
   stronger the line follows it; the drop then fails the weak-fundamental
   check below [fact].
@@ -73,44 +74,66 @@ settled pitch.
 
 - Candidates. Each note whose pitch lies in 20 to 200 Hz is a candidate
   strike [fact, proposal for the rule].
-- Onset. The transcriber places the onset of a falling note late, by up
-  to 230 ms on the rows below [synthetic]. The layer looks for the onset
-  from 0.5 s before the note, or from where the previous note's search
-  ended, to 0.1 s after it [proposal]. The band envelope is averaged over a centred
-  10 ms; the onset is the first sample after its lowest point in that span
-  where it reaches half the peak that follows [proposal]. When the lowest
-  point already stands above half that peak, no attack lies inside the
-  span and the note is no candidate [fact]. The average keeps a held saw
-  from reading as a strike: its partials beat inside the band, so the raw
-  envelope dips every period [synthetic]. A centred average leaves the
-  midpoint of a step in place [fact]. A note that the transcriber splits
-  off a held note, as under vibrato, has no attack and no candidate
+- Onset. The transcriber places the onset of a falling note late, by up to
+  230 ms on the rows below [synthetic]. The layer looks for the onset from
+  0.5 s before the note, or from where the previous note's search ended,
+  to 0.1 s after it [proposal]. The band envelope is averaged over a
+  centred 10 ms; the onset is the first sample after its lowest point in
+  that span where it reaches half the peak that follows [proposal]. When
+  the lowest point already stands above half that peak, no attack lies
+  inside the span and the note is no candidate [fact]. The average keeps a
+  held saw from reading as a strike: its partials beat inside the band, so
+  the raw envelope dips every period [synthetic]. A centred average leaves
+  the midpoint of a step in place [fact]. A note that the transcriber
+  splits off a held note, as under vibrato, has no attack and no candidate
   [fact].
+- Strike. The full-band RMS over the 20 ms after the onset must reach twice,
+  6 dB, the RMS from 45 to 25 ms before it, or the note is no candidate
+  [proposal]. A saw falling from 220 Hz into the band raises the band
+  envelope with no strike; without this check its 4-semitone glide also
+  read as a drop of 4.6 semitones [synthetic]. The span before ends 25 ms
+  early, since the band onset of white noise lags the start of the noise
+  by 14 ms [synthetic].
 - Fit. $f(t) = f_\text{end} + \Delta f\, e^{-t/\tau}$ is fitted by least
   squares to the line from 7 ms to 400 ms after the onset, or to the end of
   the note [fact]. For each $\tau$ the fit is linear in $f_\text{end}$ and
-  $\Delta f$; a log grid of 240 points from 0.5 ms to 1 s and a
-  golden-section search find $\tau$ [fact]. The fit matches SciPy's
-  `least_squares` within a relative 1.5e-6 [synthetic].
-- The task asked for a fit from 3 ms. At 3 ms the onset overshoot of the
-  line reads as a fast fall: a plain 41.2 Hz tone with a 4 Hz drop fitted
-  a drop of 9.9 semitones with $\tau$ = 3 ms [synthetic]. The fit starts
-  at 7 ms [proposal].
+  $\Delta f$; a log grid of 240 points and a golden-section search find
+  $\tau$ from 3.04 ms, where a tenth of the fall is left at 7 ms,
+  $e^{-7\ \mathrm{ms}/\tau} = 0.1$, to 1 s [fact, proposal for the floor].
+  The fit matches SciPy's `least_squares` with the same bounds within a
+  relative 1.5e-6 [synthetic].
+- Fit start. From 3 ms the onset overshoot of the line reads as a fast
+  fall: a plain 41.2 Hz tone with a 4 Hz drop fitted a drop of 9.9
+  semitones with $\tau$ = 3 ms [synthetic]. The fit starts at 7 ms
+  [proposal].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
   above 2 semitones too, and when the RMS residual is below 15 % of that
   fall [fact]. Both tests read the fall the fit span shows, not the one
-  extrapolated to the onset [fact]. The task measured the residual against
-  $\Delta f$; on a 55 Hz tone with five harmonics, three of them inside the
-  band, the line swings at the onset and the fit found $\tau$ = 0.7 ms
-  with an extrapolated $\Delta f$ of 776 kHz, a residual of 0.003 % of it
-  but 48 % of the fall from 7 ms on [synthetic].
+  extrapolated to the onset [fact]. Against the extrapolated $\Delta f$
+  the residual misleads: on a 55 Hz tone with five harmonics, three of them
+  inside the band, the line swings at the onset and the fit found
+  $\tau$ = 0.7 ms with an extrapolated $\Delta f$ of 776 kHz, a residual of
+  0.003 % of it but 48 % of the fall from 7 ms on [synthetic].
+- Bounds. $\tau$ must lie above the floor of the search, and $\Delta f$
+  at most 36 semitones, three octaves [proposal]. A fit on the floor means
+  the best fit lies below it [fact]. Retriggered 808 hits restart the
+  sine's phase and the line swings at each join: with the floor at 0.5 ms
+  and no cap, five abutting hits at 43.65 Hz read falls of 141 and 152
+  semitones with $\tau$ of 0.7 ms [synthetic]. The line reads up to
+  200 Hz, so a fall from more than three octaves above a low note starts
+  far outside the band and is extrapolated from its tail [fact].
 - Weak fundamental. Before the fit, the medians of the half-octave bands
   around the note's pitch and twice it are read from 50 ms after the onset
-  to 400 ms [fact]. When the upper band is the louder, the line would
-  follow the second harmonic: the layer fits nothing for that note and
-  sets the flag `weak_fundamental` [fact, proposal for the window].
+  or the note's start, whichever is later, to 400 ms after the onset or the
+  note's end, whichever is earlier [fact, proposal for the window]. When
+  the upper band exceeds the lower by a factor of 2, 6 dB, the line would
+  follow the second harmonic: the layer fits nothing for that note and sets
+  the flag `weak_fundamental` [proposal]. White noise reads the upper band
+  1.41 times the lower, since it is twice as wide [fact]. Below the factor
+  a fit that reads the harmonic settles 1200 cents off the note and fails
+  the settling rule [fact].
 - Settling. A drop also settles on a note: one note sounds while the drop
   is settled, from five time constants after the onset to 400 ms, with its
   pitch within 100 cents of $f_\text{end}$ [proposal]. At a saw's onset
@@ -146,6 +169,10 @@ Limits:
   between the partials and no drop is read [synthetic].
 - A legato note, which follows the previous run with no fall of the band
   envelope, has no onset and no drop [fact].
+- A drop needs a strike: a slow attack that rises less than 6 dB over
+  45 ms has no drop [fact].
+- Retriggered 808 hits at one pitch, with and without gaps, and 808 lines
+  stepping up to 7 semitones report no drop [synthetic].
 
 ## Glides
 
@@ -153,6 +180,15 @@ A glide is pitch moving from one stable pitch to another.
 
 - The track's voiced frames, in cents, split into runs of consecutive
   voiced frames [fact].
+- Gaps. A run that starts within 100 ms of the one before joins it when
+  the full-band RMS does not rise 6 dB in the gap, and the pitch keeps
+  moving after the gap the way it jumped across it: by 20 cents or more
+  over the jump and over the next two frames [proposal]. A unison whose
+  voices start in phase beats hard enough to leave the track unvoiced for
+  75 ms inside a glide; read apart, the rest read as a glide from silence
+  of 3.9 semitones for 7 [synthetic]. At a step between two notes the
+  track goes unvoiced too, but lands on the new pitch and holds it, or
+  swings back; at an 808 step the new strike raises the level [synthetic].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
   within 30 cents of its running mean and whose least-squares slope stays
   at 86 cents per second or less [proposal]. 86 cents per second is the
@@ -165,31 +201,45 @@ A glide is pitch moving from one stable pitch to another.
 - The motion is the span between the middles of the two stable pitches
   where the slope of the 5-frame moving average, 29 ms, stays at 86 cents
   per second or more in the direction of the motion [fact]. Under 35 ms
-  it is a step between notes; from 35 to 90 ms it is a glide too short to
-  read, counted and flagged `glide_too_short`; from 90 ms on it is a glide
-  [fact, proposal for 35 ms]. A step reads no motion at all [synthetic].
+  it is a step between notes [fact, proposal for 35 ms].
+- Otherwise the fitted time decides with the same bounds: under 35 ms a
+  step, from 35 to 90 ms a glide too short to read, counted and flagged
+  `glide_too_short`, from 90 ms on a glide [proposal]. The track smears a
+  step between two 808 notes over a detected span of 100 to 450 ms, while
+  the fit finds the motion short [synthetic]. A motion whose fit fails is
+  too short when its detected span lies from 35 to 90 ms [fact].
 - Fit. $s(x) = 1 - (1 - x)^p$ between the two stable pitches is fitted by
   least squares over the motion and 50 ms of each stable pitch, with the
   start, the full time and $p$ free [fact]. $p > 1$ starts fast, $p < 1$
   starts slow, $p = 1$ is linear in pitch [fact]. A grid of 9 powers, 8
   times and 13 starts seeds a Nelder-Mead simplex; $p$ stays within 0.2 to
   5 [fact].
+- Shape. A fit of 90 ms or more with $p$ within 5 % of 0.2 or 5, or with an
+  RMS residual above 40 cents, does not follow the curve and is no glide
+  [proposal]. The glides of the generated signals fit within 22 cents with
+  $p$ from 0.85 to 3.32; the false glides at 808 steps sat on a bound of
+  $p$ or fitted under 90 ms [synthetic].
 - `time_s` is the full 0 to 100 % time [fact]. `start_s` is the fitted
   start less the track's lag at the start pitch [fact].
 - From silence. When a voiced run starts away from its first stable pitch
   by 100 cents or more, and the motion into it lasts 90 ms or more, the
-  glide carries `from_silence: true` [fact]. The run's first frame fixes
-  the start and the fit also finds the start pitch [fact]. A run that
-  starts within 0.2 s of an accepted drop is the drop, not a glide
+  glide carries `from_silence: true` [fact]. The sound must start up to
+  100 ms before the run: the full-band RMS over 30 ms rises 20 dB above
+  the RMS from 60 to 30 ms before, searched in 5 ms steps [proposal]. The
+  track voices a run some frames after the sound starts, and a beating
+  unison dips without falling silent [synthetic]. The run's first frame
+  fixes the start and the fit also finds the start pitch [fact]. A run
+  that starts within 0.2 s of an accepted drop is the drop, not a glide
   [proposal].
 - Confidence. The reasons are the motion span, the RMS residual of the fit
   in cents and the jitter: the RMS deviation of the two stable pitches
   from their medians [fact]. High needs a residual of 15 cents or less, a
-  jitter of 3.5 cents or less and a motion of 150 ms or more; low comes
-  with a residual above 40 cents or a jitter above 4 cents [proposal]. A
-  unison beats and the track wanders on the stable pitches: the mono
-  glides below jitter 2.8 cents at most, the unison ones 5.1 cents at
-  least [synthetic].
+  jitter of 3 cents or less and a motion of 150 ms or more; low comes with
+  a jitter above 3.5 cents [proposal]. A unison beats and the track wanders
+  on the stable pitches, but the jitter tells a unison only roughly: on the
+  generated signals the unison glides jitter 3.5 to 7.1 cents and the mono
+  ones 0 to 5.6 [synthetic]. Every unison glide read reads low; a mono
+  glide above 3.5 cents reads low too [synthetic].
 
 Glides of 7 semitones up from 110 Hz on a band-limited saw, 0.5 s holds
 [synthetic]. The rise is the 10 to 90 % time derived from the fitted time
@@ -206,18 +256,44 @@ against the true rise:
 | 150 ms, $p$ 2.5 | 7, ±25 ct | 133 ms | 1.83 | +4.4 % | low |
 | 400 ms, $p$ 1 | 7, ±25 ct | 405 ms | 1.02 | +1.0 % | low |
 | 400 ms, $p$ 2.5 | 7, ±25 ct | 411 ms | 2.45 | +3.8 % | low |
+| 200 ms, $p$ 1 | 7, ±25 ct | 202 ms | 1.00 | +1.0 % | low |
+| 200 ms, $p$ 1 | 7 in phase | 206 ms | 0.93 | +4.4 % | low |
+| 300 ms, $p$ 1 | 7 in phase | 304 ms | 1.00 | +1.3 % | low |
+| 300 ms, $p$ 2.5 | 7 in phase | 375 ms | 3.32 | +4.5 % | low |
+| 200 ms, $p$ 2.5 | 7 in phase | none | | | |
 | 50 ms, $p$ 1 or 2.5 | 1 | none, too short | | | |
+| step | 1 | none, no flag | | | |
 
 The acceptance bound is 5 % on the rise from 150 ms on, mono [fact]. The
 mono interval reads 6.9 semitones for 7: the track's 10-cent bins round
-the start 5 cents up and the end 5 cents down [synthetic]. The fast-start unison at 150 ms reads its
-rise within 4.4 % but its $p$ at 1.83, and its time 11 % short; the low
-confidence says so [synthetic].
+the start 5 cents up and the end 5 cents down [synthetic]. The fast-start
+unison at 150 ms reads its rise within 4.4 % but its $p$ at 1.83, and its
+time 11 % short; the low confidence says so [synthetic]. "In phase" voices
+start at phase 0, so the unison beats hardest [fact].
+
+Other glides, mono [synthetic]:
+
+| Glide | Read |
+| :-- | :-- |
+| 220 Hz down 4 semitones, 200 ms, $p$ 2.5 | -4.00 st, 184 ms, $p$ 2.26, rise -2.3 %, high; no drop |
+| 82.4 Hz up 5 semitones, 50 ms | none, too short (fitted 61 ms) |
+| 220 Hz down 4 semitones, 50 ms | none, too short (fitted 43 ms), no drop |
+| From silence into 82.4 Hz, up 5 semitones, 150 ms, $p$ 1 | +4.70 st, 150 ms, $p$ 0.85, rise +1.9 %, low |
+| From silence into 82.4 Hz, up 5 semitones, 300 ms, $p$ 2.5 | +4.48 st, 252 ms, $p$ 1.74, rise +1.0 %, low |
+| 808 lines stepping up to 7 semitones, legato, driven or staccato | none |
+
+The track's first frames of a tone read low, so a glide from silence reads
+its interval up to 0.6 semitones short [synthetic].
 
 Limits:
 
 - A glide that the transcriber merges into one note, with its two ends in
   one note, is not read [fact].
+- A step between two 808 notes can raise `glide_too_short` when the fit
+  finds 35 to 90 ms: one of three generated 808 lines does [synthetic].
+- A vibrato of ±100 cents at 3 Hz holds each extreme long enough to read
+  as a stable pitch, and its swings read as glides of 1.9 semitones, each
+  at low confidence [synthetic].
 - A glide inside chords has no method here [fact].
 
 ## Vibrato
@@ -247,8 +323,12 @@ Limits:
   share of the true extent the track reads, interpolated linearly between
   the measured rates and held at the ends [fact]. `extent_ct` is
   `extent_raw_ct` times `extent_factor` [fact].
-- Confidence. High with a share of 0.8 or more and 4 cycles or more in the
-  span, else medium [proposal].
+- Confidence. Low when the kurtosis of the contour after the line, its
+  fourth moment over the squared second, is below 1.25: a sine reads 1.5,
+  a square wave 1.0 [fact, proposal for 1.25]. Else high with a share of
+  0.8 or more and 4 cycles or more in the span, else medium [proposal]. The
+  generated vibratos read a kurtosis of 1.36 to 1.66, a semitone trill at
+  6 Hz 1.06 [synthetic].
 
 The share of the true extent the track reads, on one 1 s mono saw at 220
 Hz with ±35 cents per rate [synthetic]:
@@ -259,8 +339,8 @@ Hz with ±35 cents per rate [synthetic]:
 
 Each share comes from one signal, so the table carries that signal's
 quantisation to the track's 10-cent bins: 7 Hz reads lower than 8 Hz
-[synthetic]. The task quoted 0.69 at 5.5 Hz from another pYIN
-implementation at another ceiling; this track reads 0.939 [synthetic].
+[synthetic]. The share belongs to this track: another pYIN implementation
+at another frequency ceiling reads another share [fact].
 
 | Case | Read rate | Read extent |
 | :-- | :-- | :-- |
@@ -271,12 +351,16 @@ implementation at another ceiling; this track reads 0.939 [synthetic].
 
 The acceptance bounds are 0.1 Hz on the rate and 15 % on the extent after
 the correction [fact]. The correction is measured at ±35 cents only; the
-±60 case reads 1.4 % high with it [synthetic].
+±60 case reads 1.4 % high with it, and ±25 cents at 9 Hz reads 11 to
+14 % low [synthetic].
 
 Limits:
 
 - A trill between two notes a semitone apart at a vibrato rate reads as a
-  vibrato, since its stable pitches lie 100 cents apart [fact].
+  vibrato, since its stable pitches lie 100 cents apart, but at low
+  confidence: its contour jumps between two levels [fact].
+- From 4.5 Hz the transcriber gives a ±100-cent vibrato as overlapping
+  notes, the line reads as chords, and the layer is skipped [synthetic].
 - A vibrato that starts late in a note is diluted by the steady part
   before it [fact].
 

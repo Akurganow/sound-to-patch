@@ -5,7 +5,9 @@
 //! the glide and vibrato cases read committed fixtures: the notes and the
 //! track that the transcriber and the f0 track give for each generated
 //! signal. `pitch_fixtures_are_current` rebuilds them in a release build
-//! and fails when one differs.
+//! and fails when one differs. It compares the printed floats byte for
+//! byte, which holds on one platform and toolchain: another CPU or libm can
+//! round a track frame differently.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -14,7 +16,7 @@ use serde_json::{Value, json};
 use sound_to_patch::audio::SampleRate;
 use sound_to_patch::confidence::Level;
 use sound_to_patch::estimate::pitch::{
-    EXTENT_SHARE, PitchInput, PitchLayer, SubBandLine, band_onset, fit_drop,
+    DROP_FIT_START, EXTENT_SHARE, PitchInput, PitchLayer, SubBandLine, band_onset, fit_drop,
 };
 use sound_to_patch::notes::{
     DEFAULT_VELOCITY, Note, NoteList, PitchTrack, TrackError, TrackFrame, Transcriber, Velocities,
@@ -27,7 +29,7 @@ use sound_to_patch::units::{Bpm, Decibels, Hz, MidiPitch, Seconds};
 use crate::report::{shape, validator};
 use crate::support::cast::round_to_usize;
 use crate::support::golden::{Golden, Tolerance, assert_close, float, floats};
-use crate::support::pitch::{BassLine, Glide, PitchDrop, Vibrato};
+use crate::support::pitch::{BassLine, Glide, Hits, PitchDrop, Trill, Vibrato};
 use crate::support::rng::gaussian;
 use crate::support::signals::write_wav16;
 
@@ -46,7 +48,14 @@ fn s(value: f64) -> Seconds {
 #[derive(Clone, Copy, Debug)]
 enum Signal {
     Glide(Glide),
+    /// A glide from silence: 0.2 s of silence, then the glide without its
+    /// first hold.
+    Scoop(Glide),
     Vibrato(Vibrato),
+    Hits(Hits),
+    Trill(Trill),
+    /// A constant 0.3 for 1 s.
+    Dc,
     Bass,
 }
 
@@ -55,6 +64,15 @@ impl Signal {
         match self {
             Self::Glide(glide) => glide.render(f64::from(RATE)),
             Self::Vibrato(vibrato) => vibrato.render(f64::from(RATE)),
+            Self::Scoop(glide) => {
+                let rate = f64::from(RATE);
+                let mut out = vec![0.0; round_to_usize(0.2 * rate)];
+                out.extend_from_slice(&glide.render(rate)[round_to_usize(glide.hold_s * rate)..]);
+                out
+            }
+            Self::Hits(hits) => hits.render(f64::from(RATE)),
+            Self::Trill(trill) => trill.render(f64::from(RATE)),
+            Self::Dc => vec![0.3; round_to_usize(f64::from(RATE))],
             Self::Bass => BassLine::render(f64::from(RATE)),
         }
     }
@@ -76,7 +94,34 @@ impl Signal {
                 "hold_s": g.hold_s,
                 "voices": g.voices,
                 "detune_ct": g.detune_ct,
+                "in_phase": g.in_phase,
             }),
+            Self::Scoop(g) => json!({
+                "kind": "scoop",
+                "lead_s": 0.2,
+                "start_hz": g.start_hz,
+                "semitones": g.semitones,
+                "full_s": g.full_s,
+                "p": g.p,
+                "hold_s": g.hold_s,
+            }),
+            Self::Hits(h) => json!({
+                "kind": "hits",
+                "pitches": h.pitches,
+                "hit_s": h.hit_s,
+                "decay_s": h.decay_s,
+                "gap_s": h.gap_s,
+                "lead_s": h.lead_s,
+                "drive": h.drive,
+            }),
+            Self::Trill(t) => json!({
+                "kind": "trill",
+                "f0_hz": t.f0_hz,
+                "rate_hz": t.rate_hz,
+                "length_s": t.length_s,
+                "lead_s": t.lead_s,
+            }),
+            Self::Dc => json!({"kind": "dc", "value": 0.3, "length_s": 1.0}),
             Self::Vibrato(v) => json!({
                 "kind": "vibrato",
                 "f0_hz": v.f0_hz,
@@ -132,6 +177,134 @@ fn cases() -> Vec<(String, Signal)> {
         vibrato_name("unison", 5.5, 35.0),
         Signal::Vibrato(Vibrato::unison(5.5, 35.0)),
     ));
+    cases.extend(review_cases());
+    cases
+}
+
+const SAME_HITS: [f64; 5] = [29.0; 5];
+const SAME_THEN_UP: [f64; 6] = [29.0, 29.0, 29.0, 29.0, 36.0, 43.0];
+const STEPS_A: [f64; 6] = [36.0, 34.0, 41.0, 39.0, 39.0, 42.0];
+const STEPS_B: [f64; 6] = [34.0, 39.0, 45.0, 40.0, 38.0, 43.0];
+
+/// The signals behind the review of the first pitch layer: retriggered and
+/// stepping 808s, short and unison glides away from 110 Hz, a fall into
+/// the band of the line, glides from silence, a trill, a ±100-cent vibrato
+/// and DC.
+fn review_cases() -> Vec<(String, Signal)> {
+    let mut cases = hit_cases();
+    cases.extend(review_glides());
+    cases.extend([
+        (
+            "trill-semitone-6hz".to_owned(),
+            Signal::Trill(Trill::new(6.0)),
+        ),
+        (
+            vibrato_name("mono", 3.0, 100.0),
+            Signal::Vibrato(Vibrato::mono(3.0, 100.0)),
+        ),
+        ("dc".to_owned(), Signal::Dc),
+    ]);
+    cases
+}
+
+/// Retriggered 808 hits at one pitch and 808 lines that step.
+fn hit_cases() -> Vec<(String, Signal)> {
+    let legato = |pitches: &'static [f64]| Hits {
+        hit_s: 0.5,
+        decay_s: 0.45,
+        ..Hits::new(pitches, 0.0)
+    };
+    vec![
+        (
+            "hits-29x5-gap0ms".to_owned(),
+            Signal::Hits(Hits::new(&SAME_HITS, 0.0)),
+        ),
+        (
+            "hits-29x5-gap50ms".to_owned(),
+            Signal::Hits(Hits::new(&SAME_HITS, 0.05)),
+        ),
+        (
+            "hits-29-36-43-legato".to_owned(),
+            Signal::Hits(Hits {
+                hit_s: 0.4,
+                decay_s: 0.36,
+                ..Hits::new(&SAME_THEN_UP, 0.0)
+            }),
+        ),
+        (
+            "steps-808-legato".to_owned(),
+            Signal::Hits(legato(&STEPS_A)),
+        ),
+        (
+            "steps-808-driven-legato".to_owned(),
+            Signal::Hits(Hits {
+                drive: 2.5,
+                ..legato(&STEPS_A)
+            }),
+        ),
+        (
+            "steps-808-staccato".to_owned(),
+            Signal::Hits(Hits {
+                hit_s: 0.425,
+                decay_s: 0.45,
+                ..Hits::new(&STEPS_B, 0.075)
+            }),
+        ),
+    ]
+}
+
+/// Short glides away from 110 Hz, a fall into the band, unisons whose
+/// voices start in phase, and glides from silence.
+fn review_glides() -> Vec<(String, Signal)> {
+    let short = |start_hz: f64, semitones: f64| Glide {
+        start_hz,
+        semitones,
+        ..Glide::mono(0.05, 1.0)
+    };
+    let scoop = |full_s: f64, p: f64| Glide {
+        start_hz: 82.4,
+        semitones: 5.0,
+        ..Glide::mono(full_s, p)
+    };
+    let mut cases = vec![
+        (
+            "glide-mono-82.4hz-5st-50ms-p1".to_owned(),
+            Signal::Glide(short(82.4, 5.0)),
+        ),
+        (
+            "glide-mono-220hz-down-4st-50ms-p1".to_owned(),
+            Signal::Glide(short(220.0, -4.0)),
+        ),
+        (
+            "glide-mono-220hz-down-4st-200ms-p2.5".to_owned(),
+            Signal::Glide(Glide {
+                start_hz: 220.0,
+                semitones: -4.0,
+                ..Glide::mono(0.2, 2.5)
+            }),
+        ),
+        (
+            glide_name("unison", 0.2, 1.0),
+            Signal::Glide(Glide::unison(0.2, 1.0)),
+        ),
+        (
+            "scoop-mono-5st-150ms-p1".to_owned(),
+            Signal::Scoop(scoop(0.15, 1.0)),
+        ),
+        (
+            "scoop-mono-5st-300ms-p2.5".to_owned(),
+            Signal::Scoop(scoop(0.3, 2.5)),
+        ),
+    ];
+    for (full, p) in [(0.2, 1.0), (0.2, 2.5), (0.3, 2.5), (0.3, 1.0)] {
+        cases.push((
+            glide_name("unison-in-phase", full, p),
+            Signal::Glide(Glide {
+                in_phase: true,
+                ..Glide::unison(full, p)
+            }),
+        ));
+    }
     cases
 }
 
@@ -400,8 +573,14 @@ fn mono_glides_of_150_ms_or_more_read_their_rise_within_5_percent() {
 
 #[test]
 fn a_50_ms_glide_reports_none_and_flags_it_too_short() {
-    for p in CURVES {
-        let name = glide_name("mono", 0.05, p);
+    // The fitted time of the two glides away from 110 Hz read 61 and 43 ms
+    // over detected spans of 331 and 99 ms.
+    for name in [
+        glide_name("mono", 0.05, 1.0),
+        glide_name("mono", 0.05, 2.5),
+        "glide-mono-82.4hz-5st-50ms-p1".to_owned(),
+        "glide-mono-220hz-down-4st-50ms-p1".to_owned(),
+    ] {
         let read = layer(&name, case(&name));
         assert!(read.glides.is_empty(), "{name}: {:?}", read.glides);
         assert!(read.flags.glide_too_short, "{name}");
@@ -440,6 +619,147 @@ fn unison_glides_read_within_their_known_error_at_low_confidence() {
             Some(Level::Low),
             "{name}: {glide:?}"
         );
+    }
+}
+
+#[test]
+fn unison_glides_never_read_above_low_confidence() {
+    // Voices that start in phase beat hardest, and the track goes unvoiced
+    // for up to 75 ms inside the glide. Bridged, the gap keeps the glide
+    // whole; read from silence, it once gave 3.9 semitones of 7 at high.
+    let mut read_any = 0;
+    for (name, signal) in cases() {
+        let Signal::Glide(glide) = signal else {
+            continue;
+        };
+        if glide.voices == 1 || glide.full_s < 0.1 {
+            continue;
+        }
+        let read = layer(&name, signal);
+        assert!(!read.flags.weak_fundamental, "{name}");
+        for g in &read.glides {
+            assert_eq!(g.confidence.level(), Some(Level::Low), "{name}: {g:?}");
+            assert!(
+                (g.value.interval.get() - 7.0).abs() <= 0.15,
+                "{name}: {g:?}"
+            );
+            let error = rise(g.value.time.get(), g.value.curve) / rise(glide.full_s, glide.p) - 1.0;
+            assert!(error.abs() <= 0.15, "{name}: {g:?}, rise off by {error:.3}");
+            read_any += 1;
+        }
+    }
+    assert!(read_any >= 8, "{read_any}");
+    let read = layer(
+        "glide-unison-in-phase-200ms-p1",
+        case("glide-unison-in-phase-200ms-p1"),
+    );
+    assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
+}
+
+#[test]
+fn a_glide_from_silence_reads_into_its_note() {
+    for (name, full) in [
+        ("scoop-mono-5st-150ms-p1", 0.15),
+        ("scoop-mono-5st-300ms-p2.5", 0.3),
+    ] {
+        let read = layer(name, case(name));
+        assert_eq!(read.glides.len(), 1, "{name}: {:?}", read.glides);
+        let glide = &read.glides[0];
+        assert!(glide.value.from_silence, "{name}: {glide:?}");
+        // The track's first frames of a tone read low, so a glide from
+        // silence reads its interval and time short.
+        assert!(
+            (glide.value.interval.get() - 5.0).abs() <= 0.6,
+            "{name}: {glide:?}"
+        );
+        assert!(
+            (glide.value.time.get() / full - 1.0).abs() <= 0.2,
+            "{name}: {glide:?}"
+        );
+        assert_ne!(glide.confidence.level(), Some(Level::High), "{name}");
+    }
+}
+
+#[test]
+fn steps_between_808_notes_report_no_glide_or_drop() {
+    // The track smears each step over 100 to 450 ms; the fit finds the
+    // motion short or on a bound of the curve power.
+    for name in [
+        "steps-808-legato",
+        "steps-808-driven-legato",
+        "steps-808-staccato",
+    ] {
+        let read = layer(name, case(name));
+        assert_eq!(read.glides, [], "{name}");
+        assert_eq!(read.drops, [], "{name}");
+        assert_eq!(read.counts.drop_candidates, 6, "{name}");
+    }
+}
+
+#[test]
+fn retriggered_808_hits_report_no_drop() {
+    // Each hit restarts the sine's phase, and the line swings at the join.
+    // With tau down to 0.5 ms and no cap, the fit read that swing as falls
+    // of 141 and 152 semitones with a tau of 0.7 ms.
+    for name in [
+        "hits-29x5-gap0ms",
+        "hits-29x5-gap50ms",
+        "hits-29-36-43-legato",
+    ] {
+        let read = layer(name, case(name));
+        assert!(read.counts.drop_candidates >= 1, "{name}");
+        assert_eq!(read.drops, [], "{name}");
+        assert_eq!(read.glides, [], "{name}");
+    }
+}
+
+#[test]
+fn a_fall_into_the_band_is_a_glide_and_no_drop() {
+    // A saw falling from 220 Hz enters the 200 Hz band of the line, whose
+    // envelope rises with no strike.
+    let name = "glide-mono-220hz-down-4st-200ms-p2.5";
+    let read = layer(name, case(name));
+    assert_eq!(read.drops, []);
+    assert_eq!(read.counts.drop_candidates, 0);
+    assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
+    let glide = &read.glides[0].value;
+    assert!((glide.interval.get() + 4.0).abs() <= 0.15, "{glide:?}");
+    let error = rise(glide.time.get(), glide.curve) / rise(0.2, 2.5) - 1.0;
+    assert!(error.abs() <= 0.05, "{glide:?}, rise off by {error:.3}");
+    let short = layer(
+        "glide-mono-220hz-down-4st-50ms-p1",
+        case("glide-mono-220hz-down-4st-50ms-p1"),
+    );
+    assert_eq!(short.drops, []);
+}
+
+#[test]
+fn a_track_off_the_notes_reads_the_layer_at_low_confidence() {
+    // DC: the transcriber gives two notes at MIDI 22, and no frame inside
+    // them is voiced.
+    let dc = layer("dc", case("dc"));
+    assert_eq!(dc.confidence.level(), Some(Level::Low));
+    let name = glide_name("mono", 0.15, 1.0);
+    assert_eq!(
+        layer(&name, case(&name)).confidence.level(),
+        Some(Level::Medium)
+    );
+}
+
+#[test]
+fn a_trill_reads_at_low_confidence_and_a_wide_slow_vibrato_as_glides() {
+    let trill = layer("trill-semitone-6hz", case("trill-semitone-6hz"));
+    for v in &trill.vibrato {
+        assert_eq!(v.confidence.level(), Some(Level::Low), "{v:?}");
+    }
+    // A known limit: ±100 cents at 3 Hz holds each extreme long enough to
+    // read as a stable pitch, so the swings read as glides of 1.9
+    // semitones, each at low confidence.
+    let name = vibrato_name("mono", 3.0, 100.0);
+    let wide = layer(&name, case(&name));
+    assert!(wide.vibrato.is_empty(), "{:?}", wide.vibrato);
+    for g in &wide.glides {
+        assert_eq!(g.confidence.level(), Some(Level::Low), "{g:?}");
     }
 }
 
@@ -504,6 +824,10 @@ fn drop_notes(row: usize) -> NoteList {
         2 => &[(0.453, 1.091, 33.0)],
         _ => &[(0.464, 0.546, 30.0), (0.499, 1.091, 28.0)],
     };
+    note_list(list)
+}
+
+fn note_list(list: &[(f64, f64, f64)]) -> NoteList {
     NoteList::new(
         list.iter()
             .map(|&(on, off, pitch)| {
@@ -547,6 +871,48 @@ fn drops_read_f_end_df_and_tau_within_their_tolerances() {
             "row {row}"
         );
     }
+}
+
+#[test]
+fn the_fit_starts_after_the_onset_overshoot() {
+    // A plain 41.2 Hz tone switched on from silence: the line overshoots
+    // by 9.4 Hz at 3 ms, so a fit from there reads a drop, and by 0.9 Hz
+    // at 7 ms.
+    assert!((DROP_FIT_START.get() - 0.007).abs() < 1e-12);
+    for df in [0.0, 4.0] {
+        let truth = PitchDrop::row(41.2, df, 0.02);
+        let line = SubBandLine::of(&truth.render(f64::from(RATE)), rate(), s(0.0)).unwrap();
+        let onset = band_onset(&line, s(0.0), s(0.5)).unwrap();
+        let at = |ms: f64| line.hz()[line.index_at(s(onset.get() + ms / 1000.0))];
+        if df == 0.0 {
+            assert!(at(3.0) - 41.2 > 5.0, "{}", at(3.0));
+            assert!((at(7.0) - 41.2).abs() < 1.5, "{}", at(7.0));
+        }
+        let fit = fit_drop(&line, onset, s(1.0)).unwrap();
+        assert!(!fit.accepted(), "{df}: {fit:?}");
+    }
+}
+
+#[test]
+fn noise_under_low_notes_flags_no_weak_fundamental() {
+    // The band at twice the pitch is twice as wide, so white noise reads
+    // it 1.41 times stronger, under the factor of 2.
+    let noise: Vec<f64> = gaussian(3, round_to_usize(1.25 * f64::from(RATE)))
+        .into_iter()
+        .enumerate()
+        .map(|(n, x)| {
+            if n < round_to_usize(0.25 * f64::from(RATE)) {
+                0.0
+            } else {
+                0.3 * x
+            }
+        })
+        .collect();
+    let read = drop_layer(&noise, &note_list(&[(0.25, 1.2, 28.0)]));
+    assert_eq!(read.counts.drop_candidates, 1);
+    assert!(!read.flags.weak_fundamental);
+    assert_eq!(read.drops, []);
+    assert_eq!(read.confidence.level(), Some(Level::Low));
 }
 
 #[test]
@@ -738,6 +1104,7 @@ fn a_saw_struck_from_silence_reports_no_drop() {
         hold_s: 0.5,
         voices: 1,
         detune_ct: 0.0,
+        in_phase: false,
     };
     let mut mono = vec![0.0; round_to_usize(0.25 * rate)];
     mono.extend(held.render(rate));

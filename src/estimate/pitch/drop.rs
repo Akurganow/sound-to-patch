@@ -14,6 +14,17 @@ pub const DROP_FIT_START: Seconds = Seconds::from_const(0.007);
 pub const DROP_FIT_END: Seconds = Seconds::from_const(0.4);
 /// The smallest drop that counts.
 pub const DROP_MIN: Semitones = Semitones::from_const(2.0);
+/// The largest drop that counts: three octaves. The line reads up to
+/// 200 Hz, so a larger fall starts far outside the band and its `df` is
+/// extrapolated from the tail alone.
+pub const DROP_MAX: Semitones = Semitones::from_const(36.0);
+/// The smallest `tau` of a fit, about 3 ms.
+///
+/// A tenth of the fall is still left at [`DROP_FIT_START`],
+/// `exp(-7 ms / tau) >= 0.1`. A faster fall ends before the span starts,
+/// and its `df` is extrapolated from the swing of the line at a
+/// retriggered or switched-on tone.
+pub const DROP_TAU_MIN: Seconds = Seconds::from_const(0.007 / std::f64::consts::LN_10);
 /// The largest RMS residual of an accepted fit, as a share of the fall the
 /// fit span shows.
 pub const DROP_MAX_RESIDUAL: f64 = 0.15;
@@ -22,19 +33,25 @@ pub const DROP_MAX_RESIDUAL: f64 = 0.15;
 pub const DROP_ONSET_SHARE: f64 = 0.5;
 /// The centred average of the band envelope that the onset search reads.
 pub const ONSET_SMOOTHING: Seconds = Seconds::from_const(0.01);
-/// The range of `tau` the search covers.
-const TAU_RANGE: (f64, f64) = (0.000_5, 1.0);
+/// The largest `tau` the search covers.
+const TAU_MAX: f64 = 1.0;
+/// A fit whose `tau` lies within this factor of [`DROP_TAU_MIN`] sits on
+/// the bound of the search.
+const TAU_EDGE: f64 = 1.01;
 /// Points of the log grid over `tau` before the golden-section refinement.
 const TAU_GRID: usize = 240;
 
 /// The convention of a drop, as `layers.json` names it.
 pub const DROP_CONVENTION: &str = "f(t) = f_end + df exp(-t / tau) fitted by least squares to \
 the sub-band line from 7 ms to 400 ms after the onset, or to the end of the note; tau by a log \
-grid and golden-section search, f_end and df linear for each tau; df_st = 12 log2((f_end + df) \
-/ f_end); onset_s is the first sample after the lowest point of the onset search where the 20 \
-to 200 Hz envelope, averaged over a centred 10 ms, reaches half the peak that follows; \
-residual is the RMS residual over the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop \
-counts when df_st is above 2, that fall is above 2 semitones too, and residual is below 0.15";
+grid and golden-section search from 3.04 ms, where exp(-7 ms / tau) = 0.1, to 1 s, f_end and \
+df linear for each tau; df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample \
+after the lowest point of the onset search where the 20 to 200 Hz envelope, averaged over a \
+centred 10 ms, reaches half the peak that follows, and the full-band RMS over the 20 ms after \
+it is 6 dB or more above the 20 ms that end 25 ms before it; residual is the RMS residual over \
+the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when df_st is above 2 and at \
+most 36, that fall is above 2 semitones too, tau is above the bound of the search, residual is \
+below 0.15, and f_end lies within 100 cents of a sounding note";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -78,12 +95,15 @@ impl DropFit {
             .then(|| Semitones::clamped(12.0 * (start / self.f_end.get()).log2()))
     }
 
-    /// Whether the fit counts as a drop: `df` and the visible drop above
-    /// [`DROP_MIN`], and the residual below [`DROP_MAX_RESIDUAL`].
+    /// Whether the fit counts as a drop: `df` from above [`DROP_MIN`] up
+    /// to [`DROP_MAX`], the visible drop above [`DROP_MIN`], `tau` above
+    /// [`DROP_TAU_MIN`] and the residual below [`DROP_MAX_RESIDUAL`]. A
+    /// `tau` on the bound means the best fit lies below it.
     #[must_use]
     pub fn accepted(&self) -> bool {
-        self.df().is_some_and(|df| df > DROP_MIN)
+        self.df().is_some_and(|df| df > DROP_MIN && df <= DROP_MAX)
             && self.visible().is_some_and(|visible| visible > DROP_MIN)
+            && self.tau.get() > TAU_EDGE * DROP_TAU_MIN.get()
             && self.residual < DROP_MAX_RESIDUAL
     }
 }
@@ -142,7 +162,7 @@ pub fn fit_drop(line: &SubBandLine, onset: Seconds, end: Seconds) -> Option<Drop
     if points.len() < 3 {
         return None;
     }
-    let (lo, hi) = (TAU_RANGE.0.ln(), TAU_RANGE.1.ln());
+    let (lo, hi) = (DROP_TAU_MIN.get().ln(), TAU_MAX.ln());
     let step = (hi - lo) / cast::usize_to_f64(TAU_GRID - 1);
     let sse = |log_tau: f64| solve(&points, log_tau.exp()).2;
     let best = (0..TAU_GRID)
@@ -247,6 +267,27 @@ mod tests {
         };
         assert!(fast.df().unwrap() > DROP_MIN && fast.visible().unwrap() < DROP_MIN);
         assert!(!fast.accepted());
+        // A tau on the bound of the search, with the fall still visible.
+        let bound = DropFit {
+            tau: DROP_TAU_MIN,
+            df_hz: 41.2 * 3.0,
+            ..fit
+        };
+        assert!(bound.visible().unwrap() > DROP_MIN && !bound.accepted());
+        assert!(
+            DropFit {
+                tau: Seconds::new(1.02 * DROP_TAU_MIN.get()).unwrap(),
+                ..bound
+            }
+            .accepted()
+        );
+        assert!((-DROP_FIT_START.get() / DROP_TAU_MIN.get()).exp() - 0.1 < 1e-12);
+        // Three octaves count; more do not.
+        let octaves = |n: f64| DropFit {
+            df_hz: 41.2 * (2f64.powf(n) - 1.0),
+            ..fit
+        };
+        assert!(octaves(3.0).accepted() && !octaves(3.01).accepted());
         assert!(
             !DropFit {
                 residual: 0.15,

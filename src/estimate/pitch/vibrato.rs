@@ -54,6 +54,9 @@ pub struct VibratoFit {
     pub factor: f64,
     /// The share of the detrended contour's power the sine explains.
     pub share: f64,
+    /// The kurtosis of the contour after the line: 1.5 for a sine, 1.0
+    /// for a square wave.
+    pub kurtosis: f64,
     /// The number of frames read.
     pub frames: usize,
 }
@@ -152,6 +155,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         1e-6,
     );
     let (explained_power, amplitude) = sine_fit(&times, &cents, rate);
+    let kurtosis = kurtosis(&times, &cents);
     let rate = Hz::new(rate).ok()?;
     Some(VibratoFit {
         start: first.0,
@@ -160,6 +164,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         extent_raw: Cents::new(amplitude).ok()?,
         factor: extent_factor(rate),
         share: (explained_power / power).min(1.0),
+        kurtosis,
         frames: cents.len(),
     })
 }
@@ -191,6 +196,29 @@ fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
         })
         .sum();
     (explained, along_cos.hypot(along_sin))
+}
+
+/// The kurtosis of `y` after its least-squares line, the fourth moment
+/// over the squared second, or 0 when nothing is left.
+fn kurtosis(t: &[f64], y: &[f64]) -> f64 {
+    let n = cast::usize_to_f64(t.len());
+    let (st, sy) = (t.iter().sum::<f64>(), y.iter().sum::<f64>());
+    let stt: f64 = t.iter().map(|t| t * t).sum();
+    let sty: f64 = t.iter().zip(y).map(|(t, y)| t * y).sum();
+    let det = n * stt - st * st;
+    let slope = if det > 0.0 {
+        (n * sty - st * sy) / det
+    } else {
+        0.0
+    };
+    let intercept = (sy - slope * st) / n;
+    let (mut m2, mut m4) = (0.0, 0.0);
+    for (&t, &y) in t.iter().zip(y) {
+        let r = y - intercept - slope * t;
+        m2 += r * r;
+        m4 += r.powi(4);
+    }
+    if m2 > 0.0 { n * m4 / (m2 * m2) } else { 0.0 }
 }
 
 /// The power of `y` left after its least-squares line.
@@ -266,6 +294,20 @@ mod tests {
         assert!((fit.extent_raw.get() - 35.0).abs() < 0.1, "{fit:?}");
         assert!((fit.factor - 1.0 / 0.939).abs() < 1e-3, "{fit:?}");
         assert!(fit.share > 0.99 && fit.accepted(), "{fit:?}");
+        assert!((fit.kurtosis - 1.5).abs() < 0.02, "{fit:?}");
+    }
+
+    #[test]
+    fn a_contour_that_jumps_between_two_levels_reads_a_kurtosis_near_1() {
+        let square: Vec<(Seconds, Hz)> = frames(5.5, 35.0, 1.0)
+            .into_iter()
+            .map(|(t, _)| {
+                let up = (2.0 * 5.5 * t.get()).floor() % 2.0;
+                (t, Hz::new(220.0 * 2f64.powf(up / 12.0)).unwrap())
+            })
+            .collect();
+        let fit = fit_vibrato(&square).unwrap();
+        assert!(fit.kurtosis < 1.1, "{fit:?}");
     }
 
     #[test]
