@@ -1,26 +1,43 @@
 //! Version numbers outside the code. `cog bump` calls [`set`] as a pre-bump
-//! hook, so the version commit carries the new number in `Cargo.toml` and
-//! `Cargo.lock`, and the released binary prints it. [`check_rust_version`]
-//! keeps the docs on the manifest's `rust-version`.
+//! hook, so the version commit carries the new number in `Cargo.toml`,
+//! `Cargo.lock` and `fuzz/Cargo.lock`, and the released binary prints it.
+//! [`check_rust_version`] keeps the docs on the manifest's `rust-version`.
 
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 
 /// Sets `version` in `[workspace.package]` of `root/Cargo.toml`, then
-/// refreshes the workspace entries of `Cargo.lock`.
+/// refreshes the workspace entries of `Cargo.lock` and, when the fuzz crate
+/// exists, the crate's entry in `fuzz/Cargo.lock`.
 pub(crate) fn set(root: &Path, version: &str) -> crate::Result<()> {
     let manifest = root.join("Cargo.toml");
     let text = fs::read_to_string(&manifest)?;
     fs::write(&manifest, with_version(&text, version)?)?;
+    cargo_update(root, &["--workspace", "--offline"])?;
+    if root.join("fuzz/Cargo.toml").exists() {
+        // Online: the release job has never fetched the fuzz-only crates.
+        // `-p` keeps every other entry as locked. From the root, so rustup
+        // keeps the release toolchain instead of the nightly that
+        // fuzz/rust-toolchain.toml pins.
+        cargo_update(
+            root,
+            &["--manifest-path", "fuzz/Cargo.toml", "-p", "sound-to-patch"],
+        )?;
+    }
+    Ok(())
+}
+
+fn cargo_update(root: &Path, args: &[&str]) -> crate::Result<()> {
     let status = Command::new(env!("CARGO"))
-        .args(["update", "--workspace", "--offline"])
+        .arg("update")
+        .args(args)
         .current_dir(root)
         .status()?;
     if status.success() {
         Ok(())
     } else {
-        Err(format!("cargo update --workspace failed with {status}").into())
+        Err(format!("cargo update {} failed with {status}", args.join(" ")).into())
     }
 }
 
@@ -162,6 +179,66 @@ mod tests {
         assert!(manifest.contains("version = \"0.1.0\""), "{manifest}");
         assert!(
             lock.contains("name = \"probe\"\nversion = \"0.1.0\""),
+            "{lock}"
+        );
+    }
+
+    #[test]
+    fn set_writes_the_crate_version_into_the_fuzz_lock() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let write = |path: &str, text: &str| {
+            let path = root.join(path);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        };
+        write(
+            "Cargo.toml",
+            "[package]\nname = \"sound-to-patch\"\nversion.workspace = true\n\
+             edition = \"2024\"\n\n[workspace]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
+        );
+        write("src/lib.rs", "");
+        write(
+            "fuzz/Cargo.toml",
+            "[package]\nname = \"probe-fuzz\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n\
+             [workspace]\n\n[dependencies]\nsound-to-patch = { path = \"..\" }\n\
+             probe-dep = \"0.1\"\n",
+        );
+        write("fuzz/src/lib.rs", "");
+        // A vendored registry in place of crates.io, so the fuzz crate
+        // locks a registry dependency without the network.
+        write(
+            ".cargo/config.toml",
+            "[source.crates-io]\nreplace-with = \"vendored\"\n\n\
+             [source.vendored]\ndirectory = \"vendor\"\n",
+        );
+        let vendor = |version: &str| {
+            let folder = format!("vendor/probe-dep-{version}");
+            write(
+                &format!("{folder}/Cargo.toml"),
+                &format!(
+                    "[package]\nname = \"probe-dep\"\nversion = \"{version}\"\nedition = \"2024\"\n"
+                ),
+            );
+            write(&format!("{folder}/src/lib.rs"), "");
+            write(
+                &format!("{folder}/.cargo-checksum.json"),
+                &format!("{{\"files\":{{}},\"package\":\"{}\"}}", "0".repeat(64)),
+            );
+        };
+        vendor("0.1.0");
+        set(root, "0.1.0").unwrap();
+        // A newer release of the other dependency appears; the version
+        // commit leaves its lock entry alone.
+        vendor("0.1.1");
+        set(root, "0.2.0").unwrap();
+        let lock = fs::read_to_string(root.join("fuzz/Cargo.lock")).unwrap();
+        assert!(
+            lock.contains("name = \"sound-to-patch\"\nversion = \"0.2.0\""),
+            "{lock}"
+        );
+        assert!(
+            lock.contains("name = \"probe-dep\"\nversion = \"0.1.0\""),
             "{lock}"
         );
     }

@@ -202,7 +202,8 @@ unit test with the input bytes inline, next to the code it broke.
   names a version other than the pin, or when a prototype table has no
   recipe file. The same job runs `cargo xtask check-no-ort`, which fails
   when `Cargo.lock` holds the ONNX Runtime crate of the transcription
-  model.
+  model, and `cargo xtask check-fuzz-lock`, which fails when
+  `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.
 - `cargo run --release -p xtask -- eval` scores the notes step on generated
   parts with known notes and prints its tables. It stays local, renders
   its audio on each run and commits nothing. Run it as a release build:
