@@ -60,6 +60,9 @@ const SHARP_HALF_S: f64 = 0.025;
 /// How far either side a peak of the onset strength is the largest value:
 /// under the 84 ms between sixteenth notes at 178 BPM.
 const PEAK_REACH_S: f64 = 0.03;
+/// The smallest median score, as a share of the best one, that the peak
+/// ratio divides by: the ratio reads at most 1e9.
+const PEAK_RATIO_FLOOR: f64 = 1e-9;
 /// The beat spacings of the sparse periodicity.
 const SPARSE_BEATS: [usize; 2] = [2, 4];
 /// The lowest onset sharpness that trusts a refined tempo.
@@ -67,9 +70,10 @@ const SPARSE_BEATS: [usize; 2] = [2, 4];
 /// A pad under a smooth tremolo repeats as well as a drum part does, so
 /// its beat or sparse periodicity reads near 1. Its onsets are swells, not
 /// hits: the rise of each band spreads over 180 ms or more. Generated
-/// tremolo pads read 0.87 at most and chord pads 0.76; generated drum,
-/// hat, bass, lead and kick parts, swung or humanised, read 0.985 or more.
-/// The threshold sits between them.
+/// tremolo pads whose shares pass read 0.80 at most, and chord pads 0.76;
+/// generated drum, hat, bass, lead and kick parts, swung or humanised,
+/// read 0.985 or more, and a bass with an 80 ms attack 0.92. The threshold
+/// sits between them.
 pub const SHARPNESS_MIN: f64 = 0.9;
 /// The most onsets per beat for which the sparse periodicity trusts a
 /// tempo.
@@ -204,11 +208,12 @@ impl Tempo {
         else {
             return keep(Reason::new(ReasonCode::TempoPeak, Signal::Number(0.0))?);
         };
-        let median = median(&scores);
-        if !(best > 0.0 && median > 0.0) {
+        if best.is_nan() || best <= 0.0 {
             return keep(Reason::new(ReasonCode::TempoPeak, Signal::Number(0.0))?);
         }
-        let ratio = best / median;
+        // A sparse part scores exactly 0 at most candidates, so the median
+        // can be 0; the floor keeps the ratio finite.
+        let ratio = best / median(&scores).max(best * PEAK_RATIO_FLOOR);
         // The unbiased lags can sum a little above the zero lag; a share
         // stops at 1.
         let periodicity = (best / (cast::usize_to_f64(lags) * acf[0])).min(1.0);

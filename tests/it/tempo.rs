@@ -539,3 +539,104 @@ fn a_loop_off_its_bar_refines_to_the_loop_tempo() {
         );
     }
 }
+
+/// Most candidates score exactly 0 for a kick a bar, so the median score
+/// is 0; the peak ratio still trusts the refined tempo.
+fn check_slow_kick(truth: f64, offsets: &[f64]) {
+    let samples = part(Part::BarKick, Clock::steady(truth));
+    for &offset in offsets {
+        let tempo = refine(&samples, truth * (1.0 + offset));
+        assert_refined(
+            &tempo,
+            truth,
+            0.05,
+            &format!("kick a bar at {truth} BPM, offset {offset}"),
+        );
+    }
+}
+
+#[test]
+fn a_kick_a_bar_at_60_bpm_refines_from_1_percent_off() {
+    check_slow_kick(60.0, &[-0.01, 0.01]);
+}
+
+#[test]
+fn a_kick_a_bar_at_60_bpm_refines_from_3_percent_off() {
+    check_slow_kick(60.0, &[-0.03, 0.03]);
+}
+
+#[test]
+fn a_kick_a_bar_at_54_bpm_refines() {
+    check_slow_kick(54.0, &[0.01]);
+}
+
+/// A bass with an 80 ms attack still reads sharp onsets, 0.92.
+#[test]
+fn a_bass_with_a_soft_attack_refines() {
+    let truth = TEMPOS[2];
+    let keys = [33.0, 33.0, 36.0, 33.0, 40.0, 33.0, 31.0, 33.0];
+    let notes: Vec<Note> = (0..BEATS * 2)
+        .map(|n| Note {
+            beat: f(n) / 2.0,
+            beats: 0.4,
+            hz: midi(keys[n % keys.len()]),
+            attack: 0.08,
+            release: 0.01,
+        })
+        .collect();
+    let tempo = refine(
+        &render_notes(&notes, Clock::steady(truth), 0.3),
+        truth * 1.01,
+    );
+    assert_refined(&tempo, truth, 0.05, "bass with an 80 ms attack");
+}
+
+/// A humanised kick a bar of 24 beats reads a sparse periodicity of 0.77,
+/// just above the 0.75 it needs.
+#[test]
+fn a_short_humanised_kick_a_bar_refines() {
+    let clock = Clock {
+        beats: 24,
+        jitter: 0.008,
+        ..Clock::steady(120.0)
+    };
+    let tempo = refine(&part(Part::BarKick, clock), 121.2);
+    assert_refined(&tempo, 120.0, 0.15, "humanised kick a bar of 24 beats");
+}
+
+/// A kick a bar whose tempo moves by 0.6 % either way reads a sparse
+/// periodicity of 0.74, just under the 0.75 it needs.
+#[test]
+fn a_kick_a_bar_under_a_ramp_of_0_6_percent_keeps_the_given_tempo() {
+    let truth = TEMPOS[3];
+    let ramp = Clock {
+        bpm: truth * 0.994,
+        end_bpm: truth * 1.006,
+        ..Clock::steady(truth)
+    };
+    let tempo = refine(&part(Part::BarKick, ramp), truth);
+    assert_kept(&tempo, "kick a bar, ramp of 0.6 %");
+}
+
+/// Three kicks a bar, on beats 1, 2.5 and 4, read 0.73 to 0.78 onsets per
+/// beat and a beat periodicity under 0.4, so they refine through the
+/// sparse periodicity.
+#[test]
+fn three_kicks_a_bar_refine() {
+    let truth = TEMPOS[2];
+    let kicks: Vec<f64> = (0..BEATS)
+        .step_by(4)
+        .flat_map(|b| [f(b), f(b) + 1.5, f(b) + 3.0])
+        .filter(|&b| b < f(BEATS))
+        .collect();
+    let samples = render_drums(&kicks, &[], Clock::steady(truth));
+    for offset in OFFSETS {
+        let tempo = refine(&samples, truth * (1.0 + offset));
+        assert_refined(
+            &tempo,
+            truth,
+            0.05,
+            &format!("three kicks a bar, offset {offset}"),
+        );
+    }
+}

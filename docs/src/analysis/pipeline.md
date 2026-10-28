@@ -99,7 +99,8 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   `beat_periodicity` reads 0.22 to 0.24 and its `sparse_periodicity` 0.95
   to 0.97 at 37 beats [synthetic]. Kicks a bar and kicks on every other
   beat, on the same grid, refine to the exact tempo [synthetic]. A kick a
-  bar clears 0.75 from about 24 beats: 0.81 at 24, 0.34 at 20 [synthetic].
+  bar at 120 BPM refines from 21 beats, once the share reads every fourth
+  lag; at 20 beats it reads 0.34 [synthetic].
 - The sparse share needs more than the beat share, because its fewer lags
   line up by chance more often [fact]. Kick parts that keep `--bpm`, with
   it 3.5 % or 4 % off or under a tempo ramp of 1 %, read at most 0.63;
@@ -112,20 +113,40 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   beat, kicks on every other beat 0.48 to 0.52, leads 1.23 or more and
   hats 3 or more [synthetic]. The 0.8 limit sits between them, so a lead or
   a hat part needs the beat share [proposal].
-- A pad under a smooth tremolo of 1, 2 or 4 beats repeats as well as a
-  drum part, and reads a beat or sparse share near 1 [synthetic]. Its rises
-  spread over 180 ms or more, and its `onset_sharpness` reads 0.87 at most;
-  chord pads read 0.76 at most, and drum, hat, bass, lead and kick parts
-  0.985 or more [synthetic]. The 0.9 threshold sits between them
-  [proposal]. Every tremolo case keeps `--bpm` [synthetic].
+- A pad under a smooth tremolo repeats as well as a drum part, and reads a
+  beat or sparse share near 1 [synthetic]. Its rises spread over 180 ms or
+  more [fact]. A chord under a cosine tremolo of half a beat to 4 beats
+  reads an `onset_sharpness` of 0.80 at most where its shares pass, and
+  keeps `--bpm` [synthetic]. Chord pads read 0.76 at most; drum, hat,
+  bass, lead and kick parts read 0.985 or more, and a bass with an 80 ms
+  attack 0.92 [synthetic]. The 0.9 threshold sits between them
+  [proposal].
+- Only a smooth tremolo keeps `--bpm`: one at an eighth-note rate or
+  slower, with a gentle shape [synthetic]. A gate reads as hits [fact]. A
+  chord gated by a square LFO, or pumped with an 80 ms recovery as by a
+  sidechain, every half beat to 2 beats at 117 or 123 BPM with `--bpm 120`,
+  refines to the tempo of the gate [synthetic]. That is the right tempo
+  when the gate is locked to the song [fact].
 - Swing at two thirds of the beat refines within 0.05 BPM, and onsets moved
   by up to 8 ms at random within 0.1 BPM [synthetic]. A `--bpm` 3.5 % or
   4 % off, and a tempo ramp of 2 % or 3 % either way, keep `--bpm`
   [synthetic].
-- A loop whose bar is not 4 beats long but lies within 3 % of it, such as
-  a kick every 3.9 or 4.1 beats, refines to the tempo at which the loop is
-  4 beats [fact]. The onsets cannot tell such a loop from one at that
-  tempo [fact].
+- A kick a bar at any tempo from 40 to 180 BPM in 0.5 BPM steps, 37 to 64
+  beats long, with `--bpm` 1 % off, refines to within 0.01 BPM
+  [synthetic]. Most candidates score exactly 0 for such a part, so the
+  median score can be 0; the peak ratio divides by at least $10^{-9}$ of
+  the best score, and reads at most $10^9$ [fact].
+- Limits:
+  - A loop whose bar is not 4 beats long but lies within 3 % of it, such
+    as a kick every 3.9 or 4.1 beats, refines to the tempo at which the
+    loop is 4 beats [synthetic]. The onsets cannot tell such a loop from
+    one at that tempo [fact].
+  - Silence dilutes the sparse share [fact]. A kick a bar of 37 beats keeps
+    `--bpm` with 12 beats of silence after it or 24 before it [synthetic].
+  - A soft attack lowers the sharpness [fact]. A bass in eighth notes with
+    a linear attack of 100 ms keeps `--bpm` at 178.2 BPM, and one of
+    120 ms at every tempo tested [synthetic]. Another sound may reach that
+    point sooner.
 - A steady tone whose period divides the beat, such as 110 Hz at 120 BPM,
   finds no onset and keeps `--bpm` [synthetic].
 - The beat offset stays 0: only the period is refined [fact]. A stem whose
