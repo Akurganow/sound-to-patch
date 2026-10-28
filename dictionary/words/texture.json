@@ -1,1 +1,821 @@
-[]
+[
+  {
+    "id": "gritty.rough",
+    "word": "gritty",
+    "aliases": [
+      "grungy",
+      "dirty",
+      "filthy",
+      "raspy",
+      "rough"
+    ],
+    "axis": "texture",
+    "sense": "rough",
+    "meaning": "Rough, coarse tone with noise or fast roughness. Heavy saturation or distortion makes it, and so do aliased digital highs. A saw wave sounds raspy and dirty. Quiet noise into mild distortion adds grit without an audible hiss.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "flatness",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "analog-guide",
+      "snip-waveforms",
+      "snip-bitcrush",
+      "snip-bass-tips",
+      "snip-evil"
+    ]
+  },
+  {
+    "id": "crunchy.mid-bite",
+    "word": "crunchy",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "mid-bite",
+    "meaning": "A coarse bite in the upper mids, from distortion with many harmonics. Listener curves raise the mids and cut the air. It differs from crisp, which is clean and extended.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": -0.02,
+      "n": 5,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band one glossary calls crunch",
+        "low": 2000,
+        "high": 2000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-bands"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-bands",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "distorted.clipped",
+    "word": "distorted",
+    "aliases": [
+      "fuzzy",
+      "overdriven"
+    ],
+    "axis": "texture",
+    "sense": "clipped",
+    "meaning": "A clipped waveform with added harmonics. Soft saturation is warm and gentle. Heavier distortion sounds angrier, grittier and buzzier.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "snip-bass-tips"
+    ]
+  },
+  {
+    "id": "clean.no-distortion",
+    "word": "clean",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "no-distortion",
+    "label": "no distortion",
+    "meaning": "Low distortion, so the sound is easy to hear into.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": -0.26,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "clean.dry",
+    "word": "clean",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "dry",
+    "label": "no reverb",
+    "meaning": "Dry, with little or no reverb. Listeners who set a reverb for clean choose a short delay and a short decay.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": -0.26,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 19,
+      "spread_ratio": 1.77,
+      "effects": {
+        "delay_time": -0.48,
+        "decay": -0.53,
+        "stereo_spread": 0.38,
+        "cutoff_freq": 0.15,
+        "wet_gain": 0.44
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "clean.static",
+    "word": "clean",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "static",
+    "label": "no modulation",
+    "meaning": "Static, with no modulation: no movement in pitch, filter or level.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": -0.26,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "clear.open",
+    "word": "clear",
+    "aliases": [
+      "transparent"
+    ],
+    "axis": "texture",
+    "sense": "open",
+    "meaning": "Easy to hear into, with a forward midrange. Listener curves raise the mids and cut the lows. Listeners also set a short, tight reverb for it.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.22,
+      "n": 12,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 110,
+      "spread_ratio": 0.91,
+      "effects": {
+        "delay_time": -0.41,
+        "decay": -0.48,
+        "stereo_spread": 0.38,
+        "cutoff_freq": 0.13,
+        "wet_gain": -0.03
+      }
+    },
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "smooth.even",
+    "word": "smooth",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "even",
+    "label": "no harshness",
+    "meaning": "Not harsh, with a flat or recessed midrange. Listener curves raise the lows and cut the mids.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.22,
+      "n": 14,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 94,
+      "spread_ratio": 0.98,
+      "effects": {
+        "delay_time": -0.38,
+        "decay": -0.41,
+        "stereo_spread": 0.1,
+        "cutoff_freq": -0.47,
+        "wet_gain": 0.14
+      }
+    },
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "smooth.glide",
+    "word": "smooth",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "glide",
+    "label": "notes glide together",
+    "meaning": "Notes slide into each other, as with portamento or legato playing.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.22,
+      "n": 14,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "aggressive.edgy",
+    "word": "aggressive",
+    "aliases": [
+      "angry",
+      "evil",
+      "nasty",
+      "mean"
+    ],
+    "axis": "texture",
+    "sense": "edgy",
+    "meaning": "Edgy, pushy and bright, in your face. No single control does it. A bright saw or FM tone, noise into distortion, a fast attack, high resonance and a faster modulation rate work together.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": -0.15,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "resonance limits for a wobble",
+        "low": 30,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "tempo-synced wobble rates, classic to talking",
+        "low": 8,
+        "high": 16,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "dubstep-guide",
+      "pluck-guide",
+      "bass-guide",
+      "snip-evil"
+    ]
+  },
+  {
+    "id": "noisy.hiss",
+    "word": "noisy",
+    "aliases": [
+      "hissy",
+      "breathy"
+    ],
+    "axis": "texture",
+    "sense": "hiss",
+    "meaning": "A noise layer is audible in the sound. Listener curves raise the mids and cut the lows. For dust, keep the noise well below the tone and high-passed.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.17,
+      "n": 6,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 63,
+      "spread_ratio": 0.55,
+      "effects": {
+        "delay_time": 0.26,
+        "decay": 0.34,
+        "stereo_spread": -0.19,
+        "cutoff_freq": 0.21,
+        "wet_gain": -0.14
+      }
+    },
+    "measure": {
+      "key": "flatness",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "dust noise level below the tone",
+        "low": 20,
+        "high": 24,
+        "unit": "dB",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "high-pass corner of the dust noise",
+        "low": 500,
+        "high": 500,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "lofi-piano",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "lo-fi.degraded",
+    "word": "lo-fi",
+    "aliases": [
+      "lofi"
+    ],
+    "axis": "texture",
+    "sense": "degraded",
+    "meaning": "Degraded sound. Build it in this order: a soft, muted tone, a low-pass filter, light saturation and bit reduction, then wow and flutter, then noise. Digital lo-fi, from bit reduction, differs from tape and vinyl lo-fi, which add pitch drift and noise.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "rolloff85_hz",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "low-pass corner",
+        "low": 2500,
+        "high": 3500,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "filter resonance",
+        "low": 10,
+        "high": 15,
+        "unit": "%",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "saturation amount",
+        "low": 20,
+        "high": 30,
+        "unit": "%",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "bit depth of the reduction",
+        "low": 12,
+        "high": 14,
+        "unit": "bits",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "reduced sample rate",
+        "low": 22050,
+        "high": 22050,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "blend of the reduced signal",
+        "low": 30,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "bit depth below which the sound breaks up",
+        "low": 10,
+        "high": 12,
+        "unit": "bits",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "bit depth for audible bit crushing",
+        "low": 6,
+        "high": 12,
+        "unit": "bits",
+        "sources": [
+          "snip-bitcrush"
+        ],
+        "tag": "snippet"
+      },
+      {
+        "what": "wow rate",
+        "low": 0.2,
+        "high": 0.4,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "flutter rate",
+        "low": 4,
+        "high": 6,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "total pitch drift from wow and flutter",
+        "low": 5,
+        "high": 10,
+        "unit": "cents",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "noise level relative to the tone",
+        "low": -20,
+        "high": -20,
+        "unit": "dB",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "upper limit of the reverb length",
+        "low": 1.5,
+        "high": 1.5,
+        "unit": "s",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "lofi-piano",
+      "lofi-mix",
+      "snip-bitcrush",
+      "snip-tape"
+    ]
+  },
+  {
+    "id": "vintage.aged",
+    "word": "vintage",
+    "aliases": [
+      "dusty",
+      "retro",
+      "old",
+      "nostalgic"
+    ],
+    "axis": "texture",
+    "sense": "aged",
+    "meaning": "The sound of aged physical media. Darken only the parts that gain from it, and tie any vinyl noise to the music. Vintage is not the same as dull. Small drift between oscillators helps.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [
+      {
+        "what": "drift between oscillators",
+        "low": 1,
+        "high": 2,
+        "unit": "cents",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "lofi-mix",
+      "analog-guide",
+      "snip-vintage"
+    ]
+  },
+  {
+    "id": "analog.drift",
+    "word": "analog",
+    "aliases": [
+      "analogue"
+    ],
+    "axis": "texture",
+    "sense": "drift",
+    "meaning": "Slight pitch drift, component variance, saturation and nonlinear filters. No single cause makes a sound analog, and extra resonance alone does not. Ask for the era or the model.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "analog drift, flat",
+        "low": 1,
+        "high": 2,
+        "unit": "cents",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "hold time for punch",
+        "low": 20,
+        "high": 30,
+        "unit": "ms",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "largest fine-tune between two oscillators",
+        "low": 4,
+        "high": 4,
+        "unit": "cents",
+        "sources": [
+          "snip-analog"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "analog-guide",
+      "snip-analog",
+      "snip-analog-what"
+    ]
+  },
+  {
+    "id": "digital.exact",
+    "word": "digital",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "exact",
+    "meaning": "Perfect tuning and exact curves, with aliased, raspy highs. It is not always cold.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "analog-guide",
+      "snip-analog",
+      "snip-analog-what"
+    ]
+  },
+  {
+    "id": "buzzy.saw",
+    "word": "buzzy",
+    "aliases": [
+      "brassy"
+    ],
+    "axis": "texture",
+    "sense": "saw",
+    "meaning": "The sound of a saw wave, which carries all harmonics: bright, buzzy, raspy and brassy. It overlaps with harsh.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "pulse-guide",
+      "snip-waveforms"
+    ]
+  },
+  {
+    "id": "alien.strange",
+    "word": "alien",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "strange",
+    "meaning": "A strange, unearthly sound, often with inharmonic tones, odd movement or vowel-like peaks. It names a character, not one change to the sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "fx",
+    "music": [
+      "mood.mysterious"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "robotic.mechanical",
+    "word": "robotic",
+    "aliases": [
+      "robot"
+    ],
+    "axis": "texture",
+    "sense": "mechanical",
+    "meaning": "A stiff, machine-like sound: steady pitch, little drift and a buzzy or metallic tone. It names a character, not one change to the sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "classic.era",
+    "word": "classic",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "era",
+    "meaning": "A familiar, established sound of its era, such as a well-known voice or preset type. It points to a style, not to one timbre.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.71,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "futuristic.modern",
+    "word": "futuristic",
+    "aliases": [],
+    "axis": "texture",
+    "sense": "modern",
+    "meaning": "A modern, sci-fi character: clean, bright and digital, often with movement. It names a character, not one change to the sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  }
+]

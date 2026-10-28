@@ -49,12 +49,25 @@ const PROTOTYPE_TABLES: [&str; 11] = [
 const GOLDEN_DIR: &str = "tests/fixtures/golden";
 const MUSIC_ORACLE: &str = "music_oracle.py";
 const MUSIC_VECTOR: &str = "music-oracles.json";
-const GENERATOR_DIR: &str = "xtask/golden";
+pub(crate) const GENERATOR_DIR: &str = "xtask/golden";
 const VENV: &str = "target/golden-venv";
 
 /// Installs the pinned tools into `target/golden-venv` with `uv` and runs the
 /// generator, which rewrites every vector.
 pub(crate) fn generate(root: &Path) -> crate::Result<()> {
+    let generator = root.join(GENERATOR_DIR);
+    let python = toolchain(root)?;
+    run(Command::new(&python)
+        .arg("-I")
+        .arg(generator.join("generate.py"))
+        .arg(root))?;
+    music_oracles(root, &python, &generator)?;
+    check(root)
+}
+
+/// Installs the pinned tools into `target/golden-venv` and returns its
+/// Python.
+pub(crate) fn toolchain(root: &Path) -> crate::Result<PathBuf> {
     let generator = root.join(GENERATOR_DIR);
     let python = fs::read_to_string(generator.join(".python-version"))?;
     let venv = root.join(VENV);
@@ -65,12 +78,7 @@ pub(crate) fn generate(root: &Path) -> crate::Result<()> {
         .args(["pip", "sync", "--require-hashes", "--python"])
         .arg(venv.join("bin/python"))
         .arg(generator.join("requirements.txt")))?;
-    run(Command::new(venv.join("bin/python"))
-        .arg("-I")
-        .arg(generator.join("generate.py"))
-        .arg(root))?;
-    music_oracles(root, &venv.join("bin/python"), &generator)?;
-    check(root)
+    Ok(venv.join("bin/python"))
 }
 
 /// Runs the chord oracles on every chord spelling of the music dictionary

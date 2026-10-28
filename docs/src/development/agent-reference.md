@@ -20,6 +20,8 @@ files:
 reference/                             the shared reference, one copy
   README.md                            which file answers which question
   core/<topic>.md                      generated: one music file per topic
+  core/words-<axis>.md                 generated: one word file per axis
+  core/words-lists.md                  generated: ladder, style and technique words
   vital/<layer>.md                     generated: one file per layer
   vital/global.md                      generated: controls outside the layers
   vital/examples/*.json                edit lists that CI applies
@@ -36,11 +38,19 @@ dictionary/
   music/stats.json                     the shares the music entries rest on
   music/plan.json                      the planned entry count per group and tier
   words/<axis>.json                    neutral word entries, one file per axis
+  words/agreement.json                 derived listener numbers per word
+  words/ladder.json                    the intensity ladder and its anchors
+  words/style.json, technique.json     style and technique words by rank
+  words/lexicon.json                   the describing-word lexicon and word groups
+  words/ranks.json                     the recomputed ranked list, counts only
   sources.json                         every source the dictionary cites
   probes.json                          one probe question per reference file
   examples.json                        the expected number of examples per synth
 schemas/music.schema.json, schemas/stats.schema.json,
-schemas/words.schema.json, schemas/sources.schema.json
+schemas/words.schema.json, schemas/agreement.schema.json,
+schemas/ladder.schema.json, schemas/ranked.schema.json,
+schemas/lexicon.schema.json, schemas/ranks.schema.json,
+schemas/sources.schema.json
 ```
 
 Edit the reference only in `reference/`. An installed plugin keeps the
@@ -165,6 +175,65 @@ non-commercial genre guide keeps its tempo range or drum skeleton only
 when a second source agrees and cites both; otherwise it carries the tag
 `single source`. Tempos and skeletons are written in this dictionary's
 own form: a range with a centre and slot sets on a 16-step grid.
+
+## The word dictionary
+
+The word dictionary says what a producer's sound word means, with no synth
+control: "warm" is more low-mid weight, duller highs or too much mid-bass.
+The synth references bind each sense to controls. The data lives in
+`dictionary/words/`, one file per axis (tone, body, texture, structure,
+space, movement, envelope, mood), and the `words` module embeds it.
+
+Each entry is one sense. It has a plain meaning, the roles it applies to,
+the senses it conflicts with, the listener agreement of its word, the
+analyzer number that checks it (`measure`) and its sources. A word with
+several senses has one default and a question built from the senses'
+labels, such as "Warm: more low-mid weight (default), duller highs or too
+much mid-bass?". When the request names a role and exactly one sense lists
+it, that sense wins. The roles of a sense are a routing choice of this
+project, not a sourced fact. Mood and character words name no control:
+they carry `no control`, a card hint or `unmapped`, and links to the mood
+entries of the music dictionary.
+
+Every number sits in `values` with its unit, its sources and a tag that
+says how many sources back it: `source states` for two or more, `single
+source` for one, `snippet` when only search excerpts back it. A meaning
+holds no digit. An entry no source describes is `inferred` and holds no
+number. A fact that rests only on a store or vendor tag list, on a synth's
+own control names, or on a research note with no public source is left
+out.
+
+`cargo xtask agreement --data <folder>` fetches the EQ and reverb tables
+of the pinned listener data (source `crowd-eq`) by SHA-256 into a folder
+outside the repository, and refuses one inside it. It runs `xtask/golden/word_agreement.py` with
+the pinned tools. The script groups the EQ curves by word and writes the
+mean pairwise correlation of each word's curves, rounded to two decimals,
+with the curve count. The class is high from 0.45, medium from 0.20 and
+low below, and is known only from 8 curves; fewer set the few-sample flag.
+Reverb rows carry comma-separated words and count once per word; each
+word's effect is its mean minus the global mean over the global standard
+deviation, and its spread ratio is its variance over the global variance,
+averaged over five parameters. Band means and reverb numbers need five
+rows, so no single row can be read back, and the script fails if its
+output holds a row. The script reproduces every value of the draft table
+of issue 101. CI needs no Python: the tests recompute class and flag from
+the stored numbers and compare each entry with its word's numbers.
+
+`dictionary/words/ladder.json` maps modifiers such as "slightly" and
+"very" to a mild, medium or strong step. No source quantifies the
+modifiers, so the ladder is `inferred`; each anchor that sets a step for a
+kind of control is a sourced value. The style and technique lists follow
+the rank order of the published word lexicon. A style word's hint reads
+`pending` until the routing data fills it; the first sixteen technique
+words name a neutral control group.
+
+`cargo xtask word-ranks` recomputes the ranked list of describing words
+locally from the pinned preset banks, sound tags and captions, and writes
+counts only to `dictionary/words/ranks.json`. A test fails when a word of
+tier W1 or W2, or a word of the task drafts, has no entry.
+
+To add a word, add its entry to the axis file, cite only ids of
+`dictionary/sources.json`, run `cargo xtask reference` and the tests.
 
 ## Checks
 

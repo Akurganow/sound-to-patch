@@ -1,1 +1,561 @@
-[]
+[
+  {
+    "id": "hollow.odd-harmonics",
+    "word": "hollow",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "odd-harmonics",
+    "label": "odd harmonics like a square",
+    "meaning": "Odd harmonics dominate, as from a square or half-duty pulse. The tone is clarinet-like and woody. A quarter-duty pulse is also called hollow and reedy.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.83,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 135,
+      "spread_ratio": 1.11,
+      "effects": {
+        "delay_time": 0.1,
+        "decay": -0.02,
+        "stereo_spread": 0.09,
+        "cutoff_freq": -0.18,
+        "wet_gain": 0.05
+      }
+    },
+    "measure": null,
+    "values": [
+      {
+        "what": "pulse width of a square wave",
+        "low": 50,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "pulse-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "pulse width described as hollow and reedy",
+        "low": 25,
+        "high": 25,
+        "unit": "%",
+        "sources": [
+          "snip-pulse"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "pulse-guide",
+      "snip-pulse"
+    ]
+  },
+  {
+    "id": "hollow.mid-band",
+    "word": "hollow",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "mid-band",
+    "label": "a midrange problem in the mix",
+    "meaning": "In a mix, a midrange problem. Sources disagree. One says mids are missing, one names a low-mid band, one says mids are too strong. A wide sound that collapses to mono also sounds hollow.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.83,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [
+      {
+        "what": "band one glossary names for hollow",
+        "low": 500,
+        "high": 1000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "band one article calls too strong",
+        "low": 700,
+        "high": 3000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-au"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "gloss-au",
+      "width-guide"
+    ]
+  },
+  {
+    "id": "hollow.low-cut",
+    "word": "hollow",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "low-cut",
+    "label": "lows cut in listener curves",
+    "meaning": "Listener curves for hollow cut the lows strongly. Only a few curves exist, so treat this as weak evidence.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.83,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "nasal.narrow-pulse",
+    "word": "nasal",
+    "aliases": [
+      "honky",
+      "pinched",
+      "reedy"
+    ],
+    "axis": "structure",
+    "sense": "narrow-pulse",
+    "meaning": "A narrow pulse wave sounds nasal, pinched and tight, like an oboe or a plucked electric keyboard. In a mix, nasal sits in the low-mid to mid band and honk sits lower.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "narrow pulse widths",
+        "low": 10,
+        "high": 25,
+        "unit": "%",
+        "sources": [
+          "pulse-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "nasal band in one glossary",
+        "low": 700,
+        "high": 1500,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "nasal band in another glossary",
+        "low": 1000,
+        "high": 1500,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "honk band",
+        "low": 500,
+        "high": 500,
+        "unit": "Hz",
+        "sources": [
+          "gloss-bands"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "pulse-guide",
+      "gloss-cll",
+      "gloss-carter",
+      "gloss-bands",
+      "snip-pulse"
+    ]
+  },
+  {
+    "id": "woody.square",
+    "word": "woody",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "square",
+    "meaning": "A square wave sounds hollow and woody.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [
+      {
+        "what": "pulse width of a square wave",
+        "low": 50,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "pulse-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "pulse-guide"
+    ]
+  },
+  {
+    "id": "metallic.inharmonic",
+    "word": "metallic",
+    "aliases": [
+      "bell-like",
+      "clangorous"
+    ],
+    "axis": "structure",
+    "sense": "inharmonic",
+    "meaning": "Inharmonic overtones, as from FM with an odd ratio. More FM depth gives harder, metallic harmonics, and slightly wrong ratios add instability. Bell-like and clangorous tones are heard the same way.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.91,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 75,
+      "spread_ratio": 0.72,
+      "effects": {
+        "delay_time": -0.06,
+        "decay": 0.1,
+        "stereo_spread": 0.03,
+        "cutoff_freq": 0.37,
+        "wet_gain": -0.12
+      }
+    },
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "bass-guide",
+      "snip-evil",
+      "snip-glassy"
+    ]
+  },
+  {
+    "id": "vowel.formant",
+    "word": "vowel",
+    "aliases": [
+      "vocal",
+      "talking",
+      "formant"
+    ],
+    "axis": "structure",
+    "sense": "formant",
+    "meaning": "A sound with fixed resonance peaks like a spoken vowel. A fast tempo-synced wobble seems to talk. A band-pass or notch filter gives a vowel-like base. A formant is a resonance peak, not always a vowel.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "lower static vowel boost",
+        "low": 600,
+        "high": 600,
+        "unit": "Hz",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "middle static vowel boost",
+        "low": 1200,
+        "high": 1200,
+        "unit": "Hz",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "upper static vowel boost",
+        "low": 2500,
+        "high": 2500,
+        "unit": "Hz",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "wobble rate that sounds like talking",
+        "low": 16,
+        "high": 16,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "pitch modulation for growl on top of the wobble",
+        "low": 5,
+        "high": 30,
+        "unit": "cents",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "wobble-guide",
+      "dubstep-guide",
+      "snip-growl"
+    ]
+  },
+  {
+    "id": "resonant.peak",
+    "word": "resonant",
+    "aliases": [
+      "squelchy",
+      "acid",
+      "screamy"
+    ],
+    "axis": "structure",
+    "sense": "peak",
+    "meaning": "A strong resonance peak at the filter cutoff. For an acid sound, push resonance close to self-oscillation and sweep the cutoff with a fast, deep envelope. Too much resonance screams and turns harsh.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "resonance limits for a wobble",
+        "low": 30,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "bass-guide",
+      "dubstep-guide"
+    ]
+  },
+  {
+    "id": "pure.sine",
+    "word": "pure",
+    "aliases": [
+      "sine-like"
+    ],
+    "axis": "structure",
+    "sense": "sine",
+    "meaning": "A tone with no overtones, like a sine wave. Pure can also mean in tune.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "subby.sub",
+    "word": "subby",
+    "aliases": [
+      "sub"
+    ],
+    "axis": "structure",
+    "sense": "sub",
+    "meaning": "Very low energy in the sub region, felt more than heard. Keep it mono and give it its own layer.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "sub",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "upper edge of the region felt more than heard",
+        "low": 60,
+        "high": 80,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "mono limit for the sub",
+        "low": 80,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low-pass corner of the sub layer",
+        "low": 120,
+        "high": 120,
+        "unit": "Hz",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "high-pass corner of the wobble layer",
+        "low": 100,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "sub release time",
+        "low": 50,
+        "high": 100,
+        "unit": "ms",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "bass-guide",
+      "dubstep-guide"
+    ]
+  },
+  {
+    "id": "simple.plain-sound",
+    "word": "simple",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "plain-sound",
+    "label": "a plain sound with few layers",
+    "meaning": "A plain sound with few layers and little movement.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "simple.plain-part",
+    "word": "simple",
+    "aliases": [],
+    "axis": "structure",
+    "sense": "plain-part",
+    "label": "a plain melody line",
+    "meaning": "In captions, a simple melody or rhythm, not a timbre.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  }
+]

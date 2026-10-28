@@ -1,1 +1,714 @@
-[]
+[
+  {
+    "id": "wobble.lfo-filter",
+    "word": "wobble",
+    "aliases": [
+      "wub",
+      "wobbly"
+    ],
+    "axis": "movement",
+    "sense": "lfo-filter",
+    "label": "tempo-synced filter wobble",
+    "meaning": "A tempo-synced low-frequency oscillator opens and closes a low-pass filter, often on a saw bass. A sine shape rolls, a square gates, a down saw drops hard and a reverse saw swells then snaps. Restarting the oscillator on each note suits stabs, and free-running suits long notes. A steady sine sub holds the low end under the wobble.",
+    "roles": [],
+    "conflicts": [
+      "wobble.tape"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "slow lurch, divisions of the oscillator per bar",
+        "low": 4,
+        "high": 4,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "classic wobble, divisions of the oscillator per bar",
+        "low": 8,
+        "high": 8,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "talking wobble, divisions of the oscillator per bar",
+        "low": 16,
+        "high": 16,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low end of the filter sweep",
+        "low": 150,
+        "high": 200,
+        "unit": "Hz",
+        "sources": [
+          "wobble-guide",
+          "dubstep-guide"
+        ],
+        "tag": "source states"
+      },
+      {
+        "what": "high end of the filter sweep",
+        "low": 1000,
+        "high": 3000,
+        "unit": "Hz",
+        "sources": [
+          "wobble-guide",
+          "dubstep-guide"
+        ],
+        "tag": "source states"
+      },
+      {
+        "what": "filter resonance",
+        "low": 30,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "top of the steady sine sub",
+        "low": 100,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "wobble-guide",
+          "dubstep-guide"
+        ],
+        "tag": "source states"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "wobble-guide",
+      "dubstep-guide"
+    ]
+  },
+  {
+    "id": "wobble.tape",
+    "word": "wobble",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "tape",
+    "label": "tape wow and flutter",
+    "meaning": "Tape speed errors that bend the pitch. Wow is the slow pitch change and flutter is the faster one. A wobbly sound can also mean worn and detuned.",
+    "roles": [
+      "keys"
+    ],
+    "conflicts": [
+      "wobble.lfo-filter"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "wow rate on the pitch",
+        "low": 0.2,
+        "high": 0.4,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "flutter rate on the pitch",
+        "low": 4,
+        "high": 6,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "total pitch swing of wow and flutter",
+        "low": 5,
+        "high": 10,
+        "unit": "cents",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "lofi-piano",
+      "lofi-mix",
+      "snip-tape"
+    ]
+  },
+  {
+    "id": "pulsing.gate",
+    "word": "pulsing",
+    "aliases": [
+      "gated",
+      "chopped"
+    ],
+    "axis": "movement",
+    "sense": "gate",
+    "meaning": "The level or the filter switches on and off along the beat grid, as in a gated or chopped sound. A square-shaped modulator or a sidechain from the kick makes it.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "grid divisions of the gating modulator per bar",
+        "low": 8,
+        "high": 16,
+        "unit": "per bar",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "wobble-guide"
+    ]
+  },
+  {
+    "id": "rhythmic.pattern",
+    "word": "rhythmic",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "pattern",
+    "meaning": "A clear repeating rhythm in the notes or in the modulation, locked to the beat grid.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "music": [
+      "position.driving"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "evolving.slow-change",
+    "word": "evolving",
+    "aliases": [
+      "morphing",
+      "animated",
+      "alive",
+      "breathing"
+    ],
+    "axis": "movement",
+    "sense": "slow-change",
+    "meaning": "The sound changes slowly over seconds. Several movements run at different speeds, so the whole cycle takes long to repeat. Random sources add unpredictability. Small depth on many targets beats one big sweep.",
+    "roles": [],
+    "conflicts": [
+      "static.no-movement"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "snip-evolving",
+      "snip-slow-lfo"
+    ]
+  },
+  {
+    "id": "static.no-movement",
+    "word": "static",
+    "aliases": [
+      "constant",
+      "stable"
+    ],
+    "axis": "movement",
+    "sense": "no-movement",
+    "meaning": "Nothing moves in the timbre or the pitch. Slow modulation is what stops a sound from feeling static.",
+    "roles": [],
+    "conflicts": [
+      "evolving.slow-change",
+      "drifting.pitch"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "snip-slow-lfo"
+    ]
+  },
+  {
+    "id": "swirling.sweep",
+    "word": "swirling",
+    "aliases": [
+      "phasey",
+      "sweeping",
+      "jet"
+    ],
+    "axis": "movement",
+    "sense": "sweep",
+    "label": "a sweeping phaser",
+    "meaning": "A sweep of comb-filter notches or a slow beating between detuned voices, as from a phaser, a flanger or a reese bass. A reese holds two saws slightly apart in pitch under a low-pass filter that a slow modulator moves.",
+    "roles": [],
+    "conflicts": [
+      "swirling.cancellation"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "pitch offset between the two saws of a reese",
+        "low": 5,
+        "high": 15,
+        "unit": "cents",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low-pass range of a reese",
+        "low": 800,
+        "high": 2000,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "modulator rate on the reese filter",
+        "low": 0.5,
+        "high": 2,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "bass-guide"
+    ]
+  },
+  {
+    "id": "swirling.cancellation",
+    "word": "swirling",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "cancellation",
+    "label": "phase cancelling in the lows",
+    "meaning": "Layered low sounds that sit slightly out of phase cancel each other, and the low-end level wobbles. Detuned multi-oscillator patches do this. One layer should carry the sub.",
+    "roles": [],
+    "conflicts": [
+      "swirling.sweep"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "top of the single layer that carries the sub",
+        "low": 100,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "snip-mixing-bass"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "snippet",
+    "sources": [
+      "snip-mixing-bass"
+    ]
+  },
+  {
+    "id": "lush.chorus-pad",
+    "word": "lush",
+    "aliases": [
+      "shimmering",
+      "ensemble",
+      "chorusy"
+    ],
+    "axis": "movement",
+    "sense": "chorus-pad",
+    "meaning": "Very rich and full. A held chord on a pad, with chorus, reverb and gentle movement, sounds lush. Pads use a slow attack and a long release. A pulse wave with its width swept slowly sounds shimmering and rich. Some producers call lush subjective.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "pulse width swept for a shimmering sound, share of the cycle",
+        "low": 10,
+        "high": 50,
+        "unit": "%",
+        "sources": [
+          "pulse-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "pad-guide",
+      "pulse-guide",
+      "snip-lush"
+    ]
+  },
+  {
+    "id": "drifting.pitch",
+    "word": "drifting",
+    "aliases": [
+      "unstable",
+      "wavering"
+    ],
+    "axis": "movement",
+    "sense": "pitch",
+    "meaning": "A slow, small, random pitch error, as in old analog synths. Two oscillators sit a few cents apart and wander gently.",
+    "roles": [],
+    "conflicts": [
+      "static.no-movement"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [
+      {
+        "what": "flat detune between two oscillators",
+        "low": 1,
+        "high": 2,
+        "unit": "cents",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "detune ceiling when fine-tuning two oscillators instead of unison",
+        "low": 4,
+        "high": 4,
+        "unit": "cents",
+        "sources": [
+          "snip-analog"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "analog-guide",
+      "snip-analog",
+      "snip-fat-movement"
+    ]
+  },
+  {
+    "id": "vibrato.pitch",
+    "word": "vibrato",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "pitch",
+    "meaning": "A periodic pitch change at a slow to moderate rate, from a modulator on pitch.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "tremolo.level",
+    "word": "tremolo",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "level",
+    "meaning": "A periodic level change at a slow to moderate rate, from a modulator on level.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "glitchy.stutter",
+    "word": "glitchy",
+    "aliases": [
+      "stuttering"
+    ],
+    "axis": "movement",
+    "sense": "stutter",
+    "meaning": "Short random cuts, repeats and jumps in pitch or timbre. Stuttering repeats one short slice of the sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "glide.portamento",
+    "word": "glide",
+    "aliases": [
+      "slide",
+      "legato",
+      "portamento"
+    ],
+    "axis": "movement",
+    "sense": "portamento",
+    "meaning": "Notes slide from one pitch to the next with no gap, as in legato or portamento playing. An acid bass pairs slides with accents for a vocal, unpredictable quality.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "bass-guide"
+    ]
+  },
+  {
+    "id": "fast.speed",
+    "word": "fast",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "speed",
+    "meaning": "A high tempo, quick notes or quick modulation. Tempo is the usual reading.",
+    "roles": [],
+    "conflicts": [
+      "slow.speed"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.32,
+      "n": 5,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 23,
+      "spread_ratio": 0.78,
+      "effects": {
+        "delay_time": -0.21,
+        "decay": -0.3,
+        "stereo_spread": 0.1,
+        "cutoff_freq": 0.64,
+        "wet_gain": -0.12
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "rhythm.fast-tempo",
+      "rhythm.presto"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "slow.speed",
+    "word": "slow",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "speed",
+    "meaning": "A low tempo, long notes or slow modulation. Tempo is the usual reading.",
+    "roles": [],
+    "conflicts": [
+      "fast.speed"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.63,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 74,
+      "spread_ratio": 1.15,
+      "effects": {
+        "delay_time": -0.03,
+        "decay": 0.12,
+        "stereo_spread": -0.08,
+        "cutoff_freq": -0.11,
+        "wet_gain": 0.06
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "rhythm.largo",
+      "rhythm.adagio"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "groovy.feel",
+    "word": "groovy",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "feel",
+    "meaning": "A pattern with swing, push and pull and accents that make it move. No single note rule or sound control carries it.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "feel.groove"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "repetitive.pattern",
+    "word": "repetitive",
+    "aliases": [],
+    "axis": "movement",
+    "sense": "pattern",
+    "meaning": "The same short pattern comes back again and again with little change.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 12,
+      "spread_ratio": 0.48,
+      "effects": {
+        "delay_time": 0.32,
+        "decay": 0.18,
+        "stereo_spread": -0.37,
+        "cutoff_freq": 0.02,
+        "wet_gain": -0.15
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "phrase.repetition-with-variation",
+      "position.driving"
+    ],
+    "tag": "inferred",
+    "sources": []
+  }
+]

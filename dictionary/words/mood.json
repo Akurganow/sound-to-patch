@@ -1,1 +1,528 @@
-[]
+[
+  {
+    "id": "weird.mood",
+    "word": "weird",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "Unusual and off-kilter, with unexpected timbres or movement. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 30,
+      "spread_ratio": 0.62,
+      "effects": {
+        "delay_time": 0.01,
+        "decay": 0.27,
+        "stereo_spread": -0.27,
+        "cutoff_freq": 0.24,
+        "wet_gain": -0.19
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "experimental",
+    "music": [
+      "mood.mysterious"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "strange.mood",
+    "word": "strange",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "Odd and unfamiliar, close to weird. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 29,
+      "spread_ratio": 0.66,
+      "effects": {
+        "delay_time": 0.52,
+        "decay": 0.26,
+        "stereo_spread": -0.18,
+        "cutoff_freq": -0.12,
+        "wet_gain": -0.17
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "experimental",
+    "music": [
+      "mood.mysterious"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "experimental.mood",
+    "word": "experimental",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "Unconventional and exploratory. It hints at the experimental card but picks no sound by itself. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "experimental",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "energetic.mood",
+    "word": "energetic",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "High energy: a fast tempo, a driving rhythm and a forward sound. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.62,
+      "n": 5,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 12,
+      "spread_ratio": 1.0,
+      "effects": {
+        "delay_time": -0.09,
+        "decay": -1.0,
+        "stereo_spread": 0.16,
+        "cutoff_freq": -0.25,
+        "wet_gain": -0.04
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "rhythm.fast-tempo",
+      "position.driving"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "cinematic.mood",
+    "word": "cinematic",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "Film-score character that is wide, slow-moving and dramatic. It has a drama reading and a wonder reading. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "atmosphere",
+    "music": [
+      "mood.cinematic.drama",
+      "mood.cinematic.wonder"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "happy.mood",
+    "word": "happy",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A cheerful mood. Listener curves boost the lows and cut the air a little, which acts as a weak brightness proxy. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.08,
+      "n": 22,
+      "class": "low"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 86,
+      "spread_ratio": 1.29,
+      "effects": {
+        "delay_time": -0.28,
+        "decay": -0.41,
+        "stereo_spread": 0.07,
+        "cutoff_freq": 0.07,
+        "wet_gain": 0.16
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "mood.bright"
+    ],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "fun.mood",
+    "word": "fun",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A playful, light mood. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": -0.1,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 34,
+      "spread_ratio": 2.13,
+      "effects": {
+        "delay_time": -0.11,
+        "decay": -0.44,
+        "stereo_spread": 0.09,
+        "cutoff_freq": 0.15,
+        "wet_gain": 0.52
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "mood.uplifting"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "scary.mood",
+    "word": "scary",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A frightening mood with low, dark weight and an uneasy tone. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.11,
+      "n": 5,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 70,
+      "spread_ratio": 0.61,
+      "effects": {
+        "delay_time": 0.16,
+        "decay": 0.43,
+        "stereo_spread": -0.11,
+        "cutoff_freq": 0.13,
+        "wet_gain": -0.16
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "atmosphere",
+    "music": [
+      "mood.spooky",
+      "mood.tense"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "funky.mood",
+    "word": "funky",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A groove-led mood with syncopated bass and short stabs. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.01,
+      "n": 4,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "bass",
+    "music": [
+      "feel.groove",
+      "position.syncopated"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "suspenseful.mood",
+    "word": "suspenseful",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A tense, waiting mood with an unresolved feel. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 9,
+      "spread_ratio": 0.47,
+      "effects": {
+        "delay_time": -0.39,
+        "decay": 0.33,
+        "stereo_spread": -0.15,
+        "cutoff_freq": 0.14,
+        "wet_gain": -0.17
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "atmosphere",
+    "music": [
+      "mood.tense"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "emotional.mood",
+    "word": "emotional",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A moving, expressive mood that names no direction, sad or uplifting. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.23,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 27,
+      "spread_ratio": 1.25,
+      "effects": {
+        "delay_time": 0.1,
+        "decay": 0.13,
+        "stereo_spread": -0.24,
+        "cutoff_freq": 0.11,
+        "wet_gain": 0.17
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "upbeat.mood",
+    "word": "upbeat",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A positive, lively mood with a forward tempo. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.31,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 11,
+      "spread_ratio": 0.75,
+      "effects": {
+        "delay_time": -0.4,
+        "decay": -0.31,
+        "stereo_spread": 0.17,
+        "cutoff_freq": 0.44,
+        "wet_gain": -0.18
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "mood.uplifting",
+      "mood.bright"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "sad.mood",
+    "word": "sad",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A sad mood. Listener curves raise the lows and cut the mids, which acts as a weak brightness proxy. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.29,
+      "n": 9,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 169,
+      "spread_ratio": 0.86,
+      "effects": {
+        "delay_time": 0.12,
+        "decay": 0.17,
+        "stereo_spread": -0.03,
+        "cutoff_freq": -0.02,
+        "wet_gain": -0.07
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "mood.sad"
+    ],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "chill.mood",
+    "word": "chill",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "A relaxed, easy mood with a soft, unhurried feel. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 9,
+      "spread_ratio": 0.48,
+      "effects": {
+        "delay_time": -0.43,
+        "decay": -0.39,
+        "stereo_spread": -0.31,
+        "cutoff_freq": -0.42,
+        "wet_gain": -0.08
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "feel.laid-back",
+      "mood.dreamy"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "creepy.mood",
+    "word": "creepy",
+    "aliases": [],
+    "axis": "mood",
+    "sense": "mood",
+    "meaning": "An uneasy, eerie mood with a thin, unsettling tone. A mood word maps to key, mode, tempo and a card hint, never to one control.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 54,
+      "spread_ratio": 0.62,
+      "effects": {
+        "delay_time": 0.3,
+        "decay": 0.33,
+        "stereo_spread": -0.07,
+        "cutoff_freq": 0.05,
+        "wet_gain": -0.18
+      }
+    },
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "atmosphere",
+    "music": [
+      "mood.spooky"
+    ],
+    "tag": "inferred",
+    "sources": []
+  }
+]

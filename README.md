@@ -68,6 +68,49 @@ and ideas, from which we copy no code, text or data.
 - Tuomas Eerola, Anders Friberg and Roberto Bresin, [Emotional expression in music: contribution, linearity, and additivity of primary musical cues](https://doi.org/10.3389/fpsyg.2013.00487) (CC BY 3.0), Frontiers in Psychology 2013: mode as the strongest of six cues, with additive cues, behind the mood defaults of the music dictionary.
 - [English Wikipedia pages on scales, chords, progressions and rhythms](https://en.wikipedia.org/wiki/List_of_musical_scales_and_modes) (CC BY-SA 4.0): scale sets, chord names and rhythm names, facts only. Inspiration only.
 - Producer guides and tutorials on scales, chords, voicing, rhythm and technique, about 70 pages listed by kind in the [published music lexicon](https://github.com/Akurganow/sound-to-patch/issues/101#issuecomment-6393746249) (no license found): source counts, tiers and idiom rules of the music dictionary. Inspiration only.
+- [A mix engineer's glossary of words for mix revisions](https://musicmixpro.co.uk/words-to-describe-music-for-super-speedy-mix-revisions) (no license found): bands and senses of sound words in the word dictionary. Inspiration only.
+- [A musician's sound dictionary with frequency labels](https://www.criticallisteninglab.com/en/learn/sound-dictionary) (no license found): frequency ranges of sound words in the word dictionary. Inspiration only.
+- [An article on what muddy, boxy and tinny sound like](https://audiouniversityonline.com/describing-sound-quality) (no license found): frequency ranges of sound words in the word dictionary. Inspiration only.
+- [A one-word description of each frequency band](https://bobbyowsinskiblog.com/frequency-band-description) (no license found): one sound word per band in the word dictionary. Inspiration only.
+- [A guide to stereo width in mastering](https://www.masteringthemix.com/pages/how-to-get-the-right-stereo-width) (no license found): mono crossover and width ranges in the word dictionary. Inspiration only.
+- [A blog post on wobble-bass LFO basics](https://monosounds.studio/wobble-bass-serum-2) (no license found): wobble rates, sweep range and sub handling in the word dictionary. Inspiration only.
+- [A guide to dubstep bass design](https://kansamples.com/blogs/learn/dubstep-bass-design) (no license found): resonance, formant and growl numbers in the word dictionary. Inspiration only.
+- [A guide to designing a pluck synth](https://www.startcue.io/learn/synth-design/pluck) (no license found): pluck envelope, filter and detune numbers in the word dictionary. Inspiration only.
+- [A guide to a lo-fi piano sound](https://karanyisounds.com/blogs/production-tips/lofi-piano-sound-in-any-daw) (no license found): the lo-fi chain with its numbers in the word dictionary. Inspiration only.
+- [A synth-basics guide on pulse waves](https://yamahasynth.com/learn/synth-programming/synth-basics-all-squares-pulse) (no license found): pulse widths and detune beating in the word dictionary. Inspiration only.
+- [An article on making digital synths sound more like analog synths](https://craiganderton.org/make-digital-synths-sound-more-like-analog-synths) (no license found): drift, detune and envelope hold in the word dictionary. Inspiration only.
+- [A guide chapter on bass design and the low end](https://beatkitchen.io/guides/electronic-music/04-bass-design) (CC BY-NC-SA 4.0): sub, reese and mono numbers in the word dictionary. Inspiration only.
+- [A guide chapter on envelopes, filters and amplifiers](https://beatkitchen.io/guides/mix-primer/04-shaping-sound-envelopes-filters-and-amplifiers) (CC BY-NC-SA 4.0): envelope shapes by name in the word dictionary. Inspiration only.
+- [An article on synth pads](https://www.edmprod.com/synth-pads) (no license found): pad and lush senses in the word dictionary. Inspiration only.
+- [A blog post on lo-fi mixing](https://blog.landr.com/lo-fi-mixing) (no license found): lo-fi parameters in the word dictionary. Inspiration only.
+- [Forum threads on what thin, warm and fat mean](https://gearspace.com/threads/what-is-thin-warm-fat-for-you.541782) (no license found): producer senses of thin, warm and fat in the word dictionary. Inspiration only.
+- [An encyclopedia page on the just-noticeable difference](https://en.wikipedia.org/wiki/Just-noticeable_difference) (CC BY-SA 4.0): the level step of the intensity ladder in the word dictionary. Inspiration only.
+- J.-T. Milde, [Using natural language to specify sound parameters](https://www.icmc14-smc14.net/images/proceedings/PS4-B11-Usingnaturallanguage.pdf) (CC BY 3.0), ICMC/SMC 2014: modifiers as negation and gradation, behind the intensity ladder.
+- [An encyclopedia entry on the frequency just-noticeable difference](https://www.britannica.com/science/frequency-just-noticeable-difference) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A decibel loudness comparison chart](https://www.gcaudio.com/tips-tricks/decibel-loudness-comparison-chart) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Tips to make a bass sound better](https://www.productionmusiclive.com/blogs/news/5-tips-to-make-your-bass-sound-better) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A bitcrusher explainer](https://mastering.com/bitcrusher) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Tips for lo-fi tape sounds](https://www.waves.com/tips-for-mixing-lo-fi-retro-vibes-into-your-tracks) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [How to design trance plucks](https://www.avid.com/resource-center/how-to-make-trance-plucks) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A guide to pluck envelopes](https://iqsounds.com/blogs/news/the-ultimate-guide-to-crafting-perfect-plucks-in-xfer-serum) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [An article on mixing bass](https://www.soundonsound.com/techniques/mixing-bass) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [The mono stack method for wide synths](https://isotonikstudios.com/make-wide-synths-using-the-mono-stack-method) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A synth vocabulary column from 1982](https://www.muzines.co.uk/articles/synth-vocab/4615) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A video on why synth presenters use adjectives](https://www.youtube.com/watch?v=3bNLY8MLsjE) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A forum thread on lush pads](https://www.elektronauts.com/t/what-are-lush-pads/194590?page=2) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A video on making a synth sound evil](https://www.youtube.com/watch?v=P_lScB16OCg) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A video on analog-style fine tuning](https://www.youtube.com/watch?v=RaLCDutcQUU) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A guide to evolving wavetable sounds](https://www.edmprod.com/ableton-wavetable) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [An article on modulation in synthesis](https://formaudioworks.com/modulation-in-synthesis) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A short video post on fatness from movement](https://www.instagram.com/reel/DUyNR-EkUM7) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [An article on stereo width in electronic music](https://trackscore.ai/blog/stereo-width-mixing) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Video captions on a quarter-duty pulse wave](https://www.youtube.com/watch?v=Cyf0fGLpD6k) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A forum thread on clean bell sounds](https://gearspace.com/threads/which-synth-for-the-cleanest-bells-whistles.460325) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Synthesis waveform basics](https://www.musicsoftwaretraining.com/basic-synthesis-and-sound-design-essentials) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A forum thread on growl basses](https://www.reddit.com/r/edmproduction/comments/aocxiv/tipsadvice_for_growls) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Techniques to make a track sound vintage](https://hexloops.com/how-to-make-a-track-sound-vintage-10-techniques-for-producers) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [A video on what makes a synth analog](https://www.youtube.com/watch?v=4QFvDWskX-A) (no license found), read through a search excerpt: one `snippet` fact of the word dictionary. Inspiration only.
+- [Published word lexicon and ranked list](https://github.com/Akurganow/sound-to-patch/issues/101#issuecomment-6350167815) (MIT, as this repository): the style and technique word ranks and the describing-word lexicon.
 - Kevin Thor Hansen, [Sound2Serum: Neural Sound Matching System for Serum 2](https://projekter.aau.dk/projekter/files/835339029/Master_Thesis_Kevin_Thor_Hansen.pdf) (no license found), master thesis, Aalborg University Copenhagen, 2026, supervisor Cumhur Erkut: fixed-template presets, bank-toggle reload and per-category parameter priors. Inspiration only.
 - Joakim Andén and Stéphane Mallat, [Deep Scattering Spectrum](https://doi.org/10.1109/TSP.2014.2326991) (in copyright), IEEE TSP 2014: wavelet scattering coefficients as timbre descriptors. Inspiration only.
 - Joakim Andén et al., [Joint Time-Frequency Scattering](https://doi.org/10.1109/TSP.2019.2918992) (in copyright), IEEE TSP 2019: joint time-frequency scattering for modulation structure. Inspiration only.
@@ -256,7 +299,7 @@ and ideas, from which we copy no code, text or data.
 - [gfx_classifier](https://github.com/mcomunita/gfx_classifier) (BSD-3-Clause): guitar-effect classifier as a distortion bench probe, with its published models.
 - [GRAFX](https://github.com/sh-lee97/grafx) (Apache-2.0): differentiable effect-graph framework, read for chain design.
 - [Helm](https://github.com/mtytel/helm) (GPL-3.0): preset role taxonomy of a synthesizer. Inspiration only.
-- [helm_patches](https://github.com/mtytel/helm_patches) (CC BY 4.0, in `Factory Presets/`): preset category and name-word counts.
+- [helm_patches](https://github.com/mtytel/helm_patches) (CC BY 4.0, in `Factory Presets/`): preset category and name-word counts, and describing-word counts of the ranked word list at commit `5fafa70`.
 - [IIRNet](https://github.com/csteinmetz1/IIRNet) (Apache-2.0): neural IIR filter design from a magnitude response.
 - [JUCE](https://github.com/juce-framework/JUCE) (AGPL-3.0): VST3 state envelope and base64 facts. Inspiration only.
 - [Kimi-Audio](https://github.com/MoonshotAI/Kimi-Audio) (Apache-2.0 and MIT): audio language model tested on timbre attributes, CUDA-only.
@@ -280,7 +323,7 @@ and ideas, from which we copy no code, text or data.
 - [nara_wpe](https://github.com/fgnt/nara_wpe) (MIT): weighted prediction error dereverberation, read for reverb handling.
 - [node-serum2-preset-packager](https://github.com/CharlesBT/node-serum2-preset-packager) (MIT): container layout, zstd level 3, and the Init preset shape.
 - [objc2-core-ml](https://github.com/madsmtm/objc2) (Zlib OR Apache-2.0 OR MIT): platform ML binding facts for the deferred runtime option.
-- [Odin 2](https://github.com/TheWaveWarden/odin2) (GPL-3.0 code, OFL-1.1 font, no preset terms stated): factory preset category counts. Inspiration only.
+- [Odin 2](https://github.com/TheWaveWarden/odin2) (GPL-3.0 code, OFL-1.1 font, no preset terms stated): factory preset category counts and describing-word counts of the ranked word list at commit `265e9e2`. Inspiration only.
 - [onnxcrepe](https://github.com/yqzhishen/onnxcrepe) (MIT): ONNX export of CREPE and its weights.
 - [OpenL3](https://github.com/marl/openl3) (MIT code, CC BY 4.0 weights): audio embedding surveyed, with no ONNX export.
 - [Pedalboard](https://github.com/spotify/pedalboard) (GPL-3.0): headless VST3 instrument hosting design with MIDI in, audio out and state get and set. Inspiration only.
@@ -305,7 +348,7 @@ and ideas, from which we copy no code, text or data.
 - [serum-mcp](https://github.com/Celian-mrc/serum-mcp) (MIT): Serum 2 preset generation driven by a language model, and its parameter tables.
 - [serum-preset-packager](https://github.com/KennethWussmann/serum-preset-packager) (no license): first public decoding of the Serum 2 container. Inspiration only.
 - [serum-render](https://github.com/wiillownet/serum-render) (GPL-3.0): render reproducibility: batch state carry-over and warm-up render. Inspiration only.
-- [serum2-neurosync](https://github.com/HermannPR/serum2-neurosync) (no license found): the folder listing of factory presets as a role taxonomy; no files copied. Inspiration only.
+- [serum2-neurosync](https://github.com/HermannPR/serum2-neurosync) (no license found): the folder listing of factory presets as a role taxonomy; no files copied; describing-word counts of its preset names for the ranked word list at commit `cabec31`. Inspiration only.
 - [serum2-preset-loader](https://github.com/wiillownet/serum2-preset-loader) (MIT): Serum 2 presets as plugin state, and JUCE state notes.
 - [serum2gen](https://github.com/dougwithseismic/serum2gen) (MIT): Serum 2 preset reading, writing and parameter aliases.
 - [serum2vital](https://github.com/btesser/serum2vital) (GPL-3.0): container facts, modulation source ids, LFO fields, FX rack structure, hosting quirks. Inspiration only.
@@ -314,7 +357,7 @@ and ideas, from which we copy no code, text or data.
 - [SPTK](https://github.com/sp-nitech/SPTK) (Apache-2.0): reference LPC and cepstrum routines.
 - [ssqueezepy](https://github.com/OverLordGoldDragon/ssqueezepy) (MIT): synchrosqueezing and wavelet transform implementation.
 - [StemFX](https://github.com/barry-mir/stemfx) (MIT): per-stem effect chain retrieval and transfer.
-- [Surge XT](https://github.com/surge-synthesizer/surge) (GPL-3.0): the wavetable chunk format and the factory patch folders. Inspiration only.
+- [Surge XT](https://github.com/surge-synthesizer/surge) (GPL-3.0): the wavetable chunk format and the factory patch folders, and describing-word counts of patch names and comments for the ranked word list at commit `a30341b`. Inspiration only.
 - [surge-xt-mcp](https://github.com/redsquidleader/surge-xt-mcp) (MIT): the pattern of setting any plugin parameter by name, and what it cannot reach.
 - [SwiftF0](https://github.com/lars76/swift-f0) (MIT): change-point note segmentation with loudness-dip splits.
 - [synth-permutations](https://github.com/ben-hayes/synth-permutations) (MIT): metric definitions MSS, wMFCC, SOT and RMS, checked against our own tests.
@@ -328,7 +371,7 @@ and ideas, from which we copy no code, text or data.
 - [Vita](https://github.com/DBraun/Vita) (GPL-3.0): Python bindings over the open Vital engine, run as a separate process for test renders. Inspiration only.
 - [Vital](https://github.com/mtytel/vital) (GPL-3.0-or-later): preset file structure, parameter laws, unison, filter and modulation mechanisms, described in our own words. Our own tool extracts its parameter facts (names, ranges, defaults, engine scales, UI and menu labels) into `src/preset/vital/registry.json` for compatibility; no code or comments are copied. Inspiration only.
 - [vital-mcp](https://github.com/mard4/vital-mcp) (GPL-3.0): render-measure-fix loop and its descriptor set. Inspiration only.
-- [vital_discord_preset_archive](https://github.com/ArcerionDev/vital_discord_preset_archive) (no license found): preset role and macro-label counts; no files copied. Inspiration only.
+- [vital_discord_preset_archive](https://github.com/ArcerionDev/vital_discord_preset_archive) (no license found): preset role and macro-label counts; no files copied; describing-word counts of preset names and comments for the ranked word list at commit `c821ad9`. Inspiration only.
 - [WildFX](https://github.com/IsaacYQH/WildFX) (no license): DAW-hosted plugin pipeline for effect-estimation data. Inspiration only.
 - [WORLD](https://github.com/mmorise/World) (BSD-3-Clause): CheapTrick F0-adaptive spectral envelope, ported with attribution if needed.
 - [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet) (Apache-2.0): AudioSet event classifier, read as a distortion tag probe.
@@ -341,8 +384,8 @@ and ideas, from which we copy no code, text or data.
 - [Chordonomicon](https://huggingface.co/datasets/ailsntua/Chordonomicon) (CC BY-NC 4.0): progression shares and chord frequencies of the music dictionary, counts only. Inspiration only.
 - [DX7 timbre dataset](https://zenodo.org/records/4677102) (CC BY 4.0): fixed-pitch timbre-order test for compare.
 - [dx7-patches-and-prompts](https://huggingface.co/datasets/ccerati/dx7-patches-and-prompts) (Apache-2.0 per its card, patch origin and caption terms unclear): the vocabulary of generated patch captions. Inspiration only.
-- [Faronbi et al. preset dataset](https://zenodo.org/records/7686668) (CC BY 4.0): Serum parameter-vector layout as a reference, not used as data.
-- [Freesound metadata scrape](https://huggingface.co/datasets/Chr0my/freesound.org) (CC BY-SA 3.0 per its card, each sound under its own license): tag, title and description word counts only. Inspiration only.
+- [Faronbi et al. preset dataset](https://zenodo.org/records/7686668) (CC BY 4.0): Serum parameter-vector layout as a reference; its preset names feed only the describing-word counts of the ranked word list, as an observation corpus (record revision 2).
+- [Freesound metadata scrape](https://huggingface.co/datasets/Chr0my/freesound.org) (CC BY-SA 3.0 per its card, each sound under its own license): tag, title and description word counts only; the uploader counts of the ranked word list at sha `5c427d9`. Inspiration only.
 - [GiantSteps drum-pattern datasets](https://github.com/GiantSteps/drum-pattern-datasets) (no license found): shares of house, techno and breakbeat grids with a given kick or snare, counts only. Inspiration only.
 - [GiantSteps key dataset](https://github.com/GiantSteps/giantsteps-key-dataset) (no license found): key and mode shares of annotated EDM tracks, counts only. Inspiration only.
 - [GiantSteps MTG key dataset](https://github.com/GiantSteps/giantsteps-mtg-key-dataset) (no license found): key and mode shares by store genre, counts only. Inspiration only.
@@ -351,11 +394,11 @@ and ideas, from which we copy no code, text or data.
 - [Lakh MIDI Dataset, clean subset](https://colinraffel.com/projects/lmd/) (CC BY 4.0 for the collection, the songs keep their copyright): pitch ranges, note counts and repetition of instrument groups, counts only.
 - [McGill Billboard annotations, through mirdata](https://github.com/mir-dataset-loaders/mirdata) (CC0 per its loader): progression shares and harmonic rhythm of chart songs, counts only.
 - [MidiCaps](https://huggingface.co/datasets/amaai-lab/MidiCaps) (CC BY-SA 4.0): mode and tempo shares by caption tag, counts only. Inspiration only.
-- [MusicCaps](https://huggingface.co/datasets/google/MusicCaps) (CC BY-SA 4.0): how listeners describe synth parts, from caption word counts. Inspiration only.
+- [MusicCaps](https://huggingface.co/datasets/google/MusicCaps) (CC BY-SA 4.0): how listeners describe synth parts, from caption word counts; the caption counts of the ranked word list at sha `0a51889`. Inspiration only.
 - [NSynth](https://magenta.tensorflow.org/datasets/nsynth) (CC BY 4.0): bright/dark and pitch labels as a feature sanity check.
 - [POP909](https://github.com/music-x-lab/POP909-Dataset) (MIT, the songs keep their copyright): the share of melody notes outside the key, counts only.
 - [ReverbFX](https://arxiv.org/abs/2505.20533) (CC BY-NC 4.0): room impulse responses derived from reverb plugins, as an effect-estimation reference. Inspiration only.
-- [SocialFX listener data, re-upload](https://huggingface.co/datasets/seungheondoh/socialfx-original) (no license found): band means of the listener EQ curves behind each sound word. Inspiration only.
+- [SocialFX listener data, re-upload](https://huggingface.co/datasets/seungheondoh/socialfx-original) (no license found), revision `d7e266c`: per-word agreement, curve counts, band means and reverb word effects of the word dictionary, derived by `cargo xtask agreement`; no row is committed. Inspiration only.
 - [Surge pitch dataset](https://zenodo.org/records/4677097) (CC BY 4.0): pitch-labelled test audio and rank-based compare tests.
 - [timbremetrics timbre ratings (Thoret et al., Vahidi et al.)](https://github.com/tiianhk/timbremetrics) (no license): 21 human timbre-rating sets as the compare benchmark. Inspiration only.
 
