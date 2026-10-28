@@ -82,11 +82,10 @@ Detection still runs and prints its findings, so you can compare them
 with the profile. `notes` decides voicing once for the whole stem. A
 stem that mixes a chord part and a line gets a chord share between the
 two and can read as one note at a time. The cleanup then runs the octave
-check on its chords. So a stem with chords in it needs `--profile pad`,
-or `--profile lead` when the chords are strummed. Three more cases need
-a profile: bleed from another
-instrument louder than -20 dB in a passage where the part rests, a line
-with held double stops (`--profile pad`), and a strummed part
+check on its chords. When `detected voicing` reads monophonic on a stem
+with held chords in it, pass `--profile pad`. Three more cases need a
+profile: bleed from another instrument louder than -20 dB in a passage
+where the part rests, a line with held double stops (`--profile pad`), and a strummed part
 (`--profile lead`), where the pad settings lose notes.
 
 ## Check the file

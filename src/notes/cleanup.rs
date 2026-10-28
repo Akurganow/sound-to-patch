@@ -148,8 +148,10 @@ fn moved_down(note: &Note, lower: &Note) -> Option<Note> {
 /// A ghost moved down by [`check_octaves`] lands on its true note and
 /// disappears into it. The decoder itself never gives two notes of one
 /// key that overlap, so a repeat it decodes never merges. The merged note
-/// keeps the fields of the note that starts first, and the higher
-/// velocity.
+/// keeps the onset, pitch and octave flag of the note that starts first,
+/// and the higher velocity. It has no contour and no overlap flag:
+/// [`PitchTrack::with_contours`] and [`NoteList::with_overlaps`] fill
+/// those after the cleanup.
 #[must_use]
 pub fn merge_overlaps(notes: &NoteList) -> NoteList {
     let mut merged: Vec<Note> = Vec::with_capacity(notes.notes().len());
