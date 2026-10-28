@@ -376,7 +376,7 @@
         "tag": "single source"
       }
     ],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "gloss-carter",
       "crowd-eq"
@@ -446,7 +446,7 @@
       "direction": "up"
     },
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "crowd-eq",
       "width-guide"
@@ -771,7 +771,7 @@
     "aliases": [],
     "axis": "body",
     "sense": "mono-collapse",
-    "label": "mono collapse",
+    "label": "thin when played in mono",
     "meaning": "Wide content that cancels when the mix sums to mono, which leaves a thin or hollow sound.",
     "roles": [],
     "conflicts": [],
@@ -877,7 +877,7 @@
     "axis": "body",
     "sense": "low-onset",
     "label": "lows with a short onset",
-    "meaning": "Lows with a short onset. A held first stage of the envelope at full level before the decay adds punch.",
+    "meaning": "Lows with a short onset. One article suggests that holding the first envelope stage at full level before the decay may add punch.",
     "roles": [],
     "conflicts": [],
     "default": true,
@@ -914,10 +914,9 @@
         "tag": "single source"
       }
     ],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
-      "gloss-au",
-      "analog-guide"
+      "gloss-au"
     ]
   },
   {
@@ -928,9 +927,7 @@
     "sense": "transient-body",
     "label": "a click in the upper mids",
     "meaning": "A transient body in the upper mids, a click that cuts through.",
-    "roles": [
-      "drums"
-    ],
+    "roles": [],
     "conflicts": [],
     "default": false,
     "agreement": {
@@ -1018,7 +1015,7 @@
     "axis": "body",
     "sense": "upper-mids",
     "label": "an upper-mid edge",
-    "meaning": "Default sense. Hard is an upper-mid edge or a hard transient. It is the default because mix glossaries use it so for patches, while the listener sense rests on guitar, piano and drum tests. It conflicts with the bass-heavy listener sense.",
+    "meaning": "Default sense. Hard is an upper-mid edge or a hard transient. It is the default because a mix glossary uses it so, while the listener sense rests on guitar, piano and drum tests. It conflicts with the bass-heavy listener sense.",
     "roles": [],
     "conflicts": [
       "hard.bass-heavy"
@@ -1047,10 +1044,9 @@
         "tag": "single source"
       }
     ],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
-      "gloss-carter",
-      "gloss-cll"
+      "gloss-carter"
     ]
   },
   {

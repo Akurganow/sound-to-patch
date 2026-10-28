@@ -248,7 +248,7 @@
     "music": [
       "mood.dreamy"
     ],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "crowd-eq",
       "lofi-mix"
@@ -285,7 +285,7 @@
     },
     "measure": null,
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "gloss-carter",
       "crowd-eq"

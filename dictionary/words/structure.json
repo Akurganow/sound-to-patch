@@ -6,7 +6,7 @@
     "axis": "structure",
     "sense": "odd-harmonics",
     "label": "odd harmonics like a square",
-    "meaning": "Odd harmonics dominate, as from a square or half-duty pulse. The tone is clarinet-like and woody. A quarter-duty pulse is also called hollow and reedy.",
+    "meaning": "Odd harmonics dominate, as from a square or half-duty pulse. The tone is hollow and woody. A quarter-duty pulse is also called hollow and reedy.",
     "roles": [],
     "conflicts": [],
     "default": true,
@@ -110,7 +110,7 @@
     "aliases": [],
     "axis": "structure",
     "sense": "low-cut",
-    "label": "lows cut in listener curves",
+    "label": "fewer lows",
     "meaning": "Listener curves for hollow cut the lows strongly. Only a few curves exist, so treat this as weak evidence.",
     "roles": [],
     "conflicts": [],
@@ -337,7 +337,7 @@
         "tag": "single source"
       },
       {
-        "what": "wobble rate that sounds like talking",
+        "what": "wobble cycles per four-four bar that sound like talking",
         "low": 16,
         "high": 16,
         "unit": "per bar",

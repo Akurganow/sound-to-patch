@@ -117,6 +117,12 @@ fn listener_problems(words: &Words) -> Vec<String> {
                 "agreement.json {word}: a value needs two curves or more"
             ));
         }
+        if row.n < AGGREGATE_FROM && !words.entries.iter().any(|entry| entry.word == *word) {
+            found.push(format!(
+                "agreement.json {word}: a label of {} curves is kept only for an entry word",
+                row.n
+            ));
+        }
         let aggregate = row.bands.is_some() || row.peak_hz.is_some();
         if aggregate && row.n < AGGREGATE_FROM {
             found.push(format!(
@@ -139,11 +145,16 @@ fn listener_problems(words: &Words) -> Vec<String> {
 /// The count of sources a tag allows, over the sources that are not search
 /// excerpts, and whether the sources must all be search excerpts.
 fn tag_problem(tag: Tag, sources: &[String]) -> Option<&'static str> {
-    let pages = sources.iter().filter(|id| !id.starts_with("snip-")).count();
+    // The listener data is derived, so it states nothing and never counts
+    // toward `source states` or `single source`.
+    let pages = sources
+        .iter()
+        .filter(|id| !id.starts_with("snip-") && *id != "crowd-eq")
+        .count();
     let ok = match tag {
         Tag::SourceStates => pages >= 2,
         Tag::SingleSource => pages == 1,
-        Tag::Snippet => pages == 0 && !sources.is_empty(),
+        Tag::Snippet => pages == 0 && sources.iter().any(|id| id.starts_with("snip-")),
         Tag::CrowdData => sources == ["crowd-eq"],
         Tag::Inferred => sources.is_empty(),
     };
@@ -441,6 +452,8 @@ mod tests {
         assert!(tag_problem(Tag::Snippet, &strings(&["snip-a", "b"])).is_some());
         assert!(tag_problem(Tag::CrowdData, &strings(&["crowd-eq"])).is_none());
         assert!(tag_problem(Tag::CrowdData, &strings(&["crowd-eq", "b"])).is_some());
+        assert!(tag_problem(Tag::SourceStates, &strings(&["crowd-eq", "a"])).is_some());
+        assert!(tag_problem(Tag::SingleSource, &strings(&["crowd-eq", "a"])).is_none());
         assert!(tag_problem(Tag::Inferred, &[]).is_none());
         assert!(tag_problem(Tag::Inferred, &strings(&["a"])).is_some());
     }

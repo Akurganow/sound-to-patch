@@ -9,8 +9,9 @@
 
 use std::fmt::Write as _;
 use std::fs;
+use std::io::Write as _;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde_json::Value;
 
@@ -46,12 +47,22 @@ pub(crate) fn run(root: &Path, data: &Path) -> crate::Result<()> {
         tables.push(out);
     }
     let python = toolchain(root)?;
-    let output = Command::new(python)
+    let request = serde_json::json!({ "entry_words": entry_words(root)? });
+    let mut child = Command::new(python)
         .arg("-I")
         .arg(root.join(GENERATOR_DIR).join(SCRIPT))
         .args(&tables)
         .current_dir(std::env::temp_dir())
-        .output()?;
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("the script has no stdin")?
+        .write_all(request.to_string().as_bytes())?;
+    let output = child.wait_with_output()?;
     if !output.status.success() {
         return Err(format!(
             "{SCRIPT} failed with {}: {}",
@@ -65,19 +76,63 @@ pub(crate) fn run(root: &Path, data: &Path) -> crate::Result<()> {
     Ok(())
 }
 
+/// The lowercase lead words of every entry, read from the axis files as
+/// JSON, so a broken entry does not stop the numbers it needs.
+fn entry_words(root: &Path) -> crate::Result<Vec<String>> {
+    let mut words = Vec::new();
+    for file in sound_to_patch::words::AXES {
+        let path = root.join(format!("dictionary/words/{}.json", file.axis.as_str()));
+        let entries: Vec<Value> = serde_json::from_str(&fs::read_to_string(&path)?)?;
+        words.extend(
+            entries
+                .iter()
+                .filter_map(|entry| entry["word"].as_str())
+                .map(str::to_lowercase),
+        );
+    }
+    words.sort();
+    words.dedup();
+    Ok(words)
+}
+
 /// Refuses a download folder inside the repository: the tables are third
 /// party data and stay out of it.
+///
+/// A `..` component is refused outright, because it hides which folders
+/// would be created. The folder is then created, so its canonical path
+/// resolves symbolic links; a refused folder is removed again with every
+/// parent this call created.
 pub(crate) fn outside(root: &Path, data: &Path) -> crate::Result<()> {
-    let roots = [fs::canonicalize(root)?, std::path::absolute(root)?];
-    let data = fs::canonicalize(data).or_else(|_| std::path::absolute(data))?;
-    if roots.iter().any(|root| data.starts_with(root)) {
+    if data
+        .components()
+        .any(|part| part == std::path::Component::ParentDir)
+    {
         return Err(format!(
-            "{} lies inside the repository; pass a download folder outside it",
+            "{} holds `..`; pass the download folder as a plain path",
             data.display()
         )
         .into());
     }
-    fs::create_dir_all(&data)?;
+    let root = fs::canonicalize(root)?;
+    let mut created = None;
+    for dir in data.ancestors() {
+        if dir.as_os_str().is_empty() || dir.exists() {
+            break;
+        }
+        created = Some(dir.to_owned());
+    }
+    fs::create_dir_all(data)?;
+    let canonical = fs::canonicalize(data)?;
+    if canonical.starts_with(&root) {
+        if let Some(dir) = created {
+            fs::remove_dir_all(dir)?;
+        }
+        return Err(format!(
+            "{} lies inside the repository; pass a download folder outside it",
+            canonical.display()
+        )
+        .into());
+    }
     Ok(())
 }
 
@@ -147,10 +202,39 @@ mod tests {
     #[test]
     fn a_download_folder_inside_the_repository_is_refused() {
         let root = tempfile::tempdir().unwrap();
-        let err = outside(root.path(), &root.path().join("data")).unwrap_err();
+        let err = outside(root.path(), &root.path().join("data/new")).unwrap_err();
         assert!(err.to_string().contains("inside the repository"), "{err}");
+        assert!(!root.path().join("data").exists());
         let elsewhere = tempfile::tempdir().unwrap();
-        assert!(outside(root.path(), elsewhere.path()).is_ok());
+        assert!(outside(root.path(), &elsewhere.path().join("new")).is_ok());
+    }
+
+    #[test]
+    fn a_dot_dot_path_is_refused_before_anything_is_created() {
+        let root = tempfile::tempdir().unwrap();
+        let elsewhere = tempfile::tempdir().unwrap();
+        let name = root.path().file_name().unwrap();
+        let sneaky = elsewhere
+            .path()
+            .join("missing/../..")
+            .join(name)
+            .join("new");
+        let err = outside(root.path(), &sneaky).unwrap_err();
+        assert!(err.to_string().contains("`..`"), "{err}");
+        assert!(!root.path().join("new").exists());
+        assert!(!elsewhere.path().join("missing").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_parent_into_the_repository_is_refused() {
+        let root = tempfile::tempdir().unwrap();
+        let elsewhere = tempfile::tempdir().unwrap();
+        let link = elsewhere.path().join("link");
+        std::os::unix::fs::symlink(root.path(), &link).unwrap();
+        let err = outside(root.path(), &link.join("new")).unwrap_err();
+        assert!(err.to_string().contains("inside the repository"), "{err}");
+        assert!(!root.path().join("new").exists());
     }
 
     #[test]

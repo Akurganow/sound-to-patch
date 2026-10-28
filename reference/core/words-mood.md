@@ -2,7 +2,7 @@
 
 # Mood words: character with no control
 
-Each row is one sense of a producer word, with no synth control: the synth reference binds the sense to controls. Agreement is the mean correlation of the EQ curves listeners drew for the word (high from 0.45, medium from 0.20, else low), known from 8 curves; `few` marks fewer. Reverb numbers are the word's effect on delay, decay, stereo spread, cutoff and wet gain in standard deviations, and the spread ratio (lower is more shared). Numbers carry their source ids and a tag: `source states` (two or more sources), `single source`, `snippet` (search excerpts only), `crowd data` (the listener data alone) or `inferred` (no source). Source ids are listed in `dictionary/sources.json`.
+Each row is one sense of a producer word, with no synth control: the synth reference binds the sense to controls. Agreement tells how alike the EQ curves were that listeners drew for the word: 1 means every listener drew the same curve shape, 0 means no shared shape. It reads high from 0.45, medium from 0.20 and low below. `n` is the number of curves, and the class is known only from 8; `few` marks fewer, so treat that word as a guess. Reverb numbers show how listeners set a reverb for the word: how far each setting (delay, decay, stereo spread, cutoff, wet gain) moved from the average, in standard deviations, and the spread, which is low when listeners agreed and 1 when they did not. Numbers carry their source ids and a tag: `source states` (two or more sources), `single source`, `snippet` (search excerpts only), `crowd data` (the listener data alone, which counts as no source) or `inferred` (no source). Source ids are listed in `dictionary/sources.json`.
 
 ## Words
 

@@ -143,13 +143,13 @@ class Counter:
 def preset_banks(args):
     """Yields (bank, name, comment) for every preset of the six banks."""
     yield from names_from_tree(
-        "bank-serum2-names", args.bank_serum2_names, SERUM2_DIR, ".SerumPreset"
+        "bank-a", args.bank_a, SERUM2_DIR, ".SerumPreset"
     )
-    yield from vital_archive(args.bank_vital_archive)
-    yield from patch_xml(args.bank_surge)
-    yield from names_from_tree("bank-odin2", args.bank_odin2, PRESET_DIR, ".odin")
-    yield from names_from_tree("bank-helm", args.bank_helm, PATCH_BANK_DIR, ".helm")
-    yield from serum1_names(args.bank_serum1_names)
+    yield from vital_archive(args.bank_b)
+    yield from patch_xml(args.bank_c)
+    yield from names_from_tree("bank-d", args.bank_d, PRESET_DIR, ".odin")
+    yield from names_from_tree("bank-e", args.bank_e, PATCH_BANK_DIR, ".helm")
+    yield from bank_f_names(args.bank_f)
 
 
 def stem(path):
@@ -177,7 +177,7 @@ def vital_archive(path):
             head = archive.extractfile(member).read(VITAL_HEAD)
             name, comment = name_key.search(head), comment_key.search(head)
             yield (
-                "bank-vital-archive",
+                "bank-b",
                 decode(name[1]) if name else stem(member.name),
                 decode(comment[1]) if comment else "",
             )
@@ -200,10 +200,10 @@ def patch_xml(path):
                 key.decode(): html.unescape(value.decode("utf-8", "replace"))
                 for key, value in attribute.findall(found[1])
             } if found else {}
-            yield "bank-surge", fields.get("name") or stem(name), fields.get("comment", "")
+            yield "bank-c", fields.get("name") or stem(name), fields.get("comment", "")
 
 
-def serum1_names(paths):
+def bank_f_names(paths):
     """The unique `.fxp` names of the Serum rows in the three splits."""
     names = set()
     for name_path, synth_path in zip(paths[0::2], paths[1::2]):
@@ -211,7 +211,7 @@ def serum1_names(paths):
         synth = numpy.load(synth_path, allow_pickle=False)
         names.update(str(n) for n in label[synth == "serum"] if str(n).endswith(".fxp"))
     for name in sorted(names):
-        yield "bank-serum1-names", stem(name), ""
+        yield "bank-f", stem(name), ""
 
 
 def count_presets(args, tables):
@@ -300,16 +300,16 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lexicon", required=True)
     for source in (
-        "bank-serum2-names",
-        "bank-vital-archive",
-        "bank-surge",
-        "bank-odin2",
-        "bank-helm",
+        "bank-a",
+        "bank-b",
+        "bank-c",
+        "bank-d",
+        "bank-e",
         "sound-tags",
         "captions",
     ):
         parser.add_argument(f"--{source}", required=True)
-    parser.add_argument("--bank-serum1-names", nargs=6, required=True, metavar="FILE")
+    parser.add_argument("--bank-f", nargs=6, required=True, metavar="FILE")
     args = parser.parse_args()
     with open(args.lexicon, encoding="utf-8") as handle:
         lexicon = json.load(handle)

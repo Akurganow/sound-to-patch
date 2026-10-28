@@ -227,7 +227,7 @@
     "axis": "tone",
     "sense": "low-mid",
     "label": "more low-mid weight",
-    "meaning": "More weight in the low mids, with even-order harmonics in one glossary. Listener curves for warm raise the lows and cut the mids. Soft saturation also reads as warm. A bass takes this sense.",
+    "meaning": "More weight in the low mids. Listener curves for warm raise the lows and cut the mids. Soft saturation also reads as warm. A bass takes this sense.",
     "roles": [
       "bass"
     ],
@@ -378,7 +378,7 @@
     "few_sample": false,
     "measure": null,
     "values": [],
-    "tag": "single source",
+    "tag": "snippet",
     "sources": [
       "crowd-eq",
       "snip-bass-tips",
@@ -403,7 +403,7 @@
     "few_sample": false,
     "measure": null,
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "gloss-carter",
       "crowd-eq"
@@ -436,7 +436,7 @@
       "direction": "down"
     },
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "gloss-carter",
       "crowd-eq"
@@ -462,7 +462,7 @@
     "few_sample": false,
     "measure": null,
     "values": [],
-    "tag": "single source",
+    "tag": "snippet",
     "sources": [
       "crowd-eq",
       "snip-bass-tips"
@@ -488,7 +488,7 @@
     "few_sample": false,
     "measure": null,
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "crowd-eq",
       "pluck-guide"
@@ -809,7 +809,7 @@
     },
     "measure": null,
     "values": [],
-    "tag": "source states",
+    "tag": "single source",
     "sources": [
       "gloss-carter",
       "crowd-eq"

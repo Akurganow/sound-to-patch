@@ -35,91 +35,91 @@ struct Input {
     sha256: &'static str,
 }
 
-const BANK_SERUM2: &str = "cabec31f5a750b3ac7d0ae1be59d32bef4bbf918";
-const BANK_VITAL: &str = "c821ad99fb4edbf6fc92967a198db784e034b2d2";
-const BANK_SURGE: &str = "a30341be00484d3de6b65869998100ccc6db6945";
-const BANK_ODIN2: &str = "265e9e227581357efb87ed7217381f8a40c5e2bf";
-const BANK_HELM: &str = "5fafa709315a25ddc3b9925f8471f84b7121e2fc";
+const BANK_A: &str = "cabec31f5a750b3ac7d0ae1be59d32bef4bbf918";
+const BANK_B: &str = "c821ad99fb4edbf6fc92967a198db784e034b2d2";
+const BANK_C: &str = "a30341be00484d3de6b65869998100ccc6db6945";
+const BANK_D: &str = "265e9e227581357efb87ed7217381f8a40c5e2bf";
+const BANK_E: &str = "5fafa709315a25ddc3b9925f8471f84b7121e2fc";
 const SOUND_TAGS: &str = "5c427d91b3d6a7624941149ece874850b222c838";
 const CAPTIONS: &str = "0a51889b340037bb75a9a0858af2e4ece21f7f89";
-const BANK_SERUM1: &str = "record revision 2";
+const BANK_F: &str = "record revision 2";
 
 const INPUTS: [Input; 13] = [
     Input {
-        source: "bank-serum2-names",
-        file: "bank-serum2-names.json",
+        source: "bank-a",
+        file: "bank-a.json",
         url: "https://api.github.com/repos/HermannPR/serum2-neurosync/git/trees/cabec31f5a750b3ac7d0ae1be59d32bef4bbf918?recursive=1",
-        revision: BANK_SERUM2,
+        revision: BANK_A,
         sha256: "dd7d48b26250e8a3a293103f33c4a7bb232bf1cde123455fa1dfd21bd476d376",
     },
     Input {
-        source: "bank-vital-archive",
-        file: "bank-vital-archive.tar.gz",
+        source: "bank-b",
+        file: "bank-b.tar.gz",
         url: "https://codeload.github.com/ArcerionDev/vital_discord_preset_archive/tar.gz/c821ad99fb4edbf6fc92967a198db784e034b2d2",
-        revision: BANK_VITAL,
+        revision: BANK_B,
         sha256: "cf5b9e678550c375093ea1bf38360bd83308643b4e6744c7885373aa6b39b0f2",
     },
     Input {
-        source: "bank-surge",
-        file: "bank-surge.tar.gz",
+        source: "bank-c",
+        file: "bank-c.tar.gz",
         url: "https://codeload.github.com/surge-synthesizer/surge/tar.gz/a30341be00484d3de6b65869998100ccc6db6945",
-        revision: BANK_SURGE,
+        revision: BANK_C,
         sha256: "cd87db6a1e48cf372cec0a7d5fe1dbd4e2a02be425b69256b6ef06fa047a125a",
     },
     Input {
-        source: "bank-odin2",
-        file: "bank-odin2.json",
+        source: "bank-d",
+        file: "bank-d.json",
         url: "https://api.github.com/repos/TheWaveWarden/odin2/git/trees/265e9e227581357efb87ed7217381f8a40c5e2bf?recursive=1",
-        revision: BANK_ODIN2,
+        revision: BANK_D,
         sha256: "d270691db672f863fbcddfdf51fbef9637884b227870a1576479b3ab22095d34",
     },
     Input {
-        source: "bank-helm",
-        file: "bank-helm.json",
+        source: "bank-e",
+        file: "bank-e.json",
         url: "https://api.github.com/repos/mtytel/helm_patches/git/trees/5fafa709315a25ddc3b9925f8471f84b7121e2fc?recursive=1",
-        revision: BANK_HELM,
+        revision: BANK_E,
         sha256: "ef0e10ef42e9057f94932bcd73211573f88aeec6cd7055c7e377845f9ff389ad",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.train-name.npy",
+        source: "bank-f",
+        file: "bank-f.train-name.npy",
         url: "https://zenodo.org/records/7686668/files/train_name.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "528d5745837833e9998a425633ed8a7193449c584a1ca4bab8e0f9c133d0fe18",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.train-synth.npy",
+        source: "bank-f",
+        file: "bank-f.train-synth.npy",
         url: "https://zenodo.org/records/7686668/files/train_synth.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "abde9142c44ebbf58e69e3cc8feec53c41adb829be48173d71afe9b579559dd9",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.valid-name.npy",
+        source: "bank-f",
+        file: "bank-f.valid-name.npy",
         url: "https://zenodo.org/records/7686668/files/valid_name.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "011104369c19004afbd04646d255925d3d7bbb90cbae6f2c4b74005acfb5043b",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.valid-synth.npy",
+        source: "bank-f",
+        file: "bank-f.valid-synth.npy",
         url: "https://zenodo.org/records/7686668/files/valid_synth.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "8fbaba7db165ea46e465fe117822d7e37c4d90f07fb528078103de2f11e59a00",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.test-name.npy",
+        source: "bank-f",
+        file: "bank-f.test-name.npy",
         url: "https://zenodo.org/records/7686668/files/test_name.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "8882fe0ea98f1f7c98b1b37d2d821729900ec37faafffa117df4b56558a5ed58",
     },
     Input {
-        source: "bank-serum1-names",
-        file: "bank-serum1-names.test-synth.npy",
+        source: "bank-f",
+        file: "bank-f.test-synth.npy",
         url: "https://zenodo.org/records/7686668/files/test_synth.npy?download=1",
-        revision: BANK_SERUM1,
+        revision: BANK_F,
         sha256: "02fd7b89c29e8a51b136a2e27c73228ccac9cabc86812b6c1385211e7e822350",
     },
     Input {
@@ -245,7 +245,7 @@ mod tests {
     fn report() -> Value {
         serde_json::json!({
             "tools": {"python": "3.14.7"},
-            "presets": 2, "banks": {"bank-helm": 2}, "sounds": 3, "uploaders": 2, "captions": 1,
+            "presets": 2, "banks": {"bank-e": 2}, "sounds": 3, "uploaders": 2, "captions": 1,
             "describing": [
                 {"word": "simple", "preset_hits": 2, "rank": 1},
                 {"word": "analog", "preset_hits": 1, "rank": 2},
@@ -293,10 +293,7 @@ mod tests {
             .iter()
             .map(|arg| arg.to_string_lossy().into_owned())
             .collect();
-        let at = args
-            .iter()
-            .position(|a| a == "--bank-serum1-names")
-            .unwrap();
+        let at = args.iter().position(|a| a == "--bank-f").unwrap();
         // The lexicon plus the eight sources, each named once.
         assert_eq!(args.iter().filter(|a| a.starts_with("--")).count(), 9);
         assert!(args[at + 1].ends_with("train-name.npy"));

@@ -28,7 +28,7 @@ No source quantifies modifier words such as slightly or very. A modifier picks o
 | eq gain | mild | the smallest audible change of level: 1 dB (snippet, snip-jnd) |
 | eq gain | medium | a barely perceptible change of level: 3 dB (snippet, snip-level-chart) |
 | eq gain | strong | a clearly noticeable change of level: 5 dB (snippet, snip-level-chart) |
-| detune | mild | detune that beats slowly: 1 cents (single source, pulse-guide) |
+| detune | mild | detune that beats slowly: 1 cent (single source, pulse-guide) |
 | detune | medium | unison detune for a pluck: 2 to 5 cents (single source, pluck-guide) |
 | detune | strong | detune of a reese bass: 5 to 15 cents (single source, bass-guide) |
 | detune | strong | detune that beats rapidly: 10 cents (single source, pulse-guide) |
@@ -41,7 +41,7 @@ No source quantifies modifier words such as slightly or very. A modifier picks o
 | filter resonance | mild | resonance of a lo-fi low-pass: 10 to 15 % (single source, lofi-piano) |
 | filter resonance | medium | resonance of a wobble bass: 30 to 50 % (single source, dubstep-guide) |
 | bit depth | mild | bit depth of a subtle crush: 12 to 14 bits (single source, lofi-piano) |
-| bit depth | mild | blend of the crushed signal: 30 to 50 % (single source, lofi-piano) |
+| crush blend | mild | blend of the crushed signal: 30 to 50 % (single source, lofi-piano) |
 | bit depth | strong | bit depth of an audible crush: 6 to 12 bits (snippet, snip-bitcrush) |
 | bit depth | edge | bit depth below which the sound breaks up: 10 to 12 bits (single source, lofi-piano) |
 | pluck decay | mild | a short pluck decay: 150 ms (single source, pluck-guide) |

@@ -78,7 +78,7 @@
         "tag": "single source"
       },
       {
-        "what": "filter resonance of a pluck",
+        "what": "filter resonance of a pluck, given as zero point four of full on the page",
         "low": 40,
         "high": 40,
         "unit": "%",

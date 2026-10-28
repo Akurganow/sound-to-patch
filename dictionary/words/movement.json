@@ -24,7 +24,7 @@
     "measure": null,
     "values": [
       {
-        "what": "slow lurch, divisions of the oscillator per bar",
+        "what": "cycles per four-four bar for a slow lurch",
         "low": 4,
         "high": 4,
         "unit": "per bar",
@@ -34,7 +34,7 @@
         "tag": "single source"
       },
       {
-        "what": "classic wobble, divisions of the oscillator per bar",
+        "what": "cycles per four-four bar for a classic wobble",
         "low": 8,
         "high": 8,
         "unit": "per bar",
@@ -44,7 +44,7 @@
         "tag": "single source"
       },
       {
-        "what": "talking wobble, divisions of the oscillator per bar",
+        "what": "cycles per four-four bar for a talking wobble",
         "low": 16,
         "high": 16,
         "unit": "per bar",
@@ -184,22 +184,9 @@
     },
     "few_sample": false,
     "measure": null,
-    "values": [
-      {
-        "what": "grid divisions of the gating modulator per bar",
-        "low": 8,
-        "high": 16,
-        "unit": "per bar",
-        "sources": [
-          "wobble-guide"
-        ],
-        "tag": "single source"
-      }
-    ],
-    "tag": "single source",
-    "sources": [
-      "wobble-guide"
-    ]
+    "values": [],
+    "tag": "inferred",
+    "sources": []
   },
   {
     "id": "rhythmic.pattern",

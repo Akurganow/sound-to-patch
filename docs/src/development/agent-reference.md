@@ -190,22 +190,25 @@ analyzer number that checks it (`measure`) and its sources. A word with
 several senses has one default and a question built from the senses'
 labels, such as "Warm: more low-mid weight (default), duller highs or too
 much mid-bass?". When the request names a role and exactly one sense lists
-it, that sense wins. The roles of a sense are a routing choice of this
-project, not a sourced fact. Mood and character words name no control:
+it, that sense wins. A sense lists a role only where a source ties the
+sense to it; big, thin and wobble have such a role. Mood and character words name no control:
 they carry `no control`, a card hint or `unmapped`, and links to the mood
 entries of the music dictionary.
 
 Every number sits in `values` with its unit, its sources and a tag that
 says how many sources back it: `source states` for two or more, `single
 source` for one, `snippet` when only search excerpts back it. A meaning
-holds no digit. An entry no source describes is `inferred` and holds no
-number. A fact that rests only on a store or vendor tag list, on a synth's
+holds no digit. A meaning that rests on the listener data alone is
+`crowd data`; the listener data is derived, so it never counts toward
+`source states` or `single source`. An entry no source describes is
+`inferred` and holds no number. A fact that rests only on a store or vendor tag list, on a synth's
 own control names, or on a research note with no public source is left
 out.
 
 `cargo xtask agreement --data <folder>` fetches the EQ and reverb tables
 of the pinned listener data (source `crowd-eq`) by SHA-256 into a folder
-outside the repository, and refuses one inside it. It runs `xtask/golden/word_agreement.py` with
+outside the repository, and refuses one inside it, a `..` path and a
+link that leads into it. It runs `xtask/golden/word_agreement.py` with
 the pinned tools. The script groups the EQ curves by word and writes the
 mean pairwise correlation of each word's curves, rounded to two decimals,
 with the curve count. The class is high from 0.45, medium from 0.20 and
@@ -214,9 +217,12 @@ Reverb rows carry comma-separated words and count once per word; each
 word's effect is its mean minus the global mean over the global standard
 deviation, and its spread ratio is its variance over the global variance,
 averaged over five parameters. Band means and reverb numbers need five
-rows, so no single row can be read back, and the script fails if its
-output holds a row. The script reproduces every value of the draft table
-of issue 101. CI needs no Python: the tests recompute class and flag from
+rows, so no single row can be read back. A word with fewer than five
+curves is written only when it has an entry, so no free-text label of a
+single listener lands in the file; the xtask passes the entry words to the
+script on stdin, and the script fails if its output holds another label
+or a source row. After adding an entry, run the task again. CI needs no
+Python: the tests recompute class and flag from
 the stored numbers and compare each entry with its word's numbers.
 
 `dictionary/words/ladder.json` maps modifiers such as "slightly" and
@@ -229,7 +235,11 @@ words name a neutral control group.
 
 `cargo xtask word-ranks` recomputes the ranked list of describing words
 locally from the pinned preset banks, sound tags and captions, and writes
-counts only to `dictionary/words/ranks.json`. A test fails when a word of
+counts only to `dictionary/words/ranks.json`, keyed by neutral source
+ids. The describing-word counts land within 1 to 3 of the published ones.
+The style and technique counts are fits: the published list names the
+groups but not their variants, and 12 of 26 style groups and 7 of 26
+technique groups match in every cell. A test fails when a word of
 tier W1 or W2, or a word of the task drafts, has no entry.
 
 To add a word, add its entry to the axis file, cite only ids of

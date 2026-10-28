@@ -8,7 +8,10 @@ only, as JSON on stdout: no curve, no parameter set and no row text.
 EQ: rows are grouped by their lowercase text. Each curve holds 40 band
 values. Agreement is the mean pairwise Pearson correlation of the curves of
 one word, rounded to two decimals. The class is known only from 8 curves.
-Band means and the peak band need 5 curves, so no single curve shows.
+Band means and the peak band need 5 curves, so no single curve shows. A
+word with fewer than 5 curves is written only when the word dictionary has
+an entry for it: the list of entry words comes on stdin, so no free-text
+label of a single listener reaches the output.
 
 Reverb: a row's text is a comma-separated list of words, and the row counts
 once for each. A word's effect on a parameter is its mean minus the global
@@ -58,7 +61,7 @@ def agreement_class(value, n):
     return "low"
 
 
-def eq_words(path):
+def eq_words(path, keep):
     rows = pq.read_table(path).to_pylist()
     keys = rows[0]["param_keys"]
     if len(keys) != 40 or any(row["param_keys"] != keys for row in rows):
@@ -71,6 +74,8 @@ def eq_words(path):
     for word in sorted(curves):
         matrix = np.array(curves[word])
         n = len(matrix)
+        if n < AGGREGATE_FROM and word not in keep:
+            continue
         value = None
         if n >= 2:
             pairs = np.triu_indices(n, 1)
@@ -148,7 +153,8 @@ def holds_a_row(document, eq_rows, reverb_rows):
 
 def main():
     eq_path, reverb_path = sys.argv[1], sys.argv[2]
-    eq, eq_rows = eq_words(eq_path)
+    keep = set(json.load(sys.stdin)["entry_words"])
+    eq, eq_rows = eq_words(eq_path, keep)
     reverb, reverb_rows, distinct = reverb_words(reverb_path)
     document = {
         "tools": TOOLS,
@@ -158,6 +164,9 @@ def main():
         "eq": eq,
         "reverb": reverb,
     }
+    stray = [e["word"] for e in eq if e["n"] < AGGREGATE_FROM and e["word"] not in keep]
+    if stray:
+        sys.exit(f"the output holds labels of fewer than {AGGREGATE_FROM} rows: {len(stray)}")
     if holds_a_row(document, eq_rows, reverb_rows):
         sys.exit("the output holds a row of the source data")
     json.dump(document, sys.stdout)

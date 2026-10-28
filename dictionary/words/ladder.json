@@ -25,7 +25,7 @@
     { "control": "filter resonance", "step": "mild", "value": { "what": "resonance of a lo-fi low-pass", "low": 10, "high": 15, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
     { "control": "filter resonance", "step": "medium", "value": { "what": "resonance of a wobble bass", "low": 30, "high": 50, "unit": "%", "sources": ["dubstep-guide"], "tag": "single source" } },
     { "control": "bit depth", "step": "mild", "value": { "what": "bit depth of a subtle crush", "low": 12, "high": 14, "unit": "bits", "sources": ["lofi-piano"], "tag": "single source" } },
-    { "control": "bit depth", "step": "mild", "value": { "what": "blend of the crushed signal", "low": 30, "high": 50, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "crush blend", "step": "mild", "value": { "what": "blend of the crushed signal", "low": 30, "high": 50, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
     { "control": "bit depth", "step": "strong", "value": { "what": "bit depth of an audible crush", "low": 6, "high": 12, "unit": "bits", "sources": ["snip-bitcrush"], "tag": "snippet" } },
     { "control": "bit depth", "step": "edge", "value": { "what": "bit depth below which the sound breaks up", "low": 10, "high": 12, "unit": "bits", "sources": ["lofi-piano"], "tag": "single source" } },
     { "control": "pluck decay", "step": "mild", "value": { "what": "a short pluck decay", "low": 150, "high": 150, "unit": "ms", "sources": ["pluck-guide"], "tag": "single source" } },
