@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.14.0](https://github.com/Akurganow/sound-to-patch/compare/531f63555ac0c2cd4a195d89e4eedafd5794519e..v0.14.0) - 2026-10-28
+#### Features
+- (**skill**) add the shared agent reference with its plugin, catalogue and checks (#276) - ([531f635](https://github.com/Akurganow/sound-to-patch/commit/531f63555ac0c2cd4a195d89e4eedafd5794519e)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.13.0](https://github.com/Akurganow/sound-to-patch/compare/3d3fdccb51727878d3da0c4dc33153fd3a238cd4..v0.13.0) - 2026-10-28
 #### Features
 - (**notes**) add the notes command, clean up decoded notes and bench the step (#242) - ([3d3fdcc](https://github.com/Akurganow/sound-to-patch/commit/3d3fdccb51727878d3da0c4dc33153fd3a238cd4)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
