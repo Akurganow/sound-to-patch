@@ -50,9 +50,10 @@ fn a_closed_pipe_is_not_an_error() {
 }
 
 /// The success case of `analyze`, on a generated WAV in a temporary
-/// folder, which a trycmd case cannot name: the tempo line, then both
-/// written files. The notes come from a file, so the f0 track, slow in a
-/// debug build, does not run; the report tests check the notes-step lines.
+/// folder, which a trycmd case cannot name: the tempo line, the pitch
+/// lines, then both written files. The notes come from a file, so the
+/// model does not run; the report tests check the notes-step lines. The f0
+/// track still runs for the pitch layer, and it takes most of the time.
 #[test]
 fn analyze_writes_both_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
@@ -70,11 +71,16 @@ fn analyze_writes_both_files_for_a_generated_wav() {
         .unwrap();
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).unwrap();
-    // 1.2 s at 120 BPM holds 2 beats, too few to refine the tempo.
+    // 1.2 s at 120 BPM holds 2 beats, too few to refine the tempo. The
+    // given A1 is the one low note; the saws above it hold no drop.
     assert_eq!(
         stdout,
         format!(
-            "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it\nwrote {}\nwrote {}\n",
+            "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it\n\
+             glides: 0, 0 too short\n\
+             pitch drops: 0 of 1 low strikes\n\
+             vibrato: 0 of 0 steady spans\n\
+             wrote {}\nwrote {}\n",
             out.join("layers.json").display(),
             out.join("spectrogram.png").display()
         )
@@ -104,9 +110,14 @@ fn analyze_warns_about_corrupt_packets_on_stderr() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stdout
-            .lines()
-            .all(|line| line.starts_with("wrote ") || line.starts_with("tempo: ")),
+        stdout.lines().all(|line| !line.contains("packet")),
+        "{stdout}"
+    );
+    assert!(
+        stdout.ends_with(&format!(
+            "wrote {}\n",
+            out.join("spectrogram.png").display()
+        )),
         "{stdout}"
     );
     assert_eq!(stderr.lines().count(), 1, "{stderr}");

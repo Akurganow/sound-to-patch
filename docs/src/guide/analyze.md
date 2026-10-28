@@ -1,8 +1,8 @@
 # Analysing a stem
 
 `sound-to-patch analyze` reads one stem and writes a report of its tempo,
-notes, level, spectrum, band edge and stereo image, with a spectrogram
-image. The report is what an agent reads before it writes an edit list for
+notes, level, spectrum, band edge, stereo image, glides, pitch drops and
+vibrato, with a spectrogram image. The report is what an agent reads before it writes an edit list for
 the [preset commands](preset.md). The
 [CLI reference](../reference/cli.md#analyze) lists every flag, and the
 [layer report page](../reference/formats/layers.md) every field.
@@ -28,6 +28,9 @@ octave check: 16 notes, 0 moved down an octave, 0 flagged, 0 unchecked
 ghost merge: 16 notes
 split join: 6 notes
 quiet-note guard: 6 notes, 0 dropped below 40 dB
+glides: 0, 0 too short
+pitch drops: 0 of 5 low strikes
+vibrato: 0 of 0 steady spans
 wrote bass/layers.json
 wrote bass/spectrogram.png
 ```
@@ -37,6 +40,9 @@ The first line is the tempo: `--bpm` refined from the stem's onsets, as
 4 s stem is too short to refine it. The next lines are the notes step of
 [notes](notes.md), which `analyze` runs once to know the stem's notes;
 `--profile` overrides its settings as there. `analyze` writes no MIDI file.
+The last three lines are the [pitch layer](../analysis/pitch.md): this
+saw repeats one note with no glide or vibrato, and none of its five low
+strikes falls in pitch. Each line lists what it found, with its numbers.
 The files go into a folder named after the stem, next to it. `--out` picks
 another folder. A warning about a packet that did not decode goes to
 standard error; the stem keeps its timing, with silence in its place.
@@ -50,7 +56,8 @@ sound-to-patch analyze bass.wav --bpm 120 --notes bass.mid
 ```
 
 The file's notes replace the notes step, and the transcription model does
-not run. The notes set the frame length, 8192 samples for a bass below
+not run. The f0 track still reads the stem, for the pitch layer, and it
+takes most of the time. The notes set the frame length, 8192 samples for a bass below
 100 Hz, and let the report fill `centroid_over_f0` and the stereo phase
 `ipd_deg`. The file's tempo must match `--bpm` or the refined tempo, so a
 file that `notes` wrote at the refined tempo reads too. Notes on MIDI

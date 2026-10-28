@@ -21,8 +21,9 @@ pub struct AnalyzeArgs {
     /// Use --bpm as it is, without refining it from the stem
     #[arg(long)]
     pub bpm_exact: bool,
-    /// A MIDI file with the stem's notes, instead of transcribing the stem.
-    /// Its tempo must match --bpm or the refined tempo
+    /// A MIDI file with the stem's notes, instead of transcribing the stem;
+    /// the f0 track still reads the stem. Its tempo must match --bpm or the
+    /// refined tempo
     #[arg(long, value_name = "FILE")]
     pub notes: Option<PathBuf>,
     /// Decode with the settings of this kind of stem instead of the

@@ -16,8 +16,9 @@ Every statement carries a tag:
   work may tune.
 
 `analyze` runs decoding, the tempo, the notes step (unless `--notes` gives
-the notes), the stem, the stereo screen, the descriptors and the report
-today [fact]. `notes` runs decoding, the tempo and the notes step [fact].
+the notes), the [pitch layer](pitch.md), the stem, the stereo screen, the
+descriptors and the report today [fact]. With `--notes` the f0 track still
+reads the stem, for the pitch layer [fact]. `notes` runs decoding, the tempo and the notes step [fact].
 The analytic signal, the masks, the modulation spectrum, the periodogram and
 the decay fits are library stages that the layer estimators of later
 releases call [fact].
@@ -672,7 +673,8 @@ frames [fact].
 ## The report
 
 - `layers.json` holds the `schema` and `synth` fields, the `stem` group,
-  the `transcription` group and the `conventions` group; the
+  the `transcription` group, the `pitch` group and the `conventions`
+  group; the
   [layer report page](../reference/formats/layers.md) lists them [fact].
 - Output is deterministic: two runs on the same input write the same bytes
   [fact]. `layers.json` names its stem in `source`, and a run of another

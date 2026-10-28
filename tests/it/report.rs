@@ -122,13 +122,15 @@ fn request<'a>(stem: &'a Path, notes: Option<&'a Path>, out: &'a Path) -> Analyz
     }
 }
 
+/// The transcriber with an empty f0 track. The pYIN track takes minutes
+/// per stem in a debug build, and it runs on every stem, given notes or
+/// not, for the pitch layer; `tests/it/pitch.rs` tests that layer on
+/// committed tracks.
 fn transcriber() -> Transcriber {
-    Transcriber::new().unwrap()
+    untracked(Transcriber::new().unwrap())
 }
 
-/// `transcriber` with an empty f0 track. The pYIN track takes minutes per
-/// stem in a debug build, and a test of the tempo or the notes step's
-/// wiring does not read it.
+/// `transcriber` with an empty f0 track.
 fn untracked(transcriber: Transcriber) -> Transcriber {
     transcriber.with_tracker(|_, _| Ok(PitchTrack::default()))
 }
@@ -138,7 +140,7 @@ fn run(stem: &Path, notes: Option<&Path>, out: &Path) -> Value {
     serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap()
 }
 
-fn validator() -> jsonschema::Validator {
+pub(crate) fn validator() -> jsonschema::Validator {
     let schema: Value =
         serde_json::from_str(&fs::read_to_string("schemas/layers.schema.json").unwrap()).unwrap();
     jsonschema::validator_for(&schema).unwrap()
@@ -158,7 +160,7 @@ fn definition(name: &str) -> jsonschema::Validator {
 
 /// The report with every number replaced by its JSON type, so a snapshot
 /// fixes keys, nesting, strings and flags but no measured value.
-fn shape(value: &Value) -> Value {
+pub(crate) fn shape(value: &Value) -> Value {
     match value {
         Value::Number(n) if n.is_u64() || n.is_i64() => json!("<integer>"),
         Value::Number(_) => json!("<number>"),
@@ -235,7 +237,7 @@ fn the_schema_accepts_the_report_and_rejects_broken_ones() {
 }
 
 #[test]
-fn the_layer_group_shape_takes_numbers_as_suggested_edits() {
+fn the_layer_group_shape_takes_edit_records_as_suggested_edits() {
     let group = definition("layer_group");
     let confidence = json!({"level": "medium", "reasons": [{"code": "active_frames", "value": 12}], "estimate": true});
     let valid = json!({
@@ -243,12 +245,18 @@ fn the_layer_group_shape_takes_numbers_as_suggested_edits() {
         "confidence": confidence,
         "flags": {"needs_review": false},
         "needs_render": true,
-        "suggested_edits": {"filter1_cutoff_hz": 410},
+        "suggested_edits": [{"param": "filter_1_cutoff", "value": "410 Hz", "reason": "the cutoff"}],
     });
     assert!(group.is_valid(&valid));
-    let mut string_edit = valid.clone();
-    string_edit["suggested_edits"]["filter1_cutoff_hz"] = json!("410");
-    assert!(!group.is_valid(&string_edit));
+    let mut bare_number = valid.clone();
+    bare_number["suggested_edits"] = json!([410]);
+    assert!(!group.is_valid(&bare_number));
+    let mut number_map = valid.clone();
+    number_map["suggested_edits"] = json!({"filter1_cutoff_hz": 410});
+    assert!(!group.is_valid(&number_map));
+    let mut empty = valid.clone();
+    empty["suggested_edits"] = json!([]);
+    assert!(group.is_valid(&empty));
     let mut thin = valid;
     thin["confidence"] =
         json!({"reasons": [{"code": "too_few_notes", "value": 1}], "estimate": false});
@@ -436,7 +444,7 @@ fn given_notes_reach_the_report_and_run_no_transcriber() {
     let notes = midi(dir.path(), 120.0);
     let out = dir.path().join("out");
     let (counting, windows) = crate::transcribe::counting();
-    let analysis = analyze(&request(&path, Some(&notes), &out), &counting).unwrap();
+    let analysis = analyze(&request(&path, Some(&notes), &out), &untracked(counting)).unwrap();
     assert_eq!(windows.load(Ordering::SeqCst), 0);
     assert!(analysis.transcription.is_none());
     let report: Value =

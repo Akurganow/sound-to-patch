@@ -130,6 +130,23 @@ reason_codes! {
     OnsetsPerBeat,
     /// `--bpm-exact` was given, so the tempo was not refined.
     BpmExact,
+    /// The number of voiced frames of the f0 track.
+    VoicedFrames,
+    /// The line plays chords, so a method for one voice at a time made no
+    /// estimate.
+    PolyphonicLine,
+    /// How long a pitch motion moved faster than the glide floor, in
+    /// seconds. A short motion reads a glide's time less well.
+    MotionSpan,
+    /// The RMS residual of a fit: in cents for a glide, as a share of the
+    /// drop for a pitch drop.
+    FitResidual,
+    /// The RMS deviation of the stable pitches around a glide from their
+    /// medians, in cents. A unison beats and the track wanders, which
+    /// skews the glide's time.
+    PitchJitter,
+    /// The share of a contour's power that a fitted sine explains.
+    SineShare,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

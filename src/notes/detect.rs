@@ -257,6 +257,14 @@ fn range_of(low: f64, high: f64) -> PitchRange {
 /// voice that moves under held notes. A line holds one note at a time; the
 /// decoder's late ends overlap the next note only in part. An octave-up
 /// ghost shares its note's pitch class, so it does not count.
+/// The voicing of a note list by the rule detection applies to its probe
+/// notes: polyphonic when [`CHORD_SHARE`] or more of the notes share at
+/// least [`CHORD_OVERLAP`] of their span with a note of another pitch class.
+#[must_use]
+pub fn voicing_of_notes(notes: &NoteList) -> Voicing {
+    voicing_of(chord_share(notes))
+}
+
 fn chord_share(notes: &NoteList) -> f64 {
     let notes = notes.notes();
     let class = |pitch: MidiPitch| cast::round_to_usize(pitch.get()).unwrap_or(0) % 12;

@@ -2,8 +2,9 @@
 //! `analyze`, and `notes.mid` from `notes`.
 //!
 //! [`analyze`] decodes the stem, refines its tempo, reads the note list if
-//! one is given or else runs the notes step, runs the stem estimators and
-//! the descriptors, and writes both files into the output folder.
+//! one is given or else runs the notes step, reads the pitch layer, runs
+//! the stem estimators and the descriptors, and writes both files into the
+//! output folder.
 //! [`notes`] refines the tempo, transcribes the stem and writes its notes
 //! into the same folder. The schema of `layers.json` is committed as
 //! `schemas/layers.schema.json`.
@@ -16,9 +17,11 @@ use std::path::{Path, PathBuf};
 use crate::audio::{self, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
 use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
+use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
 use crate::notes::{
-    DEFAULT_VELOCITY, MidiError, MidiWriteError, NotesError, Profile, QUIET_GATE, Transcriber,
-    Transcription, Velocities, midi_track_name, read_midi_near, transcribe_stem, write_named_midi,
+    DEFAULT_VELOCITY, MidiError, MidiWriteError, NoteList, NotesError, PitchTrack, Profile,
+    QUIET_GATE, Transcriber, Transcription, Velocities, midi_track_name, read_midi_near,
+    transcribe_stem, voicing_of_notes, write_named_midi,
 };
 use crate::synth::Synth;
 use crate::units::{Bpm, Seconds};
@@ -103,17 +106,20 @@ pub struct Analysis {
     pub tempo: Tempo,
     /// The notes step, `None` when `--notes` gave the notes.
     pub transcription: Option<Transcription>,
+    /// The pitch layer: glides, pitch drops and vibrato.
+    pub pitch: PitchLayer,
     /// The packets that did not decode and became silence.
     pub skipped: Vec<SkippedPacket>,
 }
 
 impl Analysis {
     /// Returns the lines that tell what each step found, in order: the
-    /// tempo, then the notes step when it ran.
+    /// tempo, the notes step when it ran, then the pitch layer.
     #[must_use]
     pub fn summary(&self) -> Vec<String> {
         std::iter::once(self.tempo.summary())
             .chain(self.transcription.iter().flat_map(transcription_summary))
+            .chain(self.pitch.summary())
             .collect()
     }
 }
@@ -123,7 +129,8 @@ impl Analysis {
 ///
 /// The tempo is refined from the stem unless the request says `bpm_exact`.
 /// Without a note list the stem runs through [`transcribe_stem`] once,
-/// with `transcriber`; with one, the transcriber never runs.
+/// with `transcriber`; with one, the model never runs, but the f0 track
+/// of `transcriber` still reads the stem for the pitch layer.
 ///
 /// Both files are replaced; nothing else in the folder changes. Each file
 /// is written to a temporary sibling and renamed into place, and
@@ -154,10 +161,15 @@ pub fn analyze(
         request.bpm,
         request.bpm_exact,
     )?;
-    let (notes, transcription) = if let Some(path) = request.notes {
+    let (notes, transcription, track) = if let Some(path) = request.notes {
         let notes =
             read_midi_near(path, tempo.given(), tempo.trusted()).map_err(AnalyzeError::Notes)?;
-        (Some(notes), None)
+        // The given notes replace the model run; the f0 track still reads
+        // the audio, for the pitch layer.
+        let track = transcriber
+            .track(&mono, stem_audio.sample_rate())
+            .map_err(|error| AnalyzeError::Transcription(NotesError::Track(error)))?;
+        (Some(notes), None, Some(track))
     } else {
         let transcription = transcribe_stem(
             transcriber,
@@ -169,8 +181,23 @@ pub fn analyze(
         .map_err(AnalyzeError::Transcription)?;
         // A stem without notes keeps the frame rule of a stem without a list.
         let notes = (!transcription.notes.is_empty()).then(|| transcription.notes.clone());
-        (notes, Some(transcription))
+        (notes, Some(transcription), None)
     };
+    let empty = NoteList::default();
+    let note_list = notes.as_ref().unwrap_or(&empty);
+    let pitch = PitchLayer::of(&PitchInput {
+        mono: &mono,
+        rate: stem_audio.sample_rate(),
+        track: track
+            .as_ref()
+            .or(transcription.as_ref().map(|t| &t.track))
+            .unwrap_or(&PitchTrack::default()),
+        notes: note_list,
+        voicing: transcription
+            .as_ref()
+            .map_or_else(|| voicing_of_notes(note_list), |t| t.voicing),
+    })
+    .map_err(AnalyzeError::Pitch)?;
     // The stem and descriptor steps read the channels, not the mono mix.
     drop(mono);
     let grid = BeatGrid::new(tempo.used(), Seconds::clamped(0.0));
@@ -184,7 +211,15 @@ pub fn analyze(
         stem.hard_limited(),
     )?;
     let record = transcription.as_ref().map(|t| &t.record);
-    let json = layers_json(&stem, &descriptors, request.synth, &source, &tempo, record)?;
+    let json = layers_json(
+        &stem,
+        &descriptors,
+        request.synth,
+        &source,
+        &tempo,
+        record,
+        &pitch,
+    )?;
     let png = Spectrogram::of(stem.mid(), stem.sample_rate()).to_png()?;
 
     std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
@@ -215,6 +250,7 @@ pub fn analyze(
         spectrogram,
         tempo,
         transcription,
+        pitch,
         skipped,
     })
 }
@@ -504,6 +540,8 @@ pub enum AnalyzeError {
     },
     /// The model run, a decode or the f0 track failed.
     Transcription(NotesError),
+    /// The pitch layer failed.
+    Pitch(PitchError),
     /// The stem gave no note.
     NoNotes {
         /// The file name of the stem.
@@ -554,6 +592,7 @@ impl fmt::Display for AnalyzeError {
                 )
             }
             Self::Transcription(error) => write!(f, "{error}"),
+            Self::Pitch(error) => write!(f, "{error}"),
             Self::NoNotes { source } => write!(
                 f,
                 "`{source}` gave no note, so nothing was written: it is silent, or no note sounds within {} dB of its loudest passage. Check the stem, or pass --profile bass|lead|pad",
@@ -579,6 +618,7 @@ impl Error for AnalyzeError {
             Self::Notes(error) => Some(error),
             Self::Decode(error) => Some(error),
             Self::Transcription(error) => Some(error),
+            Self::Pitch(error) => Some(error),
             Self::Midi(error) => Some(error),
             Self::Write { source, .. } => Some(source),
             Self::OutIsFile { .. }

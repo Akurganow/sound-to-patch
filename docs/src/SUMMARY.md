@@ -12,6 +12,7 @@
 # Analysis
 
 - [Pipeline](analysis/pipeline.md)
+- [Pitch layer](analysis/pitch.md)
 - [Common methods](analysis/methods.md)
 
 # Reference
