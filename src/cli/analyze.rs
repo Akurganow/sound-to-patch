@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::notes::Profile;
 use crate::synth::{Synth, SynthArg, SynthError};
 use crate::units::Bpm;
 
@@ -12,12 +13,22 @@ use crate::units::Bpm;
 pub struct AnalyzeArgs {
     /// The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A.
     pub stem: PathBuf,
-    /// The tempo of the stem in beats per minute, 4 to 1000.
+    /// The tempo of the stem in beats per minute, 4 to 1000. It is refined
+    /// from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact
+    /// is given
     #[arg(long, value_name = "BPM", value_parser = parse_bpm)]
     pub bpm: Bpm,
-    /// A MIDI file with the stem's notes. Its tempo must match --bpm.
+    /// Use --bpm as it is, without refining it from the stem
+    #[arg(long)]
+    pub bpm_exact: bool,
+    /// A MIDI file with the stem's notes, instead of transcribing the stem.
+    /// Its tempo must match --bpm or the refined tempo
     #[arg(long, value_name = "FILE")]
     pub notes: Option<PathBuf>,
+    /// Decode with the settings of this kind of stem instead of the
+    /// detected ones
+    #[arg(long, value_enum, value_name = "PROFILE", conflicts_with = "notes")]
+    pub profile: Option<Profile>,
     /// The output folder [default: a folder named after the stem, next to
     /// it]
     #[arg(short, long, value_name = "DIR")]

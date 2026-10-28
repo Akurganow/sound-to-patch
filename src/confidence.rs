@@ -103,6 +103,33 @@ reason_codes! {
     /// its floor, so the band edge is the Nyquist frequency at low
     /// confidence.
     NoBandEdge,
+    /// The best score of the tempo search over its median score. Below the
+    /// trust threshold the given tempo stays; 0 when the stem has no
+    /// onsets.
+    TempoPeak,
+    /// The share of the onset strength that repeats at the refined beat: the
+    /// best score of the tempo search over its lag count times the
+    /// zero-lag autocorrelation. Below the trust threshold the given tempo
+    /// stays.
+    BeatPeriodicity,
+    /// The share of the onset strength that repeats every 2 or every 4
+    /// refined beats, the better of the two, as [`Self::BeatPeriodicity`]
+    /// reads it on those lags alone. Onsets on every other beat or once a
+    /// bar read near 1. It trusts a sparse part when the beat periodicity
+    /// does not; 0 when the stem holds too few beats for it. At most 1.
+    SparsePeriodicity,
+    /// The share of the energy of the raw onset strength, before its
+    /// low-pass, within 25 ms of its peaks. Hits and plucks read near 1; a
+    /// swell, such as a pad under a slow tremolo, reads low. A refined
+    /// tempo is trusted only with sharp onsets.
+    OnsetSharpness,
+    /// The peaks of the onset strength per beat of the slowest tempo
+    /// searched. The sparse periodicity trusts a tempo only for a part
+    /// this sparse, because a dense grid, such as sixteenth notes, lines
+    /// up with any spacing that is a whole number of its steps.
+    OnsetsPerBeat,
+    /// `--bpm-exact` was given, so the tempo was not refined.
+    BpmExact,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

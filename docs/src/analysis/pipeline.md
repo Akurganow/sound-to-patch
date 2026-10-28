@@ -15,10 +15,12 @@ Every statement carries a tag:
 - **[proposal]**: a threshold or rule chosen for this project that later
   work may tune.
 
-`analyze` runs decoding, the stem, the stereo screen, the descriptors and
-the report today [fact]. The analytic signal, the masks, the modulation
-spectrum, the periodogram and the decay fits are library stages that the
-layer estimators of later releases call [fact].
+`analyze` runs decoding, the tempo, the notes step (unless `--notes` gives
+the notes), the stem, the stereo screen, the descriptors and the report
+today [fact]. `notes` runs decoding, the tempo and the notes step [fact].
+The analytic signal, the masks, the modulation spectrum, the periodogram and
+the decay fits are library stages that the layer estimators of later
+releases call [fact].
 
 ## Decoding
 
@@ -40,11 +42,126 @@ layer estimators of later releases call [fact].
   µs; the lag is documented and not compensated [synthetic]. A NaN or
   infinite sample stops the conversion with its index [fact].
 
+## Tempo
+
+`--bpm` is close to the stem's tempo, not exact: a tempo taken from a file
+name is often 1 to 2 % off, and that drifts notes off the grid within a few
+bars [proposal]. Both commands refine it from the stem before any step that
+reads it: the minimum note length, the MIDI tempo and the beat grid
+[fact]. `--bpm-exact` skips the search and uses `--bpm` as given [fact].
+
+- Onset strength: the mono mix in periodic Hann frames of 46.4 ms (2048
+  samples at 44.1 kHz; the power of two nearest 46.4 ms at other rates)
+  with a hop of about 1 ms [fact]. The bins sum to power bands a third of
+  an octave wide from 30 Hz, each at least 6 bins, so a band holds whole
+  main lobes and a steady partial keeps its energy from frame to frame
+  [fact]. Each band power is compressed as
+  $\ln(1 + P / P_{knee})$, with the knee 60 dB below a full-scale bin
+  [fact]. The strength is the summed rise of every band against the frame
+  10 ms earlier [fact].
+- The strength is low-passed at 20 Hz forward and backward, its centred
+  mean over 100 ms is removed, and what stays below 10 % of the largest
+  rise becomes 0, so only onsets remain [fact].
+- Search: every tempo $t$ in steps of 0.01 BPM with
+  $|t_{given} / t - 1| \le 0.03$ [fact]. Each scores the unbiased
+  autocorrelation of the strength, read by linear interpolation at
+  $k \cdot 60 / t$ seconds and summed over $k = 1$ to $K$ beats, with
+  $K = \min(32, \lfloor \text{beats} \rfloor - 4)$ [fact]. The search
+  spans 2.91 % below to 3.09 % above `--bpm`, so a `--bpm` 3 % off either
+  way still holds the truth [fact]. The window is so narrow that half and
+  double the tempo lie outside it [fact].
+- Trust: the best tempo replaces `--bpm` when three things hold
+  [proposal]:
+  - Its score is at least 1.5 times the median score of the search
+    (`tempo_peak`).
+  - The onsets are hits, not swells: at least 0.9 of the energy of the
+    band rise, before its low-pass, lies within 25 ms of its peaks, each
+    the largest within 30 ms (`onset_sharpness`).
+  - One of two shares is high enough. The beat share is the best score over
+    $K$ times the zero-lag autocorrelation, and needs 0.4
+    (`beat_periodicity`). The sparse share reads the same sum on every
+    second or every fourth beat lag alone, the better of the two, and needs
+    0.75 (`sparse_periodicity`), with at most 0.8 peaks of the onset
+    strength per beat (`onsets_per_beat`). Both shares stop at 1.
+
+  The sparse share is read once the stem holds 4 such lags, 12 beats for
+  every second lag and 20 for every fourth [fact]. Otherwise the tempo is
+  reported at low confidence and `--bpm` stays [fact]. A stem of fewer
+  than 8 beats, or one without onsets, keeps `--bpm` and reports no
+  refined tempo [fact].
+- Generated drum, bass and lead parts at 70.3, 97.55, 123.4, 147.81 and
+  178.2 BPM, 37 beats each at 22,050 Hz, with `--bpm` off by -3, -1, +1
+  and +3 %: every refined tempo lies within 0.05 BPM of the truth
+  [synthetic]. Their `beat_periodicity` reads 0.78 to 0.99; pad chords that
+  change once a bar read 0.04 at most and keep `--bpm` [synthetic]. The
+  0.4 threshold sits between the two [proposal].
+- One kick a bar repeats on a quarter of the beat lags, so its
+  `beat_periodicity` reads 0.22 to 0.24 and its `sparse_periodicity` 0.95
+  to 0.97 at 37 beats [synthetic]. Kicks a bar and kicks on every other
+  beat, on the same grid, refine to the exact tempo [synthetic]. A kick a
+  bar at 120 BPM refines from 21 beats, once the share reads every fourth
+  lag; at 20 beats it reads 0.34 [synthetic].
+- The sparse share needs more than the beat share, because its fewer lags
+  line up by chance more often [fact]. Kick parts that keep `--bpm`, with
+  it 3.5 % or 4 % off or under a tempo ramp of 1 %, read at most 0.63;
+  sparse parts read 0.8 or more, swung or with onsets moved by 8 ms
+  [synthetic]. The 0.75 threshold sits between them [proposal].
+- A dense grid lines up with any spacing that is a whole number of its
+  steps [fact]. Sixteenth hats at 70.3 BPM with `--bpm` 3.5 % off read a
+  `sparse_periodicity` of 0.98 at 16/15 of the truth, where 4 beats are 15
+  sixteenths [synthetic]. Kick-a-bar parts read 0.19 to 0.26 onsets per
+  beat, kicks on every other beat 0.48 to 0.52, leads 1.23 or more and
+  hats 3 or more [synthetic]. The 0.8 limit sits between them, so a lead or
+  a hat part needs the beat share [proposal].
+- A pad under a smooth tremolo repeats as well as a drum part, and reads a
+  beat or sparse share near 1 [synthetic]. Its rises spread over 180 ms or
+  more [fact]. A chord under a cosine tremolo of half a beat to 4 beats
+  reads an `onset_sharpness` of 0.80 at most where its shares pass, and
+  keeps `--bpm` [synthetic]. Chord pads read 0.76 at most; drum, hat,
+  bass, lead and kick parts read 0.985 or more, and a bass with an 80 ms
+  attack 0.92 [synthetic]. The 0.9 threshold sits between them
+  [proposal].
+- Only a smooth tremolo keeps `--bpm`: one at an eighth-note rate or
+  slower, with a gentle shape [synthetic]. A gate reads as hits [fact]. A
+  chord gated by a square LFO, or pumped with an 80 ms recovery as by a
+  sidechain, every half beat to 2 beats at 117 or 123 BPM with `--bpm 120`,
+  refines to the tempo of the gate [synthetic]. That is the right tempo
+  when the gate is locked to the song [fact].
+- Swing at two thirds of the beat refines within 0.05 BPM, and onsets moved
+  by up to 8 ms at random within 0.1 BPM [synthetic]. A `--bpm` 3.5 % or
+  4 % off, and a tempo ramp of 2 % or 3 % either way, keep `--bpm`
+  [synthetic].
+- A kick a bar at any tempo from 40 to 180 BPM in 0.5 BPM steps, 37 to 64
+  beats long, with `--bpm` 1 % off, refines to within 0.01 BPM
+  [synthetic]. Most candidates score exactly 0 for such a part, so the
+  median score can be 0; the peak ratio divides by at least $10^{-9}$ of
+  the best score, and reads at most $10^9$ [fact].
+- Limits:
+  - A loop whose bar is not 4 beats long but lies within 3 % of it, such
+    as a kick every 3.9 or 4.1 beats, refines to the tempo at which the
+    loop is 4 beats [synthetic]. The onsets cannot tell such a loop from
+    one at that tempo [fact].
+  - Silence dilutes the sparse share [fact]. A kick a bar of 37 beats keeps
+    `--bpm` with 12 beats of silence after it or 24 before it [synthetic].
+  - A soft attack lowers the sharpness [fact]. A bass in eighth notes with
+    a linear attack of 100 ms keeps `--bpm` at 178.2 BPM, and one of
+    120 ms at every tempo tested [synthetic]. Another sound may reach that
+    point sooner.
+- A steady tone whose period divides the beat, such as 110 Hz at 120 BPM,
+  finds no onset and keeps `--bpm` [synthetic].
+- The beat offset stays 0: only the period is refined [fact]. A stem whose
+  tempo drifts is not followed [fact].
+
+The command prints one line for the step: the tempo used and why.
+
 ## The notes step
 
 `sound-to-patch notes` turns a stem into `notes.mid`: one model run, one f0
 track, the decode settings, the decode, the cleanup and the MIDI file, in
-that order [fact]. `analyze` does not call it in this release [fact].
+that order [fact]. `analyze` runs the same step once, without the MIDI file,
+unless `--notes` gives the notes, and the model then never runs [fact]. The
+notes set the frame length of the stem and fill `centroid_over_f0` and the
+stereo phase [fact].
 
 ### Transcription model
 

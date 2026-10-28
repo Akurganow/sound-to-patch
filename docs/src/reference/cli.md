@@ -30,6 +30,8 @@ Options:
 $ sound-to-patch analyze --help
 Analyse a stem and write layers.json and spectrogram.png.
 
+The tempo is refined from the stem near --bpm, and the stem is transcribed unless --notes gives its notes. Each step prints what it found.
+
 Example: sound-to-patch analyze bass.wav --bpm 140
 
 Usage: sound-to-patch analyze [OPTIONS] --bpm <BPM> <STEM>
@@ -40,10 +42,21 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
+
+      --bpm-exact
+          Use --bpm as it is, without refining it from the stem
 
       --notes <FILE>
-          A MIDI file with the stem's notes. Its tempo must match --bpm
+          A MIDI file with the stem's notes, instead of transcribing the stem. Its tempo must match --bpm or the refined tempo
+
+      --profile <PROFILE>
+          Decode with the settings of this kind of stem instead of the detected ones
+
+          Possible values:
+          - bass: B0 to F#4, with the minimum length from the BPM
+          - lead: C2 to B6, with the minimum length from the BPM. Plucks use it too
+          - pad:  C2 to B6, with the decoder's default minimum length. Chords use it too
 
   -o, --out <DIR>
           The output folder [default: a folder named after the stem, next to it]
@@ -89,19 +102,32 @@ path that is a file, such as the default folder of a stem without an
 extension, stops the command with a request for `--out`.
 
 Without `--out`, the folder is named after the stem file and sits next to
-it: `stems/bass.wav` writes `stems/bass/`. With `--notes`, the MIDI file
-gives the note list. Its note times follow the file's tempo map, and every
-tempo in the file must lie within 0.01 BPM of `--bpm`; a file without a
-tempo event plays at the MIDI default of 120 BPM. Notes on channel 10, the
-percussion channel, are left out. `analyze` runs no transcription in this
-release, so the report's `transcription` group is `null` with or without
-`--notes`; `notes` transcribes on its own and writes no report.
+it: `stems/bass.wav` writes `stems/bass/`.
+
+- Tempo: `--bpm` is refined from the stem's onsets, from 2.91 % below to
+  3.09 % above it, as the [tempo section](../analysis/pipeline.md#tempo)
+  describes, and the first line of standard output says which tempo every
+  later step uses and why. `--bpm-exact` uses `--bpm` as it is. The report
+  records the given and the refined tempo.
+- Notes: without `--notes`, the stem runs through the notes step of
+  [`notes`](#notes) once, and the next lines of standard output are its
+  steps; `--profile` overrides the detected settings as there. The
+  `transcription` group of the report records the model and the settings.
+  `analyze` writes no MIDI file.
+- With `--notes`, the MIDI file gives the note list and the model never
+  runs; `--profile` is then a usage error, and `transcription` is `null`.
+  The note times follow the file's tempo map, and every tempo in the file
+  must lie within 0.01 BPM of `--bpm` or of the refined tempo; a file
+  without a tempo event plays at the MIDI default of 120 BPM. Notes on
+  channel 10, the percussion channel, are left out.
+- Standard output ends with `wrote <path>` for each file. A warning line
+  for each corrupt packet that became silence goes to standard error.
 
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | Both files were written. |
-| 1 | The stem or the note file cannot be read or is invalid, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
-| 2 | A usage error, such as a missing `--bpm` or a tempo outside 4 to 1000. |
+| 1 | The stem or the note file cannot be read or is invalid, the notes step fails, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
+| 2 | A usage error, such as a missing `--bpm`, a tempo outside 4 to 1000, or `--profile` with `--notes`. |
 
 ## notes
 
@@ -121,7 +147,10 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
+
+      --bpm-exact
+          Use --bpm as it is, without refining it from the stem
 
       --profile <PROFILE>
           Decode with the settings of this kind of stem instead of the detected ones
@@ -150,15 +179,17 @@ gives each step.
 - Settings: without `--profile`, the pitch range, the voicing and the
   minimum note length come from the stem. `--profile bass`, `lead` or
   `pad` sets them instead; detection still runs and prints its findings.
-- Output: standard output gets one line per step, in order: the detected
-  range, the detected voicing, the register window, the voicing the
+- Tempo: `--bpm` is refined from the stem as for `analyze`, and every
+  later step uses the printed tempo; `--bpm-exact` uses `--bpm` as it is.
+- Output: standard output gets one line per step, in order: the tempo,
+  the detected range, the detected voicing, the register window, the voicing the
   cleanup used and where it came from, the settings used,
   the decoded count, then the note count after the octave check, the
   ghost merge, the split join and the quiet-note guard with its drop
   count, and last `wrote <path>`. A warning line for each corrupt packet
   that became silence goes to standard error.
 - The file: a format 0 MIDI file with 480 ticks per beat, the stem's file
-  name as the track name, the tempo of `--bpm` and 4/4 at tick 0, and
+  name as the track name, the printed tempo and 4/4 at tick 0, and
   every note on channel 1 at velocity 100.
   It is written to a temporary sibling and renamed into place. Only
   `notes.mid` is replaced; nothing else in the folder changes.

@@ -43,7 +43,7 @@ pub use detect::{
     probe_settings,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
-pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
+pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi, read_midi_near};
 pub use profile::{
     DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
     Profile, RangeError, min_note_frames,
@@ -56,7 +56,9 @@ pub use stem::{
 pub use track::{
     PitchTrack, TRACK_FMAX, TRACK_FMIN, TRACK_FRAME, TRACK_HOP, TrackError, TrackFrame,
 };
-pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
+pub use transcribe::{
+    Backend, MODEL_RATE, MODEL_SHA256, ModelRun, Tracker, TranscribeError, Transcriber,
+};
 pub use write::{
     DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, midi_track_name,
     write_midi, write_named_midi,

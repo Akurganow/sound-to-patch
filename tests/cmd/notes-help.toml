@@ -15,7 +15,10 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
+
+      --bpm-exact
+          Use --bpm as it is, without refining it from the stem
 
       --profile <PROFILE>
           Decode with the settings of this kind of stem instead of the detected ones

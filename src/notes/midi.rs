@@ -42,13 +42,40 @@ pub const DRUM_CHANNEL: u8 = 9;
 /// or malformed file, a sequential (format 2) file, a tempo that differs
 /// from `bpm`, or a file without notes.
 pub fn read_midi(path: &Path, bpm: Bpm) -> Result<NoteList, MidiError> {
+    read_midi_near(path, bpm, None)
+}
+
+/// Reads the notes of a MIDI file at `path` as [`read_midi`] does, and
+/// also accepts a file whose every tempo matches `refined`, the trusted
+/// tempo refined from the stem. A `refined` equal to `bpm` counts as none.
+///
+/// # Errors
+///
+/// As [`read_midi`], with a tempo that matches neither `bpm` nor
+/// `refined`.
+pub fn read_midi_near(path: &Path, bpm: Bpm, refined: Option<Bpm>) -> Result<NoteList, MidiError> {
     let fail = |kind| MidiError {
         path: path.to_path_buf(),
         kind,
     };
     let bytes = std::fs::read(path).map_err(|source| fail(Kind::Open(source)))?;
     let smf = Smf::parse(&bytes).map_err(|source| fail(Kind::Parse(source.to_string())))?;
-    notes_of(&smf, bpm).map_err(fail)
+    match (notes_of(&smf, bpm), refined) {
+        (Err(Kind::Tempo { .. }), Some(refined)) if refined != bpm => notes_of(&smf, refined)
+            .map_err(|kind| match kind {
+                Kind::Tempo {
+                    file_bpm, default, ..
+                } => Kind::Tempo {
+                    file_bpm,
+                    bpm,
+                    refined: Some(refined),
+                    default,
+                },
+                other => other,
+            }),
+        (result, _) => result,
+    }
+    .map_err(fail)
 }
 
 fn notes_of(smf: &Smf<'_>, bpm: Bpm) -> Result<NoteList, Kind> {
@@ -177,6 +204,7 @@ impl Clock {
                 return Err(Kind::Tempo {
                     file_bpm,
                     bpm,
+                    refined: None,
                     default,
                 });
             }
@@ -228,6 +256,7 @@ enum Kind {
     Tempo {
         file_bpm: f64,
         bpm: Bpm,
+        refined: Option<Bpm>,
         default: bool,
     },
     Note {
@@ -255,6 +284,7 @@ impl fmt::Display for MidiError {
             Kind::Tempo {
                 file_bpm,
                 bpm,
+                refined,
                 default,
             } => {
                 let origin = if *default {
@@ -262,9 +292,12 @@ impl fmt::Display for MidiError {
                 } else {
                     ""
                 };
+                let refined = refined.map_or_else(String::new, |refined| {
+                    format!(" and the tempo refined from the stem is {}", refined.get())
+                });
                 write!(
                     f,
-                    "the file plays at {file_bpm:.3} BPM{origin}, but --bpm is {}. Export the notes at the stem's tempo or pass the file's tempo as --bpm",
+                    "the file plays at {file_bpm:.3} BPM{origin}, but --bpm is {}{refined}. Export the notes at the stem's tempo or pass the file's tempo as --bpm",
                     bpm.get()
                 )
             }

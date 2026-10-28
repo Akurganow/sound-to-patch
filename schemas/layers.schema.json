@@ -144,13 +144,15 @@
     "stem": {
       "type": "object",
       "required": [
-        "bpm", "duration_s", "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs",
-        "rms_dbfs", "crest_db", "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz",
-        "rolloff95_hz", "flatness", "band_share", "stereo"
+        "bpm", "bpm_given", "bpm_refined", "duration_s", "sample_rate_hz", "band_edge_hz",
+        "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db", "centroid_hz", "centroid_over_f0",
+        "spread_hz", "rolloff85_hz", "rolloff95_hz", "flatness", "band_share", "stereo"
       ],
       "additionalProperties": false,
       "properties": {
         "bpm": { "type": "number", "minimum": 4, "maximum": 1000 },
+        "bpm_given": { "type": "number", "minimum": 4, "maximum": 1000 },
+        "bpm_refined": { "$ref": "#/$defs/value" },
         "duration_s": { "type": "number", "minimum": 0 },
         "sample_rate_hz": { "type": "integer", "minimum": 1 },
         "band_edge_hz": { "$ref": "#/$defs/value" },
@@ -200,10 +202,10 @@
     "conventions": {
       "type": "object",
       "required": [
-        "frame_size", "statistics", "spectral", "bpm", "duration_s", "sample_rate_hz",
-        "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db", "centroid_hz",
-        "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz", "flatness",
-        "band_share", "stereo", "confidence"
+        "frame_size", "statistics", "spectral", "bpm", "bpm_given", "bpm_refined", "duration_s",
+        "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
+        "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
+        "flatness", "band_share", "stereo", "confidence"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
