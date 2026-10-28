@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/sources.schema.json",
+  "title": "dictionary/sources.json",
+  "description": "Every source the dictionary cites. Each one needs a README credit; `cargo xtask check-credits` checks it. `use` says what the project may take from it.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name", "url", "licence", "use"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+      "name": { "type": "string", "minLength": 1 },
+      "url": { "type": "string", "pattern": "^https?://" },
+      "licence": { "type": "string", "minLength": 1 },
+      "revision": { "type": "string", "minLength": 1, "description": "The pinned commit, sha or record revision the numbers come from." },
+      "use": { "enum": ["copy", "counts only", "facts only", "cite only"] }
+    }
+  }
+}

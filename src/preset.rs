@@ -13,6 +13,8 @@
 //! - [`apply`]: applies checked edits to a model.
 //! - [`mapper`]: the [`SynthMapper`](mapper::SynthMapper) trait that turns
 //!   layer values into edits.
+//! - [`catalogue`]: the layer and pattern of each control in the agent
+//!   reference.
 //!
 //! [`inspect`] runs `preset inspect` and [`apply_file`] runs `preset apply`.
 
@@ -31,6 +33,7 @@ use crate::preset::template::{Severity, TemplateError, locate_template};
 use crate::synth::{SynthArg, SynthError};
 
 pub mod apply;
+pub mod catalogue;
 pub mod edits;
 pub mod format;
 pub mod mapper;

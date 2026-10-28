@@ -1,0 +1,14 @@
+{
+  "name": "sound-to-patch",
+  "owner": {
+    "name": "sound-to-patch contributors"
+  },
+  "description": "Agent plugins of sound-to-patch, which turns audio stems or a written description into synth presets.",
+  "plugins": [
+    {
+      "name": "sound-to-patch-reference",
+      "source": "./plugins/sound-to-patch-reference",
+      "description": "The synth reference of sound-to-patch: the controls of each target synth by layer, for agents that write presets."
+    }
+  ]
+}

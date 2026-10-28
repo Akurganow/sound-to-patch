@@ -88,14 +88,15 @@ jobs:
           cp "$stage/THIRD-PARTY-LICENSES.html" target/assets/
 
       # Each plugin folder ships alone, so an agent harness installs a
-      # plugin without the rest of the repository.
+      # plugin without the rest of the repository. The harness installs
+      # plugin archives as zip.
       - name: Pack the plugins
         if: steps.existing.outputs.exists != 'true'
         run: |
           for dir in plugins/*/; do
             [ -d "$dir" ] || continue
             plugin="$(basename "$dir")"
-            tar -czf "target/assets/$plugin-$TAG.tar.gz" -C plugins "$plugin"
+            (cd plugins && zip -qr "../target/assets/$plugin-$TAG.zip" "$plugin")
           done
 
       - name: Publish the release

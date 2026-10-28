@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/words.schema.json",
+  "title": "dictionary/words/<axis>.json",
+  "description": "The neutral word entries of one axis: what a producer word means and how to check it, with no synth control. The per-synth maps bind each entry to controls. One entry per sense of a word.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/entry" },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$" },
+    "entry": {
+      "type": "object",
+      "required": ["id", "word", "aliases", "axis", "sense", "meaning", "roles", "conflicts", "default", "agreement", "few_sample", "measure", "tag", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id", "description": "Stable id, `<word>.<sense>`, such as `warm.low-mid`." },
+        "word": { "type": "string", "minLength": 1 },
+        "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "axis": { "enum": ["tone", "body", "texture", "structure", "space", "movement", "envelope", "mood"] },
+        "sense": { "type": "string", "minLength": 1, "description": "The sense id within the word, such as `low-mid`." },
+        "meaning": { "type": "string", "minLength": 1, "description": "The plain meaning, in our own words." },
+        "roles": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "conflicts": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true, "description": "Ids of the senses this one cannot share a sound with." },
+        "default": { "type": "boolean", "description": "The sense to take when the description gives no context. Exactly one per word." },
+        "question": { "type": "string", "minLength": 1, "description": "The one short question that picks a sense, on the default entry of a word with several senses." },
+        "agreement": {
+          "type": "object",
+          "required": ["value", "n", "class"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
+            "n": { "type": "integer", "minimum": 0 },
+            "class": { "enum": ["high", "medium", "low", "unknown", "no data"] }
+          }
+        },
+        "few_sample": { "type": "boolean" },
+        "spread_ratio": { "type": "number", "minimum": 0, "description": "Reverb words: within-word variance over total variance; lower is more shared." },
+        "measure": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["key", "direction"],
+              "additionalProperties": false,
+              "properties": {
+                "key": { "enum": ["centroid_over_f0", "flatness", "rolloff85_hz", "band_share", "rho", "sm_db", "hnr_db"] },
+                "direction": { "enum": ["up", "down"] }
+              }
+            }
+          ]
+        },
+        "control": { "enum": ["no control"], "description": "Mood and style words: the entry names no control." },
+        "card_hint": { "type": "string", "minLength": 1, "description": "A role or style card the word hints at, or `unmapped`. A hint never picks a card alone." },
+        "tag": { "enum": ["source states", "crowd data", "inferred", "snippet", "single source", "name-inferred"] },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }
+      }
+    }
+  }
+}

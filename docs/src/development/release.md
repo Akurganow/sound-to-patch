@@ -28,7 +28,7 @@ one tags or uploads by hand.
    `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64 binary,
    the man page, the shell completions and `THIRD-PARTY-LICENSES.html`,
    checks that the binary prints the tag's version, packs each folder in
-   `plugins/` as its own archive, and publishes a release with the
+   `plugins/` as its own zip archive, and publishes a release with the
    changelog section as its notes.
 
 The version commit starts the CI workflow again. The `release` job skips a
@@ -44,7 +44,8 @@ commit whose subject starts with `chore(version)`, so the loop stops there.
 - `THIRD-PARTY-LICENSES.html`;
 - `LICENSE`.
 
-`THIRD-PARTY-LICENSES.html` is also a release asset of its own.
+`THIRD-PARTY-LICENSES.html` is also a release asset of its own. Each agent
+plugin ships as `<plugin>-vX.Y.Z.zip`, its folder under `plugins/`.
 
 ## Releases are immutable
 

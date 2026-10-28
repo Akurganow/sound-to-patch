@@ -8,3 +8,5 @@ https://docs.github.com/
 https://nexte.st/
 https://docs.cocogitto.io/
 https://docs.rs/
+https://code.claude.com/docs/
+https://agentskills.io/specification

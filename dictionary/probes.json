@@ -1,0 +1,47 @@
+[
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/pitch.md",
+    "question": "Which key sets the glide time between notes?",
+    "answer": "portamento_time"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/oscillator.md",
+    "question": "Which key picks the frame of a wavetable?",
+    "answer": "osc_N_wave_frame"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/unison.md",
+    "question": "Which key sets the number of unison voices of an oscillator?",
+    "answer": "osc_N_unison_voices"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/filter.md",
+    "question": "Which key sets the resonance of filter 1 or 2?",
+    "answer": "filter_N_resonance"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/envelope.md",
+    "question": "Which key sets the release time of an envelope?",
+    "answer": "env_N_release"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/modulation.md",
+    "question": "Which key sets the rate of an LFO?",
+    "answer": "lfo_N_frequency"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/distortion.md",
+    "question": "Which key sets the distortion drive?",
+    "answer": "distortion_drive"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/space.md",
+    "question": "Which key sets the reverb decay time?",
+    "answer": "reverb_decay_time"
+  },
+  {
+    "file": "plugins/sound-to-patch-reference/skills/synth-reference/reference/vital/global.md",
+    "question": "Which key sets the oversampling of the whole patch?",
+    "answer": "`oversampling`"
+  }
+]

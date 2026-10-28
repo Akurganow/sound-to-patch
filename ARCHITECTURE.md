@@ -24,7 +24,8 @@ the synth seam, the Vital read and write paths, stem intake, the note list
 with its masks and its MIDI reader, the signal core that the estimators
 share, and the report with the `stem` group and the spectrogram, the
 transcriber with its profiles and its register detection, the f0 track,
-the note cleanup, and the MIDI writer.
+the note cleanup, the MIDI writer, and the layer map of the agent
+reference. The reference itself is an agent plugin under `plugins/`.
 
 ## Synth adapter seam
 
@@ -90,10 +91,12 @@ joins `READY` when its adapter lands.
 - `preset`: preset files. `format`, `registry` and `template` hold the
   synth-neutral traits and the `inspect` command. `edits` parses an edit
   list and resolves it against a registry, `apply` writes resolved edits
-  into a model, and `mapper` holds the mapper trait. `vital` is the Vital
+  into a model, `mapper` holds the mapper trait, and `catalogue` places
+  each control in a layer of the agent reference. `vital` is the Vital
   adapter: the JSON codec, the registry built from `registry.json`, the
   built-in template, the writers of routes, wavetables and LFO shapes, the
-  capabilities and the laws that span controls.
+  capabilities, the laws that span controls and the layer map of its
+  controls.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
   with `notes.mid`. `layers` writes `layers.json`, whose committed schema
@@ -109,8 +112,17 @@ joins `READY` when its adapter lands.
   the lock file for the ONNX Runtime crate, checks the credits, this code
   map and the Rust version named in the docs and pull request
   descriptions, writes the release version, regenerates the Vital
-  registry data from a local checkout of the open source, and generates
-  the Vital test fixtures.
+  registry data from a local checkout of the open source, generates
+  the Vital test fixtures, writes the catalogue files of the agent
+  reference from the registry, and checks the agent plugins.
+- `plugins`: the agent plugins, each folder shipped as its own release
+  archive and listed in `.claude-plugin/marketplace.json`.
+  `sound-to-patch-reference` holds the skill `synth-reference`: the router
+  `SKILL.md`, the generated catalogue files per synth and layer, and
+  example edit lists.
+- `dictionary`: the data of the agent reference: the word entries per
+  axis, the source list and the probe questions, with their schemas in
+  `schemas/`.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
   engine. It runs only as a separate Python process with `vita`.

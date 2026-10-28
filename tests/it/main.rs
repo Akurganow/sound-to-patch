@@ -29,6 +29,8 @@ mod midi_write;
 mod modulation;
 mod preset;
 #[cfg(test)]
+mod reference;
+#[cfg(test)]
 mod report;
 #[cfg(test)]
 mod stem;
