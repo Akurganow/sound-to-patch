@@ -77,7 +77,8 @@ fn analyze_writes_both_files_for_a_generated_wav() {
         .unwrap();
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).unwrap();
-    // 0.3 s at 120 BPM is shorter than a beat. The given A1 starts at
+    // 0.3 s at 120 BPM is shorter than a beat; `report.rs` and `tempo.rs`
+    // check the tempo lines of longer stems. The given A1 starts at
     // 0.25 s under the held saw: the band envelope rises at the stem's
     // cut end, a candidate strike, but no drop fits.
     assert_eq!(

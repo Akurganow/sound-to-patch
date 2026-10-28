@@ -20,6 +20,12 @@ pub const VIBRATO_SPAN_MIN: Seconds = Seconds::from_const(0.5);
 /// The smallest share of the detrended contour's power that the sine
 /// must explain, so jitter does not read as a vibrato.
 pub const VIBRATO_SHARE_MIN: f64 = 0.5;
+/// The fewest cycles of the sine over the span.
+///
+/// Checked against an independent f0 on real stems, every vibrato of 2.5 cycles or more
+/// matched it; the shorter ones, 1.6 to 2.4 cycles at 3 to 4.7 Hz, did not
+/// or held under 2 cycles of it.
+pub const VIBRATO_CYCLES_MIN: f64 = 2.5;
 /// The search runs from this rate, or from 1.5 cycles over the span.
 const SEARCH_LO: f64 = 1.0;
 /// The search runs up to this rate.
@@ -36,7 +42,7 @@ together, at the rate whose sine explains the most power beyond the line, search
 1.5 cycles over the span up to 20 Hz in 0.01 Hz steps and refined by golden-section search; extent_raw_ct is that sine's amplitude, half the peak-to-peak swing; extent_ct is \
 extent_raw_ct times extent_factor, which undoes the smoothing of the f0 track at that rate; a \
 vibrato counts at 2.97 to 12.12 Hz, 3 to 12 Hz with 1 % slack, with extent_ct of 10 or more and a share, the power the sine \
-explains over the power left after the line alone, of 0.5 or more";
+explains over the power left after the line alone, of 0.5 or more, over 2.5 cycles or more";
 
 /// A vibrato read from one span.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -57,6 +63,8 @@ pub struct VibratoFit {
     /// The kurtosis of the contour after the line: 1.5 for a sine, 1.0
     /// for a square wave.
     pub kurtosis: f64,
+    /// The mean pitch of the span.
+    pub pitch: Hz,
     /// The number of frames read.
     pub frames: usize,
 }
@@ -68,6 +76,12 @@ impl VibratoFit {
         Cents::clamped(self.extent_raw.get() * self.factor)
     }
 
+    /// The cycles of the sine over the span.
+    #[must_use]
+    pub fn cycles(&self) -> f64 {
+        self.rate.get() * (self.end.get() - self.start.get())
+    }
+
     /// Whether the fit counts as a vibrato.
     #[must_use]
     pub fn accepted(&self) -> bool {
@@ -76,6 +90,7 @@ impl VibratoFit {
             .contains(&rate)
             && self.extent() >= VIBRATO_EXTENT_MIN
             && self.share >= VIBRATO_SHARE_MIN
+            && self.cycles() >= VIBRATO_CYCLES_MIN
     }
 }
 
@@ -165,6 +180,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         factor: extent_factor(rate),
         share: (explained_power / power).min(1.0),
         kurtosis,
+        pitch: Hz::new(2_f64.powf(mean / 1200.0)).ok()?,
         frames: cents.len(),
     })
 }
@@ -295,6 +311,18 @@ mod tests {
         assert!((fit.factor - 1.0 / 0.939).abs() < 1e-3, "{fit:?}");
         assert!(fit.share > 0.99 && fit.accepted(), "{fit:?}");
         assert!((fit.kurtosis - 1.5).abs() < 0.02, "{fit:?}");
+    }
+
+    #[test]
+    fn a_vibrato_needs_two_and_a_half_cycles() {
+        // 3 Hz over 0.6 s holds 1.8 cycles, over 1 s 3.
+        let short = fit_vibrato(&frames(3.0, 35.0, 0.6)).unwrap();
+        assert!(
+            short.cycles() < VIBRATO_CYCLES_MIN && !short.accepted(),
+            "{short:?}"
+        );
+        let long = fit_vibrato(&frames(3.0, 35.0, 1.0)).unwrap();
+        assert!(long.accepted(), "{long:?}");
     }
 
     #[test]

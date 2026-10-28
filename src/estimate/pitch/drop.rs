@@ -1,8 +1,10 @@
 //! The pitch drop of a low note, the "thump" of an 808 or a pluck: the fit
 //! `f(t) = f_end + df exp(-t / tau)` on the sub-band line.
 
+use super::FAST_TAU;
 use super::fit::golden_section;
 use super::line::SubBandLine;
+use crate::audio::SampleRate;
 use crate::cast;
 use crate::units::{Hz, Seconds, Semitones};
 
@@ -50,12 +52,17 @@ const TAU_GRID: usize = 240;
 pub const DROP_CONVENTION: &str = "f(t) = f_end + df exp(-t / tau) fitted by least squares to \
 the sub-band line from 7 ms to 400 ms after the onset, or to the end of the note; tau by a log \
 grid and golden-section search from 3.04 ms, where exp(-7 ms / tau) = 0.1, to 1 s, f_end and \
-df linear for each tau; df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample \
+df linear for each tau; a fit with tau under 10 ms, or after a strike whose full-band RMS rises \
+20 dB, is fitted again on the line with its high-pass at 10 Hz, and the refit counts; \
+df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample \
 after the lowest point of the onset search where the 20 to 200 Hz envelope, averaged over a \
-centred 10 ms, reaches half the peak that follows; a drop with tau under 10 ms, one that \
+centred 10 ms, reaches half the peak that follows; a strike whose full-band RMS over the 20 ms \
+after the onset lies more than 40 dB below the loudest 25 ms frame of the stem is no candidate; \
+a drop with tau under 10 ms, one that \
 starts at 200 Hz or above, or one whose envelope takes over 30 ms from 10 to 90 % of its peak \
 needs the full-band RMS over the 20 ms after the onset 6 dB or more above the 20 ms that end \
-25 ms before it; residual is the RMS residual over \
+25 ms before it; residual is the RMS of the fit's error, averaged over half a period of f_end when \
+tau is 10 ms or more, over \
 the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when df_st is above 2 and at \
 most 36, that fall is above 2 semitones too, tau is above the bound of the search, residual is \
 below 0.15, and f_end lies within 100 cents of a sounding note";
@@ -208,7 +215,13 @@ pub fn fit_drop(line: &SubBandLine, onset: Seconds, end: Seconds) -> Option<Drop
     let (log_tau, _) = golden_section(sse, (best - step).max(lo), (best + step).min(hi), 1e-9);
     let tau = log_tau.exp();
     let (f_end, df, sse) = solve(&points, tau);
-    let rms = (sse / cast::usize_to_f64(points.len())).sqrt();
+    // A fall faster than FAST_TAU ends within a period of a low note, and
+    // the average would spread its misfit.
+    let rms = if tau >= FAST_TAU.get() {
+        period_rms(&points, f_end, df, tau, line.sample_rate())
+    } else {
+        (sse / cast::usize_to_f64(points.len())).sqrt()
+    };
     Some(DropFit {
         onset,
         f_end: Hz::new(f_end).ok()?,
@@ -224,6 +237,39 @@ pub fn fit_drop(line: &SubBandLine, onset: Seconds, end: Seconds) -> Option<Drop
         },
         points: points.len(),
     })
+}
+
+/// The RMS of the fit's error averaged over half a period of `f_end`,
+/// centred and shortened at the ends.
+///
+/// The third harmonic of a driven note beats with the fundamental and
+/// swings the line at twice the note: a driven 808 left a raw residual of
+/// 23 % of its fall. The average removes that swing and keeps a slower
+/// error, from a wrong model or from the phase restart of a retrigger,
+/// which a full period hid: two same-pitch retriggers then read falls of
+/// 4 and 11 semitones with a `tau` of 12 ms.
+fn period_rms(points: &[(f64, f64)], f_end: f64, df: f64, tau: f64, rate: SampleRate) -> f64 {
+    let errors: Vec<f64> = points
+        .iter()
+        .map(|&(t, y)| y - f_end - df * (-t / tau).exp())
+        .collect();
+    let period = if f_end > 0.0 {
+        cast::round_to_usize(rate.hz().get() / f_end).unwrap_or(1)
+    } else {
+        1
+    };
+    let half = period.max(1) / 4;
+    let mut sums = vec![0.0; errors.len() + 1];
+    for (k, e) in errors.iter().enumerate() {
+        sums[k + 1] = sums[k] + e;
+    }
+    let squares: f64 = (0..errors.len())
+        .map(|k| {
+            let (a, b) = (k.saturating_sub(half), (k + half + 1).min(errors.len()));
+            ((sums[b] - sums[a]) / cast::usize_to_f64(b - a)).powi(2)
+        })
+        .sum();
+    (squares / cast::usize_to_f64(errors.len())).sqrt()
 }
 
 /// The least-squares `f_end` and `df` for one `tau`, and the sum of the

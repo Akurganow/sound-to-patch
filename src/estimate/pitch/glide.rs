@@ -43,6 +43,10 @@ pub const CURVE_EDGE: f64 = 1.05;
 /// of [`CURVE_RANGE`]. Exponential portamento, `1 - exp(-t / tau)`, fits
 /// the bound within 20 cents; a smeared step on that bound fits worse.
 pub const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
+/// The smallest interval of a glide whose `p` sits on the upper bound of
+/// [`CURVE_RANGE`]. The track smears a 1 semitone step between two 808
+/// notes into a fast curve that fits the bound within 5 cents.
+pub const BOUND_MIN_INTERVAL: Semitones = Semitones::from_const(2.0);
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
 pub const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
@@ -53,6 +57,13 @@ pub const GAP_BRIDGE_MAX: Seconds = Seconds::from_const(0.1);
 /// The smallest jump across a bridged gap, and the smallest motion over
 /// the two frames after it: two steps of the tracker's 10-cent grid.
 pub const GAP_MOTION_MIN: Cents = Cents::from_const(20.0);
+/// The fastest jump across a bridged gap, in cents per second.
+///
+/// A 50 ms glide of 7 semitones jumps 20 cents per millisecond across its two
+/// unvoiced frames, a unison whose voices start in phase 3.6 across its
+/// 75 ms gap; a note struck again 10 semitones lower jumps about 40 across
+/// three unvoiced frames.
+pub const GAP_SLOPE_MAX: f64 = 30_000.0;
 /// A glide from silence needs a sound to start at most this long before
 /// its voiced run.
 pub const ONSET_LOOKBACK: Seconds = Seconds::from_const(0.1);
@@ -96,10 +107,10 @@ a period; time_s is the full 0 to 100 % time; from_silence marks a glide into th
 pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 100 ms before \
 it, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
 before joins it when the full-band RMS does not rise 6 dB in the gap and the pitch keeps moving \
-after the gap the way it jumped; motion of 35 to 90 ms, over the detected span or the fitted \
+after the gap the way it jumped, at 30 cents per millisecond or slower; motion of 35 to 90 ms, over the detected span or the fitted \
 time, counts as too short; a fit of 90 ms or more with p within 5 % of 0.2, with p within 5 % \
-of 5 and an RMS residual above 20 cents, a detected span under 90 ms or a start from silence, \
-or with an RMS residual above 40 cents, is no glide; a glide with p within 5 % of 5 reads at low \
+of 5 and an RMS residual above 20 cents, an interval under 2 semitones, a detected span under \
+90 ms or a start from silence, or with an RMS residual above 40 cents, is no glide; a glide with p within 5 % of 5 reads at low \
 confidence with the reason curve_bound";
 
 /// A fitted glide.
@@ -300,11 +311,12 @@ pub fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds
 /// [`GLIDE_TIME_MIN`] or more whose `p` sits on the lower bound of
 /// [`CURVE_RANGE`], or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does
 /// not follow the curve, so the motion is no glide. On the upper bound the
-/// residual must stay within [`BOUND_MAX_RESIDUAL`], the detected span must
-/// last [`GLIDE_TIME_MIN`] or more, the glide must not come from silence,
-/// and it is marked: a melody step on a sine and a driven drop read as
-/// glides on that bound otherwise. A motion whose fit fails is too short when its detected span
-/// is.
+/// residual must stay within [`BOUND_MAX_RESIDUAL`], the interval must
+/// reach [`BOUND_MIN_INTERVAL`], the detected span must last
+/// [`GLIDE_TIME_MIN`] or more, the glide must not come from silence, and it
+/// is marked: a melody step on a sine, a semitone step between 808 notes
+/// and a driven drop read as glides on that bound otherwise. A motion whose
+/// fit fails is too short when its detected span is.
 fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option<GlideFit>) {
     let length = span.1 - span.0;
     if length < GLIDE_STEP_MAX.get() {
@@ -327,6 +339,7 @@ fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option
     let on_bound = glide.curve >= hi / CURVE_EDGE;
     let follows = if on_bound {
         glide.residual <= BOUND_MAX_RESIDUAL
+            && glide.interval.get().abs() >= BOUND_MIN_INTERVAL.get()
             && !glide.from_silence
             && length >= GLIDE_TIME_MIN.get()
     } else {
@@ -339,14 +352,16 @@ fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option
 
 /// Whether the pitch keeps moving after an unvoiced gap: the jump from
 /// `last` across the gap and the motion over the next two frames of `run`
-/// go the same way, each by [`GAP_MOTION_MIN`] or more. At a step the
-/// track lands on the new pitch and holds it, or swings back.
+/// go the same way, each by [`GAP_MOTION_MIN`] or more, and the jump is no
+/// faster than [`GAP_SLOPE_MAX`]. At a step the track lands on the new
+/// pitch and holds it, or swings back.
 fn moves_on(last: &Frame, run: &[Frame]) -> bool {
     let [first, _, third, ..] = run else {
         return false;
     };
     let (jump, then) = (first.cents - last.cents, third.cents - first.cents);
     jump.abs() >= GAP_MOTION_MIN.get()
+        && jump.abs() <= GAP_SLOPE_MAX * (first.time - last.time)
         && then.abs() >= GAP_MOTION_MIN.get()
         && jump.signum() == then.signum()
 }
@@ -674,6 +689,21 @@ mod tests {
                 })
                 .collect(),
         )
+    }
+
+    #[test]
+    fn a_jump_across_a_gap_faster_than_30_cents_per_ms_is_no_glide_motion() {
+        let frame = |time: f64, cents: f64| Frame { time, cents };
+        let last = frame(0.0, 0.0);
+        // Four hops apart: 1000 cents is 43 per ms, 300 cents 13.
+        for (jump, bridged) in [(-1000.0, false), (-300.0, true)] {
+            let run = [
+                frame(4.0 * HOP, jump),
+                frame(5.0 * HOP, jump - 30.0),
+                frame(6.0 * HOP, jump - 60.0),
+            ];
+            assert_eq!(moves_on(&last, &run), bridged, "{jump}");
+        }
     }
 
     fn glide_track(full: f64, p: f64) -> PitchTrack {

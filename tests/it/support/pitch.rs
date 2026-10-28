@@ -180,7 +180,7 @@ impl PitchDrop {
 }
 
 /// 808 hits without a pitch drop, one per MIDI pitch: a sine that
-/// restarts its phase at each hit, driven through `tanh(drive x)` when
+/// restarts its phase at each hit, or keeps it when `continuous`, driven through `tanh(drive x)` when
 /// `drive` is above zero, with a 3 ms attack, times `exp(-t / decay_s)`,
 /// `hit_s` long and followed by `gap_s` of silence. `lead_s` of silence
 /// comes before the first hit and after the last. A hit fades out
@@ -197,6 +197,7 @@ pub(crate) struct Hits {
     pub(crate) drive: f64,
     pub(crate) drops: &'static [(usize, f64, f64)],
     pub(crate) release_s: f64,
+    pub(crate) continuous: bool,
 }
 
 impl Hits {
@@ -211,6 +212,7 @@ impl Hits {
             drive: 0.0,
             drops: &[],
             release_s: 0.0,
+            continuous: false,
         }
     }
 
@@ -231,6 +233,7 @@ impl Hits {
         let hit = round_to_usize(rate * self.hit_s);
         let attack = round_to_usize(rate * 0.003);
         let mut out = vec![0.0; round_to_usize(rate * self.lead_s)];
+        let mut carried = 0.0;
         for (k, &pitch) in self.pitches.iter().enumerate() {
             let f = 440.0 * 2f64.powf((pitch - 69.0) / 12.0);
             let (ratio, tau) = self
@@ -240,7 +243,7 @@ impl Hits {
                 .map_or((0.0, 1.0), |d| (d.1, d.2));
             out.extend((0..hit).map(|n| {
                 let t = f64::from(u32::try_from(n).unwrap()) / rate;
-                let phase = f * t + f * ratio * tau * (1.0 - (-t / tau).exp());
+                let phase = carried + f * t + f * ratio * tau * (1.0 - (-t / tau).exp());
                 let left = self.hit_s - t;
                 let release = if self.release_s > 0.0 {
                     (left / self.release_s).min(1.0)
@@ -258,6 +261,10 @@ impl Hits {
                 };
                 0.5 * ramp * release * x * (-t / self.decay_s).exp()
             }));
+            if self.continuous {
+                let t = f64::from(u32::try_from(hit).unwrap()) / rate;
+                carried += f * t + f * ratio * tau * (1.0 - (-t / tau).exp());
+            }
             out.extend(std::iter::repeat_n(0.0, round_to_usize(rate * self.gap_s)));
         }
         out.extend(std::iter::repeat_n(0.0, round_to_usize(rate * self.lead_s)));

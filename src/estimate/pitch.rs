@@ -19,25 +19,28 @@ pub use drop::{
     band_attack, band_onset, fit_drop,
 };
 pub use glide::{
-    BOUND_MAX_RESIDUAL, CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX, GAP_MOTION_MIN, GLIDE_CONVENTION,
-    GLIDE_INTERVAL_MIN, GLIDE_MAX_RESIDUAL, GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN,
-    GlideFit, GlideRead, NOTE_MATCH, ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES,
-    STEADY_SPLIT, find_glides, steady_spans, track_lag,
+    BOUND_MAX_RESIDUAL, BOUND_MIN_INTERVAL, CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX,
+    GAP_MOTION_MIN, GAP_SLOPE_MAX, GLIDE_CONVENTION, GLIDE_INTERVAL_MIN, GLIDE_MAX_RESIDUAL,
+    GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN, GlideFit, GlideRead, NOTE_MATCH,
+    ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES, STEADY_SPLIT, find_glides,
+    steady_spans, track_lag,
 };
 pub use line::{
-    LINE_CONVENTION, LINE_HI, LINE_LO, LINE_MEDIAN, SubBandLine, median_filter, median_len,
+    LINE_CONVENTION, LINE_HI, LINE_LO, LINE_LO_FAST, LINE_MEDIAN, SubBandLine, median_filter,
+    median_len,
 };
 pub use vibrato::{
-    EXTENT_SHARE, RATE_SLACK, VIBRATO_CONVENTION, VIBRATO_EXTENT_MIN, VIBRATO_RATE_MAX,
-    VIBRATO_RATE_MIN, VIBRATO_SHARE_MIN, VIBRATO_SPAN_MIN, VibratoFit, extent_factor, fit_vibrato,
+    EXTENT_SHARE, RATE_SLACK, VIBRATO_CONVENTION, VIBRATO_CYCLES_MIN, VIBRATO_EXTENT_MIN,
+    VIBRATO_RATE_MAX, VIBRATO_RATE_MIN, VIBRATO_SHARE_MIN, VIBRATO_SPAN_MIN, VibratoFit,
+    extent_factor, fit_vibrato,
 };
 
 use crate::audio::SampleRate;
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
-use crate::dsp::{FilterError, band_magnitude};
-use crate::notes::{NoteList, PitchTrack, Voicing};
-use crate::units::{Cents, Hz, MidiPitch, Seconds, Semitones};
+use crate::dsp::{ACTIVE_GATE_DB, FilterError, StftParams, band_magnitude, frame_rms};
+use crate::notes::{NoteList, PitchTrack, QUIET_FRAME, Voicing};
+use crate::units::{Cents, Decibels, Hz, MidiPitch, Seconds, Semitones};
 
 /// The onset search of a strike starts at most this long before the note
 /// onset, because the transcriber places the onset of a falling note late.
@@ -121,9 +124,19 @@ pub const STRIKE_ATTACK: Seconds = Seconds::from_const(0.03);
 pub const ATTACK_HIGH: Seconds = Seconds::from_const(0.012);
 /// A drop whose residual share stays below this reads at high confidence.
 pub const DROP_RESIDUAL_HIGH: f64 = 0.05;
-/// A vibrato whose sine explains at least this share of the power reads
-/// at high confidence.
-pub const SHARE_HIGH: f64 = 0.8;
+/// A vibrato over this many cycles or more reads at high confidence.
+///
+/// Checked against an independent f0 on real stems, every vibrato above
+/// 100 Hz of 4 cycles or more matched it, at a share of 0.51 to 0.64: the
+/// share did not separate the real ones from the rest.
+pub const CYCLES_HIGH: f64 = 4.0;
+/// A vibrato on a pitch below this reads at low confidence.
+///
+/// Checked against an independent f0 on real stems, few vibratos below it
+/// matched, and their extent read up to 5 times too wide. A generated
+/// low tone with amplitude modulation or two beating voices reads no
+/// vibrato, so the cause lies elsewhere.
+pub const VIBRATO_LOW_PITCH: Hz = Hz::from_const(100.0);
 /// A vibrato whose contour has a kurtosis below this reads at low
 /// confidence: it jumps between two levels, as a trill does. The sines of
 /// the generated set read 1.36 to 1.66, a semitone trill 1.06.
@@ -474,6 +487,10 @@ fn strikes(
     // The search of each note starts after the previous note's search
     // ended, so it never finds the previous strike again.
     let mut previous_to = 0.0_f64;
+    let floor = loudest_frame(input.mono, input.rate)
+        * Decibels::clamped(-ACTIVE_GATE_DB.get())
+            .to_amplitude_gain()
+            .unwrap_or(0.0);
     for note in input.notes.notes() {
         let (note_on, note_off) = (note.onset().get(), note.offset().get());
         let settled = Hz::from(note.pitch());
@@ -507,6 +524,9 @@ fn strikes(
             continue;
         }
         let rise = rise_ratio(segment, input.rate, start, onset, STRIKE_SPANS);
+        if span_rms(segment, input.rate, start, onset, STRIKE_SPANS[1]) < floor {
+            continue;
+        }
         let attack = band_attack(
             &line,
             Seconds::clamped(search_from),
@@ -514,9 +534,17 @@ fn strikes(
         )
         .unwrap_or(Seconds::clamped(0.0));
         counts.drop_candidates += 1;
-        let Some(fit) = fit_drop(&line, onset, Seconds::clamped(note_off.max(onset.get()))) else {
+        let span_end = Seconds::clamped(note_off.max(onset.get()));
+        let Some(mut fit) = fit_drop(&line, onset, span_end) else {
             continue;
         };
+        if fit.tau < FAST_TAU || rise >= RUN_START_RISE {
+            let low = SubBandLine::with_low_edge(segment, input.rate, start, LINE_LO_FAST)?;
+            let Some(refit) = fit_drop(&low, onset, span_end) else {
+                continue;
+            };
+            fit = refit;
+        }
         if !struck_enough(&fit, rise, attack) {
             continue;
         }
@@ -593,20 +621,10 @@ fn rise_ratio(
     at: Seconds,
     [before, after]: [(f64, f64); 2],
 ) -> f64 {
-    let r = rate.hz().get();
-    let index = |t: f64| {
-        cast::round_to_usize(((at.get() + t - start.get()) * r).max(0.0))
-            .unwrap_or(0)
-            .min(samples.len())
-    };
-    let rms = |(from, to): (f64, f64)| {
-        let (a, b) = (index(from), index(to));
-        if a >= b {
-            return 0.0;
-        }
-        (samples[a..b].iter().map(|x| x * x).sum::<f64>() / cast::usize_to_f64(b - a)).sqrt()
-    };
-    let (a, b) = (rms(after), rms(before));
+    let (a, b) = (
+        span_rms(samples, rate, start, at, after),
+        span_rms(samples, rate, start, at, before),
+    );
     if b > 0.0 {
         a / b
     } else if a > 0.0 {
@@ -614,6 +632,39 @@ fn rise_ratio(
     } else {
         0.0
     }
+}
+
+/// The full-band RMS over `(from, to)`, in seconds from `at`. `samples`
+/// start at `start`.
+fn span_rms(
+    samples: &[f64],
+    rate: SampleRate,
+    start: Seconds,
+    at: Seconds,
+    (from, to): (f64, f64),
+) -> f64 {
+    let r = rate.hz().get();
+    let index = |t: f64| {
+        cast::round_to_usize(((at.get() + t - start.get()) * r).max(0.0))
+            .unwrap_or(0)
+            .min(samples.len())
+    };
+    let (a, b) = (index(from), index(to));
+    if a >= b {
+        return 0.0;
+    }
+    (samples[a..b].iter().map(|x| x * x).sum::<f64>() / cast::usize_to_f64(b - a)).sqrt()
+}
+
+/// The RMS of the loudest [`QUIET_FRAME`] of the stem, with a quarter
+/// frame hop.
+fn loudest_frame(mono: &[f64], rate: SampleRate) -> f64 {
+    let frame = cast::round_to_usize(QUIET_FRAME.get() * rate.hz().get())
+        .unwrap_or(4)
+        .max(4);
+    frame_rms(mono, StftParams::fixed(frame))
+        .into_iter()
+        .fold(0.0, f64::max)
 }
 
 /// Whether the fundamental of a struck note is weaker than its second
@@ -727,8 +778,9 @@ struct Strike {
 
 fn rate_drop(strike: Strike) -> Result<Rated<DropFit>, ConfidenceError> {
     let Strike { fit, attack } = strike;
-    let level = if fit.residual < DROP_RESIDUAL_HIGH && fit.tau >= FAST_TAU && attack <= ATTACK_HIGH
-    {
+    let level = if attack > STRIKE_ATTACK {
+        Level::Low
+    } else if fit.residual < DROP_RESIDUAL_HIGH && fit.tau >= FAST_TAU && attack <= ATTACK_HIGH {
         Level::High
     } else {
         Level::Medium
@@ -747,10 +799,10 @@ fn rate_drop(strike: Strike) -> Result<Rated<DropFit>, ConfidenceError> {
 }
 
 fn rate_vibrato(vibrato: VibratoFit) -> Result<Rated<VibratoFit>, ConfidenceError> {
-    let cycles = vibrato.rate.get() * (vibrato.end.get() - vibrato.start.get());
-    let level = if vibrato.kurtosis < KURTOSIS_LOW {
+    let cycles = vibrato.cycles();
+    let level = if vibrato.kurtosis < KURTOSIS_LOW || vibrato.pitch < VIBRATO_LOW_PITCH {
         Level::Low
-    } else if vibrato.share >= SHARE_HIGH && cycles >= 4.0 {
+    } else if cycles >= CYCLES_HIGH {
         Level::High
     } else {
         Level::Medium

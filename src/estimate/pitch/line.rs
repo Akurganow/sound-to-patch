@@ -13,6 +13,12 @@ use crate::units::{Hz, Seconds};
 
 /// The low edge of the band.
 pub const LINE_LO: Hz = Hz::from_const(20.0);
+/// The low edge of the band for the refit of a fast fall.
+///
+/// Where a tone below 40 Hz starts from silence or rises, the 20 Hz high-pass raises
+/// the line for about 10 ms, which fits as a fast fall; an octave below
+/// the band it does not.
+pub const LINE_LO_FAST: Hz = Hz::from_const(10.0);
 /// The high edge of the band.
 pub const LINE_HI: Hz = Hz::from_const(200.0);
 /// The length of the median filter, about 1.4 ms: 31 samples at 22,050 Hz,
@@ -23,7 +29,7 @@ pub const LINE_MEDIAN: Seconds = Seconds::from_const(0.0014);
 pub const LINE_CONVENTION: &str = "fourth-order Butterworth high-pass at 20 Hz and low-pass at \
 200 Hz, each forward and backward; the frequency of the analytic signal between consecutive \
 samples, arg(z[n+1] conj(z[n])) fs / 2 pi; a centred median of round(1.4 ms fs) samples, made \
-odd, shortened at the ends";
+odd, shortened at the ends; the refit of a drop uses a high-pass at 10 Hz";
 
 /// The instantaneous frequency of the 20 to 200 Hz band of a segment, with
 /// the envelope of that band.
@@ -48,7 +54,22 @@ impl SubBandLine {
     /// Returns a [`FilterError`] when the rate puts 200 Hz at or above the
     /// Nyquist frequency.
     pub fn of(segment: &[f64], rate: SampleRate, start: Seconds) -> Result<Self, FilterError> {
-        let band = band_pass_zero_phase(segment, rate, LINE_LO, LINE_HI)?;
+        Self::with_low_edge(segment, rate, start, LINE_LO)
+    }
+
+    /// Builds the line as [`Self::of`] does, with the high-pass at `lo`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`FilterError`] when `lo` is not above 0 Hz or the rate
+    /// puts 200 Hz at or above the Nyquist frequency.
+    pub fn with_low_edge(
+        segment: &[f64],
+        rate: SampleRate,
+        start: Seconds,
+        lo: Hz,
+    ) -> Result<Self, FilterError> {
+        let band = band_pass_zero_phase(segment, rate, lo, LINE_HI)?;
         // Padding as long as the segment keeps the circular wrap of the FFT
         // off the segment.
         let analytic = AnalyticSignal::new(&band, rate, band.len());

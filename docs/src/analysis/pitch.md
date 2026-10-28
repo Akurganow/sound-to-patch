@@ -21,7 +21,11 @@ real stem adds filters, reverb and separation artefacts.
   `values: null` with the reason `polyphonic_line` and the flag
   `chord_skipped`: no method here separates the voices [fact]. The
   voicing comes from the notes step, or with `--notes` from the same chord
-  rule applied to the given notes [fact].
+  rule applied to the given notes [fact]. That rule calls a part chords
+  from a chord share of 0.68 [fact]. Real stems split into shares of 0.41
+  or less and 0.52 to 0.67, so a part at 0.52 to 0.67 runs this layer as
+  a line; on those stems the layer read 1 false drop, 1 false glide and
+  4 glides an independent f0 confirmed [fact].
 - A stem without notes gets `values: null` with the reason
   `no_note_list` and the flag `no_notes` [fact].
 - Every time in the group is audio time from the start of the stem
@@ -106,6 +110,12 @@ settled pitch.
     so it needs no rise [synthetic].
   - The span before ends 25 ms early, since the band onset of white noise
     lags the start of the noise by 14 ms [synthetic].
+- Level. A strike whose RMS over the 20 ms after the onset lies more than
+  40 dB below the loudest 25 ms frame of the stem is no candidate, the
+  gate of active frames [proposal]. On a real stem a fast fall settling
+  on a note two octaves under the line read as a drop at -60 dB, where an
+  independent f0 found no voice [fact]. A generated drop 60 dB below a
+  loud passage reads none, 30 dB below it reads [synthetic].
 - Fit. $f(t) = f_\text{end} + \Delta f\, e^{-t/\tau}$ is fitted by least
   squares to the line from 7 ms to 400 ms after the onset, or to the end of
   the note [fact]. For each $\tau$ the fit is linear in $f_\text{end}$ and
@@ -118,6 +128,26 @@ settled pitch.
   fall: a plain 41.2 Hz tone with a 4 Hz drop fitted a drop of 9.9
   semitones with $\tau$ = 3 ms [synthetic]. The fit starts at 7 ms
   [proposal].
+- Refit. A fit with $\tau$ under 10 ms, or after a strike that rises
+  20 dB, is fitted again on a line whose high-pass sits at 10 Hz, and the
+  refit decides [proposal]. Where a tone below 40 Hz starts from silence
+  or rises, the 20 Hz high-pass raises the line for about 10 ms, which fits
+  as a fast fall; how far depends on the tone's start phase [synthetic].
+  On first notes at 32.7 and 36.7 Hz, 6 of 162 random start phases read
+  falls of 10 to 14 semitones with $\tau$ of 3 to 5 ms; on the 10 Hz line
+  none does [synthetic]. The 10 Hz line everywhere loses 3 of 18 drops on
+  ringing 808 lines, so slow fits keep the 20 Hz line [synthetic].
+- Residual. For a fit with $\tau$ of 10 ms or more, the error is averaged
+  over half a period of $f_\text{end}$ before its RMS [proposal]. The
+  third harmonic of a driven note beats with the fundamental and swings
+  the line at twice the note; the average removes that swing and keeps a
+  slower error, from a wrong model [fact]. A driven 808 drop left a raw
+  residual of 23 % and fitted $\Delta f$ and $\tau$ within 1 %
+  [synthetic]. Over a full period the average also hid the swing where a
+  retrigger restarts the phase: two same-pitch retriggers read falls of 4
+  and 11 semitones with $\tau$ of 12 ms [synthetic]. A fall faster than
+  10 ms ends inside one period, and the average would spread its misfit,
+  so it keeps the raw RMS [fact].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
@@ -152,9 +182,11 @@ settled pitch.
   several partials share the band and the line swings; on a generated 55
   Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
   settling at 49.7 Hz, which this rule rejects [synthetic].
-- Confidence. High needs a residual below 5 %, $\tau$ of 10 ms or more
-  and an attack of 12 ms or less, else medium [proposal]. The reasons are
-  `fit_residual` and `attack_time` [fact].
+- Confidence. Low when the attack exceeds 30 ms: a slow swell is no
+  strike, and a drop in a real stem's noise floor read an attack of
+  208 ms [proposal, fact for the stem]. High needs a residual below 5 %,
+  $\tau$ of 10 ms or more and an attack of 12 ms or less, else medium
+  [proposal]. The reasons are `fit_residual` and `attack_time` [fact].
   - The fit sees $e^{-7\ \mathrm{ms}/\tau}$ of the fall, a quarter at
     $\tau$ = 5 ms: kick drops with $\tau$ of 3 to 8 ms read $\Delta f$
     from -31 to +25 % [synthetic].
@@ -184,14 +216,26 @@ accepted [synthetic].
 
 Limits:
 
-- Drive. `tanh(4 x)` keeps $f_\text{end}$ within 1 Hz, but it puts the
-  third harmonic, 124 Hz, inside the band. The line then swings between
-  the two partials, the residual reaches 29 % of $\Delta f$, and no drop
-  is reported [synthetic].
+- Drive and harmonics. `tanh(4 x)` puts the third harmonic, 124 Hz,
+  inside the band, and a saw below 100 Hz its second and third. With the
+  average, the drop of the 41.2 Hz row through `tanh(4 x)` reads
+  $\Delta f$ 14 % low and $\tau$ 13 % long [synthetic]. A 12-semitone
+  drop with $\tau$ = 30 ms on a driven sine at 41.2, 55 and 82.4 Hz reads
+  within 0.7 semitones and 7 % on $\tau$, at high confidence
+  [synthetic]. On a saw the second harmonic swings the line at the note
+  itself, which half a period does not average out, and no drop is read
+  [synthetic].
 - A note above 200 Hz is not read: the band stops there [fact].
-- A low note rich in harmonics, such as a saw below 100 Hz, puts its
-  second and third harmonics inside the band; the line then swings
-  between the partials and no drop is read [synthetic].
+- A kick with no pitch drop and a noise click, over a sub, reads a fast
+  drop of 9 to 27 semitones at medium when it starts from silence, like a
+  kick whose pitch drops [synthetic]. Inside the first period of the note
+  the click and a fall of $\tau$ under 10 ms look alike; rejecting fast
+  falls from silence would lose 26 true kick drops of the generated sets
+  [synthetic].
+- A soft retrigger or an envelope dip on a low note mid-line can still
+  read a false fast drop at medium: of 82 generated lines of that kind,
+  one does with the transcriber's notes, another with the given notes,
+  15 to 16 semitones with $\tau$ under 4 ms [synthetic].
 - A legato note, which follows the previous run with no fall of the band
   envelope, has no onset and no drop [fact].
 - A struck note whose band envelope does not dip first has no onset and
@@ -204,8 +248,10 @@ Limits:
 - A fast drop, $\tau$ under 10 ms, after a ringing note needs a 6 dB
   strike, and a drop with a slow attack needs one too [fact].
 - Retriggered 808 hits at one pitch, with and without gaps, ringing or
-  not, and 808 lines stepping up to 7 semitones report no drop
-  [synthetic].
+  not, and 808 lines stepping up to 7 semitones report no drop with
+  $\tau$ of 10 ms or more [synthetic]. A false fast drop, $\tau$ under
+  10 ms, needs a 6 dB strike and survives the refit on the 10 Hz line
+  only where the limits above say [synthetic].
 
 ## Glides
 
@@ -222,6 +268,11 @@ A glide is pitch moving from one stable pitch to another.
   of 3.9 semitones for 7 [synthetic]. At a step between two notes the
   track goes unvoiced too, but lands on the new pitch and holds it, or
   swings back; at an 808 step the new strike raises the level [synthetic].
+  The jump across the gap must be 30 cents per millisecond or slower
+  [proposal]: a 50 ms glide of 7 semitones jumps 20 across two unvoiced
+  frames, the unison above 3.6 [synthetic]. On a real stem a note struck
+  again 10 semitones lower, across three unvoiced frames, read as a glide;
+  that is about 40 cents per millisecond [fact].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
   within 30 cents of its running mean and whose least-squares slope stays
   at 86 cents per second or less [proposal]. 86 cents per second is the
@@ -255,10 +306,15 @@ A glide is pitch moving from one stable pitch to another.
 - Curve bound. An exponential (RC) portamento, $1 - e^{-t/\tau}$,
   approaches its target slower than any power of the curve, so its $p$
   sits on the upper bound of 5 [fact]. A fit within 5 % of that bound
-  counts when its residual is 20 cents or less, its detected span lasts
-  90 ms or more, and it does not come from silence; it reads low with the
-  reason `curve_bound` [proposal]. Without those conditions a melody step
-  on a sine and two driven drops read as glides on the bound [synthetic].
+  counts when its residual is 20 cents or less, its interval is 2
+  semitones or more, its detected span lasts 90 ms or more, and it does
+  not come from silence; it reads low with the reason `curve_bound`
+  [proposal]. Without those conditions a melody step on a sine and two
+  driven drops read as glides on the bound [synthetic]. So does a
+  semitone step between 808 notes on one oscillator that keeps its phase:
+  the track smears it into a fast curve that fits the bound within
+  5 cents [synthetic]. The RC glides read span 4.8 to 9 semitones
+  [synthetic]; an RC glide under 2 semitones is not read [fact].
 - `time_s` is the full 0 to 100 % time [fact]. `start_s` is the fitted
   start less the track's lag at the start pitch [fact].
 - From silence. When a voiced run starts away from its first stable pitch
@@ -348,6 +404,9 @@ Limits:
   [synthetic].
 - A falling slide of 7 semitones from 49 Hz is not read [synthetic].
 - A glide inside chords has no method here [fact].
+- Short glides of 1 to 3 semitones on real stems mostly read low, yet an
+  independent f0 confirmed most of them: their confidence is pessimistic
+  [fact].
 
 ## Vibrato
 
@@ -367,8 +426,12 @@ Limits:
   [fact]. `share` is the power the sine explains over the power left after
   the line alone [fact].
 - Rule. A vibrato counts at 3 to 12 Hz with 1 % slack, an extent of 10
-  cents or more after the correction, and a share of 0.5 or more [fact,
-  proposal for the share]. Through the track the rates below read within
+  cents or more after the correction, a share of 0.5 or more and 2.5
+  cycles or more over the span [fact, proposal for the share and the
+  cycles]. Checked against an independent f0 on real stems, every vibrato
+  of 2.5 cycles or more matched it; the shorter ones, 1.6 to 2.4 cycles at
+  3 to 4.7 Hz over spans of 0.5 to 0.8 s, did not, or matched under 2
+  cycles [fact]. Through the track the rates below read within
   0.8 % of the truth, so the slack keeps a vibrato at either edge
   [synthetic].
 - Correction. The track's 93 ms frame smooths a fast swing, so the raw
@@ -378,10 +441,17 @@ Limits:
   `extent_raw_ct` times `extent_factor` [fact].
 - Confidence. Low when the kurtosis of the contour after the line, its
   fourth moment over the squared second, is below 1.25: a sine reads 1.5,
-  a square wave 1.0 [fact, proposal for 1.25]. Else high with a share of
-  0.8 or more and 4 cycles or more in the span, else medium [proposal]. The
-  generated vibratos read a kurtosis of 1.36 to 1.66, a semitone trill at
-  6 Hz 1.06 [synthetic].
+  a square wave 1.0 [fact, proposal for 1.25]. Low too on a pitch below
+  100 Hz [proposal]. Else high with 4 cycles or more in the span, else
+  medium [proposal]. The generated vibratos read a kurtosis of 1.36 to
+  1.66, a semitone trill at 6 Hz 1.06 [synthetic].
+  - On real stems every vibrato above 100 Hz with 4 cycles or more matched
+    an independent f0, at a share of 0.51 to 0.64; the share did not tell
+    the real ones from the rest, which read 0.52 to 0.70 [fact].
+  - Below 100 Hz few matched, and the extent read up to 5 times too wide
+    [fact]. A generated low saw with amplitude modulation, two beating
+    voices or none reads no vibrato, and one with a ±30-cent vibrato reads
+    it within 2 cents down to 41 Hz, so the cause is not known [synthetic].
 
 The share of the true extent the track reads, on one 1 s mono saw at 220
 Hz with ±35 cents per rate [synthetic]:
@@ -416,6 +486,8 @@ Limits:
   notes, the line reads as chords, and the layer is skipped [synthetic].
 - A vibrato whose depth ramps in over the span reads its extent 9 to 51 %
   low, since the sine averages the ramp [synthetic].
+- A vibrato of 3.5 Hz over 0.7 s holds 2.2 cycles and is not read
+  [synthetic].
 - A triangle LFO reads its extent 20 to 26 % low at high confidence: the
   fitted sine holds $8/\pi^2$ of a triangle's amplitude, and the extent is
   the sine's [fact, synthetic for the range].

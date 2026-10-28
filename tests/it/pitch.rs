@@ -115,6 +115,7 @@ impl Signal {
                 "gap_s": h.gap_s,
                 "lead_s": h.lead_s,
                 "drive": h.drive,
+                "continuous": h.continuous,
             }),
             Self::Rc(r) => json!({
                 "kind": "rc_glide",
@@ -195,6 +196,7 @@ const SAME_HITS: [f64; 5] = [29.0; 5];
 const SAME_THEN_UP: [f64; 6] = [29.0, 29.0, 29.0, 29.0, 36.0, 43.0];
 const STEPS_A: [f64; 6] = [36.0, 34.0, 41.0, 39.0, 39.0, 42.0];
 const STEPS_B: [f64; 6] = [34.0, 39.0, 45.0, 40.0, 38.0, 43.0];
+const SEMITONE_STEP: [f64; 5] = [35.0, 38.0, 43.0, 44.0, 44.0];
 
 /// The signals behind the review of the first pitch layer: retriggered and
 /// stepping 808s, short and unison glides away from 110 Hz, a fall into
@@ -258,6 +260,15 @@ fn hit_cases() -> Vec<(String, Signal)> {
                 hit_s: 0.425,
                 decay_s: 0.45,
                 ..Hits::new(&STEPS_B, 0.075)
+            }),
+        ),
+        (
+            "steps-808-continuous-semitone".to_owned(),
+            Signal::Hits(Hits {
+                hit_s: 0.45,
+                decay_s: 0.8,
+                continuous: true,
+                ..Hits::new(&SEMITONE_STEP, 0.0)
             }),
         ),
     ]
@@ -781,7 +792,7 @@ fn drops_on_a_ringing_808_line_read_without_a_level_rise() {
 }
 
 #[test]
-fn a_fast_or_slowly_attacked_drop_reads_at_medium_confidence() {
+fn a_fast_or_slowly_attacked_drop_reads_below_high_confidence() {
     // tau 5 ms: the fit sees a quarter of the fall from 7 ms on.
     let fast = PitchDrop::row(45.0, 100.0, 0.005);
     let read = drop_layer(
@@ -790,14 +801,17 @@ fn a_fast_or_slowly_attacked_drop_reads_at_medium_confidence() {
     );
     assert_eq!(read.drops.len(), 1, "{:?}", read.drops);
     assert_eq!(read.drops[0].confidence.level(), Some(Level::Medium));
-    // A 40 ms attack: the pitch falls before the onset, and df reads low.
-    let slow = PitchDrop {
-        attack_s: 0.04,
-        ..PitchDrop::row(41.2, 41.2, 0.03)
-    };
-    let read = drop_layer(&slow.render(f64::from(RATE)), &drop_notes(0));
-    assert_eq!(read.drops.len(), 1, "{:?}", read.drops);
-    assert_eq!(read.drops[0].confidence.level(), Some(Level::Medium));
+    // The pitch falls during a slow attack, before the onset, and df reads
+    // low: medium for a 20 ms ramp, low past a 30 ms attack.
+    for (attack_s, level) in [(0.02, Level::Medium), (0.04, Level::Low)] {
+        let slow = PitchDrop {
+            attack_s,
+            ..PitchDrop::row(41.2, 41.2, 0.03)
+        };
+        let read = drop_layer(&slow.render(f64::from(RATE)), &drop_notes(0));
+        assert_eq!(read.drops.len(), 1, "{:?}", read.drops);
+        assert_eq!(read.drops[0].confidence.level(), Some(level), "{attack_s}");
+    }
     // The rows of the drop table, with no attack ramp, read high.
     let sharp = PitchDrop::row(41.2, 41.2, 0.03);
     let read = drop_layer(&sharp.render(f64::from(RATE)), &drop_notes(0));
@@ -818,6 +832,17 @@ fn steps_between_808_notes_report_no_glide_or_drop() {
         assert_eq!(read.drops, [], "{name}");
         assert_eq!(read.counts.drop_candidates, 6, "{name}");
     }
+}
+
+#[test]
+fn a_semitone_step_on_one_808_oscillator_is_no_glide() {
+    // One sine keeps its phase through every step, and each note strikes
+    // its envelope again. The track smears the step from 43 to 44 into a
+    // fast curve that fits the upper bound of p within 5 cents.
+    let name = "steps-808-continuous-semitone";
+    let read = layer(name, case(name));
+    assert_eq!(read.glides, []);
+    assert_eq!(read.drops, []);
 }
 
 #[test]
@@ -971,6 +996,134 @@ fn drop_layer(mono: &[f64], notes: &NoteList) -> PitchLayer {
     .unwrap()
 }
 
+/// A sine at MIDI `pitch` that starts from 0.2 s of silence at `phase`
+/// radians, with a second harmonic of `h2` at `h2_phase`, a linear attack
+/// of `attack_s` and a 0.8 s decay, 1.2 s long.
+fn first_note(pitch: f64, attack_s: f64, phase: f64, h2: f64, h2_phase: f64) -> Vec<f64> {
+    let rate = f64::from(RATE);
+    let f = 440.0 * 2f64.powf((pitch - 69.0) / 12.0);
+    (0..round_to_usize(1.2 * rate))
+        .map(|n| {
+            let t = f64::from(u32::try_from(n).unwrap()) / rate - 0.2;
+            if t < 0.0 {
+                return 0.0;
+            }
+            let x = (std::f64::consts::TAU * f * t + phase).sin()
+                + h2 * (2.0 * std::f64::consts::TAU * f * t + h2_phase).sin();
+            0.5 * (t / attack_s).min(1.0) * x * (-t / 0.8).exp()
+        })
+        .collect()
+}
+
+#[test]
+fn a_driven_808_drop_reads_through_its_harmonics() {
+    // tanh(3 x) adds odd harmonics; the third lies inside the band and
+    // swings the line at twice the note. The raw residual was 23 % of the
+    // fall, over the 15 % limit.
+    let drop = PitchDrop {
+        decay_s: 1.0,
+        ..PitchDrop::row(43.65, 48.85, 0.065)
+    };
+    let driven: Vec<f64> = drop
+        .render(f64::from(RATE))
+        .iter()
+        .map(|x| (3.0 * x).tanh())
+        .collect();
+    let read = drop_layer(&driven, &note_list(&[(0.3, 1.2, 29.0)]));
+    assert_eq!(read.drops.len(), 1, "{:?}", read.counts);
+    let fit = &read.drops[0].value;
+    assert!((fit.df().unwrap().get() - 13.0).abs() < 0.5, "{fit:?}");
+    assert!((fit.tau.get() / 0.065 - 1.0).abs() < 0.05, "{fit:?}");
+}
+
+#[test]
+fn a_drop_far_below_the_loudest_passage_is_not_read() {
+    // A drop 60 dB below a loud passage, 1 s after it, sits in the noise
+    // floor of a real stem, under the 40 dB gate of active frames; 30 dB
+    // below it counts.
+    let rate = f64::from(RATE);
+    let notes = note_list(&[(0.2, 0.9, 64.0), (2.418, 3.091, 28.0)]);
+    for (down_db, drops) in [(60.0, 0), (30.0, 1)] {
+        let mut mono: Vec<f64> = (0..round_to_usize(rate))
+            .map(|n| {
+                0.8 * (std::f64::consts::TAU * 330.0 * f64::from(u32::try_from(n).unwrap()) / rate)
+                    .sin()
+            })
+            .collect();
+        mono.extend(std::iter::repeat_n(0.0, round_to_usize(rate)));
+        let gain = 10_f64.powf(-down_db / 20.0);
+        mono.extend(
+            PitchDrop::row(41.2, 41.2, 0.03)
+                .render(rate)
+                .iter()
+                .map(|x| gain * x),
+        );
+        let read = drop_layer(&mono, &notes);
+        assert_eq!(read.drops.len(), drops, "{down_db} dB");
+    }
+}
+
+#[test]
+fn a_low_first_note_from_silence_reads_no_drop() {
+    // The 20 Hz high-pass raises the line for about 10 ms after a tone
+    // below 40 Hz starts from silence: on the line alone, these read falls
+    // of 10 to 14 semitones with a tau of 3 to 5 ms.
+    for (pitch, attack, phase, h2, h2_phase) in [
+        (24.0, 0.001, 2.705, 0.0, 0.0),
+        (24.0, 0.006, 5.224, 0.0, 0.0),
+        (26.0, 0.006, 4.337, 0.0, 0.0),
+        (26.0, 0.006, 4.337, 0.15, 1.0),
+        (26.0, 0.001, 1.965, 0.3, 4.0),
+    ] {
+        let notes = note_list(&[(0.2, 1.1, pitch)]);
+        let read = drop_layer(&first_note(pitch, attack, phase, h2, h2_phase), &notes);
+        assert_eq!(read.drops, [], "{pitch} {attack} {phase} {h2}");
+    }
+}
+
+/// The pitch layer of a synthetic track that follows `cents(t)` from 0.2
+/// to 1.4 s at the tracker's hop, over silence, with `notes`.
+fn track_layer(cents: impl Fn(f64) -> f64, notes: &[(f64, f64, f64)]) -> PitchLayer {
+    let hop = 128.0 / f64::from(RATE);
+    let frames = (0..round_to_usize(1.6 / hop))
+        .map(|k| {
+            let t = f64::from(u32::try_from(k).unwrap()) * hop;
+            TrackFrame {
+                time: s(t),
+                f0: (0.2..1.4)
+                    .contains(&t)
+                    .then(|| Hz::new(440.0 * 2f64.powf((cents(t) - 6900.0) / 1200.0)).unwrap()),
+                level: Decibels::new(0.0).unwrap(),
+            }
+        })
+        .collect();
+    let mono = vec![0.0; round_to_usize(1.6 * f64::from(RATE))];
+    PitchLayer::of(&PitchInput {
+        mono: &mono,
+        rate: rate(),
+        track: &PitchTrack::from_frames(frames),
+        notes: &note_list(notes),
+        voicing: Voicing::Monophonic,
+    })
+    .unwrap()
+}
+
+#[test]
+fn a_vibrato_below_100_hz_reads_low_and_a_step_reads_none() {
+    let vibrato = |t: f64| 35.0 * (std::f64::consts::TAU * 5.5 * t).sin();
+    // 5.5 Hz over about 1 s holds 5 cycles: high at A3, low at A1.
+    for (pitch, level) in [(57.0, Level::High), (33.0, Level::Low)] {
+        let read = track_layer(|t| 100.0 * pitch + vibrato(t), &[(0.2, 1.4, pitch)]);
+        assert_eq!(read.vibrato.len(), 1, "{pitch}: {:?}", read.vibrato);
+        assert_eq!(read.vibrato[0].confidence.level(), Some(level), "{pitch}");
+    }
+    // A semitone step at 0.8 s stays inside one steady span, and spoils
+    // the sine's share.
+    let step = |t: f64| 5700.0 + if t < 0.8 { 0.0 } else { 100.0 } + vibrato(t);
+    let read = track_layer(step, &[(0.2, 0.8, 57.0), (0.8, 1.4, 58.0)]);
+    assert_eq!(read.vibrato, [], "{:?}", read.vibrato);
+}
+
 #[test]
 fn drops_read_f_end_df_and_tau_within_their_tolerances() {
     for (row, &(f_end, df, tau)) in PitchDrop::ROWS.iter().enumerate() {
@@ -1071,8 +1224,9 @@ fn a_driven_or_noisy_drop_keeps_f_end_within_1_hz() {
         let fit = fit_drop(&line, onset, s(1.0)).unwrap();
         assert!((fit.f_end.get() - 41.2).abs() <= 1.0, "{name}: {fit:?}");
         // Drive puts the third harmonic, 124 Hz, inside the band, and the
-        // line's swing between the two partials fails the residual rule.
-        assert_eq!(fit.accepted(), name == "noise", "{name}: {fit:?}");
+        // line swings between the two partials; averaged over a period of
+        // the note, the swing leaves the residual.
+        assert!(fit.accepted(), "{name}: {fit:?}");
     }
 }
 
