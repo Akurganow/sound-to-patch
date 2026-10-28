@@ -48,5 +48,70 @@
     "file": "reference/vital/global.md",
     "question": "Which key sets the oversampling of the whole patch?",
     "answer": "`oversampling`"
+  },
+  {
+    "file": "reference/core/notation.md",
+    "question": "Which Camelot code is A minor?",
+    "answer": "| 8 | A minor | C major | 1m and 1d |"
+  },
+  {
+    "file": "reference/core/roles.md",
+    "question": "Which entry holds the pitch range of a sub bass?",
+    "answer": "role.sub-bass"
+  },
+  {
+    "file": "reference/core/scales.md",
+    "question": "Which scale entry is the Phrygian dominant?",
+    "answer": "scale.phrygian-dominant"
+  },
+  {
+    "file": "reference/core/chords.md",
+    "question": "Which chord entry holds the spelling m7b5?",
+    "answer": "chord.half-diminished"
+  },
+  {
+    "file": "reference/core/voicing.md",
+    "question": "Which entry lowers the second voice from the top by an octave?",
+    "answer": "voicing.drop-2"
+  },
+  {
+    "file": "reference/core/progressions.md",
+    "question": "Which entry is the Andalusian cadence?",
+    "answer": "progression.andalusian-cadence"
+  },
+  {
+    "file": "reference/core/rhythm.md",
+    "question": "Which entry is the tresillo rhythm?",
+    "answer": "rhythm.tresillo"
+  },
+  {
+    "file": "reference/core/technique.md",
+    "question": "Which entry describes a walking bass?",
+    "answer": "bass.walking-bass"
+  },
+  {
+    "file": "reference/core/phrase.md",
+    "question": "Which entry describes a breakdown section?",
+    "answer": "phrase.breakdown"
+  },
+  {
+    "file": "reference/core/genres.md",
+    "question": "Which entry gives the tempo and drums of drum and bass?",
+    "answer": "genre.drum-and-bass"
+  },
+  {
+    "file": "reference/core/senses.md",
+    "question": "Which question picks the sense of offbeat?",
+    "answer": "Does offbeat mean the eighth 'and', any off-beat sixteenth, or a psytrance bass line?"
+  },
+  {
+    "file": "reference/core/statistics-harmony.md",
+    "question": "Which share counts songs with the axis loop in the sheet corpus?",
+    "answer": "progressions.axis.sheet"
+  },
+  {
+    "file": "reference/core/statistics-keys.md",
+    "question": "Which share counts major keys among crowd-labelled songs?",
+    "answer": "crowd-mode.major"
   }
 ]

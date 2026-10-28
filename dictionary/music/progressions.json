@@ -1,0 +1,2422 @@
+[
+  {
+    "id": "progression.one-four-five",
+    "group": "progression",
+    "word": "I-IV-V",
+    "aliases": ["three chords", "I-IV-V-I", "I-IV-I-V", "I-IV-V-IV"],
+    "meaning": "The three-chord family of tonic, subdominant and dominant, as I-IV-V-I, I-IV-I-V or I-IV-V-IV. It is the most common loop in folk, blues, country and rock and roll.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 5, 7],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.axis",
+    "group": "progression",
+    "word": "axis",
+    "aliases": ["four chords", "epic", "I-V-vi-IV", "i-bVI-bIII-bVII"],
+    "meaning": "Major chords on I, V, vi and IV, in any rotation. The same chords read in minor as i-bVI-bIII-bVII, and the mood depends on which chord feels like home.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 7, 9, 5],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 54, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trance", "genre.drum-and-bass"],
+    "tier": "M1",
+    "n_sources": 5,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.fifties",
+    "group": "progression",
+    "word": "50s",
+    "aliases": ["doo-wop", "I-vi-IV-V"],
+    "meaning": "I-vi-IV-V, the doo-wop loop of the 1950s, still common in pop.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 9, 5, 7],
+      "chords": ["chord.major-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.mixolydian-loop",
+    "group": "progression",
+    "word": "mixolydian loop",
+    "aliases": ["I-bVII-IV"],
+    "meaning": "I-bVII-IV, three major chords that borrow the flat seventh of the Mixolydian mode. It is common in folk and blues.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 10, 5],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 54, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": "scale.mixolydian",
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.aeolian-shuttle",
+    "group": "progression",
+    "word": "Aeolian shuttle",
+    "aliases": ["i-bVII-bVI-bVII"],
+    "meaning": "i-bVII-bVI-bVII, a minor chord that shuttles between the flat seventh and flat sixth. Heard in hard rock and trap.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 10, 8, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trap"],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.ii-v-i",
+    "group": "progression",
+    "word": "ii-V-I",
+    "aliases": ["two-five-one", "ii7-V7-Imaj7"],
+    "meaning": "ii7-V7-Imaj7 in major, or iim7b5-V7alt-i in minor. It is the staple of jazz, deep house, lo-fi and R&B.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [2, 7, 0],
+      "chords": ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.deep-house", "genre.lo-fi"],
+    "tier": "M1",
+    "n_sources": 5,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.one-four-six-five",
+    "group": "progression",
+    "word": "I-IV-vi-V",
+    "aliases": [],
+    "meaning": "I-IV-vi-V, a cousin of the 50s loop that swaps the order of the last chords. It appears mostly in chord sheets.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 5, 9, 7],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["sheet-chords", "chart-chords"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.minor-loop-with-iv",
+    "group": "progression",
+    "word": "minor loop with iv",
+    "aliases": ["i-iv-bVII-bIII"],
+    "meaning": "i-iv-bVII-bIII, a minor loop built around the minor fourth-degree chord. Heard in house and soul.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 5, 10, 3],
+      "chords": ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.house"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.minor-three-seven-six",
+    "group": "progression",
+    "word": "i-III-VII-VI",
+    "aliases": ["i-bIII-bVII-bVI"],
+    "meaning": "i-bIII-bVII-bVI, a minor loop on the first, third, seventh and sixth degrees. It appears mostly in chord sheets.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 3, 10, 8],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 61, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["sheet-chords", "chart-chords"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.one-three-four-five",
+    "group": "progression",
+    "word": "I-iii-IV-V",
+    "aliases": ["I-iii-IV-V"],
+    "meaning": "I-iii-IV-V, a major loop with a minor chord on the third degree. It appears mostly in chord sheets.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 4, 5, 7],
+      "chords": ["chord.major-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["sheet-chords", "chart-chords"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.minor-five-six-seven",
+    "group": "progression",
+    "word": "i-v-bVI-bVII",
+    "aliases": ["i-v-bVI-bVII"],
+    "meaning": "i-v-bVI-bVII, a minor loop with a minor fifth-degree chord. Heard in synthwave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 7, 8, 10],
+      "chords": ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.synthwave"],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.royal-road",
+    "group": "progression",
+    "word": "royal road",
+    "aliases": ["IV-V-iii-vi"],
+    "meaning": "IV-V-iii-vi, played as IVmaj7-V7-iii7-vi7: the loop of Japanese pop and city pop. Its minor form is bVImaj7-bVII7-v7-i.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [5, 7, 4, 9],
+      "chords": [
+        "chord.major-seventh",
+        "chord.dominant-seventh",
+        "chord.minor-seventh",
+        "chord.minor-seventh"
+      ],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 61, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.andalusian-cadence",
+    "group": "progression",
+    "word": "Andalusian cadence",
+    "aliases": ["i-bVII-bVI-V"],
+    "meaning": "i-bVII-bVI-V, a falling minor line that ends on a major dominant. In its Phrygian reading it is iv-III-bII-I.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 10, 8, 7],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 61, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.flat-six-flat-seven-one",
+    "group": "progression",
+    "word": "bVI-bVII-I",
+    "aliases": ["bVI-bVII-I-IV"],
+    "meaning": "bVI-bVII-I, often continued to IV: a cadence-style loop from video game music, rock and pop.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [8, 10, 0, 5],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 54, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "sheet-chords", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": "scale.natural-minor",
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.twelve-bar-blues",
+    "group": "progression",
+    "word": "12-bar blues",
+    "aliases": ["twelve-bar blues", "blues form"],
+    "meaning": "Twelve bars of dominant sevenths: I I I I, IV IV I I, V IV I V. Variants are the quick change, the shuffle ending, the minor form (i7 iv7 bVI7 V7) and bebop.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7],
+      "chords": [
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh",
+        "chord.dominant-seventh"
+      ],
+      "bars_per_chord": 1
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 64, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 80, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 96, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 112, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 128, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 144, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 160, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 176, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 64, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 80, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 96, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 112, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 128, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 144, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 160, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 176, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.turnaround",
+    "group": "progression",
+    "word": "turnaround",
+    "aliases": ["I-vi-ii-V"],
+    "meaning": "I-vi-ii-V, the jazz turnaround that leads back to the tonic. Heard in jazz and lo-fi.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 9, 2, 7],
+      "chords": [
+        "chord.major-seventh",
+        "chord.minor-seventh",
+        "chord.minor-seventh",
+        "chord.dominant-seventh"
+      ],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.lo-fi"],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.pachelbel",
+    "group": "progression",
+    "word": "Pachelbel",
+    "aliases": ["I-V-vi-iii-IV-I-IV-V"],
+    "meaning": "I-V-vi-iii-IV-I-IV-V, an eight-chord cycle over a stepwise falling bass. Heard in pop.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 7, 9, 4, 5, 0, 5, 7],
+      "chords": [
+        "chord.major-triad",
+        "chord.major-triad",
+        "chord.minor-triad",
+        "chord.minor-triad",
+        "chord.major-triad",
+        "chord.major-triad",
+        "chord.major-triad",
+        "chord.major-triad"
+      ],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 64, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 80, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 96, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 112, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 64, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 80, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 96, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 112, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.phrygian-menace",
+    "group": "progression",
+    "word": "Phrygian menace",
+    "aliases": ["bII-i"],
+    "meaning": "bII-i, a major chord a semitone above the minor tonic. It sounds menacing in metal, trap and drill.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [1, 0],
+      "chords": ["chord.major-triad", "chord.minor-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 49, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 49, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trap"],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "chart-chords"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": "scale.phrygian",
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.minor-plagal",
+    "group": "progression",
+    "word": "minor plagal",
+    "aliases": ["IV-iv-I"],
+    "meaning": "IV-iv-I, a major subdominant that turns minor before the tonic.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [5, 5, 0],
+      "chords": ["chord.major-triad", "chord.minor-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["chart-chords"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.minor-trance-circle",
+    "group": "progression",
+    "word": "minor trance circle",
+    "aliases": ["iv-bVII-bIII-bVI"],
+    "meaning": "iv-bVII-bIII-bVI, a minor loop heard in trance.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [5, 10, 3, 8],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 61, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trance"],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.backdoor",
+    "group": "progression",
+    "word": "backdoor",
+    "aliases": ["ii-bVII7-I"],
+    "meaning": "ii-bVII7-I, which reaches the tonic through the flat-seven dominant.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [2, 10, 0],
+      "chords": ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": "scale.mixolydian",
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "progression.circle-vi-ii-v-i",
+    "group": "progression",
+    "word": "vi-ii-V-I",
+    "aliases": ["circle progression"],
+    "meaning": "vi-ii-V-I, a chain of fifths that runs down to the tonic.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [9, 2, 7, 0],
+      "chords": [
+        "chord.minor-seventh",
+        "chord.minor-seventh",
+        "chord.dominant-seventh",
+        "chord.major-seventh"
+      ],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.trance-chords",
+    "group": "harmony",
+    "word": "trance chords",
+    "aliases": [],
+    "meaning": "Main loop i-VI-III-VII (Am-F-C-G), two bars per chord over an eight-bar loop. Other loops are iv-VII-III-VI and i-III-VII-VI, played as triads plus minor sevenths and suspended chords.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 8, 3, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": 2
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trance"],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.deep-house-chords",
+    "group": "harmony",
+    "word": "deep house chords",
+    "aliases": [],
+    "meaning": "Main loop ii-V-I with minor sevenths, sevenths, major sevenths and ninths, one chord per bar. Other loops are i9-IV13 and an Am7-Dm7 vamp over two bars, voiced low and wide across two octaves.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [2, 7, 0],
+      "chords": ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"],
+      "bars_per_chord": 1
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.deep-house"],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.house-stab-chords",
+    "group": "harmony",
+    "word": "house stab chords",
+    "aliases": [],
+    "meaning": "Main loop I-IV-V, one chord per bar, with short mid-range stabs on slots 2, 6, 10 and 14. Other loops are Am7-Dm7, i-VI-III-VII and ii-V-i.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 5, 7],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": 1
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["stab"],
+    "genres": ["genre.house"],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.lo-fi-chords",
+    "group": "harmony",
+    "word": "lo-fi chords",
+    "aliases": [],
+    "meaning": "Main loop ii9-V9-Imaj9, a bar or more per chord, rootless minor ninths held, rolled, comped or broken. Other loops are IVmaj7-iii7-ii7-Imaj7, Imaj9-vi9-ii9-V9, Imaj7-vi7-ii7-V7, Imaj7-IVmaj7 and i9-VImaj7-IIImaj7-VII.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [2, 7, 0],
+      "chords": ["chord.minor-9", "chord.dominant-9", "chord.major-9"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.lo-fi"],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.techno-chords",
+    "group": "harmony",
+    "word": "techno chords",
+    "aliases": [],
+    "meaning": "Often one chord or none. Dub techno stabs a single minor seventh, and when the chord moves it changes every two or four bars.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0],
+      "chords": ["chord.minor-seventh"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 49, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.techno"],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.trap-chords",
+    "group": "harmony",
+    "word": "trap chords",
+    "aliases": [],
+    "meaning": "One to three minor chords, one per bar, with the 808 taking the root and the upper tones high, arpeggiated and widely spaced. Main loop i-bVI-bVII; others are i, i-iv, i-bVII-bVI, i-VI-VII-i, i-bVI-V and i-III-VI-VII.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 8, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": 1
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.trap"],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.progressive-house-chords",
+    "group": "harmony",
+    "word": "progressive house chords",
+    "aliases": [],
+    "meaning": "Main loop i-iv-VI-VII, two bars per chord. A second loop is i9-IV13.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 5, 8, 10],
+      "chords": ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": 2
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.future-bass-chords",
+    "group": "harmony",
+    "word": "future bass chords",
+    "aliases": [],
+    "meaning": "Main loop vi-IV-I-V with sevenths and ninths. A second loop is I-V-vi-IV in the same dress.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [9, 5, 0, 7],
+      "chords": [
+        "chord.minor-seventh",
+        "chord.major-seventh",
+        "chord.major-seventh",
+        "chord.dominant-seventh"
+      ],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.future-bass"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.neo-soul-chords",
+    "group": "harmony",
+    "word": "neo-soul chords",
+    "aliases": [],
+    "meaning": "Main loop ii9-V13-Imaj9, a bar or more per chord. Other ideas are quartal drift and planing Imaj7#11 to bVIImaj7#11.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [2, 7, 0],
+      "chords": ["chord.minor-9", "chord.dominant-13", "chord.major-9"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.drum-and-bass-chords",
+    "group": "harmony",
+    "word": "drum and bass chords",
+    "aliases": [],
+    "meaning": "Liquid drum and bass uses i-VI-III-VII or ii7-V7-I-vi7. Neurofunk uses i-iv-i-v.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 8, 3, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.drum-and-bass", "genre.neurofunk"],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.pop-chords",
+    "group": "harmony",
+    "word": "pop chords",
+    "aliases": [],
+    "meaning": "Pop leans on I-V-vi-IV, the axis loop.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 7, 9, 5],
+      "chords": ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 54, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 6,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.film-chords",
+    "group": "harmony",
+    "word": "film chords",
+    "aliases": [],
+    "meaning": "Main loop i-bVI-bIII-bVII, with chromatic mediants, pedal tones and open fifths.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 8, 3, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.big-room-chords",
+    "group": "harmony",
+    "word": "big room chords",
+    "aliases": [],
+    "meaning": "A big room loop of i-i-VI-VI.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 0, 8, 8],
+      "chords": ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 48, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 48, "len": 4, "vel": 90},
+        {"pitch": 61, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.synthwave-chords",
+    "group": "harmony",
+    "word": "synthwave chords",
+    "aliases": [],
+    "meaning": "Main loop i-bVII-IV; a second loop is i-v-bVI-bVII.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 10, 5],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 54, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.synthwave"],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.dubstep-chords",
+    "group": "harmony",
+    "word": "dubstep chords",
+    "aliases": [],
+    "meaning": "Main loop i-bVI-bVII; a second loop is bII-i.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 8, 10],
+      "chords": ["chord.minor-triad", "chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 32, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": ["genre.dubstep"],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.harmonic-rhythm",
+    "group": "harmony",
+    "word": "harmonic rhythm",
+    "aliases": [],
+    "meaning": "How long each chord lasts. In a chart set most bars hold one chord, and runs of 2 and 4 beats lead. A chord note lasts two to eight beats.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 2.0, "max": 8.0},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.5, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 0.5, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 0.5, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["chart-chords", "sheet-chords"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.modal-interchange",
+    "group": "harmony",
+    "word": "modal interchange",
+    "aliases": ["borrowed chords"],
+    "meaning": "Borrowing chords from the parallel minor into a major key: iv, bVI (8), bVII (10), bIII (3) and ii diminished (2). Only bIII, bVI and bVII move the root a semitone off the major scale.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "pitch_set",
+      "offsets": [0, 2, 3, 4, 5, 7, 8, 9, 10, 11],
+      "colour": [3, 8, 10],
+      "giveaway": []
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 61, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.chromatic-mediant",
+    "group": "harmony",
+    "word": "chromatic mediant",
+    "aliases": [],
+    "meaning": "A chord whose root lies 3, 4, 8 or 9 semitones from the last root, with the same quality and one common tone. Diatonic mediants share two tones.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["harmony.double-chromatic-mediant"],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 4],
+      "chords": ["chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "harmony.double-chromatic-mediant",
+    "group": "harmony",
+    "word": "double chromatic mediant",
+    "aliases": [],
+    "meaning": "A chromatic mediant whose chord shares no tone with the last chord, such as a major triad a tritone away.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["harmony.chromatic-mediant"],
+    "rule": {
+      "kind": "cycle",
+      "roots": [0, 6],
+      "chords": ["chord.major-triad", "chord.major-triad"],
+      "bars_per_chord": null
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

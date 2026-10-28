@@ -15,6 +15,9 @@
 //!   reasons and a spread, or no estimate.
 //! - [`dsp`]: the signal core: windows, STFT, peak picking, active frames,
 //!   the analytic signal and decay fits.
+//! - [`music`]: the music dictionary for notes, embedded from
+//!   `dictionary/music/`, with the key, note-name, numeral and chord-symbol
+//!   parsers, the snap rule and the rhythm arithmetic.
 //! - [`notes`]: the note list that every layer reads, the transcriber with
 //!   its profiles and its register detection, the f0 track, the cleanup
 //!   with the quiet-note guard, the notes step of a stem, the MIDI reader
@@ -39,6 +42,7 @@ mod cast;
 pub mod cli;
 pub mod confidence;
 pub mod dsp;
+pub mod music;
 pub mod notes;
 pub mod preset;
 pub mod render;

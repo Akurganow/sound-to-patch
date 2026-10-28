@@ -11,6 +11,7 @@ mod fetch;
 mod fixtures;
 mod golden;
 mod lock;
+mod music;
 mod plugins;
 mod pr;
 mod reference;

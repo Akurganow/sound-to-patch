@@ -9,10 +9,14 @@
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::io::Write as _;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use serde_json::Value;
+use sound_to_patch::music::chord::parse_chord;
+use sound_to_patch::music::dictionary;
+use sound_to_patch::music::entry::Group;
 
 /// The fields every vector carries.
 const FIELDS: [&str; 8] = [
@@ -43,6 +47,8 @@ const PROTOTYPE_TABLES: [&str; 11] = [
 ];
 
 const GOLDEN_DIR: &str = "tests/fixtures/golden";
+const MUSIC_ORACLE: &str = "music_oracle.py";
+const MUSIC_VECTOR: &str = "music-oracles.json";
 const GENERATOR_DIR: &str = "xtask/golden";
 const VENV: &str = "target/golden-venv";
 
@@ -63,7 +69,62 @@ pub(crate) fn generate(root: &Path) -> crate::Result<()> {
         .arg("-I")
         .arg(generator.join("generate.py"))
         .arg(root))?;
+    music_oracles(root, &venv.join("bin/python"), &generator)?;
     check(root)
+}
+
+/// Runs the chord oracles on every chord spelling of the music dictionary
+/// and writes which spellings agree. The oracle gets the spellings on stdin
+/// and runs in the temp folder, so it reads no file of the repository, and
+/// the vector holds symbol lists only, never an oracle row.
+fn music_oracles(root: &Path, python: &Path, generator: &Path) -> crate::Result<()> {
+    let request = serde_json::json!({ "chords": chord_request()? });
+    let mut child = Command::new(python)
+        .arg("-I")
+        .arg(generator.join(MUSIC_ORACLE))
+        .current_dir(std::env::temp_dir())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+    child
+        .stdin
+        .take()
+        .ok_or("the oracle has no stdin")?
+        .write_all(request.to_string().as_bytes())?;
+    let output = child.wait_with_output()?;
+    if !output.status.success() {
+        return Err(format!("{MUSIC_ORACLE} failed with {}", output.status).into());
+    }
+    let report: Value = serde_json::from_slice(&output.stdout)?;
+    let document = serde_json::json!({
+        "name": "music-oracles",
+        "issue": 264,
+        "description": "Which chord spellings of the music dictionary get the same pitch classes from each oracle library, which differ and which it cannot parse.",
+        "generator": format!("{GENERATOR_DIR}/{MUSIC_ORACLE}"),
+        "tools": report["tools"],
+        "recipe": { "input": "every chord spelling of dictionary/music/chords.json on root C, with the pitch classes of the dictionary's parser, passed on stdin" },
+        "values": report["oracles"],
+        "tolerance": { "abs": 0.0, "rel": 0.0 },
+    });
+    fs::write(
+        root.join(GOLDEN_DIR).join(MUSIC_VECTOR),
+        serde_json::to_string_pretty(&document)? + "\n",
+    )?;
+    Ok(())
+}
+
+/// Every chord spelling on root C with the pitch classes the dictionary's
+/// parser gives it.
+pub(crate) fn chord_request() -> crate::Result<Vec<Value>> {
+    let mut chords = Vec::new();
+    for entry in dictionary()?.group(Group::Chord) {
+        for symbol in &entry.symbols {
+            let text = format!("C{symbol}");
+            let classes: Vec<u8> = parse_chord(&text)?.classes().into_iter().collect();
+            chords.push(serde_json::json!({ "symbol": text, "classes": classes }));
+        }
+    }
+    Ok(chords)
 }
 
 fn run(command: &mut Command) -> crate::Result<()> {

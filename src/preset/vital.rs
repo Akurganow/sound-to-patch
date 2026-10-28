@@ -121,6 +121,9 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
         provenance: Provenance::Measured,
     },
     bend_range_default: Semitones::from_const(2.0),
+    // The GPL source draws no note names, so only a probe of the app can
+    // settle the label.
+    middle_c: None,
 };
 
 /// The Vital mapper. The estimator epics fill its groups; until then each

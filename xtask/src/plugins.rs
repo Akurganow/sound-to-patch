@@ -40,10 +40,32 @@ const SKILL_LINES: usize = 500;
 const SKILL_CHARS: usize = 20_000;
 const REFERENCE_LINES: usize = 300;
 
-/// Phrases a synth folder must not hold, lowercased. A file about one
-/// synth explains it on its own terms.
+/// Phrases a folder must not hold, lowercased. A file about one synth
+/// explains it on its own terms; a core file names no program but Serum 2
+/// and Vital.
 fn banned(synth: &str) -> &'static [&'static str] {
     match synth {
+        "core" => &[
+            "ableton",
+            "bitwig",
+            "cakewalk",
+            "cubase",
+            "fl studio",
+            "garageband",
+            "logic pro",
+            "pro tools",
+            "reaper",
+            "studio one",
+            "beatport",
+            "hooktheory",
+            "mixed in key",
+            "spotify",
+            "serum1",
+            "serum 1",
+            "older version",
+            "previous version",
+            "compared to",
+        ],
         "vital" => &["serum", "older version", "previous version", "compared to"],
         "serum2" => &[
             "serum1",
@@ -450,7 +472,10 @@ fn check_banned(root: &Path, base: &Path, file: &Path, text: &str, problems: &mu
     let at = shown(root, file);
     for phrase in banned(&synth) {
         if lower.contains(phrase) {
-            problems.push(format!("{at} holds {phrase:?}; a {synth} file names no other synth and compares no versions"));
+            problems.push(format!(
+                "{at} holds {phrase:?}; a {synth} file names no program but its own synth, \
+                 or Serum 2 and Vital in core, and compares no versions"
+            ));
         }
     }
     let words: BTreeSet<&str> = lower.split(|c: char| !c.is_alphanumeric()).collect();

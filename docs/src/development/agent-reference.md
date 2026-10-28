@@ -19,6 +19,7 @@ files:
 ```text
 reference/                             the shared reference, one copy
   README.md                            which file answers which question
+  core/<topic>.md                      generated: one music file per topic
   vital/<layer>.md                     generated: one file per layer
   vital/global.md                      generated: controls outside the layers
   vital/examples/*.json                edit lists that CI applies
@@ -31,10 +32,14 @@ plugins/sound-to-patch-reference/
     reference -> ../../../../reference
 .claude/skills/synth-reference -> ../../plugins/sound-to-patch-reference/skills/synth-reference
 dictionary/
+  music/<topic>.json                   music entries, one file per topic
+  music/stats.json                     the shares the music entries rest on
+  music/plan.json                      the planned entry count per group and tier
   words/<axis>.json                    neutral word entries, one file per axis
   sources.json                         every source the dictionary cites
   probes.json                          one probe question per reference file
   examples.json                        the expected number of examples per synth
+schemas/music.schema.json, schemas/stats.schema.json,
 schemas/words.schema.json, schemas/sources.schema.json
 ```
 
@@ -71,6 +76,60 @@ reference --check` fails when a committed file differs; CI runs it.
 - Numbers show five significant digits. The registry keeps the exact
   values.
 
+## The music dictionary
+
+The music dictionary turns a producer's note words into checkable rules:
+keys, scales, chords, voicings, progressions, rhythm, articulation,
+phrase and genre words. The data lives in `dictionary/music/`, one file
+per topic, and the module `src/music` embeds those files with
+`include_str!` and parses them once. So the binary and the generated
+reference read the same data, and nothing can drift between them.
+
+Each entry is one sense of a word:
+
+- `id` is `<group>.<word>` or `<group>.<word>.<sense>`, such as
+  `scale.phrygian` or `position.offbeat.eighth`.
+- `rule` has a kind from a fixed list, such as `pitch_set`, `chord_tones`,
+  `cycle`, `onset_set` or `register`, and the numbers of that kind. Free
+  text is rejected. `none` marks a word that names no note rule, such as a
+  section word.
+- `example_pass` and `example_fail` are small note fragments that meet and
+  break the rule. The loader checks that they are well formed and in
+  range; the text-to-notes task evaluates them.
+- `tier` says how much the entry is needed: every planned M1 entry must
+  land, at least half of M2 and a quarter of M3. `tag` says how the claim
+  is known, and `source` names ids from `dictionary/sources.json`.
+- A word with several senses has one entry per sense and exactly one
+  default. An ask word carries the one question on its default sense.
+- Chord entries list their spellings in `symbols`; the chord parser reads
+  only those, so a spelling outside the dictionary is an error that names
+  it.
+
+The middle-C convention is named by the label a program gives note 60:
+`C3`, `C4` (scientific) or `C5`. Notes are stored as MIDI numbers, and a
+note name with no stated convention is read in the role range and flagged
+as an assumption. `SynthCapabilities::middle_c` holds the label of each
+synth's own note display: Serum 2 labels note 60 C3, and the Vital label
+stays unset because its source draws no note names; a probe of the app
+settles it.
+
+To add or change a music entry:
+
+1. Edit the topic file under `dictionary/music/`.
+2. Run `cargo nextest run --test it music::`; fix each problem it names.
+3. Add any new share to `dictionary/music/stats.json`, with counts when the source gives them.
+4. Raise the group's count in `dictionary/music/plan.json` when the entry is planned.
+5. Run `cargo xtask reference` to rewrite `reference/core/`.
+
+The oracle libraries never enter the repository. `chordparser` and
+`rust-music-theory` are dev-dependencies: the tests compare every chord
+spelling and the scales they share. `pychord` and `music21` are pinned in
+the golden tools; `cargo xtask golden` passes the spellings on stdin to
+`xtask/golden/music_oracle.py`, which runs in the temp folder and writes
+only which spellings agree, differ or do not parse. The tests pin the
+spellings that differ, so a change in either the dictionary or an oracle
+fails them.
+
 ## Checks
 
 `cargo xtask check-plugins` runs in the docs job. It fails on:
@@ -90,10 +149,14 @@ reference --check` fails when a committed file differs; CI runs it.
   to the skill of the plugin; a link checked out as a plain file is
   reported as "symlink not checked out";
 - a file under `reference/` that is neither Markdown nor JSON;
-- a phrase that a synth folder must not hold: for Vital, the name of the
-  other synth and version comparisons such as "older version";
+- a phrase that a folder must not hold: for Vital, the name of the other
+  synth; for `core/`, a program name other than Serum 2 and Vital; for
+  both, version comparisons such as "older version";
 - a reference file without a probe in `dictionary/probes.json`, and a
   probe answer that appears in no file or in more than one.
+
+`cargo xtask reference` fails when a planned M1 or M2 group of the music
+dictionary falls under its floor, and names the group.
 
 The integration tests check the dictionary files against their schemas,
 apply every example edit list to the built-in template of its synth, and

@@ -1,0 +1,2972 @@
+[
+  {
+    "id": "crowd-mode.major",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in major.",
+    "share": 51.1,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.minor",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in natural minor.",
+    "share": 36.6,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.mixolydian",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in Mixolydian.",
+    "share": 5.6,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.dorian",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in Dorian.",
+    "share": 4.4,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.phrygian",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in Phrygian.",
+    "share": 1.3,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.lydian",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in Lydian.",
+    "share": 0.8,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-mode.locrian",
+    "set": "crowd-mode",
+    "claim": "Share of the 79,149 crowd-labelled keys in Locrian.",
+    "share": 0.2,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.c",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic C.",
+    "share": 15,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.d",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic D.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.g",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic G.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.a",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic A.",
+    "share": 10,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.e",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic E.",
+    "share": 9,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-major-root.f",
+    "set": "crowd-major-root",
+    "claim": "Share of crowd-labelled major keys with tonic F.",
+    "share": 8,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.a",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic A.",
+    "share": 13,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.c",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic C.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.e",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic E.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.d",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic D.",
+    "share": 11,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.b",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic B.",
+    "share": 9,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "crowd-minor-root.g",
+    "set": "crowd-minor-root",
+    "claim": "Share of crowd-labelled minor keys with tonic G.",
+    "share": 8,
+    "count": null,
+    "total": null,
+    "source": ["crowd-tabs"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-c",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is C.",
+    "share": 10.3,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-c-sharp",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is C#.",
+    "share": 5.8,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-d",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is D.",
+    "share": 8.1,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-d-sharp",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is D#.",
+    "share": 6.8,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-e",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is E.",
+    "share": 9.3,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-f",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is F.",
+    "share": 12.9,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-f-sharp",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is F#.",
+    "share": 7.0,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-g",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is G.",
+    "share": 11.1,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-g-sharp",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is G#.",
+    "share": 5.6,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-a",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is A.",
+    "share": 11.4,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-a-sharp",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is A#.",
+    "share": 4.8,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set1-b",
+    "set": "relative-minor-root-set1",
+    "claim": "Share of tracks in the 604-track annotated set whose relative-minor root is B.",
+    "share": 7.0,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1",
+    "set": null,
+    "claim": "Share of tracks in the 604-track annotated set that are minor.",
+    "share": 84.6,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-c",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is C.",
+    "share": 11.7,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-c-sharp",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is C#.",
+    "share": 8.7,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-d",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is D.",
+    "share": 8.7,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-d-sharp",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is D#.",
+    "share": 6.4,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-e",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is E.",
+    "share": 9.9,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-f",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is F.",
+    "share": 12.2,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-f-sharp",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is F#.",
+    "share": 5.9,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-g",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is G.",
+    "share": 8.4,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-g-sharp",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is G#.",
+    "share": 5.4,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-a",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is A.",
+    "share": 7.7,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-a-sharp",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is A#.",
+    "share": 6.8,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.set2-b",
+    "set": "relative-minor-root-set2",
+    "claim": "Share of tracks in the 1,350-track annotated set whose relative-minor root is B.",
+    "share": 8.1,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2",
+    "set": null,
+    "claim": "Share of tracks in the 1,350-track annotated set that are minor.",
+    "share": 68.2,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-c",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is C.",
+    "share": 4.0,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-c-sharp",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is C#.",
+    "share": 6.1,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-d",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is D.",
+    "share": 4.5,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-d-sharp",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is D#.",
+    "share": 5.3,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-e",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is E.",
+    "share": 12.4,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-f",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is F.",
+    "share": 10.0,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-f-sharp",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is F#.",
+    "share": 8.4,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-g",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is G.",
+    "share": 4.5,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-g-sharp",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is G#.",
+    "share": 6.2,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-a",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is A.",
+    "share": 10.6,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-a-sharp",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is A#.",
+    "share": 15.4,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.streaming-edm-b",
+    "set": "relative-minor-root-streaming-edm",
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is B.",
+    "share": 12.5,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-edm",
+    "set": null,
+    "claim": "Share of tracks in the 15,246 streaming tracks in EDM-like genres that are minor.",
+    "share": 47.2,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-all",
+    "set": null,
+    "claim": "Share of all 100,045 streaming tracks that are minor.",
+    "share": 36.6,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "relative-minor-root.uniform",
+    "set": null,
+    "claim": "Share per pitch class when the twelve roots are equally likely.",
+    "share": 8.3,
+    "count": 1,
+    "total": 12,
+    "source": ["lexicon"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.chance-two-roots",
+    "set": null,
+    "claim": "Chance share of two pitch classes out of twelve.",
+    "share": 16.7,
+    "count": 2,
+    "total": 12,
+    "source": ["lexicon"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.chance-three-roots",
+    "set": null,
+    "claim": "Chance share of four pitch classes out of twelve.",
+    "share": 33.3,
+    "count": 4,
+    "total": 12,
+    "source": ["lexicon"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.f-c-set1",
+    "set": null,
+    "claim": "Share of tracks in the 604-track set with relative-minor root F or C.",
+    "share": 23.2,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.f-c-set2",
+    "set": null,
+    "claim": "Share of tracks in the 1,350-track set with relative-minor root F or C.",
+    "share": 23.9,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.e-to-g-set1",
+    "set": null,
+    "claim": "Share of tracks in the 604-track set with relative-minor root E, F, F# or G.",
+    "share": 40.2,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.e-to-g-set2",
+    "set": null,
+    "claim": "Share of tracks in the 1,350-track set with relative-minor root E, F, F# or G.",
+    "share": 36.4,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.e-to-g-streaming",
+    "set": null,
+    "claim": "Share of streaming tracks with relative-minor root E, F, F# or G.",
+    "share": 35.3,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.sharp-roots-set1",
+    "set": null,
+    "claim": "Share of tracks in the 604-track set with relative-minor root F#, G#, A# or B.",
+    "share": 24.3,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "key-test.sharp-roots-set2",
+    "set": null,
+    "claim": "Share of tracks in the 1,350-track set with relative-minor root F#, G#, A# or B.",
+    "share": 26.2,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "psytrance-key.tonic-d-to-g",
+    "set": null,
+    "claim": "Share of psytrance tracks with tonic D, D#, E, F, F# or G.",
+    "share": 59.8,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "psytrance-key.relative-root-d-to-g",
+    "set": null,
+    "claim": "Share of psytrance tracks with relative-minor root D to G.",
+    "share": 54.0,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-breaks",
+    "set": null,
+    "claim": "Share of Breaks tracks in the 1,350-track set that are minor.",
+    "share": 84,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-psy-trance",
+    "set": null,
+    "claim": "Share of Psy-Trance tracks in the 1,350-track set that are minor.",
+    "share": 84,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-techno",
+    "set": null,
+    "claim": "Share of Techno tracks in the 1,350-track set that are minor.",
+    "share": 77,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-tech-house",
+    "set": null,
+    "claim": "Share of Tech House tracks in the 1,350-track set that are minor.",
+    "share": 76,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-minimal",
+    "set": null,
+    "claim": "Share of Minimal tracks in the 1,350-track set that are minor.",
+    "share": 74,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-drum-and-bass",
+    "set": null,
+    "claim": "Share of Drum and Bass tracks in the 1,350-track set that are minor.",
+    "share": 73,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-dubstep",
+    "set": null,
+    "claim": "Share of Dubstep tracks in the 1,350-track set that are minor.",
+    "share": 70,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-progressive-house",
+    "set": null,
+    "claim": "Share of Progressive House tracks in the 1,350-track set that are minor.",
+    "share": 68,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-electro-house",
+    "set": null,
+    "claim": "Share of Electro House tracks in the 1,350-track set that are minor.",
+    "share": 68,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-deep-house",
+    "set": null,
+    "claim": "Share of Deep House tracks in the 1,350-track set that are minor.",
+    "share": 68,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-hip-hop",
+    "set": null,
+    "claim": "Share of Hip-Hop tracks in the 1,350-track set that are minor.",
+    "share": 66,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-house",
+    "set": null,
+    "claim": "Share of House tracks in the 1,350-track set that are minor.",
+    "share": 65,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-trance",
+    "set": null,
+    "claim": "Share of Trance tracks in the 1,350-track set that are minor.",
+    "share": 65,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-hard-dance",
+    "set": null,
+    "claim": "Share of Hard Dance tracks in the 1,350-track set that are minor.",
+    "share": 63,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-chill-out",
+    "set": null,
+    "claim": "Share of Chill Out tracks in the 1,350-track set that are minor.",
+    "share": 54,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set2-electronica",
+    "set": null,
+    "claim": "Share of Electronica tracks in the 1,350-track set that are minor.",
+    "share": 40,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-techno",
+    "set": null,
+    "claim": "Share of techno tracks in the 604-track set that are minor.",
+    "share": 82,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-deep-house",
+    "set": null,
+    "claim": "Share of deep house tracks in the 604-track set that are minor.",
+    "share": 95,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-tech-house",
+    "set": null,
+    "claim": "Share of tech house tracks in the 604-track set that are minor.",
+    "share": 88,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-progressive",
+    "set": null,
+    "claim": "Share of progressive tracks in the 604-track set that are minor.",
+    "share": 76,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-trance",
+    "set": null,
+    "claim": "Share of trance tracks in the 604-track set that are minor.",
+    "share": 88,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-dubstep",
+    "set": null,
+    "claim": "Share of dubstep tracks in the 604-track set that are minor.",
+    "share": 91,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.set1-drum-and-bass",
+    "set": null,
+    "claim": "Share of drum and bass tracks in the 604-track set that are minor.",
+    "share": 82,
+    "count": null,
+    "total": null,
+    "source": ["key-set-1"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-techno",
+    "set": null,
+    "claim": "Share of techno streaming tracks that are minor.",
+    "share": 44,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-trance",
+    "set": null,
+    "claim": "Share of trance streaming tracks that are minor.",
+    "share": 52,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-dubstep",
+    "set": null,
+    "claim": "Share of dubstep streaming tracks that are minor.",
+    "share": 42,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-drum-and-bass",
+    "set": null,
+    "claim": "Share of drum and bass streaming tracks that are minor.",
+    "share": 52,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-deep-house",
+    "set": null,
+    "claim": "Share of deep house streaming tracks that are minor.",
+    "share": 52,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-hip-hop",
+    "set": null,
+    "claim": "Share of hip-hop streaming tracks that are minor.",
+    "share": 54,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-ambient",
+    "set": null,
+    "claim": "Share of ambient streaming tracks that are minor.",
+    "share": 38,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-pop",
+    "set": null,
+    "claim": "Share of pop streaming tracks that are minor.",
+    "share": 48,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "minor-share.streaming-heavy-metal",
+    "set": null,
+    "claim": "Share of heavy metal streaming tracks that are minor.",
+    "share": 41,
+    "count": null,
+    "total": null,
+    "source": ["stream-keys"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-techno-d-sharp-minor",
+    "set": "top-key-set2-techno",
+    "claim": "Share of Techno tracks in the 1,350-track set in D# minor.",
+    "share": 17,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-techno-d-minor",
+    "set": "top-key-set2-techno",
+    "claim": "Share of Techno tracks in the 1,350-track set in D minor.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-techno-c-minor",
+    "set": "top-key-set2-techno",
+    "claim": "Share of Techno tracks in the 1,350-track set in C minor.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-drum-and-bass-c-minor",
+    "set": "top-key-set2-drum-and-bass",
+    "claim": "Share of Drum and Bass tracks in the 1,350-track set in C minor.",
+    "share": 16,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-drum-and-bass-c-sharp-minor",
+    "set": "top-key-set2-drum-and-bass",
+    "claim": "Share of Drum and Bass tracks in the 1,350-track set in C# minor.",
+    "share": 11,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-drum-and-bass-f-minor",
+    "set": "top-key-set2-drum-and-bass",
+    "claim": "Share of Drum and Bass tracks in the 1,350-track set in F minor.",
+    "share": 10,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-dubstep-f-minor",
+    "set": "top-key-set2-dubstep",
+    "claim": "Share of Dubstep tracks in the 1,350-track set in F minor.",
+    "share": 11,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-house-f-minor",
+    "set": "top-key-set2-house",
+    "claim": "Share of House tracks in the 1,350-track set in F minor.",
+    "share": 13,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-house-a-sharp",
+    "set": "top-key-set2-house",
+    "claim": "Share of House tracks in the 1,350-track set in A#.",
+    "share": 12,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-psy-trance-f-minor",
+    "set": "top-key-set2-psy-trance",
+    "claim": "Share of Psy-Trance tracks in the 1,350-track set in F minor.",
+    "share": 14,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-psy-trance-g-minor",
+    "set": "top-key-set2-psy-trance",
+    "claim": "Share of Psy-Trance tracks in the 1,350-track set in G minor.",
+    "share": 14,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "top-key.set2-psy-trance-e-minor",
+    "set": "top-key-set2-psy-trance",
+    "claim": "Share of Psy-Trance tracks in the 1,350-track set in E minor.",
+    "share": 13,
+    "count": null,
+    "total": null,
+    "source": ["key-set-2"],
+    "tag": "derived"
+  },
+  {
+    "id": "pop-mode.major",
+    "set": null,
+    "claim": "Share of 757 single-key pop songs in major.",
+    "share": 53.1,
+    "count": 402,
+    "total": 757,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "pop-mode.minor",
+    "set": null,
+    "claim": "Share of 757 single-key pop songs in minor.",
+    "share": 46.9,
+    "count": 355,
+    "total": 757,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.overall",
+    "set": null,
+    "claim": "Share of captioned MIDI rows that are minor.",
+    "share": 34.2,
+    "count": 57543,
+    "total": 168242,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-dark",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the dark tag that are minor.",
+    "share": 42.9,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-epic",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the epic tag that are minor.",
+    "share": 41.3,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-dream",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the dream tag that are minor.",
+    "share": 43.6,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-happy",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the happy tag that are minor.",
+    "share": 31.4,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-relaxing",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the relaxing tag that are minor.",
+    "share": 33.0,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.tag-love",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the love tag that are minor.",
+    "share": 25.9,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.dark-files-major",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the dark tag that are major.",
+    "share": 57.0,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-trance",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the trance tag that are minor.",
+    "share": 64,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-house",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the house tag that are minor.",
+    "share": 69,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-metal",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the metal tag that are minor.",
+    "share": 71,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-techno",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the techno tag that are minor.",
+    "share": 47,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-electronic",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the electronic tag that are minor.",
+    "share": 37.6,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-minor.genre-pop",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the pop tag that are minor.",
+    "share": 30.0,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-meter.four-four",
+    "set": null,
+    "claim": "Share of captioned MIDI rows in 4/4.",
+    "share": 83.5,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-meter.four-four-trance",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the trance tag in 4/4.",
+    "share": 97,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-meter.four-four-techno",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the techno tag in 4/4.",
+    "share": 98,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "midi-meter.four-four-house",
+    "set": null,
+    "claim": "Share of captioned MIDI rows with the house tag in 4/4.",
+    "share": 100,
+    "count": null,
+    "total": null,
+    "source": ["midicaps"],
+    "tag": "derived"
+  },
+  {
+    "id": "happier-mode.ionian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Ionian on C.",
+    "share": 83,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "happier-mode.mixolydian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Mixolydian on C.",
+    "share": 64,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "happier-mode.lydian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Lydian on C.",
+    "share": 58,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "happier-mode.dorian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Dorian on C.",
+    "share": 40,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "happier-mode.aeolian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Aeolian on C.",
+    "share": 34,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "happier-mode.phrygian",
+    "set": null,
+    "claim": "Share of the 17 listeners' happier-mode comparisons won by Phrygian on C.",
+    "share": 21,
+    "count": null,
+    "total": null,
+    "source": ["temperley-tan"],
+    "tag": "source states"
+  },
+  {
+    "id": "outside-share.pop-major",
+    "set": null,
+    "claim": "Share of melody notes outside the diatonic set in major pop songs.",
+    "share": 0.27,
+    "count": null,
+    "total": null,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "outside-share.pop-minor",
+    "set": null,
+    "claim": "Share of melody notes outside the diatonic set in minor pop songs.",
+    "share": 0.57,
+    "count": null,
+    "total": null,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "outside-share.pop-minor-offset-11",
+    "set": null,
+    "claim": "Share of melody notes at offset 11 in minor pop songs.",
+    "share": 0.27,
+    "count": null,
+    "total": null,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "outside-share.pop-minor-offset-9",
+    "set": null,
+    "claim": "Share of melody notes at offset 9 in minor pop songs.",
+    "share": 0.16,
+    "count": null,
+    "total": null,
+    "source": ["pop909"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.dominant-family.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are dominant 7, 9, 11 and 13 chords.",
+    "share": 3.87,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.minor-seventh-up.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are minor 7 chords and up.",
+    "share": 2.7,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.major-seventh-up.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are maj7 chords and up.",
+    "share": 1.45,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.sus.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are suspended chords.",
+    "share": 1.41,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.power.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are power chords.",
+    "share": 1.4,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.add.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are add chords.",
+    "share": 1.23,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.ninth.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are 9th chords.",
+    "share": 1.09,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.thirteenth.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are 13th chords.",
+    "share": 0.47,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.sixth.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are 6th chords.",
+    "share": 0.41,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.diminished.sheet",
+    "set": null,
+    "claim": "Share of all chords in the chord-sheet corpus that are diminished chords.",
+    "share": 0.2,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.three-notes.sheet",
+    "set": null,
+    "claim": "Share of chords in the chord-sheet corpus that have three notes.",
+    "share": 89,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.dominant.sheet-soul",
+    "set": "chords.family-soul",
+    "claim": "Share of chords in soul chord sheets that are dominant 7 to 13 chords.",
+    "share": 7.92,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.minor-seventh.sheet-soul",
+    "set": "chords.family-soul",
+    "claim": "Share of chords in soul chord sheets that are minor 7 and up chords.",
+    "share": 11.73,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.major-seventh.sheet-soul",
+    "set": "chords.family-soul",
+    "claim": "Share of chords in soul chord sheets that are maj7 and up chords.",
+    "share": 6.2,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.dominant.sheet-jazz",
+    "set": "chords.family-jazz",
+    "claim": "Share of chords in jazz chord sheets that are dominant 7 to 13 chords.",
+    "share": 12.75,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.minor-seventh.sheet-jazz",
+    "set": "chords.family-jazz",
+    "claim": "Share of chords in jazz chord sheets that are minor 7 and up chords.",
+    "share": 6.56,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.major-seventh.sheet-jazz",
+    "set": "chords.family-jazz",
+    "claim": "Share of chords in jazz chord sheets that are maj7 and up chords.",
+    "share": 2.74,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.dominant.sheet-electronic",
+    "set": "chords.family-electronic",
+    "claim": "Share of chords in electronic chord sheets that are dominant 7 to 13 chords.",
+    "share": 1.71,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.minor-seventh.sheet-electronic",
+    "set": "chords.family-electronic",
+    "claim": "Share of chords in electronic chord sheets that are minor 7 and up chords.",
+    "share": 2.66,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.major-seventh.sheet-electronic",
+    "set": "chords.family-electronic",
+    "claim": "Share of chords in electronic chord sheets that are maj7 and up chords.",
+    "share": 1.49,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.power.sheet-metal",
+    "set": null,
+    "claim": "Share of chords in metal chord sheets that are power chords.",
+    "share": 5.76,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "chords.power.sheet-punk",
+    "set": null,
+    "claim": "Share of chords in punk chord sheets that are power chords.",
+    "share": 5.73,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 17.96,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 19.31,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 20.72,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 12.54,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 7.41,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 20.86,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the axis loop I-V-vi-IV in any rotation inside one section.",
+    "share": 5.2,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 14.85,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 14.77,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 10.36,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 7.45,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 8.81,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 10.91,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.fifties.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the 50s loop I-vi-IV-V in any rotation inside one section.",
+    "share": 12.4,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 14.42,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 12.71,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 11.08,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 6.41,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 12.26,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 10.45,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section.",
+    "share": 11.6,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 13.11,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 14.61,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 22.06,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 9.31,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 6.4,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 13.75,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.aeolian-shuttle.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section.",
+    "share": 8.0,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 9.14,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 10.15,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 7.02,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 5.38,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 4.91,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 8.46,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-six-five.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop I-IV-vi-V in any rotation inside one section.",
+    "share": 2.1,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 7.55,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 8.88,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 2.57,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 3.72,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 9.1,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 4.44,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-loop-with-iv.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-iv-bVII-bIII in any rotation inside one section.",
+    "share": 5.2,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 5.95,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 6.64,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 9.56,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 4.19,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 2.84,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 7.25,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-three-seven-six.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-bIII-bVII-bVI in any rotation inside one section.",
+    "share": 1.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 4.43,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 5.53,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 7.22,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 3.47,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 2.69,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 5.44,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-five-six-seven.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-v-bVI-bVII in any rotation inside one section.",
+    "share": 4.3,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 3.58,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 4.51,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 4.78,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 2.63,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 2.16,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 2.99,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the royal road loop IV-V-iii-vi in any rotation inside one section.",
+    "share": 2.6,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 3.13,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 3.59,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 6.2,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 2.4,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 3.41,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 1.85,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.andalusian-cadence.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section.",
+    "share": 3.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 1.89,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 2.03,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 0.13,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 0.89,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 9.68,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 0.64,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section.",
+    "share": 6.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus (679,807 songs) that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 27.68,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-pop",
+    "set": null,
+    "claim": "Share of pop songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 21.92,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-metal",
+    "set": null,
+    "claim": "Share of metal songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 12.04,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-rap",
+    "set": null,
+    "claim": "Share of rap songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 10.12,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-jazz",
+    "set": null,
+    "claim": "Share of jazz songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 34.18,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-electronic",
+    "set": null,
+    "claim": "Share of electronic songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 14.75,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the cycle I-IV-I-V in any rotation inside one section.",
+    "share": 30.3,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five-four.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus that contain the cycle I-IV-V-IV in any rotation inside one section.",
+    "share": 18.4,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five-four.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain the cycle I-IV-V-IV in any rotation inside one section.",
+    "share": 18.9,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.ii-v-i.chart-label",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set with ii-V-I by annotated label, not key-free.",
+    "share": 11.8,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-three-four-five.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus that contain I-iii-IV-V in any rotation inside one section.",
+    "share": 5.5,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-three-four-five.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain I-iii-IV-V in any rotation inside one section.",
+    "share": 3.9,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.flat-six-flat-seven-one.sheet",
+    "set": null,
+    "claim": "Share of songs in the chord-sheet corpus that contain the loop bVI-bVII-I-IV in any rotation inside one section.",
+    "share": 1.4,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.flat-six-flat-seven-one.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain the loop bVI-bVII-I-IV in any rotation inside one section.",
+    "share": 1.7,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.phrygian-menace.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain bII-i.",
+    "share": 1.2,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.turnaround.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain I-vi-ii-V as an ordered cycle.",
+    "share": 2.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.minor-plagal.chart",
+    "set": null,
+    "claim": "Share of songs in the chart annotation set that contain IV-iv-I.",
+    "share": 7.2,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.one-four-five.sheet-country",
+    "set": null,
+    "claim": "Share of country songs in the chord-sheet corpus that contain the cycle I-IV-I-V.",
+    "share": 47.8,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.mixolydian-loop.sheet-country",
+    "set": null,
+    "claim": "Share of country songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV.",
+    "share": 19.2,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.axis.sheet-punk",
+    "set": null,
+    "claim": "Share of punk songs in the chord-sheet corpus that contain the axis loop.",
+    "share": 21.5,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "progressions.royal-road.japan-top-20",
+    "set": null,
+    "claim": "Share of the 20 best-selling singles in Japan as of 2023 that use the royal road.",
+    "share": 40,
+    "count": 8,
+    "total": 20,
+    "source": ["guides"],
+    "tag": "source states"
+  },
+  {
+    "id": "harmony.bar-one-chord",
+    "set": "harmony.chords-per-bar",
+    "claim": "Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold one chord.",
+    "share": 75.8,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.bar-two-chords",
+    "set": "harmony.chords-per-bar",
+    "claim": "Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold two chords.",
+    "share": 20.3,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.bar-three-chords",
+    "set": "harmony.chords-per-bar",
+    "claim": "Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold three chords.",
+    "share": 3.1,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.bar-four-chords",
+    "set": "harmony.chords-per-bar",
+    "claim": "Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold four chords.",
+    "share": 0.7,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-1-33-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 1.33 beats.",
+    "share": 7.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-1-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 1 beats.",
+    "share": 2.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-2-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 2 beats.",
+    "share": 35.6,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-4-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 4 beats.",
+    "share": 34.9,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-6-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 6 beats.",
+    "share": 1.8,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-8-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 8 beats.",
+    "share": 11.8,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.run-16-beats",
+    "set": "harmony.chord-run",
+    "claim": "Share of chord runs in the chart annotation set that last 16 beats.",
+    "share": 1.3,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.section-8-bars",
+    "set": "harmony.section-length",
+    "claim": "Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 8 bars.",
+    "share": 31.3,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.section-16-bars",
+    "set": "harmony.section-length",
+    "claim": "Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 16 bars.",
+    "share": 14.0,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.section-4-bars",
+    "set": "harmony.section-length",
+    "claim": "Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 4 bars.",
+    "share": 13.5,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.section-12-bars",
+    "set": "harmony.section-length",
+    "claim": "Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 12 bars.",
+    "share": 7.1,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.repeat-4-bar",
+    "set": "harmony.section-repeat",
+    "claim": "Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 4-bar chord pattern exactly.",
+    "share": 17.2,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.repeat-2-bar",
+    "set": "harmony.section-repeat",
+    "claim": "Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 2-bar chord pattern exactly.",
+    "share": 8.1,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.repeat-1-bar",
+    "set": "harmony.section-repeat",
+    "claim": "Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 1-bar chord pattern exactly.",
+    "share": 5.9,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.repeat-8-bar",
+    "set": "harmony.section-repeat",
+    "claim": "Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat an 8-bar chord pattern exactly.",
+    "share": 4.0,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.repeat-none",
+    "set": "harmony.section-repeat",
+    "claim": "Share of the 6,174 sections of 8 or more bars in the chart annotation set that do not repeat exactly.",
+    "share": 64,
+    "count": null,
+    "total": null,
+    "source": ["chart-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.cycle-repeats.sheet",
+    "set": null,
+    "claim": "Share of sections in the chord-sheet corpus where a cycle of at most 8 changes repeats.",
+    "share": 32.9,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.cycle-4-chords.sheet",
+    "set": "harmony.cycle-length",
+    "claim": "Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 4 chords.",
+    "share": 47.6,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.cycle-3-chords.sheet",
+    "set": "harmony.cycle-length",
+    "claim": "Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 3 chords.",
+    "share": 17.8,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.cycle-2-chords.sheet",
+    "set": "harmony.cycle-length",
+    "claim": "Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 2 chords.",
+    "share": 11.7,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "harmony.cycle-5-chords.sheet",
+    "set": "harmony.cycle-length",
+    "claim": "Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 5 chords.",
+    "share": 8.9,
+    "count": null,
+    "total": null,
+    "source": ["sheet-chords"],
+    "tag": "derived"
+  },
+  {
+    "id": "position.four-on-the-floor-grids",
+    "set": null,
+    "claim": "Share of 30 house and techno drum grids with a kick on every beat; only slow deep house differs.",
+    "share": 96.7,
+    "count": 29,
+    "total": 30,
+    "source": ["drum-patterns"],
+    "tag": "measured"
+  },
+  {
+    "id": "position.backbeat-house-techno-grids",
+    "set": null,
+    "claim": "Share of 30 house and techno drum grids with snare or clap on slots 4 and 12.",
+    "share": 76.7,
+    "count": 23,
+    "total": 30,
+    "source": ["drum-patterns"],
+    "tag": "measured"
+  },
+  {
+    "id": "position.backbeat-breakbeat-grids",
+    "set": null,
+    "claim": "Share of 21 two-bar breakbeat grids with snares on slots 4, 12, 20 and 28.",
+    "share": 81.0,
+    "count": 17,
+    "total": 21,
+    "source": ["drum-patterns"],
+    "tag": "measured"
+  },
+  {
+    "id": "rhythm.breakbeat-kick-at-zero",
+    "set": null,
+    "claim": "Share of 21 two-bar breakbeat grids that start with a kick at slot 0.",
+    "share": 100.0,
+    "count": 21,
+    "total": 21,
+    "source": ["drum-patterns"],
+    "tag": "measured"
+  },
+  {
+    "id": "rhythm.breakbeat-kicks-all-on-beat",
+    "set": null,
+    "claim": "Share of 21 two-bar breakbeat grids with every kick on a beat.",
+    "share": 4.8,
+    "count": 1,
+    "total": 21,
+    "source": ["drum-patterns"],
+    "tag": "measured"
+  },
+  {
+    "id": "feel.snare-hits-under-40",
+    "set": null,
+    "claim": "Share of snare hits below velocity 40 in 491 real 4/4 drum performances.",
+    "share": 41.0,
+    "count": null,
+    "total": null,
+    "source": ["groove"],
+    "tag": "measured"
+  },
+  {
+    "id": "swing.jazz-offbeat-median",
+    "set": null,
+    "claim": "Median position of the offbeat, as a percent of the beat, in 31 jazz-labelled drum files.",
+    "share": 61.0,
+    "count": null,
+    "total": null,
+    "source": ["groove"],
+    "tag": "derived"
+  }
+]

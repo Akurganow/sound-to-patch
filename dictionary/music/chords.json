@@ -1,0 +1,2222 @@
+[
+  {
+    "id": "chord.major-triad",
+    "group": "chord",
+    "word": "major triad",
+    "aliases": ["major chord"],
+    "meaning": "Root, major third and fifth. A root with no quality word, and the spellings maj, M and major, all name it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj", "M", "major"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-triad",
+    "group": "chord",
+    "word": "minor triad",
+    "aliases": ["minor chord"],
+    "meaning": "Root, minor third and fifth. An m or a dash right after the root marks it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m", "min", "mi", "-", "−", "minor"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.suspended-2nd",
+    "group": "chord",
+    "word": "suspended 2nd",
+    "aliases": ["sus2 chord"],
+    "meaning": "Root, major second and fifth, with no third. The second takes the place of the third.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 2, 7], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["sus2"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.suspended-4th",
+    "group": "chord",
+    "word": "suspended 4th",
+    "aliases": ["sus4 chord", "sus"],
+    "meaning": "Root, fourth and fifth, with no third. A bare sus after the root means this chord, not sus2.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 5, 7], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["sus4", "sus"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.power-chord",
+    "group": "chord",
+    "word": "power chord",
+    "aliases": ["fifth chord"],
+    "meaning": "Root and fifth with no third, optionally with the octave on top. It is neither major nor minor.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 7], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["5", "(no3)", "no3"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-seventh",
+    "group": "chord",
+    "word": "dominant seventh",
+    "aliases": ["dominant 7", "dominant 7th"],
+    "meaning": "A major triad plus a minor seventh. A bare dom after the root also means the seventh chord.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7", "dom7", "dom"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.major-seventh",
+    "group": "chord",
+    "word": "major seventh",
+    "aliases": ["major 7", "major 7th"],
+    "meaning": "A major triad plus a major seventh. The triangle and caret signs name the major-seventh family, and maj with no number means the triad.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 11], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj7", "M7", "Maj7", "ma7", "major7", "Δ7", "Δ", "△7", "△", "^7", "^"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-seventh",
+    "group": "chord",
+    "word": "minor seventh",
+    "aliases": ["minor 7", "minor 7th"],
+    "meaning": "A minor triad plus a minor seventh. A dash before the 7 reads as minor.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m7", "min7", "mi7", "-7", "−7"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.add9",
+    "group": "chord",
+    "word": "add9",
+    "aliases": ["add 9", "added ninth"],
+    "meaning": "A major triad plus the ninth, with no seventh. The spelling 2 after the root reads as add9.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["add9", "(add9)", "add2", "2"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-9",
+    "group": "chord",
+    "word": "dominant 9",
+    "aliases": ["dominant ninth"],
+    "meaning": "A dominant seventh plus the ninth. A bare 9 implies the seventh below it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["tonal", "pychord", "music21"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["9", "dom9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.major-9",
+    "group": "chord",
+    "word": "major 9",
+    "aliases": ["major ninth"],
+    "meaning": "A major seventh plus the ninth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 11, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["tonal", "pychord", "music21"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj9", "M9", "Maj9", "Δ9", "^9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-9",
+    "group": "chord",
+    "word": "minor 9",
+    "aliases": ["minor ninth"],
+    "meaning": "A minor seventh plus the ninth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 10, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["tonal", "pychord", "music21"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m9", "min9", "-9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.slash-chord",
+    "group": "chord",
+    "word": "slash chord",
+    "aliases": ["bass note chord"],
+    "meaning": "A chord over a named bass note, written chord/bass. The bass is the lowest sounding pitch and differs from the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "slash", "bass": "named"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.diminished-triad",
+    "group": "chord",
+    "word": "diminished triad",
+    "aliases": ["dim chord"],
+    "meaning": "Root, minor third and diminished fifth. The signs o and ° after the root also write it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 6], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["dim", "o", "°", "m(b5)", "mb5"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.half-diminished",
+    "group": "chord",
+    "word": "half-diminished",
+    "aliases": ["minor 7 flat 5", "m7b5 chord"],
+    "meaning": "A diminished triad plus a minor seventh, also called minor seven flat five. The signs ø and h write it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 6, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m7b5", "m7♭5", "-7b5", "ø", "ø7", "h7", "h"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.diminished-seventh",
+    "group": "chord",
+    "word": "diminished seventh",
+    "aliases": ["dim7 chord"],
+    "meaning": "A diminished triad plus a diminished seventh, nine semitones above the root. The sign o7 writes it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 6, 9], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["dim7", "o7", "°7"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.sixth",
+    "group": "chord",
+    "word": "sixth",
+    "aliases": ["major sixth chord", "6th chord"],
+    "meaning": "A major triad plus a major sixth, with no seventh. A 6 after the root cancels an implied seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 9], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["6", "M6", "maj6", "add6"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.augmented-triad",
+    "group": "chord",
+    "word": "augmented triad",
+    "aliases": ["aug chord"],
+    "meaning": "Root, major third and raised fifth. A plus sign right after the root, with no number, means this chord.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 8], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["aug", "+", "+5", "(#5)", "maj#5", "M+5"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-sixth",
+    "group": "chord",
+    "word": "minor sixth",
+    "aliases": ["minor 6"],
+    "meaning": "A minor triad plus a major sixth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 9], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m6", "min6", "-6"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.six-nine",
+    "group": "chord",
+    "word": "six-nine",
+    "aliases": ["6/9 chord"],
+    "meaning": "A sixth chord plus the ninth, with no seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 9, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["6/9", "69", "6add9", "M69", "6(9)"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-six-nine",
+    "group": "chord",
+    "word": "minor six-nine",
+    "aliases": ["minor 6/9 chord"],
+    "meaning": "A minor sixth chord plus the ninth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 9, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m6/9", "m69", "-69"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-major-seventh",
+    "group": "chord",
+    "word": "minor-major seventh",
+    "aliases": ["minor major 7"],
+    "meaning": "A minor triad plus a major seventh. The M after an m marks the major seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 11], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["mM7", "mMaj7", "m/maj7", "m/M7", "-Δ7", "-^7", "mΔ", "minmaj7", "mi(maj7)"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.augmented-seventh",
+    "group": "chord",
+    "word": "augmented seventh",
+    "aliases": ["aug7 chord"],
+    "meaning": "An augmented triad plus a minor seventh. A plus sign beside the 7 writes it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 8, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7#5", "+7", "7+", "aug7", "7aug", "7+5"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-suspended",
+    "group": "chord",
+    "word": "dominant 7 suspended",
+    "aliases": ["7sus4 chord"],
+    "meaning": "A suspended fourth plus a minor seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 5, 7, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7sus4", "7sus"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-flat-9",
+    "group": "chord",
+    "word": "dominant 7 flat 9",
+    "aliases": ["7b9 chord"],
+    "meaning": "A dominant seventh plus a flat ninth, 13 semitones above the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 13], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7b9", "7(b9)", "7-9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-sharp-9",
+    "group": "chord",
+    "word": "dominant 7 sharp 9",
+    "aliases": ["7#9 chord"],
+    "meaning": "A dominant seventh plus a sharp ninth, 15 semitones above the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 15], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7#9", "7+9", "7(#9)"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-add9",
+    "group": "chord",
+    "word": "minor add9",
+    "aliases": ["madd9 chord"],
+    "meaning": "A minor triad plus the ninth, with no seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["madd9", "m(add9)", "miadd9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.add11",
+    "group": "chord",
+    "word": "add11",
+    "aliases": ["add4", "added eleventh"],
+    "meaning": "A major triad plus the eleventh, 17 semitones above the root, with no seventh. A bare 4 is ambiguous: prefer asking, or write sus4.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 17], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["add11", "add4", "(add4)", "4"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-11",
+    "group": "chord",
+    "word": "dominant 11",
+    "aliases": ["dominant eleventh"],
+    "meaning": "Root, fifth, minor seventh, ninth and eleventh. The third is left out, and a bare 11 implies the seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 7, 10, 14, 17], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["11"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-11",
+    "group": "chord",
+    "word": "minor 11",
+    "aliases": ["minor eleventh"],
+    "meaning": "A minor seventh plus the ninth and eleventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 10, 14, 17], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m11", "-11"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-13",
+    "group": "chord",
+    "word": "dominant 13",
+    "aliases": ["dominant thirteenth"],
+    "meaning": "A dominant seventh plus the ninth and thirteenth, with the eleventh left out.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 14, 21], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 83, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["13"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.major-13",
+    "group": "chord",
+    "word": "major 13",
+    "aliases": ["major thirteenth"],
+    "meaning": "A major seventh plus the ninth and thirteenth, with the eleventh left out.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 11, 14, 21], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 82, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj13", "M13", "^13"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-13",
+    "group": "chord",
+    "word": "minor 13",
+    "aliases": ["minor thirteenth"],
+    "meaning": "A minor seventh plus the ninth and thirteenth, with the eleventh left out.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 10, 14, 21], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 83, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["m13", "-13"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.9-suspended",
+    "group": "chord",
+    "word": "9 suspended",
+    "aliases": ["9sus4 chord"],
+    "meaning": "A suspended fourth plus a minor seventh and the ninth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 5, 7, 10, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["9sus4", "9sus"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.major-7-sharp-11",
+    "group": "chord",
+    "word": "major 7 sharp 11",
+    "aliases": ["lydian chord"],
+    "meaning": "A major seventh plus a raised eleventh, 18 semitones above the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 11, 18], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 80, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj7#11", "M7#11", "Δ#11", "maj#4"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.altered-dominant",
+    "group": "chord",
+    "word": "altered dominant",
+    "aliases": ["alt chord"],
+    "meaning": "Root, major third and minor seventh, plus at least two of the flat ninth, sharp ninth, sharp eleventh and flat thirteenth. The natural 5th, 9th, 11th and 13th stay out; the usual default is 0 4 10 15 20.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "chord_tones",
+      "offsets": [0, 4, 10],
+      "choose": {"from": [13, 15, 18, 20], "at_least": 2}
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["tonal"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7alt", "alt", "7alt7"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.quartal-stack",
+    "group": "chord",
+    "word": "quartal stack",
+    "aliases": ["stacked fourths"],
+    "meaning": "Three or four tones stacked in fourths: root, fourth and minor seventh, with an optional minor tenth (15 semitones).",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 5, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["quartal"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.polychord",
+    "group": "chord",
+    "word": "polychord",
+    "aliases": ["two triads"],
+    "meaning": "Two triads sounding together, one above the other. A slash followed by a whole triad name writes it, while a slash and one note is a bass note.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "polychord", "min_notes": 6},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.augmented-major-seventh",
+    "group": "chord",
+    "word": "augmented major seventh",
+    "aliases": ["maj7#5 chord"],
+    "meaning": "An augmented triad plus a major seventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 8, 11], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 68, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 73, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj7#5"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-flat-5",
+    "group": "chord",
+    "word": "dominant 7 flat 5",
+    "aliases": ["7b5 chord"],
+    "meaning": "A dominant seventh with the fifth lowered to the tritone, six semitones above the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 6, 10], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 66, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7b5"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.minor-major-9",
+    "group": "chord",
+    "word": "minor-major 9",
+    "aliases": ["minor major ninth"],
+    "meaning": "A minor-major seventh plus the ninth.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 3, 7, 11, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["mM9"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-sharp-11",
+    "group": "chord",
+    "word": "dominant 7 sharp 11",
+    "aliases": ["7#11 chord"],
+    "meaning": "A dominant seventh plus a raised eleventh, 18 semitones above the root, with the fifth kept.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 18], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 80, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 4,
+    "source": ["tonal", "pychord", "music21", "mir-eval"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7#11"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.dominant-7-flat-13",
+    "group": "chord",
+    "word": "dominant 7 flat 13",
+    "aliases": ["7b13 chord"],
+    "meaning": "A dominant seventh plus a flat thirteenth, 20 semitones above the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 10, 20], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 80, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["7b13"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.major-11",
+    "group": "chord",
+    "word": "major 11",
+    "aliases": ["major eleventh"],
+    "meaning": "A major seventh plus the ninth and eleventh.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 4, 7, 11, 14, 17], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 78, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["maj11"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.other-altered",
+    "group": "chord",
+    "word": "other altered",
+    "aliases": ["altered chord"],
+    "meaning": "A dominant seventh with alterations: add each altered tone and drop the natural tone it replaces. Write the alterations in parentheses, such as b9 and #11.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.quintal-stack",
+    "group": "chord",
+    "word": "quintal stack",
+    "aliases": ["stacked fifths"],
+    "meaning": "Tones stacked in fifths: root, fifth and ninth, with an optional thirteenth (21 semitones).",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 7, 14], "choose": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 75, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": ["quintal"],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "chord.tone-cluster",
+    "group": "chord",
+    "word": "tone cluster",
+    "aliases": ["cluster chord"],
+    "meaning": "Three or more tones packed in adjacent steps, either chromatic as 0 1 2 or diatonic as 0 2 4.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "cluster", "min_notes": 3, "max_gap": 2},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

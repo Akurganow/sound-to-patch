@@ -1,6 +1,6 @@
 # sound-to-patch-reference
 
-The synth reference of sound-to-patch, as an agent plugin. Its skill `synth-reference` lists the controls of each target synth by layer: the on-screen label, the preset key, the unit, the range, the default, how sure the value is and how to tune it by ear. An agent reads it while it writes an edit list for `sound-to-patch preset apply` or explains a preset.
+The synth reference of sound-to-patch, as an agent plugin. Its skill `synth-reference` lists the controls of each target synth by layer: the on-screen label, the preset key, the unit, the range, the default, how sure the value is and how to tune it by ear. Its music files list keys, scales, chords, progressions, rhythm and technique words, each with a checkable note rule. An agent reads it while it writes an edit list for `sound-to-patch preset apply`, writes notes from a producer's words, or explains a preset.
 
 Vital and Serum 2 are trademarks of their owners. This project is not affiliated with or endorsed by them.
 

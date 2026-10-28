@@ -1,0 +1,858 @@
+[
+  {
+    "id": "genre.house",
+    "group": "genre",
+    "word": "house",
+    "aliases": [],
+    "meaning": "Four-on-the-floor dance music at 115 to 132 BPM, centred on 124, with a clap on beats 2 and 4 and open hats on the offbeats.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 4, 8, 12]},
+        {"part": "clap", "slots": [4, 12]},
+        {"part": "open-hat", "slots": [2, 6, 10, 14]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 46, "start": 2, "len": 0.25, "vel": 100, "part": "open-hat"},
+        {"pitch": 39, "start": 4, "len": 0.25, "vel": 100, "part": "clap"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 46, "start": 3, "len": 0.25, "vel": 100, "part": "open-hat"},
+        {"pitch": 39, "start": 4, "len": 0.25, "vel": 100, "part": "clap"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 5,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 115, "center": 124, "high": 132},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.techno",
+    "group": "genre",
+    "word": "techno",
+    "aliases": [],
+    "meaning": "Driving dance music at 120 to 150 BPM, centred on 130. It has a kick on every beat, sixteenth hats and a clap on beats 2 and 4.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 4, 8, 12]},
+        {"part": "hat", "slots": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]},
+        {"part": "clap", "slots": [4, 12]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 42, "start": 0, "len": 0.25, "vel": 70, "part": "hat"},
+        {"pitch": 42, "start": 1, "len": 0.25, "vel": 50, "part": "hat"},
+        {"pitch": 39, "start": 4, "len": 0.25, "vel": 100, "part": "clap"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 42, "start": 1, "len": 0.25, "vel": 50, "part": "hat"},
+        {"pitch": 39, "start": 6, "len": 0.25, "vel": 100, "part": "clap"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 120, "center": 130, "high": 150},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.trance",
+    "group": "genre",
+    "word": "trance",
+    "aliases": [],
+    "meaning": "Melodic dance music at 125 to 150 BPM, 136 to 142 for uplifting trance, centred on 138. Kick on every beat, clap on beats 2 and 4, open hat on the offbeat.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 4, 8, 12]},
+        {"part": "clap", "slots": [4, 12]},
+        {"part": "open-hat", "slots": [2, 6, 10, 14]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 46, "start": 2, "len": 0.25, "vel": 90, "part": "open-hat"},
+        {"pitch": 39, "start": 4, "len": 0.25, "vel": 100, "part": "clap"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 46, "start": 2, "len": 0.25, "vel": 90, "part": "open-hat"},
+        {"pitch": 39, "start": 4, "len": 0.25, "vel": 100, "part": "clap"},
+        {"pitch": 36, "start": 5, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 6,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 125, "center": 138, "high": 150},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.psytrance",
+    "group": "genre",
+    "word": "psytrance",
+    "aliases": [],
+    "meaning": "Hypnotic, driving dance music at 125 to 150 BPM, full-on at 140 to 148. The kick is on every beat and a rolling bass fills the gaps.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "onset_set", "parts": [{"part": "kick", "slots": [0, 4, 8, 12]}]},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 8, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 12, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 8, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 11, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 125, "center": null, "high": 150},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.drum-and-bass",
+    "group": "genre",
+    "word": "drum and bass",
+    "aliases": ["dnb", "drum n bass"],
+    "meaning": "Fast breakbeat music at 160 to 180 BPM, centred on 174, with kick on slots 0 and 10 and snare on 4 and 12.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 10]}, {"part": "snare", "slots": [4, 12]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 10, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 12, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 8, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 12, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 6,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 160, "center": 174, "high": 180},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.dubstep",
+    "group": "genre",
+    "word": "dubstep",
+    "aliases": [],
+    "meaning": "Heavy half-time music at 132 to 142 BPM, centred on 140, with kick on slot 0 and snare on slot 8.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0]}, {"part": "snare", "slots": [8]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 8, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 5,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 132, "center": 140, "high": 142},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.trap",
+    "group": "genre",
+    "word": "trap",
+    "aliases": [],
+    "meaning": "Half-time music at 130 to 170 BPM, centred on 140. Kick on slots 0 and 10, snare on 8. Sixteenth hats run at velocity 100 to 127 on the beat and 40 to 70 off it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 10]},
+        {"part": "snare", "slots": [8]},
+        {"part": "hat", "slots": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 42, "start": 0, "len": 0.25, "vel": 110, "part": "hat"},
+        {"pitch": 42, "start": 1, "len": 0.25, "vel": 50, "part": "hat"},
+        {"pitch": 38, "start": 8, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 42, "start": 0, "len": 0.25, "vel": 110, "part": "hat"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 130, "center": 140, "high": 170},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.boom-bap",
+    "group": "genre",
+    "word": "boom bap",
+    "aliases": [],
+    "meaning": "Sample-based hip-hop at 85 to 100 BPM. Kick on slots 0 and 10, snare on 4 and 12, swing of 54 to 62 percent.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 10]}, {"part": "snare", "slots": [4, 12]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 10, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 12, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 6, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 10, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 85, "center": null, "high": 100},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.deep-house",
+    "group": "genre",
+    "word": "deep house",
+    "aliases": [],
+    "meaning": "A softer house style at 110 to 128 BPM, centred on 125. The lexicon gives no drum skeleton for it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 110, "center": 125, "high": 128},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.tech-house",
+    "group": "genre",
+    "word": "tech house",
+    "aliases": [],
+    "meaning": "House with techno edges at 120 to 132 BPM. The lexicon gives no drum skeleton for it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "genre-guide"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 120, "center": null, "high": 132},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.neurofunk",
+    "group": "genre",
+    "word": "neurofunk",
+    "aliases": [],
+    "meaning": "Dark, technical drum and bass at 172 to 175 BPM. The lexicon gives no drum skeleton for it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 172, "center": null, "high": 175},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.lo-fi",
+    "group": "genre",
+    "word": "lo-fi",
+    "aliases": ["lofi", "lo fi"],
+    "meaning": "Dusty, relaxed beats at 70 to 90 BPM, centred on 80, with kick on slots 0, 6 and 9 and snare on 4 and 12.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 6, 9]}, {"part": "snare", "slots": [4, 12]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 6, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 36, "start": 9, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 8, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 70, "center": 80, "high": 90},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.synthwave",
+    "group": "genre",
+    "word": "synthwave",
+    "aliases": [],
+    "meaning": "Retro synth music at 80 to 118 BPM. The lexicon gives no drum skeleton for it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 80, "center": null, "high": 118},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.future-bass",
+    "group": "genre",
+    "word": "future bass",
+    "aliases": [],
+    "meaning": "Bright, half-time music at 130 to 175 BPM, centred on 150, with the snare on slot 8.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "onset_set", "parts": [{"part": "snare", "slots": [8]}]},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [{"pitch": 38, "start": 8, "len": 0.25, "vel": 100, "part": "snare"}]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 38, "start": 12, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 130, "center": 150, "high": 175},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.uk-garage",
+    "group": "genre",
+    "word": "UK garage",
+    "aliases": ["garage"],
+    "meaning": "Swung two-step music at 125 to 140 BPM with kick on slots 0 and 10 and snare on 4 and 12.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 10]}, {"part": "snare", "slots": [4, 12]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 10, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 12, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 8, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 125, "center": null, "high": 140},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.reggaeton",
+    "group": "genre",
+    "word": "reggaeton",
+    "aliases": [],
+    "meaning": "Latin dance music at 88 to 100 BPM built on the dembow rhythm.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 4, 8, 12]},
+        {"part": "snare", "slots": [3, 6, 11, 14]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 3, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 6, "len": 0.25, "vel": 100, "part": "snare"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 38, "start": 4, "len": 0.25, "vel": 100, "part": "snare"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 88, "center": null, "high": 100},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.afrobeats",
+    "group": "genre",
+    "word": "afrobeats",
+    "aliases": ["afrobeat"],
+    "meaning": "West African pop at 90 to 115 BPM with kick on slots 0, 6 and 10 and rim on 3, 6, 11 and 14.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 6, 10]}, {"part": "rim", "slots": [3, 6, 11, 14]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 37, "start": 3, "len": 0.25, "vel": 100, "part": "rim"},
+        {"pitch": 36, "start": 6, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 37, "start": 6, "len": 0.25, "vel": 100, "part": "rim"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 37, "start": 4, "len": 0.25, "vel": 100, "part": "rim"},
+        {"pitch": 36, "start": 6, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 90, "center": null, "high": 115},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.riddim",
+    "group": "genre",
+    "word": "riddim",
+    "aliases": [],
+    "meaning": "A thin, sparse dubstep style at 140 to 150 BPM. The lexicon holds no note grid for it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 140, "center": null, "high": 150},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.amapiano",
+    "group": "genre",
+    "word": "amapiano",
+    "aliases": [],
+    "meaning": "South African house style at 110 to 115 BPM. The register of its log drum is unknown, so it has no note grid.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 2,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 110, "center": null, "high": 115},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "genre.hardstyle",
+    "group": "genre",
+    "word": "hardstyle",
+    "aliases": [],
+    "meaning": "Hard dance music at 140 to 160 BPM with a kick on every beat and a reverse bass on the offbeats.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "kick", "slots": [0, 4, 8, 12]}, {"part": "bass", "slots": [2, 6, 10, 14]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 33, "start": 2, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 33, "start": 6, "len": 0.5, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 33, "start": 4, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 4,
+    "source": ["guides", "genre-guide"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": {"low": 140, "center": null, "high": 160},
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

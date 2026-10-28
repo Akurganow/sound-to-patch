@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/music.schema.json",
+  "title": "dictionary/music/<topic>.json",
+  "description": "The music dictionary entries of one topic: what a producer word means for the notes and the rule a note list must meet. One entry per sense of a word. Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth grid; lengths are in beats.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/entry" },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+$" },
+    "ids": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true },
+    "source-id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "pitch-class": { "type": "integer", "minimum": 0, "maximum": 11 },
+    "offsets": {
+      "description": "Semitones above the root, rising strictly.",
+      "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 23 }, "minItems": 1, "uniqueItems": true
+    },
+    "slots": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 15 }, "uniqueItems": true },
+    "pitch": { "type": "integer", "minimum": 21, "maximum": 108 },
+    "share": { "type": "number", "minimum": 0, "maximum": 1 },
+    "ms": { "type": "number", "minimum": -100, "maximum": 1000 },
+    "part": { "enum": ["any", "kick", "snare", "clap", "rim", "hat", "open-hat", "ride", "bass", "chord", "lead"] },
+    "entry": {
+      "type": "object",
+      "required": ["id", "group", "word", "aliases", "meaning", "sense", "default", "conflicts", "rule", "example_pass", "example_fail", "roles", "genres", "tier", "n_sources", "source", "tag", "verified", "notes_trigger", "controls", "symbols", "bpm", "scale", "ask", "default_pick"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id", "description": "Stable id, `<group>.<word>` or `<group>.<word>.<sense>`, such as `scale.phrygian`." },
+        "group": {
+          "enum": ["notation", "key", "role", "scale", "mood", "outside", "chord", "voicing", "voice-leading", "progression", "harmony", "position", "swing", "feel", "rhythm", "euclid", "articulation", "bass", "lead", "arp", "pad", "phrase", "genre"]
+        },
+        "word": { "type": "string", "minLength": 1, "description": "The word a producer uses, lower case unless the case carries meaning." },
+        "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "meaning": { "type": "string", "minLength": 1, "description": "The plain meaning, in our own words." },
+        "sense": { "type": ["string", "null"], "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "The sense id within the word, when the word has several; null for a word with one sense." },
+        "default": { "type": "boolean", "description": "The sense to take when the request gives no context. Exactly one per word." },
+        "conflicts": { "$ref": "#/$defs/ids", "description": "Ids of the other senses of the word, and of entries this one cannot share a note list with." },
+        "rule": { "$ref": "#/$defs/rule" },
+        "example_pass": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fragment" }], "description": "A note fragment that meets the rule. Null only for the rule kind `none`." },
+        "example_fail": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/fragment" }], "description": "A note fragment that breaks the rule. Null only for the rule kind `none`." },
+        "roles": { "type": "array", "items": { "enum": ["sub-bass", "808", "bass", "lead", "pad", "keys", "pluck", "arp", "vocal", "chords", "stab", "drum", "fx"] }, "uniqueItems": true },
+        "genres": { "$ref": "#/$defs/ids", "description": "Ids of genre entries." },
+        "tier": { "enum": ["M1", "M2", "M3"] },
+        "n_sources": { "type": "integer", "minimum": 0, "description": "Independent publishers who state the claim: an upper bound." },
+        "source": { "type": "array", "items": { "$ref": "#/$defs/source-id" }, "uniqueItems": true, "description": "Ids from `dictionary/sources.json`." },
+        "tag": { "enum": ["source states", "measured", "derived", "inferred", "snippet", "single source", "proposal"] },
+        "verified": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "notes_trigger": { "type": "boolean", "description": "True when the word alone names notes." },
+        "controls": { "type": "array", "items": { "$ref": "#/$defs/control" }, "description": "Preset controls the entry needs, per synth, by registry label." },
+        "symbols": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true, "description": "Chord entries: the spellings after the root, such as `maj7` and `Δ7`. Empty elsewhere." },
+        "bpm": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "required": ["low", "center", "high"], "additionalProperties": false,
+              "properties": {
+                "low": { "type": "number", "minimum": 20, "maximum": 300 },
+                "center": { "type": ["number", "null"], "minimum": 20, "maximum": 300 },
+                "high": { "type": "number", "minimum": 20, "maximum": 300 }
+              }
+            }
+          ]
+        },
+        "scale": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }], "description": "Progression entries: the scale that replaces the header scale for the chord-root check." },
+        "ask": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "required": ["question", "options", "default", "when"], "additionalProperties": false,
+              "properties": {
+                "question": { "type": "string", "minLength": 1 },
+                "options": { "$ref": "#/$defs/ids" },
+                "default": { "$ref": "#/$defs/id", "description": "The option a batch run takes without asking." },
+                "when": { "type": "string", "minLength": 1, "description": "When the question is asked." }
+              }
+            }
+          ]
+        },
+        "default_pick": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object", "required": ["scale", "alternatives", "note"], "additionalProperties": false,
+              "properties": {
+                "scale": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/id" }] },
+                "alternatives": { "$ref": "#/$defs/ids" },
+                "note": { "type": "string", "minLength": 1 }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "control": {
+      "type": "object", "required": ["synth", "label", "direction", "step", "order", "source", "tag"], "additionalProperties": false,
+      "properties": {
+        "synth": { "enum": ["vital", "serum2"] },
+        "label": { "type": "string", "minLength": 1, "description": "The registry label of the control." },
+        "direction": { "enum": ["up", "down", "on", "off", "set"] },
+        "step": { "type": "string", "minLength": 1, "description": "The value or step to write, with its unit." },
+        "order": { "type": "integer", "minimum": 1 },
+        "source": { "type": "array", "items": { "$ref": "#/$defs/source-id" }, "uniqueItems": true },
+        "tag": { "enum": ["from facts", "measured", "uncalibrated"] }
+      }
+    },
+    "fragment": {
+      "type": "object", "required": ["root", "bpm", "grid", "notes"], "additionalProperties": false,
+      "properties": {
+        "root": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/pitch-class" }], "description": "The tonic or chord root the rule reads, as a pitch class." },
+        "bpm": { "type": ["number", "null"], "minimum": 20, "maximum": 300 },
+        "grid": { "enum": [12, 16, 24], "description": "Slots per bar." },
+        "notes": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "required": ["pitch", "start", "len", "vel"], "additionalProperties": false,
+            "properties": {
+              "pitch": { "$ref": "#/$defs/pitch" },
+              "start": { "type": "integer", "minimum": 0, "maximum": 383, "description": "The onset slot, counted from bar 1 slot 0." },
+              "len": { "type": "number", "exclusiveMinimum": 0, "maximum": 64, "description": "The written length in beats." },
+              "vel": { "type": "integer", "minimum": 1, "maximum": 127 },
+              "gate": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Percent of `len` that sounds; 100 when absent." },
+              "offset_ms": { "$ref": "#/$defs/ms", "description": "Shift from the slot in ms, late positive; 0 when absent." },
+              "part": { "$ref": "#/$defs/part" }
+            }
+          }
+        }
+      }
+    },
+    "rule": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["pitch_set", "tonic", "chord_tones", "voicing", "cycle", "onset_set", "onset_share", "count_per_bar", "length", "velocity", "overlap", "swing", "shift", "jitter", "register", "pattern", "arp", "repeat", "phrase_length", "none"] }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "pitch_set" } } }, "then": {
+          "required": ["offsets", "colour", "giveaway"], "additionalProperties": false,
+          "properties": { "kind": true, "offsets": { "$ref": "#/$defs/offsets" },
+            "colour": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 11 }, "uniqueItems": true, "description": "Offsets a line must show at least once per 4 bars to claim the scale." },
+            "giveaway": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 11 }, "uniqueItems": true, "description": "Offsets that name a neighbouring scale instead." } } } },
+        { "if": { "properties": { "kind": { "const": "tonic" } } }, "then": { "additionalProperties": false, "properties": { "kind": true } } },
+        { "if": { "properties": { "kind": { "const": "chord_tones" } } }, "then": {
+          "required": ["offsets", "choose"], "additionalProperties": false,
+          "properties": { "kind": true, "offsets": { "$ref": "#/$defs/offsets" },
+            "choose": { "oneOf": [{ "type": "null" }, { "type": "object", "required": ["from", "at_least"], "additionalProperties": false,
+              "properties": { "from": { "$ref": "#/$defs/offsets" }, "at_least": { "type": "integer", "minimum": 1 } } }] } } } },
+        { "if": { "properties": { "kind": { "const": "voicing" } } }, "then": {
+          "required": ["shape"], "additionalProperties": false,
+          "properties": { "kind": true,
+            "shape": { "enum": ["close", "open", "inversion", "slash", "drop-2", "drop-3", "drop-2-and-4", "shell", "rootless-a", "rootless-b", "power", "quartal", "quintal", "neo-soul", "lush", "wide", "muddy", "airy", "thick", "interval-floor", "common-tone", "nearest-tone", "smallest-motion", "no-parallels", "top-hold", "planing", "loop-return", "cluster", "polychord"] },
+            "max_span": { "type": "integer", "minimum": 0, "maximum": 48 },
+            "min_span": { "type": "integer", "minimum": 0, "maximum": 48 },
+            "max_gap": { "type": "integer", "minimum": 0, "maximum": 24 },
+            "min_gap": { "type": "integer", "minimum": 0, "maximum": 24 },
+            "step": { "type": "integer", "minimum": 1, "maximum": 12, "description": "The interval between adjacent tones." },
+            "step_tolerance": { "type": "integer", "minimum": 0, "maximum": 2 },
+            "min_notes": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "max_notes": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "min_pitch_classes": { "type": "integer", "minimum": 1, "maximum": 12 },
+            "lowest": { "$ref": "#/$defs/pitch", "description": "No tone below this pitch." },
+            "below": { "$ref": "#/$defs/pitch", "description": "With `max_below`: the pitch under which tones are counted." },
+            "max_below": { "type": "integer", "minimum": 0, "maximum": 12 },
+            "drop": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 8 }, "uniqueItems": true, "description": "Voices counted from the top that move down an octave." },
+            "bass": { "enum": ["root", "third", "fifth", "seventh", "named"] },
+            "degrees": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 13 }, "description": "Chord degrees from the bottom up." },
+            "max_leap": { "type": "integer", "minimum": 0, "maximum": 24 },
+            "floors": { "type": "array", "items": { "type": "object", "required": ["interval", "lowest"], "additionalProperties": false,
+              "properties": { "interval": { "type": "integer", "minimum": 1, "maximum": 16 }, "lowest": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/pitch" }] } } } } } } },
+        { "if": { "properties": { "kind": { "const": "cycle" } } }, "then": {
+          "required": ["roots", "chords", "bars_per_chord"], "additionalProperties": false,
+          "properties": { "kind": true,
+            "roots": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 11 }, "minItems": 1 },
+            "chords": { "type": "array", "items": { "$ref": "#/$defs/id" }, "minItems": 1, "description": "Chord entry ids, one per root." },
+            "bars_per_chord": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 16 } } } },
+        { "if": { "properties": { "kind": { "const": "onset_set" } } }, "then": {
+          "required": ["parts"], "additionalProperties": false,
+          "properties": { "kind": true, "parts": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["part", "slots"], "additionalProperties": false,
+            "properties": { "part": { "$ref": "#/$defs/part" }, "slots": { "$ref": "#/$defs/slots" } } } } } } },
+        { "if": { "properties": { "kind": { "const": "onset_share" } } }, "then": {
+          "required": ["slots", "min_share"], "additionalProperties": false,
+          "properties": { "kind": true, "slots": { "$ref": "#/$defs/slots" }, "min_share": { "$ref": "#/$defs/share" } } } },
+        { "if": { "properties": { "kind": { "const": "count_per_bar" } } }, "then": {
+          "required": ["min", "max"], "additionalProperties": false,
+          "properties": { "kind": true, "min": { "type": "integer", "minimum": 0, "maximum": 48 }, "max": { "type": "integer", "minimum": 0, "maximum": 48 } } } },
+        { "if": { "properties": { "kind": { "const": "length" } } }, "then": {
+          "required": ["unit", "min", "max"], "additionalProperties": false,
+          "properties": { "kind": true, "unit": { "enum": ["beat", "step"], "description": "`step`: a share of the grid step." },
+            "min": { "type": ["number", "null"], "minimum": 0 }, "max": { "type": ["number", "null"], "minimum": 0 } } } },
+        { "if": { "properties": { "kind": { "const": "velocity" } } }, "then": {
+          "required": ["min", "max"], "additionalProperties": false,
+          "properties": { "kind": true, "min": { "type": "integer", "minimum": 1, "maximum": 127 }, "max": { "type": "integer", "minimum": 1, "maximum": 127 } } } },
+        { "if": { "properties": { "kind": { "const": "overlap" } } }, "then": {
+          "required": ["min_ms"], "additionalProperties": false,
+          "properties": { "kind": true, "min_ms": { "type": "number", "minimum": 0, "maximum": 100 } } } },
+        { "if": { "properties": { "kind": { "const": "swing" } } }, "then": {
+          "required": ["note", "min_pct", "max_pct"], "additionalProperties": false,
+          "properties": { "kind": true, "note": { "enum": [8, 16] }, "min_pct": { "type": "number", "minimum": 50, "maximum": 80 }, "max_pct": { "type": "number", "minimum": 50, "maximum": 80 } } } },
+        { "if": { "properties": { "kind": { "const": "shift" } } }, "then": {
+          "required": ["min_ms", "max_ms"], "additionalProperties": false,
+          "properties": { "kind": true, "min_ms": { "$ref": "#/$defs/ms" }, "max_ms": { "$ref": "#/$defs/ms" } } } },
+        { "if": { "properties": { "kind": { "const": "jitter" } } }, "then": {
+          "required": ["max_ms", "velocity"], "additionalProperties": false,
+          "properties": { "kind": true, "max_ms": { "type": "number", "minimum": 0, "maximum": 50 }, "velocity": { "type": "integer", "minimum": 0, "maximum": 30 } } } },
+        { "if": { "properties": { "kind": { "const": "register" } } }, "then": {
+          "required": ["core", "hard", "voice"], "additionalProperties": false,
+          "properties": { "kind": true,
+            "core": { "type": "array", "items": { "$ref": "#/$defs/pitch" }, "minItems": 2, "maxItems": 2 },
+            "hard": { "type": "array", "items": { "$ref": "#/$defs/pitch" }, "minItems": 2, "maxItems": 2 },
+            "voice": { "enum": ["mono", "poly", "either"] } } } },
+        { "if": { "properties": { "kind": { "const": "pattern" } } }, "then": {
+          "required": ["k", "n", "rotation"], "additionalProperties": false,
+          "properties": { "kind": true, "k": { "type": "integer", "minimum": 1, "maximum": 32 }, "n": { "type": "integer", "minimum": 2, "maximum": 32 }, "rotation": { "type": "integer", "minimum": 0, "maximum": 31 } } } },
+        { "if": { "properties": { "kind": { "const": "arp" } } }, "then": {
+          "required": ["order", "rate", "gate"], "additionalProperties": false,
+          "properties": { "kind": true, "order": { "enum": ["up", "down", "up-down", "sequence"] },
+            "rate": { "type": "number", "exclusiveMinimum": 0, "maximum": 4, "description": "Beats per step." },
+            "gate": { "oneOf": [{ "type": "null" }, { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 100 }, "minItems": 2, "maxItems": 2 }] },
+            "degrees": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 15 }, "description": "`sequence`: chord degrees in play order." } } } },
+        { "if": { "properties": { "kind": { "const": "repeat" } } }, "then": {
+          "required": ["min_share", "max_share", "min_bars"], "additionalProperties": false,
+          "properties": { "kind": true, "min_share": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/share" }] }, "max_share": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/share" }] }, "min_bars": { "type": ["integer", "null"], "minimum": 1, "maximum": 64 } } } },
+        { "if": { "properties": { "kind": { "const": "phrase_length" } } }, "then": {
+          "required": ["every"], "additionalProperties": false,
+          "properties": { "kind": true, "every": { "type": "array", "items": { "enum": [2, 4, 8, 16, 32] }, "minItems": 1, "uniqueItems": true, "description": "Change events fall on bars 1 + k * every." } } } },
+        { "if": { "properties": { "kind": { "const": "none" } } }, "then": { "additionalProperties": false, "properties": { "kind": true } } }
+      ]
+    }
+  }
+}
