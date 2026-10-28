@@ -1,24 +1,18 @@
-# Agent instructions
+# Agent notes
 
-Follow `CONTRIBUTING.md`. Its rules apply to agents as well as people.
-The rules below are for agents only.
+`CONTRIBUTING.md` holds the rules. These notes are facts learned while
+working on this repository.
 
-## Stem input
-
-Stems come from source separators of two kinds. A fixed split always
-writes the same set of category stems. A custom split writes the
-instruments the user picked. The tool supports both.
-
-- A stem's label or file name never says what the stem holds. A fixed split
-  writes every category, so a stem named for an instrument the song lacks
-  still carries other material. A custom split names what the user asked
-  for, not what the separator produced.
-- Decide content, role and register from the audio only. In code, tests,
-  docs, reviews and briefs, name a stem by its label ("the stem labelled
-  Bass"), never by an instrument read from that label.
-- A separator may regenerate a stem instead of cutting it from the mix, so
-  its timbre and transients can differ from the original song. The stem is
-  the target sound.
-- A tempo in a stem's file or folder name is approximate. Estimate or refine
-  the tempo from the audio before it drives notes, note lengths or synced
-  rates.
+- A `feat` or `fix` merge starts a release commit that bumps the version in
+  `Cargo.lock` and `fuzz/Cargo.lock`. An open pull request that adds a
+  workspace member then needs a rebase and a lock refresh. Other commit
+  types release nothing.
+- The `main` ruleset blocks a merge while any review thread is open,
+  CodeRabbit threads included.
+- `gh pr merge --match-head-commit` needs the full 40-character SHA.
+- The macOS `test` job can wait in the runner queue for hours.
+- A debug build runs the f0 track at about 40 s per second of audio. Use a
+  release build for real stems and large signal sets.
+- An estimator change that passed generated signals still gave false
+  records on real stems. Check such a change on real audio as well, and
+  keep that audio out of the repository.
