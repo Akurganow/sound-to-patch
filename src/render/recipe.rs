@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{RenderNote, frame_of};
+use super::{EventKind, RenderNote, frame_of, note_events};
 use crate::audio::{AudioError, SampleRate};
 use crate::notes::Velocity;
 use crate::units::{Decibels, Seconds};
@@ -253,13 +253,18 @@ impl Recipe {
         self.vital_oversampling
     }
 
-    /// Starts a watch for the end of a clip whose last note ends at
-    /// `last_note_off`. Times convert to frames as [`super::note_events`]
-    /// converts them.
+    /// Starts a watch for the end of a clip that plays `notes`. The last
+    /// note-off is the latest note-off frame of [`super::note_events`], so a
+    /// note shorter than a frame ends where its event does.
     #[must_use]
-    pub fn tail_watch(&self, last_note_off: Seconds) -> TailWatch {
+    pub fn tail_watch(&self, notes: &[RenderNote]) -> TailWatch {
         let rate = self.sample_rate();
-        let last_off = frame_of(last_note_off, rate);
+        let last_off = note_events(notes, rate)
+            .iter()
+            .filter(|event| event.kind == EventKind::Off)
+            .map(|event| event.frame)
+            .max()
+            .unwrap_or(0);
         TailWatch {
             // The floor is a finite dB value, so the gain is a finite
             // number above zero.
@@ -308,8 +313,12 @@ impl TailWatch {
     ///
     /// # Errors
     ///
-    /// Returns [`AudioError::NonFinite`] for a NaN or infinite sample.
+    /// Returns [`AudioError::NoChannels`] for a frame with no sample and
+    /// [`AudioError::NonFinite`] for a NaN or infinite sample.
     pub fn push(&mut self, samples: &[f64]) -> Result<Option<ClipEnd>, AudioError> {
+        if samples.is_empty() {
+            return Err(AudioError::NoChannels);
+        }
         if let Some(channel) = samples.iter().position(|sample| !sample.is_finite()) {
             return Err(AudioError::NonFinite {
                 channel,
@@ -429,8 +438,16 @@ mod tests {
         }
     }
 
+    /// Starts a watch for one note from 0 s to `last_note_off`.
     fn watch(last_note_off: f64) -> TailWatch {
-        Recipe::current().tail_watch(Seconds::new(last_note_off).unwrap())
+        let note = RenderNote::new(
+            60,
+            Seconds::new(0.0).unwrap(),
+            Seconds::new(last_note_off).unwrap(),
+            Velocity::new(100).unwrap(),
+        )
+        .unwrap();
+        Recipe::current().tail_watch(&[note])
     }
 
     #[test]
@@ -493,7 +510,13 @@ mod tests {
     fn the_floor_lies_between_1_5e_5_and_1_6e_5() {
         // -96 dBFS is an amplitude of 1.585e-5.
         let quiet = run(&mut watch(3.0), |_| 1.5e-5);
-        assert!(!quiet.capped);
+        assert_eq!(
+            quiet,
+            ClipEnd {
+                frames: 4 * RATE,
+                capped: false
+            }
+        );
         let loud = run(&mut watch(3.0), |_| 1.6e-5);
         assert_eq!(
             loud,
@@ -518,9 +541,16 @@ mod tests {
     }
 
     #[test]
-    fn the_watch_rounds_times_like_the_events() {
-        // 3.00001 s is 132 300.441 frames: round gives 132 300, as the
-        // note-off event does.
+    fn a_frame_with_no_sample_is_rejected() {
+        assert!(matches!(watch(3.0).push(&[]), Err(AudioError::NoChannels)));
+    }
+
+    #[test]
+    fn the_watch_takes_the_last_note_off_from_the_events() {
+        // 3.00001 s is 132 300.441 frames: round gives 132 300.
         assert_eq!(watch(3.000_01).last_off, 3 * RATE);
+        // A note shorter than half a frame ends one frame after it starts.
+        assert_eq!(watch(1e-6).last_off, 1);
+        assert_eq!(Recipe::current().tail_watch(&[]).last_off, 0);
     }
 }

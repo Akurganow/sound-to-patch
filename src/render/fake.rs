@@ -163,7 +163,7 @@ fn play(
     let mut voices: Vec<Voice> = Vec::new();
     let events = note_events(job.notes(), recipe.sample_rate());
     let mut next = 0;
-    let mut watch = recipe.tail_watch(job.last_note_off());
+    let mut watch = recipe.tail_watch(job.notes());
     let attack = patch.attack.get() * rate;
     let release = patch.release.get() * rate;
     let mut out = Vec::new();

@@ -66,11 +66,13 @@ impl RenderNote {
         velocity: Velocity,
     ) -> Result<Self, RenderError> {
         if key > MAX_KEY {
-            return Err(RenderError::Note(format!("key {key} is above {MAX_KEY}")));
+            return Err(RenderError::Note(format!(
+                "key {key} is above {MAX_KEY}; pass keys 0 to {MAX_KEY}"
+            )));
         }
         if offset <= onset {
             return Err(RenderError::Note(format!(
-                "key {key} ends at {offset}, not after its start at {onset}"
+                "key {key} ends at {offset}, not after its start at {onset}; end each note after it starts"
             )));
         }
         if offset > MAX_NOTE_END {
@@ -97,12 +99,17 @@ impl RenderNote {
             .iter()
             .map(|note| {
                 let pitch = note.pitch().get();
+                if (pitch - pitch.round()).abs() > KEY_TOLERANCE {
+                    return Err(RenderError::Note(format!(
+                        "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
+                        note.onset()
+                    )));
+                }
                 let key = cast::round_to_usize(pitch)
                     .and_then(|key| u8::try_from(key).ok())
-                    .filter(|key| (pitch - f64::from(*key)).abs() <= KEY_TOLERANCE)
                     .ok_or_else(|| {
                         RenderError::Note(format!(
-                            "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
+                            "pitch {pitch} at {} is outside the MIDI keys; pass keys 0 to {MAX_KEY}",
                             note.onset()
                         ))
                     })?;
@@ -190,8 +197,8 @@ pub fn note_events(notes: &[RenderNote], rate: SampleRate) -> Vec<NoteEvent> {
 }
 
 /// The frame of a time: the time times the rate, rounded to the nearest
-/// sample. Times are bounded by [`MAX_NOTE_END`] and the tail cap, so the
-/// fallback never acts.
+/// sample. A time too large for a frame index gives `usize::MAX`; note
+/// times are at most [`MAX_NOTE_END`], so the fallback does not act on them.
 pub(crate) fn frame_of(time: Seconds, rate: SampleRate) -> usize {
     cast::round_to_usize(time.get() * f64::from(rate.get())).unwrap_or(usize::MAX)
 }
@@ -421,10 +428,7 @@ pub enum RenderError {
 impl fmt::Display for RenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Note(cause) => write!(
-                f,
-                "cannot play a note: {cause}. Pass notes with whole MIDI keys that end after they start"
-            ),
+            Self::Note(cause) => write!(f, "cannot play a note: {cause}"),
             Self::NoNotes => write!(
                 f,
                 "cannot render: the job has no notes. Pass a MIDI file with at least one note"
@@ -493,7 +497,13 @@ mod tests {
     fn a_note_must_end_by_the_longest_clip() {
         assert_eq!(Seconds::new(MAX_NOTE_END.get()).ok(), Some(MAX_NOTE_END));
         assert!(RenderNote::new(60, s(0.0), MAX_NOTE_END, v(100)).is_ok());
-        assert!(RenderNote::new(60, s(0.0), s(600.001), v(100)).is_err());
+        let error = RenderNote::new(60, s(0.0), s(600.001), v(100)).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .ends_with("split the part into several renders"),
+            "{error}"
+        );
         assert!(RenderNote::new(60, s(0.0), s(1e300), v(100)).is_err());
     }
 

@@ -5,10 +5,11 @@
 use std::fmt::Write as _;
 
 use sha2::{Digest, Sha256};
+use sound_to_patch::notes::Velocity;
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer, Fault};
 use sound_to_patch::render::{
-    HostIdentity, Material, PresetState, Recipe, RenderError, RenderJob, RenderRecord, Rendered,
-    Renderer,
+    HostIdentity, Material, PresetState, Recipe, RenderError, RenderJob, RenderNote, RenderRecord,
+    Rendered, Renderer,
 };
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::{Bpm, Seconds};
@@ -108,6 +109,46 @@ fn a_tail_heavy_preset_is_not_cut() {
     assert!(!rendered.record.tail_capped);
     let length = rendered.record.length.get();
     assert!((12.8..13.4).contains(&length), "{length}");
+}
+
+#[test]
+fn a_note_off_ends_the_oldest_note_of_its_key() {
+    // Key 60 sounds loud from 0 to 3 s and soft from 1 to 2 s. The note-off
+    // at 2 s ends the loud note, which started first, so the soft note
+    // sounds alone from 2 to 3 s.
+    let patch = FakePatch {
+        harmonics: vec![1.0],
+        attack: Seconds::new(0.0).unwrap(),
+        release: Seconds::new(0.01).unwrap(),
+    };
+    let note = |onset, offset, velocity| {
+        RenderNote::new(
+            60,
+            Seconds::new(onset).unwrap(),
+            Seconds::new(offset).unwrap(),
+            Velocity::new(velocity).unwrap(),
+        )
+        .unwrap()
+    };
+    let job = RenderJob::new(
+        patch.state(Synth::Vital).unwrap(),
+        vec![note(0.0, 3.0, 127), note(1.0, 2.0, 32)],
+        Bpm::new(120.0).unwrap(),
+    )
+    .unwrap();
+    let output = FakeRenderer::new(Synth::Vital, 7).render(&job).unwrap();
+    let left = &output.audio.channels()[0];
+    // The peak of a frame range given in tenths of a second.
+    let peak = |from: usize, to: usize| {
+        left[from * 4_410..to * 4_410]
+            .iter()
+            .fold(0.0_f64, |a, s| a.max(s.abs()))
+    };
+    let ratio = peak(22, 28) / peak(2, 8);
+    assert!(
+        (0.2..0.3).contains(&ratio),
+        "the 2-3 s level is {ratio} of the loud note's, not about 32/127"
+    );
 }
 
 #[test]
