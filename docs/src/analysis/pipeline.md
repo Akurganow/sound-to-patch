@@ -231,7 +231,7 @@ notes: saws, sines, an 808, plucks, pads, strums, a broken chord with
 sustain, glides, octave basses, sixteenths at 175 BPM with repeats, a
 fast run with an octave jump, reverb, bleed, loud transients over a bass line,
 silence and an A6 saw [fact]. A note matches when its onset lies within
-50 ms and its pitch within 50 cents, one to one [fact]. Onset F1 with
+50 ms and its pitch within 50 cents, one-to-one [fact]. Onset F1 with
 matched, estimated and reference notes, raw and after the cleanup
 [synthetic]:
 
