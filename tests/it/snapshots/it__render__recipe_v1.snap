@@ -1,6 +1,6 @@
 ---
 source: tests/it/render.rs
-expression: "serde_json::to_string_pretty(&recipe).unwrap()"
+expression: recipe_json()
 ---
 {
   "version": 1,
@@ -25,7 +25,23 @@ expression: "serde_json::to_string_pretty(&recipe).unwrap()"
   "tail_floor": -96.0,
   "tail_hold": 1.0,
   "tail_cap": 30.0,
-  "settle": 0.5,
-  "warm_up": 1.0,
+  "pre_roll": [
+    {
+      "step": "settle",
+      "length": 0.5
+    },
+    {
+      "step": "warm_up",
+      "key": 60,
+      "velocity": 100,
+      "start": 0.0,
+      "end": 0.5,
+      "length": 1.0
+    },
+    {
+      "step": "settle",
+      "length": 0.5
+    }
+  ],
   "vital_oversampling": "2x"
 }

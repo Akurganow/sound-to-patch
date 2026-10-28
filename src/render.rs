@@ -27,13 +27,19 @@ use crate::units::{Bpm, Seconds};
 pub mod fake;
 pub mod recipe;
 
-pub use recipe::{ClipEnd, Material, Oversampling, RECIPE_VERSION, Recipe, TailWatch};
+pub use recipe::{
+    ClipEnd, Material, Oversampling, PreRoll, ProcessMode, RECIPE_VERSION, Recipe, TailWatch,
+};
 
 /// The highest MIDI key.
 const MAX_KEY: u8 = 127;
 /// How far a pitch from a note list may lie from a whole key. The MIDI
 /// reader gives whole keys; a transcribed pitch with a bend is no key.
 const KEY_TOLERANCE: f64 = 1e-9;
+/// The latest time a note may end: 10 minutes. A clip holds every sample
+/// in memory, and a longer part than a stem takes splits into several
+/// renders.
+pub const MAX_NOTE_END: Seconds = Seconds::from_const(600.0);
 
 /// One note to play: a MIDI key, its start and end in the clip and its
 /// velocity.
@@ -46,12 +52,13 @@ pub struct RenderNote {
 }
 
 impl RenderNote {
-    /// Checks the key and that the note ends after it starts.
+    /// Checks the key, that the note ends after it starts and that it ends
+    /// by [`MAX_NOTE_END`].
     ///
     /// # Errors
     ///
-    /// Returns a [`RenderError`] for a key above 127 or an offset that is
-    /// not after the onset.
+    /// Returns a [`RenderError`] for a key above 127, an offset that is not
+    /// after the onset or an offset after [`MAX_NOTE_END`].
     pub fn new(
         key: u8,
         onset: Seconds,
@@ -64,6 +71,11 @@ impl RenderNote {
         if offset <= onset {
             return Err(RenderError::Note(format!(
                 "key {key} ends at {offset}, not after its start at {onset}"
+            )));
+        }
+        if offset > MAX_NOTE_END {
+            return Err(RenderError::Note(format!(
+                "key {key} ends at {offset}, after the longest clip of {MAX_NOTE_END}; split the part into several renders"
             )));
         }
         Ok(Self {
@@ -90,7 +102,7 @@ impl RenderNote {
                     .filter(|key| (pitch - f64::from(*key)).abs() <= KEY_TOLERANCE)
                     .ok_or_else(|| {
                         RenderError::Note(format!(
-                            "pitch {pitch} at {} is not a MIDI key",
+                            "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
                             note.onset()
                         ))
                     })?;
@@ -153,28 +165,35 @@ pub struct NoteEvent {
 }
 
 /// Turns notes into events sorted by frame, a note-off before a note-on on
-/// the same frame. A frame is the note time times the rate, rounded to the
-/// nearest sample.
+/// the same frame.
+///
+/// A frame is the note time times the rate, rounded to the nearest sample.
+/// A note shorter than half a frame still lasts one frame, so its note-off
+/// never comes before its own note-on.
 #[must_use]
 pub fn note_events(notes: &[RenderNote], rate: SampleRate) -> Vec<NoteEvent> {
-    let frame = |time: Seconds| {
-        cast::round_to_usize(time.get() * f64::from(rate.get())).unwrap_or(usize::MAX)
-    };
     let mut events: Vec<NoteEvent> = notes
         .iter()
         .flat_map(|note| {
-            [(note.onset, EventKind::On), (note.offset, EventKind::Off)].map(|(time, kind)| {
-                NoteEvent {
-                    frame: frame(time),
-                    kind,
-                    key: note.key,
-                    velocity: note.velocity,
-                }
+            let on = frame_of(note.onset, rate);
+            let off = frame_of(note.offset, rate).max(on + 1);
+            [(on, EventKind::On), (off, EventKind::Off)].map(|(frame, kind)| NoteEvent {
+                frame,
+                kind,
+                key: note.key,
+                velocity: note.velocity,
             })
         })
         .collect();
     events.sort_by_key(|event| (event.frame, event.kind, event.key));
     events
+}
+
+/// The frame of a time: the time times the rate, rounded to the nearest
+/// sample. Times are bounded by [`MAX_NOTE_END`] and the tail cap, so the
+/// fallback never acts.
+pub(crate) fn frame_of(time: Seconds, rate: SampleRate) -> usize {
+    cast::round_to_usize(time.get() * f64::from(rate.get())).unwrap_or(usize::MAX)
 }
 
 /// The plug-in state of a preset: the bytes a synth loads as its state, and
@@ -304,6 +323,8 @@ pub struct RenderRecord {
     pub sample_rate: u32,
     /// The block size in samples.
     pub block_size: u32,
+    /// How the host told the plug-in it processes.
+    pub process_mode: ProcessMode,
     /// The settle time rendered in silence after the state load.
     pub settle: Seconds,
     /// The oversampling of a Vital render.
@@ -329,6 +350,7 @@ impl RenderRecord {
             recipe_version: recipe.version(),
             sample_rate: rate.get(),
             block_size: recipe.block_size(),
+            process_mode: recipe.process_mode(),
             settle: recipe.settle(),
             oversampling: recipe.vital_oversampling(),
             bpm: job.bpm(),
@@ -350,9 +372,15 @@ pub struct Rendered {
 
 /// Plays a [`RenderJob`] through one synth and returns the audio.
 ///
-/// A backend loads the state, renders the settle time in silence, a warm-up
-/// note and the settle time again, then the clip, as the [`Recipe`] says.
-/// The clip ends once the [`TailWatch`] says the tail is over.
+/// A backend loads the state, plays the recipe's pre-roll (settle, warm-up
+/// note, settle) and throws it away, then renders the clip. The clip ends
+/// once the [`TailWatch`] says the tail is over.
+///
+/// Events go to the synth in the order of [`note_events`]. A note-on of a
+/// key that already sounds is sent as a second note-on, and each note-off
+/// of a key ends the oldest sounding note of that key, first in, first out,
+/// as the MIDI reader pairs them. How the synth voices a repeated key is
+/// the synth's own rule.
 pub trait Renderer {
     /// Returns what renders.
     fn identity(&self) -> HostIdentity;
@@ -375,6 +403,13 @@ pub enum RenderError {
     NoNotes,
     /// The synth did not take the state.
     State(String),
+    /// The state belongs to another synth than the renderer's.
+    WrongSynth {
+        /// The synth of the state.
+        state: Synth,
+        /// The synth of the renderer.
+        renderer: Synth,
+    },
     /// The process that hosts the plug-in stopped.
     Crashed(String),
     /// The process that hosts the plug-in stopped answering.
@@ -398,13 +433,17 @@ impl fmt::Display for RenderError {
                 f,
                 "the synth did not load the preset: {cause}. Check that the preset loads in the synth"
             ),
+            Self::WrongSynth { state, renderer } => write!(
+                f,
+                "the preset is for {state}, but the renderer runs {renderer}. Render it with --synth {state}"
+            ),
             Self::Crashed(cause) => write!(
                 f,
-                "the plug-in host stopped: {cause}. Render again; a second failure points to the preset or the plug-in"
+                "the plug-in host stopped: {cause}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
             Self::TimedOut(after) => write!(
                 f,
-                "the plug-in host stopped answering after {after}. Render again; a second failure points to the preset or the plug-in"
+                "the plug-in host stopped answering after {after}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
             Self::Audio(source) => write!(
                 f,
@@ -448,6 +487,58 @@ mod tests {
         assert!(RenderNote::new(60, s(1.0), s(1.0), v(100)).is_err());
         assert!(RenderNote::new(128, s(0.0), s(1.0), v(100)).is_err());
         assert!(RenderNote::new(127, s(0.0), s(1.0), v(100)).is_ok());
+    }
+
+    #[test]
+    fn a_note_must_end_by_the_longest_clip() {
+        assert_eq!(Seconds::new(MAX_NOTE_END.get()).ok(), Some(MAX_NOTE_END));
+        assert!(RenderNote::new(60, s(0.0), MAX_NOTE_END, v(100)).is_ok());
+        assert!(RenderNote::new(60, s(0.0), s(600.001), v(100)).is_err());
+        assert!(RenderNote::new(60, s(0.0), s(1e300), v(100)).is_err());
+    }
+
+    fn frames(notes: &[RenderNote]) -> Vec<(usize, EventKind)> {
+        note_events(notes, SampleRate::new(44_100).unwrap())
+            .iter()
+            .map(|e| (e.frame, e.kind))
+            .collect()
+    }
+
+    #[test]
+    fn a_note_shorter_than_half_a_frame_still_lasts_one_frame() {
+        let note = RenderNote::new(60, s(0.0), s(0.000_01), v(100)).unwrap();
+        assert_eq!(frames(&[note]), [(0, EventKind::On), (1, EventKind::Off)]);
+    }
+
+    #[test]
+    fn a_chain_of_one_key_keeps_every_off_after_its_on() {
+        let notes = [
+            RenderNote::new(60, s(0.0), s(1.0), v(100)).unwrap(),
+            RenderNote::new(60, s(1.0), s(1.000_01), v(100)).unwrap(),
+            RenderNote::new(60, s(1.000_01), s(2.0), v(100)).unwrap(),
+        ];
+        // The second note rounds to frame 44 100 at both ends and lasts one
+        // frame; the third starts on frame 44 100 too.
+        assert_eq!(
+            frames(&notes),
+            [
+                (0, EventKind::On),
+                (44_100, EventKind::Off),
+                (44_100, EventKind::On),
+                (44_100, EventKind::On),
+                (44_101, EventKind::Off),
+                (88_200, EventKind::Off),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_wrong_synth_error_names_the_flag_to_pass() {
+        let error = RenderError::WrongSynth {
+            state: Synth::Vital,
+            renderer: Synth::Serum2,
+        };
+        assert!(error.to_string().ends_with("Render it with --synth vital"));
     }
 
     #[test]

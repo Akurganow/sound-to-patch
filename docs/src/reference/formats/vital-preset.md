@@ -16,6 +16,8 @@ Every row names a build, a status and a source.
     build.
   - `reported`: an outside source says so.
   - `open`: unknown.
+  - `untestable by rule`: a check that needs a step the project never
+    takes, such as running the app.
 
 A row verified on the open engine is not verified on retail. The pinned
 retail build is stable 1.0.7. The early-access build is 1.6.4 (reported).
@@ -182,26 +184,27 @@ facts in our own words and copies no code, comment or table.
 ## Plugin state
 
 A host loads a preset into the VST3 plugin through its state, not through a
-file. The rows below come from the host spike ([issue 244](https://github.com/Akurganow/sound-to-patch/issues/244)): the retail
-plugin loaded headless as a library in an x86_64 host process through
-`vst3-host` 0.10.0, with no editor window.
+file. The rows below come from the host spike ([issue 244](https://github.com/Akurganow/sound-to-patch/issues/244)):
+the retail plugin loaded headless as a library in an x86_64 host process
+through `vst3-host` 0.10.0, with no editor window. The probe output is in
+[issue 10](https://github.com/Akurganow/sound-to-patch/issues/10).
 
 | Fact | Build | Status | Source |
 | :-- | :-- | :-- | :-- |
 | The plugin state is the preset JSON plus a `tuning` object, followed by a NUL. | source 1.0.6 | checked | `synth_plugin.cpp` |
 | The macOS bundles hold only an x86_64 binary, so a host process must run as x86_64. | 1.0.7 | verified | `lipo -archs` of the bundle |
-| The plugin loads headless and renders with no editor window and no login prompt. | 1.0.7 | verified | host spike |
-| The single audio output bus is stereo and starts inactive. A host that does not activate it renders silence. | 1.0.7 | verified | host spike |
-| The state the plugin saves is a `VstW` header of 16 bytes, a `CcnK` bank header of 160 bytes, the preset JSON with `tuning` and the app's own stamp, a NUL, and a JUCE private-data trailer. The plugin has no separate controller state. | 1.0.7 | verified | host spike: `save_state` |
-| A bare preset JSON passed to `IComponent::setState` loads, with or without a trailing NUL. The saved state then holds the preset's name and edited controls. | 1.0.7 | verified | host spike: state read-back |
-| The `VC2!` envelope that some Python hosts write is not the plugin's own form and is not needed. | 1.0.7 | verified | host spike |
-| A loaded preset renders clearly unlike the default patch: RMS 0.017 against 0.118 for a slow-attack, low-cutoff preset. | 1.0.7 | verified | host spike |
-| Two renders of one patch differ sample by sample, and their RMS agrees to 4 digits. | 1.0.7 | verified | host spike |
-| Offline against realtime processing, and blocks of 64 against 512 samples, give the same RMS to 4 digits. The sample differences stay within the repeat noise. | 1.0.7 | verified | host spike |
-| Pitch bend, mod wheel, volume, sustain and aftertouch are mapped through `IMidiMapping`. A full bend up raises note 60 by 2 semitones. | 1.0.7 | verified | host spike |
-| A note right after the state load renders like a note after 0.5 s of silence, within the repeat noise. | 1.0.7 | verified | host spike |
-| Two plugin instances in one process render correctly. | 1.0.7 | verified | host spike |
-| The standalone app's `--headless --render` flags. | 1.0.7 | open | not run: the project never drives the app |
+| The plugin loads and renders with no editor window. The load showed no login prompt and wrote nothing to standard error. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100 |
+| The single audio output bus has 2 channels and reports itself inactive after the load. With the bus left inactive, the render was silent; after the host activated it, the render sounded. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100; default patch |
+| The saved component state starts with `VstW`, then `CcnK` at byte 16. The preset JSON starts at byte 176 and is followed by a NUL, zero bytes and the text `JUCEPrivateData`. The JSON holds `tuning` and the app's stamp `1.0.7`. The plugin saves no controller state. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100; state read-back |
+| A bare preset JSON passed to `IComponent::setState` loads, with or without a trailing NUL. The saved state then holds the name `SpikeProbe` and `filter_1_cutoff` 50. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100; state read-back |
+| A host needs no `VC2!` envelope, the form some Python hosts save: the bare JSON loads. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100 |
+| A loaded preset renders unlike the default patch: RMS 0.017 for the probe preset against 0.118 for the default patch. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100; default patch |
+| Two renders of one patch differ sample by sample. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100; default patch |
+| In one probe, offline against realtime processing and blocks of 64 against 512 samples changed the render by less than two repeat renders differ. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100 |
+| `IMidiMapping` returns a parameter for CC 1, CC 7, CC 64, channel aftertouch and pitch bend. A full bend up raised MIDI 60 by 2 semitones. Only the bend was rendered. | 1.0.7 | verified | host spike: default patch, MIDI 60 with and without a full bend |
+| In one probe, a note right after the state load differed from a note after 0.5 s of silence by less than two repeat renders differ. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100 |
+| A second instance in the same process, with blocks of 64 samples, loaded the probe preset and rendered it. | 1.0.7 | verified | host spike: `minimal.vital` named `SpikeProbe` with `env_1_attack` 1, `filter_1_on` 1 and `filter_1_cutoff` 50, MIDI 60 at velocity 100 |
+| The standalone app's `--headless --render` flags. | 1.0.7 | untestable by rule | the project never runs the app |
 
 ## Open items
 

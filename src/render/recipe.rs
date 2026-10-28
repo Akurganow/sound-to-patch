@@ -2,13 +2,14 @@
 //!
 //! The recipe carries an integer version. Any change to a field raises it,
 //! and every render record carries it, so two renders compare only when
-//! their versions match. A snapshot of the recipe at each version guards
-//! the rule: a field that changes without a new version fails that test.
+//! their versions match. A snapshot of the recipe at each version, and a
+//! hash of that snapshot, guard the rule: a field that changes without a
+//! new version fails those tests.
 
 use serde::{Deserialize, Serialize};
 
-use super::RenderNote;
-use crate::audio::SampleRate;
+use super::{RenderNote, frame_of};
+use crate::audio::{AudioError, SampleRate};
 use crate::notes::Velocity;
 use crate::units::{Decibels, Seconds};
 
@@ -58,6 +59,40 @@ impl Oversampling {
     }
 }
 
+/// How the host tells the plug-in it processes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProcessMode {
+    /// Faster or slower than real time, as the host renders a file.
+    Offline,
+}
+
+/// One step of the pre-roll, which plays after the state load and before
+/// the clip and is thrown away.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(tag = "step", rename_all = "snake_case")]
+pub enum PreRoll {
+    /// Silence of the given length, so smoothed parameters settle.
+    Settle {
+        /// The length of the silence.
+        length: Seconds,
+    },
+    /// A note that clears state left from earlier renders, such as LFO
+    /// phase and envelope residue.
+    WarmUp {
+        /// The MIDI key.
+        key: u8,
+        /// The velocity.
+        velocity: u8,
+        /// The note-on, from the start of the step.
+        start: Seconds,
+        /// The note-off, from the start of the step.
+        end: Seconds,
+        /// The length of the step.
+        length: Seconds,
+    },
+}
+
 /// The render recipe. [`Recipe::current`] is the only constructor, so a
 /// recipe always matches its version.
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -66,7 +101,7 @@ pub struct Recipe {
     sample_rate: u32,
     channels: u32,
     block_size: u32,
-    process_mode: &'static str,
+    process_mode: ProcessMode,
     velocity: u8,
     bass: &'static [u8],
     lead: &'static [u8],
@@ -76,10 +111,26 @@ pub struct Recipe {
     tail_floor: Decibels,
     tail_hold: Seconds,
     tail_cap: Seconds,
-    settle: Seconds,
-    warm_up: Seconds,
+    pre_roll: &'static [PreRoll],
     vital_oversampling: Oversampling,
 }
+
+/// The pre-roll of [`RECIPE_VERSION`]: settle, warm-up note, settle.
+const PRE_ROLL: [PreRoll; 3] = [
+    PreRoll::Settle {
+        length: Seconds::from_const(0.5),
+    },
+    PreRoll::WarmUp {
+        key: 60,
+        velocity: 100,
+        start: Seconds::from_const(0.0),
+        end: Seconds::from_const(0.5),
+        length: Seconds::from_const(1.0),
+    },
+    PreRoll::Settle {
+        length: Seconds::from_const(0.5),
+    },
+];
 
 impl Recipe {
     /// Returns the recipe of [`RECIPE_VERSION`].
@@ -91,8 +142,9 @@ impl Recipe {
     /// - The notes start at 0 s and are held 3 s. The clip is at least 4 s
     ///   and grows until the tail is over (see [`TailWatch`]): the output
     ///   stays below -96 dBFS for 1 s after the last note-off, or 30 s pass.
-    /// - Before the clip: 0.5 s of silence after the state load, a warm-up
-    ///   note of 1 s that is thrown away, and 0.5 s of silence again.
+    /// - The pre-roll after the state load, thrown away: 0.5 s of silence,
+    ///   a warm-up step of 1 s with MIDI 60 at velocity 100 held for its
+    ///   first 0.5 s, and 0.5 s of silence again.
     /// - Vital renders at 2x oversampling, its default, whatever the preset
     ///   stores.
     #[must_use]
@@ -102,7 +154,7 @@ impl Recipe {
             sample_rate: 44_100,
             channels: 2,
             block_size: 512,
-            process_mode: "offline",
+            process_mode: ProcessMode::Offline,
             velocity: 100,
             bass: &[36],
             lead: &[60],
@@ -112,8 +164,7 @@ impl Recipe {
             tail_floor: Decibels::from_const(-96.0),
             tail_hold: Seconds::from_const(1.0),
             tail_cap: Seconds::from_const(30.0),
-            settle: Seconds::from_const(0.5),
-            warm_up: Seconds::from_const(1.0),
+            pre_roll: &PRE_ROLL,
             vital_oversampling: Oversampling::X2,
         }
     }
@@ -140,6 +191,12 @@ impl Recipe {
     #[must_use]
     pub fn block_size(&self) -> u32 {
         self.block_size
+    }
+
+    /// Returns the process mode.
+    #[must_use]
+    pub fn process_mode(&self) -> ProcessMode {
+        self.process_mode
     }
 
     /// Returns the velocity of the recipe notes.
@@ -172,17 +229,22 @@ impl Recipe {
         self.clip
     }
 
-    /// Returns the silence rendered after the state load and after the
-    /// warm-up note.
+    /// Returns the pre-roll steps in the order they play.
     #[must_use]
-    pub fn settle(&self) -> Seconds {
-        self.settle
+    pub fn pre_roll(&self) -> &[PreRoll] {
+        self.pre_roll
     }
 
-    /// Returns the length of the warm-up note, which is thrown away.
+    /// Returns the silence after the state load: the first settle step.
     #[must_use]
-    pub fn warm_up(&self) -> Seconds {
-        self.warm_up
+    pub fn settle(&self) -> Seconds {
+        self.pre_roll
+            .iter()
+            .find_map(|step| match step {
+                PreRoll::Settle { length } => Some(*length),
+                PreRoll::WarmUp { .. } => None,
+            })
+            .unwrap_or(Seconds::from_const(0.0))
     }
 
     /// Returns the oversampling of a Vital render.
@@ -192,19 +254,20 @@ impl Recipe {
     }
 
     /// Starts a watch for the end of a clip whose last note ends at
-    /// `last_note_off`.
+    /// `last_note_off`. Times convert to frames as [`super::note_events`]
+    /// converts them.
     #[must_use]
     pub fn tail_watch(&self, last_note_off: Seconds) -> TailWatch {
-        let rate = f64::from(self.sample_rate);
-        let frames =
-            |time: Seconds| crate::cast::ceil_to_usize(time.get() * rate).unwrap_or(usize::MAX);
-        let last_off = frames(last_note_off);
+        let rate = self.sample_rate();
+        let last_off = frame_of(last_note_off, rate);
         TailWatch {
-            floor: self.tail_floor.to_amplitude_gain().unwrap_or(0.0),
-            min_frames: frames(self.clip),
+            // The floor is a finite dB value, so the gain is a finite
+            // number above zero.
+            floor: 10_f64.powf(self.tail_floor.get() / 20.0),
+            min_frames: frame_of(self.clip, rate),
             last_off,
-            hold: frames(self.tail_hold),
-            cap: last_off.saturating_add(frames(self.tail_cap)),
+            hold: frame_of(self.tail_hold, rate),
+            cap: last_off.saturating_add(frame_of(self.tail_cap, rate)),
             frame: 0,
             quiet: 0,
         }
@@ -224,9 +287,10 @@ pub struct ClipEnd {
 ///
 /// The clip ends at the first frame where it is at least the recipe's clip
 /// long and the output has stayed below the floor for the hold time after
-/// the last note-off. Silence before the last note-off never ends it. If
-/// the output is still above the floor at the cap after the last note-off,
-/// the clip ends there and is marked capped.
+/// the last note-off. Silence before the last note-off never ends it, and
+/// sound after a quiet stretch starts the hold again. If the output is
+/// still above the floor at the cap after the last note-off, the clip ends
+/// there and is marked capped.
 #[derive(Clone, Debug, PartialEq)]
 pub struct TailWatch {
     floor: f64,
@@ -239,10 +303,20 @@ pub struct TailWatch {
 }
 
 impl TailWatch {
-    /// Takes the peak absolute sample of the next frame over all channels.
-    /// Returns the end once the clip is complete; the frame just pushed is
-    /// its last one.
-    pub fn push(&mut self, peak: f64) -> Option<ClipEnd> {
+    /// Takes the samples of the next frame, one per channel. Returns the end
+    /// once the clip is complete; the frame just pushed is its last one.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`AudioError::NonFinite`] for a NaN or infinite sample.
+    pub fn push(&mut self, samples: &[f64]) -> Result<Option<ClipEnd>, AudioError> {
+        if let Some(channel) = samples.iter().position(|sample| !sample.is_finite()) {
+            return Err(AudioError::NonFinite {
+                channel,
+                frame: self.frame,
+            });
+        }
+        let peak = samples.iter().fold(0.0_f64, |a, s| a.max(s.abs()));
         self.frame += 1;
         if self.frame > self.last_off && peak < self.floor {
             self.quiet += 1;
@@ -255,13 +329,15 @@ impl TailWatch {
                 capped,
             })
         };
-        if self.frame >= self.min_frames && self.quiet >= self.hold {
-            end(false)
-        } else if self.frame >= self.cap.max(self.min_frames) {
-            end(true)
-        } else {
-            None
-        }
+        Ok(
+            if self.frame >= self.min_frames && self.quiet >= self.hold {
+                end(false)
+            } else if self.frame >= self.cap.max(self.min_frames) {
+                end(true)
+            } else {
+                None
+            },
+        )
     }
 }
 
@@ -274,17 +350,42 @@ mod tests {
         let recipe = Recipe::current();
         assert!(SampleRate::new(recipe.sample_rate).is_ok());
         assert!(Velocity::new(recipe.velocity).is_ok());
-        for value in [
-            recipe.hold,
-            recipe.clip,
-            recipe.tail_hold,
-            recipe.tail_cap,
-            recipe.settle,
-            recipe.warm_up,
-        ] {
+        let mut times = vec![recipe.hold, recipe.clip, recipe.tail_hold, recipe.tail_cap];
+        for step in recipe.pre_roll() {
+            match *step {
+                PreRoll::Settle { length } => times.push(length),
+                PreRoll::WarmUp {
+                    velocity,
+                    start,
+                    end,
+                    length,
+                    ..
+                } => {
+                    assert!(Velocity::new(velocity).is_ok());
+                    assert!(start < end && end <= length);
+                    times.extend([start, end, length]);
+                }
+            }
+        }
+        for value in times {
             assert_eq!(Seconds::new(value.get()).ok(), Some(value));
         }
         assert!(Decibels::new(recipe.tail_floor.get()).is_ok());
+    }
+
+    #[test]
+    fn the_pre_roll_settles_warms_up_and_settles() {
+        let recipe = Recipe::current();
+        let kinds: Vec<&str> = recipe
+            .pre_roll()
+            .iter()
+            .map(|step| match step {
+                PreRoll::Settle { .. } => "settle",
+                PreRoll::WarmUp { .. } => "warm-up",
+            })
+            .collect();
+        assert_eq!(kinds, ["settle", "warm-up", "settle"]);
+        assert_eq!(recipe.settle().get(), 0.5);
     }
 
     #[test]
@@ -314,29 +415,31 @@ mod tests {
         }
     }
 
-    /// Pushes `loud` frames at full scale, then silence, and returns the end.
-    fn run(watch: &mut TailWatch, loud: usize) -> ClipEnd {
+    const RATE: usize = 44_100;
+
+    /// Pushes one mono frame per entry of `level` until the clip ends.
+    fn run(watch: &mut TailWatch, level: impl Fn(usize) -> f64) -> ClipEnd {
         let mut frame = 0;
         loop {
-            let peak = if frame < loud { 1.0 } else { 0.0 };
+            let sample = level(frame);
             frame += 1;
-            if let Some(end) = watch.push(peak) {
+            if let Some(end) = watch.push(&[sample, -sample]).unwrap() {
                 return end;
             }
         }
     }
 
+    fn watch(last_note_off: f64) -> TailWatch {
+        Recipe::current().tail_watch(Seconds::new(last_note_off).unwrap())
+    }
+
     #[test]
     fn a_short_tail_gives_the_minimum_clip() {
-        let recipe = Recipe::current();
-        let end = run(
-            &mut recipe.tail_watch(Seconds::new(3.0).unwrap()),
-            3 * 44_100,
-        );
+        let end = run(&mut watch(3.0), |f| if f < 3 * RATE { 1.0 } else { 0.0 });
         assert_eq!(
             end,
             ClipEnd {
-                frames: 4 * 44_100,
+                frames: 4 * RATE,
                 capped: false
             }
         );
@@ -344,16 +447,31 @@ mod tests {
 
     #[test]
     fn a_long_tail_grows_the_clip_past_its_quiet_hold() {
-        let recipe = Recipe::current();
         // Sound until 6 s, then the 1 s hold: the clip ends at 7 s.
-        let end = run(
-            &mut recipe.tail_watch(Seconds::new(3.0).unwrap()),
-            6 * 44_100,
-        );
+        let end = run(&mut watch(3.0), |f| if f < 6 * RATE { 1.0 } else { 0.0 });
         assert_eq!(
             end,
             ClipEnd {
-                frames: 7 * 44_100,
+                frames: 7 * RATE,
+                capped: false
+            }
+        );
+    }
+
+    #[test]
+    fn sound_after_a_quiet_stretch_starts_the_hold_again() {
+        // Quiet from 3 s to 3.5 s, sound again until 5 s: the clip ends at 6 s.
+        let end = run(&mut watch(3.0), |f| {
+            if f < 3 * RATE || (7 * RATE / 2..5 * RATE).contains(&f) {
+                1.0
+            } else {
+                0.0
+            }
+        });
+        assert_eq!(
+            end,
+            ClipEnd {
+                frames: 6 * RATE,
                 capped: false
             }
         );
@@ -361,31 +479,48 @@ mod tests {
 
     #[test]
     fn silence_before_the_last_note_off_does_not_end_the_clip() {
-        let recipe = Recipe::current();
-        let mut watch = recipe.tail_watch(Seconds::new(10.0).unwrap());
-        let end = run(&mut watch, 0);
+        let end = run(&mut watch(10.0), |_| 0.0);
         assert_eq!(
             end,
             ClipEnd {
-                frames: 11 * 44_100,
+                frames: 11 * RATE,
                 capped: false
             }
         );
     }
 
     #[test]
-    fn a_tail_that_never_ends_is_capped_after_the_last_note_off() {
-        let recipe = Recipe::current();
-        let end = run(
-            &mut recipe.tail_watch(Seconds::new(3.0).unwrap()),
-            usize::MAX,
-        );
+    fn the_floor_lies_between_1_5e_5_and_1_6e_5() {
+        // -96 dBFS is an amplitude of 1.585e-5.
+        let quiet = run(&mut watch(3.0), |_| 1.5e-5);
+        assert!(!quiet.capped);
+        let loud = run(&mut watch(3.0), |_| 1.6e-5);
         assert_eq!(
-            end,
+            loud,
             ClipEnd {
-                frames: 33 * 44_100,
+                frames: 33 * RATE,
                 capped: true
             }
         );
+    }
+
+    #[test]
+    fn a_non_finite_sample_is_rejected() {
+        let mut watch = watch(3.0);
+        assert!(watch.push(&[0.0, 0.0]).unwrap().is_none());
+        assert!(matches!(
+            watch.push(&[0.0, f64::NAN]),
+            Err(AudioError::NonFinite {
+                channel: 1,
+                frame: 1
+            })
+        ));
+    }
+
+    #[test]
+    fn the_watch_rounds_times_like_the_events() {
+        // 3.00001 s is 132 300.441 frames: round gives 132 300, as the
+        // note-off event does.
+        assert_eq!(watch(3.000_01).last_off, 3 * RATE);
     }
 }

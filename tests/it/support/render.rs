@@ -1,6 +1,7 @@
 //! The contract suite that every renderer passes: the fake in CI, the
 //! plug-in host and the open engine as ignored tests.
 
+use sound_to_patch::audio::Audio;
 use sound_to_patch::notes::Velocity;
 use sound_to_patch::render::{
     Material, PresetState, RECIPE_VERSION, RenderJob, RenderNote, Renderer,
@@ -10,13 +11,32 @@ use sound_to_patch::units::{Bpm, Seconds};
 /// The peak a clip must exceed to count as sound: about -80 dBFS.
 const SOUND: f64 = 1e-4;
 
-fn peak(samples: &[f64]) -> f64 {
-    samples.iter().fold(0.0, |a, s| a.max(s.abs()))
+/// The peak of each channel of `audio` over the frames `range`.
+fn peaks(audio: &Audio, range: std::ops::Range<usize>) -> Vec<f64> {
+    audio
+        .channels()
+        .iter()
+        .map(|channel| {
+            channel[range.clone()]
+                .iter()
+                .fold(0.0_f64, |a, s| a.max(s.abs()))
+        })
+        .collect()
+}
+
+fn note(key: u8, onset: f64, offset: f64) -> RenderNote {
+    RenderNote::new(
+        key,
+        Seconds::new(onset).unwrap(),
+        Seconds::new(offset).unwrap(),
+        Velocity::new(100).unwrap(),
+    )
+    .unwrap()
 }
 
 /// Checks `renderer` with a preset `state` that sounds within 10 ms of a
-/// note-on. `single_note` limits the suite to one note per job, for the
-/// open engine.
+/// note-on in both channels. `single_note` limits the suite to one note
+/// per job, for the open engine.
 pub(crate) fn check_renderer(renderer: &mut dyn Renderer, state: &PresetState, single_note: bool) {
     let bpm = Bpm::new(120.0).unwrap();
     let identity = renderer.identity();
@@ -51,10 +71,9 @@ pub(crate) fn check_renderer(renderer: &mut dyn Renderer, state: &PresetState, s
             length >= job.recipe().clip(),
             "{material:?}: the clip is shorter than the recipe's"
         );
-        assert!(
-            peak(&audio.channels()[0]) > SOUND,
-            "{material:?}: the clip is silent"
-        );
+        for (channel, peak) in peaks(audio, 0..audio.frames()).into_iter().enumerate() {
+            assert!(peak > SOUND, "{material:?}: channel {channel} is silent");
+        }
 
         let record = &output.record;
         assert_eq!(record.identity, identity);
@@ -68,36 +87,49 @@ pub(crate) fn check_renderer(renderer: &mut dyn Renderer, state: &PresetState, s
         assert_eq!(record.last_note_off, job.last_note_off());
         if !record.tail_capped {
             let hold = audio.frames() - rate.get() as usize / 2;
-            let end = audio
-                .channels()
-                .iter()
-                .map(|c| peak(&c[hold..]))
-                .fold(0.0, f64::max);
-            assert!(
-                end < SOUND,
-                "{material:?}: the clip ends while the tail still sounds"
-            );
+            for (channel, peak) in peaks(audio, hold..audio.frames()).into_iter().enumerate() {
+                assert!(
+                    peak < SOUND,
+                    "{material:?}: channel {channel} still sounds at the end"
+                );
+            }
         }
     }
 
-    // A note at 1 s: silence before it, sound after it.
-    let note = RenderNote::new(
-        60,
-        Seconds::new(1.0).unwrap(),
-        Seconds::new(2.0).unwrap(),
-        Velocity::new(100).unwrap(),
-    )
-    .unwrap();
-    let job = RenderJob::new(state.clone(), vec![note], bpm).unwrap();
+    // A note at 1 s: silence before it, sound after it, in both channels.
+    let job = RenderJob::new(state.clone(), vec![note(60, 1.0, 2.0)], bpm).unwrap();
     let output = renderer.render(&job).unwrap();
-    let left = &output.audio.channels()[0];
     let rate = output.audio.sample_rate().get() as usize;
-    assert!(
-        peak(&left[..rate * 99 / 100]) < SOUND,
-        "sound before the note-on"
-    );
-    assert!(
-        peak(&left[rate..rate * 3 / 2]) > SOUND,
-        "no sound after the note-on"
-    );
+    for (channel, peak) in peaks(&output.audio, 0..rate * 99 / 100)
+        .into_iter()
+        .enumerate()
+    {
+        assert!(peak < SOUND, "channel {channel} sounds before the note-on");
+    }
+    for (channel, peak) in peaks(&output.audio, rate..rate * 3 / 2)
+        .into_iter()
+        .enumerate()
+    {
+        assert!(
+            peak > SOUND,
+            "channel {channel} is silent after the note-on"
+        );
+    }
+
+    if !single_note {
+        // Overlapping notes of one key, and a note shorter than a frame:
+        // every note ends, so the tail ends before the cap.
+        let notes = vec![
+            note(60, 0.0, 1.0),
+            note(60, 0.5, 1.5),
+            note(60, 1.0, 1.000_01),
+            note(60, 1.000_01, 2.0),
+        ];
+        let job = RenderJob::new(state.clone(), notes, bpm).unwrap();
+        let output = renderer.render(&job).unwrap();
+        assert!(
+            !output.record.tail_capped,
+            "a note of a repeated key never ended"
+        );
+    }
 }

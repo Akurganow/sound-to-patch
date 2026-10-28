@@ -4,9 +4,11 @@
 //! harmonics under a linear attack and an exponential release, and a
 //! render draws a random phase per harmonic and a small level jitter, so
 //! repeat renders vary the way a synth with random unison phases does.
-//! Faults stand in for a plug-in that crashes, hangs or stays silent.
+//! Faults stand in for a plug-in that crashes, hangs or stays silent. A
+//! hang is simulated: the render returns [`RenderError::TimedOut`] at once
+//! and never waits.
 //!
-//! The fake keeps no state between renders, so it needs no flush.
+//! The fake keeps no state between renders, so it plays no pre-roll.
 
 use std::f64::consts::TAU;
 
@@ -40,9 +42,13 @@ pub struct FakePatch {
 
 impl FakePatch {
     /// Returns the patch as the state of `synth`.
-    #[must_use]
-    pub fn state(&self, synth: Synth) -> PresetState {
-        PresetState::new(synth, serde_json::to_vec(self).unwrap_or_default())
+    ///
+    /// # Errors
+    ///
+    /// Returns the serializer's error. A patch of finite numbers always
+    /// serializes.
+    pub fn state(&self, synth: Synth) -> Result<PresetState, serde_json::Error> {
+        Ok(PresetState::new(synth, serde_json::to_vec(self)?))
     }
 }
 
@@ -51,7 +57,8 @@ impl FakePatch {
 pub enum Fault {
     /// The host process stops.
     Crash,
-    /// The host process stops answering.
+    /// The host process stops answering. Simulated: the render fails at
+    /// once with a time-out.
     Hang,
     /// The plug-in renders silence.
     Silence,
@@ -99,7 +106,7 @@ impl Renderer for FakeRenderer {
             synth: self.synth,
             build: "fake".to_owned(),
             host: "fake".to_owned(),
-            arch: std::env::consts::ARCH.to_owned(),
+            arch: "fake".to_owned(),
         }
     }
 
@@ -117,16 +124,15 @@ impl Renderer for FakeRenderer {
             _ => {}
         }
         if job.state().synth() != self.synth {
-            return Err(RenderError::State(format!(
-                "the state is for {}, the renderer is {}",
-                job.state().synth(),
-                self.synth
-            )));
+            return Err(RenderError::WrongSynth {
+                state: job.state().synth(),
+                renderer: self.synth,
+            });
         }
         let patch: FakePatch = serde_json::from_slice(job.state().bytes())
             .map_err(|source| RenderError::State(format!("not a fake patch ({source})")))?;
-        let mut rng = SplitMix(self.seed ^ index.wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence));
+        let mut rng = SplitMix::for_render(self.seed, index);
+        let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence))?;
         let audio = Audio::new(job.recipe().sample_rate(), vec![mono.clone(), mono])?;
         Ok(Rendered {
             audio,
@@ -151,7 +157,7 @@ fn play(
     job: &RenderJob,
     rng: &mut SplitMix,
     silent: bool,
-) -> (Vec<f64>, super::ClipEnd) {
+) -> Result<(Vec<f64>, super::ClipEnd), RenderError> {
     let recipe = job.recipe();
     let rate = f64::from(recipe.sample_rate().get());
     let mut voices: Vec<Voice> = Vec::new();
@@ -216,8 +222,8 @@ fn play(
                 .sum()
         };
         out.push(sample);
-        if let Some(end) = watch.push(sample.abs()) {
-            return (out, end);
+        if let Some(end) = watch.push(&[sample])? {
+            return Ok((out, end));
         }
     }
 }
@@ -226,12 +232,25 @@ fn play(
 struct SplitMix(u64);
 
 impl SplitMix {
-    /// Returns a uniform value in `[0, 1)`.
-    fn unit(&mut self) -> f64 {
+    /// Seeds the generator of one render from the pair (seed, render
+    /// index): each part goes through the mixer, so nearby pairs give
+    /// unrelated streams.
+    fn for_render(seed: u64, index: u64) -> Self {
+        let first = Self(seed).next();
+        Self(first ^ Self(index).next().rotate_left(32))
+    }
+
+    /// Returns the next 64 random bits.
+    fn next(&mut self) -> u64 {
         self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
         let mut z = self.0;
         z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
         z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        cast::unit_interval(z ^ (z >> 31))
+        z ^ (z >> 31)
+    }
+
+    /// Returns a uniform value in `[0, 1)`.
+    fn unit(&mut self) -> f64 {
+        cast::unit_interval(self.next())
     }
 }
