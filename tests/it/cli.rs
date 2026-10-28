@@ -50,41 +50,34 @@ fn a_closed_pipe_is_not_an_error() {
 }
 
 /// The success case of `analyze`, on a generated WAV in a temporary
-/// folder, which a trycmd case cannot name: the tempo and notes steps
-/// print, then both written files.
+/// folder, which a trycmd case cannot name: the tempo line, then both
+/// written files. The notes come from a file, so the f0 track, slow in a
+/// debug build, does not run; the report tests check the notes-step lines.
 #[test]
 fn analyze_writes_both_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
     let (path, _) = saw_notes(dir.path());
+    let notes = crate::report::given(dir.path());
     let out = dir.path().join("cli");
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
         .arg("analyze")
         .arg(&path)
-        .args(["--bpm", "120", "--out"])
+        .args(["--bpm", "120", "--notes"])
+        .arg(&notes)
+        .arg("--out")
         .arg(&out)
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let lines: Vec<&str> = stdout.lines().collect();
     // 1.2 s at 120 BPM holds 2 beats, too few to refine the tempo.
     assert_eq!(
-        lines[0],
-        "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it"
-    );
-    for step in [
-        "detected range: ",
-        "settings: detected, ",
-        "quiet-note guard: 3 notes, 0 dropped below 40 dB",
-    ] {
-        assert!(stdout.contains(step), "no `{step}` in {stdout}");
-    }
-    assert_eq!(
-        lines[lines.len() - 2..],
-        [
-            format!("wrote {}", out.join("layers.json").display()),
-            format!("wrote {}", out.join("spectrogram.png").display()),
-        ]
+        stdout,
+        format!(
+            "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it\nwrote {}\nwrote {}\n",
+            out.join("layers.json").display(),
+            out.join("spectrogram.png").display()
+        )
     );
     assert!(out.join("spectrogram.png").is_file());
 }

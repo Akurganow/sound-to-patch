@@ -56,7 +56,9 @@ pub use stem::{
 pub use track::{
     PitchTrack, TRACK_FMAX, TRACK_FMIN, TRACK_FRAME, TRACK_HOP, TrackError, TrackFrame,
 };
-pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
+pub use transcribe::{
+    Backend, MODEL_RATE, MODEL_SHA256, ModelRun, Tracker, TranscribeError, Transcriber,
+};
 pub use write::{
     DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, midi_track_name,
     write_midi, write_named_midi,

@@ -144,7 +144,7 @@ pub fn transcribe_stem(
     profile: Option<Profile>,
 ) -> Result<Transcription, NotesError> {
     let run = transcriber.run(mono, rate)?;
-    let track = PitchTrack::of(mono, rate)?;
+    let track = transcriber.track(mono, rate)?;
     let detection = detect(&run, &track, bpm)?;
     let settings = profile.map_or(detection.settings, |profile| profile.settings(bpm));
     let voicing = profile.map_or(detection.voicing, Profile::voicing);

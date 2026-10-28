@@ -10,7 +10,8 @@ use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, T
 use serde_json::{Value, json};
 use sound_to_patch::audio::{SampleRate, Tempo};
 use sound_to_patch::notes::{
-    DEFAULT_VELOCITY, Profile, Transcriber, Velocities, min_note_frames, write_named_midi,
+    DEFAULT_VELOCITY, PitchTrack, Profile, Transcriber, Velocities, min_note_frames,
+    write_named_midi,
 };
 use sound_to_patch::report::spectrogram::{PLOT_HEIGHT, PLOT_WIDTH, Spectrogram};
 use sound_to_patch::report::{
@@ -123,6 +124,13 @@ fn request<'a>(stem: &'a Path, notes: Option<&'a Path>, out: &'a Path) -> Analyz
 
 fn transcriber() -> Transcriber {
     Transcriber::new().unwrap()
+}
+
+/// `transcriber` with an empty f0 track. The pYIN track takes minutes per
+/// stem in a debug build, and a test of the tempo or the notes step's
+/// wiring does not read it.
+fn untracked(transcriber: Transcriber) -> Transcriber {
+    transcriber.with_tracker(|_, _| Ok(PitchTrack::default()))
 }
 
 fn run(stem: &Path, notes: Option<&Path>, out: &Path) -> Value {
@@ -482,12 +490,26 @@ fn the_notes_step_runs_the_model_once_and_fills_the_transcription_group() {
     let (path, truth) = crate::cli::saw_notes(dir.path());
     let out = dir.path().join("out");
     let (counting, windows) = crate::transcribe::counting();
-    let analysis = analyze(&request(&path, None, &out), &counting).unwrap();
+    let analysis = analyze(&request(&path, None, &out), &untracked(counting)).unwrap();
     // 1.2 s at 22,050 Hz is one model window.
     assert_eq!(windows.load(Ordering::SeqCst), 1);
     let transcription = analysis.transcription.as_ref().unwrap();
     assert_eq!(transcription.notes.notes().len(), truth.len());
-    assert!(analysis.summary()[0].starts_with("tempo: 120 BPM as given"));
+    let summary = analysis.summary();
+    assert_eq!(
+        summary[0],
+        "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it"
+    );
+    for step in [
+        "detected range: ",
+        "settings: detected, ",
+        "quiet-note guard: 3 notes, 0 dropped below 40 dB",
+    ] {
+        assert!(
+            summary.iter().any(|line| line.starts_with(step)),
+            "no `{step}` in {summary:?}"
+        );
+    }
     let report: Value =
         serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
     assert_eq!(report["transcription"]["model_sha256"], MODEL_SHA256);
@@ -593,7 +615,11 @@ fn the_refined_tempo_reaches_the_decoder_and_the_midi_file() {
     let dir = tempfile::tempdir().unwrap();
     let stem = bass_line(dir.path(), 117.0, 9);
     let out = dir.path().join("out");
-    let report = notes(&notes_request(&stem, &out, 120.0, false), &transcriber()).unwrap();
+    let report = notes(
+        &notes_request(&stem, &out, 120.0, false),
+        &untracked(transcriber()),
+    )
+    .unwrap();
     assert_eq!(report.tempo.trusted(), Some(Bpm::new(117.0).unwrap()));
     let bpm = file_bpm(&fs::read(&report.path).unwrap());
     assert!((bpm - 117.0).abs() <= 0.01, "{bpm}");
@@ -621,7 +647,11 @@ fn bpm_exact_writes_the_given_tempo_byte_for_byte() {
     assert_eq!(refined.trusted(), Some(Bpm::new(234.0).unwrap()));
 
     let out = dir.path().join("out");
-    let report = notes(&notes_request(&stem, &out, 240.0, true), &transcriber()).unwrap();
+    let report = notes(
+        &notes_request(&stem, &out, 240.0, true),
+        &untracked(transcriber()),
+    )
+    .unwrap();
     assert_eq!(report.tempo.used(), Bpm::new(240.0).unwrap());
     assert_eq!(
         report.tempo.summary(),

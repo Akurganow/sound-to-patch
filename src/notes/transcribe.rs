@@ -14,7 +14,7 @@ use basic_pitch::{BasicPitch, Posteriorgrams};
 
 pub use basic_pitch::model::{Backend, MODEL_SHA256};
 
-use super::{DecodeSettings, LOWEST_MODEL_PITCH, Note, NoteList, Velocity};
+use super::{DecodeSettings, LOWEST_MODEL_PITCH, Note, NoteList, PitchTrack, TrackError, Velocity};
 use crate::audio::{ResampleError, SampleRate, resample};
 use crate::cast;
 use crate::units::{MidiPitch, Seconds};
@@ -25,11 +25,16 @@ const MODEL_HOP: u16 = 256;
 /// The input rate of the model.
 pub const MODEL_RATE: SampleRate = SampleRate::from_const(22_050);
 
+/// The f0 tracker that the notes step runs beside the model:
+/// [`PitchTrack::of`] unless [`Transcriber::with_tracker`] names another.
+pub type Tracker = fn(&[f64], SampleRate) -> Result<PitchTrack, TrackError>;
+
 /// The transcription model with its inference engine, built once and used
-/// for every stem.
+/// for every stem, and the f0 tracker of the notes step.
 #[derive(Debug)]
 pub struct Transcriber {
     model: BasicPitch,
+    tracker: Tracker,
 }
 
 impl Transcriber {
@@ -45,6 +50,7 @@ impl Transcriber {
             model: BasicPitch::new()
                 .map_err(TranscribeError::Model)?
                 .with_threads(threads),
+            tracker: PitchTrack::of,
         })
     }
 
@@ -54,6 +60,7 @@ impl Transcriber {
     pub fn with_threads(self, threads: NonZeroUsize) -> Self {
         Self {
             model: self.model.with_threads(threads),
+            ..self
         }
     }
 
@@ -63,7 +70,20 @@ impl Transcriber {
     pub fn with_backend(backend: impl Backend + 'static) -> Self {
         Self {
             model: BasicPitch::with_backend(backend),
+            tracker: PitchTrack::of,
         }
+    }
+
+    /// Runs another f0 tracker in the notes step, such as one that skips
+    /// the pYIN track in a test whose subject is not the track.
+    #[must_use]
+    pub fn with_tracker(self, tracker: Tracker) -> Self {
+        Self { tracker, ..self }
+    }
+
+    /// Runs the f0 tracker on a mono stem at any rate.
+    pub(crate) fn track(&self, mono: &[f64], rate: SampleRate) -> Result<PitchTrack, TrackError> {
+        (self.tracker)(mono, rate)
     }
 
     /// Runs the model once on a mono signal at any rate. The signal is
