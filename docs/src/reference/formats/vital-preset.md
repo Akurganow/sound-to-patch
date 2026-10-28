@@ -179,6 +179,30 @@ Factory presets, samples and wavetables are not redistributable, and no
 file here holds them. The source is GPL-3.0-or-later. This page states
 facts in our own words and copies no code, comment or table.
 
+## Plugin state
+
+A host loads a preset into the VST3 plugin through its state, not through a
+file. The rows below come from the host spike ([issue 244](https://github.com/Akurganow/sound-to-patch/issues/244)): the retail
+plugin loaded headless as a library in an x86_64 host process through
+`vst3-host` 0.10.0, with no editor window.
+
+| Fact | Build | Status | Source |
+| :-- | :-- | :-- | :-- |
+| The plugin state is the preset JSON plus a `tuning` object, followed by a NUL. | source 1.0.6 | checked | `synth_plugin.cpp` |
+| The macOS bundles hold only an x86_64 binary, so a host process must run as x86_64. | 1.0.7 | verified | `lipo -archs` of the bundle |
+| The plugin loads headless and renders with no editor window and no login prompt. | 1.0.7 | verified | host spike |
+| The single audio output bus is stereo and starts inactive. A host that does not activate it renders silence. | 1.0.7 | verified | host spike |
+| The state the plugin saves is a `VstW` header of 16 bytes, a `CcnK` bank header of 160 bytes, the preset JSON with `tuning` and the app's own stamp, a NUL, and a JUCE private-data trailer. The plugin has no separate controller state. | 1.0.7 | verified | host spike: `save_state` |
+| A bare preset JSON passed to `IComponent::setState` loads, with or without a trailing NUL. The saved state then holds the preset's name and edited controls. | 1.0.7 | verified | host spike: state read-back |
+| The `VC2!` envelope that some Python hosts write is not the plugin's own form and is not needed. | 1.0.7 | verified | host spike |
+| A loaded preset renders clearly unlike the default patch: RMS 0.017 against 0.118 for a slow-attack, low-cutoff preset. | 1.0.7 | verified | host spike |
+| Two renders of one patch differ sample by sample, and their RMS agrees to 4 digits. | 1.0.7 | verified | host spike |
+| Offline against realtime processing, and blocks of 64 against 512 samples, give the same RMS to 4 digits. The sample differences stay within the repeat noise. | 1.0.7 | verified | host spike |
+| Pitch bend, mod wheel, volume, sustain and aftertouch are mapped through `IMidiMapping`. A full bend up raises note 60 by 2 semitones. | 1.0.7 | verified | host spike |
+| A note right after the state load renders like a note after 0.5 s of silence, within the repeat noise. | 1.0.7 | verified | host spike |
+| Two plugin instances in one process render correctly. | 1.0.7 | verified | host spike |
+| The standalone app's `--headless --render` flags. | 1.0.7 | open | not run: the project never drives the app |
+
 ## Open items
 
 Stable 1.0.7 loaded a written preset with its edits, refused the newer
@@ -187,10 +211,11 @@ stamps and re-saved the preset with every control kept. The ignored test
 `VITAL_SAVED_PRESET` and passes. The unknown-key, no-name, every-source,
 LFO-shape and wavetable variants loaded in 1.0.7 with no dialog.
 
+A bare preset JSON loads as plugin state in an x86_64 host (see
+[Plugin state](#plugin-state)).
+
 Still open:
 
-- whether a bare preset JSON loads as plugin state in an x86_64 host,
-  tracked in [issue 10](https://github.com/Akurganow/sound-to-patch/issues/10);
 - optionally, the stamps and the retail-only keys of early access 1.6.4.
 
 ## Sources

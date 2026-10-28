@@ -1,0 +1,237 @@
+//! A fake renderer for tests: a seeded additive synth with no plug-in.
+//!
+//! Its patch is JSON in the preset state. Each note sums the patch's
+//! harmonics under a linear attack and an exponential release, and a
+//! render draws a random phase per harmonic and a small level jitter, so
+//! repeat renders vary the way a synth with random unison phases does.
+//! Faults stand in for a plug-in that crashes, hangs or stays silent.
+//!
+//! The fake keeps no state between renders, so it needs no flush.
+
+use std::f64::consts::TAU;
+
+use serde::{Deserialize, Serialize};
+
+use super::{
+    EventKind, HostIdentity, PresetState, RenderError, RenderJob, RenderRecord, Rendered, Renderer,
+    note_events,
+};
+use crate::audio::Audio;
+use crate::cast;
+use crate::synth::Synth;
+use crate::units::Seconds;
+
+/// The level jitter of a render: each note's level varies by up to this
+/// fraction.
+const LEVEL_JITTER: f64 = 0.005;
+/// The release falls 60 dB over the release time.
+const RELEASE_DB: f64 = 60.0;
+
+/// The sound of the fake synth.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct FakePatch {
+    /// The amplitude of each harmonic, the fundamental first.
+    pub harmonics: Vec<f64>,
+    /// The attack time.
+    pub attack: Seconds,
+    /// The time the release takes to fall 60 dB.
+    pub release: Seconds,
+}
+
+impl FakePatch {
+    /// Returns the patch as the state of `synth`.
+    #[must_use]
+    pub fn state(&self, synth: Synth) -> PresetState {
+        PresetState::new(synth, serde_json::to_vec(self).unwrap_or_default())
+    }
+}
+
+/// A fault the fake renderer injects into one render.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fault {
+    /// The host process stops.
+    Crash,
+    /// The host process stops answering.
+    Hang,
+    /// The plug-in renders silence.
+    Silence,
+}
+
+/// A seeded additive synth behind the [`Renderer`] trait.
+#[derive(Clone, Debug)]
+pub struct FakeRenderer {
+    synth: Synth,
+    seed: u64,
+    renders: u64,
+    faults: Vec<(u64, Fault)>,
+}
+
+impl FakeRenderer {
+    /// Builds a renderer that claims to be `synth`. Two renderers with one
+    /// seed give bit-identical renders in the same order.
+    #[must_use]
+    pub fn new(synth: Synth, seed: u64) -> Self {
+        Self {
+            synth,
+            seed,
+            renders: 0,
+            faults: Vec::new(),
+        }
+    }
+
+    /// Injects `fault` into the render with index `at`, counted from 0.
+    #[must_use]
+    pub fn with_fault(mut self, at: u64, fault: Fault) -> Self {
+        self.faults.push((at, fault));
+        self
+    }
+
+    /// Returns how many renders were asked for, failed ones included.
+    #[must_use]
+    pub fn renders(&self) -> u64 {
+        self.renders
+    }
+}
+
+impl Renderer for FakeRenderer {
+    fn identity(&self) -> HostIdentity {
+        HostIdentity {
+            synth: self.synth,
+            build: "fake".to_owned(),
+            host: "fake".to_owned(),
+            arch: std::env::consts::ARCH.to_owned(),
+        }
+    }
+
+    fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        let index = self.renders;
+        self.renders += 1;
+        let fault = self
+            .faults
+            .iter()
+            .find(|(at, _)| *at == index)
+            .map(|(_, fault)| *fault);
+        match fault {
+            Some(Fault::Crash) => return Err(RenderError::Crashed("fake crash".to_owned())),
+            Some(Fault::Hang) => return Err(RenderError::TimedOut(Seconds::from_const(30.0))),
+            _ => {}
+        }
+        if job.state().synth() != self.synth {
+            return Err(RenderError::State(format!(
+                "the state is for {}, the renderer is {}",
+                job.state().synth(),
+                self.synth
+            )));
+        }
+        let patch: FakePatch = serde_json::from_slice(job.state().bytes())
+            .map_err(|source| RenderError::State(format!("not a fake patch ({source})")))?;
+        let mut rng = SplitMix(self.seed ^ index.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence));
+        let audio = Audio::new(job.recipe().sample_rate(), vec![mono.clone(), mono])?;
+        Ok(Rendered {
+            audio,
+            record: RenderRecord::new(self.identity(), job, end),
+        })
+    }
+}
+
+/// One sounding note: its key, frequency, gain, phases and frames.
+struct Voice {
+    key: u8,
+    hz: f64,
+    gain: f64,
+    phases: Vec<f64>,
+    on: usize,
+    off: Option<usize>,
+}
+
+/// Renders the mono clip and where it ends.
+fn play(
+    patch: &FakePatch,
+    job: &RenderJob,
+    rng: &mut SplitMix,
+    silent: bool,
+) -> (Vec<f64>, super::ClipEnd) {
+    let recipe = job.recipe();
+    let rate = f64::from(recipe.sample_rate().get());
+    let mut voices: Vec<Voice> = Vec::new();
+    let events = note_events(job.notes(), recipe.sample_rate());
+    let mut next = 0;
+    let mut watch = recipe.tail_watch(job.last_note_off());
+    let attack = patch.attack.get() * rate;
+    let release = patch.release.get() * rate;
+    let mut out = Vec::new();
+    loop {
+        let frame = out.len();
+        while let Some(event) = events.get(next).filter(|e| e.frame <= frame) {
+            match event.kind {
+                EventKind::On => voices.push(Voice {
+                    key: event.key,
+                    hz: 440.0 * 2_f64.powf((f64::from(event.key) - 69.0) / 12.0),
+                    gain: f64::from(event.velocity.get()) / 127.0
+                        * (1.0 + LEVEL_JITTER * (2.0 * rng.unit() - 1.0)),
+                    phases: patch.harmonics.iter().map(|_| TAU * rng.unit()).collect(),
+                    on: frame,
+                    off: None,
+                }),
+                EventKind::Off => {
+                    if let Some(voice) = voices
+                        .iter_mut()
+                        .find(|v| v.off.is_none() && v.key == event.key)
+                    {
+                        voice.off = Some(frame);
+                    }
+                }
+            }
+            next += 1;
+        }
+        let t = cast::usize_to_f64(frame) / rate;
+        let sample: f64 = if silent {
+            0.0
+        } else {
+            voices
+                .iter()
+                .map(|voice| {
+                    let age = cast::usize_to_f64(frame - voice.on);
+                    let rise = if attack > 0.0 {
+                        (age / attack).min(1.0)
+                    } else {
+                        1.0
+                    };
+                    let fall = voice.off.map_or(1.0, |off| {
+                        let since = cast::usize_to_f64(frame - off);
+                        10_f64.powf(-RELEASE_DB / 20.0 * since / release.max(1.0))
+                    });
+                    let tone: f64 = patch
+                        .harmonics
+                        .iter()
+                        .zip(&voice.phases)
+                        .enumerate()
+                        .map(|(k, (amp, phase))| {
+                            amp * (TAU * voice.hz * cast::usize_to_f64(k + 1) * t + phase).sin()
+                        })
+                        .sum();
+                    voice.gain * rise * fall * tone
+                })
+                .sum()
+        };
+        out.push(sample);
+        if let Some(end) = watch.push(sample.abs()) {
+            return (out, end);
+        }
+    }
+}
+
+/// The SplitMix64 generator: small, seeded and the same on every platform.
+struct SplitMix(u64);
+
+impl SplitMix {
+    /// Returns a uniform value in `[0, 1)`.
+    fn unit(&mut self) -> f64 {
+        self.0 = self.0.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        cast::unit_interval(z ^ (z >> 31))
+    }
+}

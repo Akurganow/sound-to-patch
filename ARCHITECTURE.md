@@ -24,9 +24,10 @@ the synth seam, the Vital read and write paths, stem intake, the note list
 with its masks and its MIDI reader, the signal core that the estimators
 share, and the report with the `stem` group and the spectrogram, the
 transcriber with its profiles and its register detection, the f0 track,
-the note cleanup, the MIDI writer, and the layer map of the agent
-reference. The reference itself is the folder `reference/`, which an
-agent plugin and a project skill both read.
+the note cleanup, the MIDI writer, the layer map of the agent reference,
+and the render core: the recipe, the renderer trait and a fake renderer.
+The reference itself is the folder `reference/`, which an agent plugin and
+a project skill both read.
 
 ## Synth adapter seam
 
@@ -98,6 +99,10 @@ joins `READY` when its adapter lands.
   built-in template, the writers of routes, wavetables and LFO shapes, the
   capabilities, the laws that span controls and the layer map of its
   controls.
+- `render`: rendering a preset and its notes to audio. `recipe` holds the
+  versioned render recipe and the tail rule that sets the clip length,
+  `fake` a seeded additive synth that stands in for a plug-in in tests,
+  and the module root the render job, the record and the `Renderer` trait.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
   with `notes.mid`. `layers` writes `layers.json`, whose committed schema
