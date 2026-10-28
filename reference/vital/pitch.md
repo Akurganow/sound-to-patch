@@ -14,14 +14,14 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | MPE Enabled | `mpe_enabled` | - | none | off or on | off | from facts | 1.0.7 |  |
 | Polyphony | `polyphony` | - | none | stored 1 to 32 | stored 8 | from facts | 1.0.7 |  |
 
-## `pitch`
+## Pitch
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | Pitch Bend Range | `pitch_bend_range` | - | Semitones | 0 st to 48 st | 2 st | from facts | 1.0.7 |  |
 | Pitch Wheel | `pitch_wheel` | - | none | stored -1 to 1 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 
-## `portamento`
+## Portamento
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -30,7 +30,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Portamento Slope | `portamento_slope` | - | none | stored -8 to 8 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Portamento Time | `portamento_time` | - | Seconds | 0.00097656 s to 16 s | 0.00097656 s | measured | 1.0.7 |  |
 
-## `voice`
+## Voice
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

@@ -6,7 +6,7 @@ One row per control. In a key, `N` stands for each number listed under Instances
 
 Tags: `from facts` is read from a source we may use; `measured` is confirmed in the app or in a render; `uncalibrated` is an estimate, so tune it by ear with its tuning note. Verified on names the build that confirmed the key and its default.
 
-## `filter`
+## Filter FX
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -26,7 +26,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Filter FX Resonance | `filter_fx_resonance` | - | Percent (0 to 100) | 0% to 100% | 50% | uncalibrated | 1.0.7 | The audible peak depends on the filter model and is not measured. Raise it while a note holds until the peak near the cutoff matches the stem; back off when it starts to whistle. |
 | Filter FX Style | `filter_fx_style` | - | none | stored 0 to 9 | stored 0 | from facts | 1.0.7 |  |
 
-## `filter_N`
+## Filter N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

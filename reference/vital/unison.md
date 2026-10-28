@@ -6,7 +6,7 @@ One row per control. In a key, `N` stands for each number listed under Instances
 
 Tags: `from facts` is read from a source we may use; `measured` is confirmed in the app or in a render; `uncalibrated` is an estimate, so tune it by ear with its tuning note. Verified on names the build that confirmed the key and its default.
 
-## `osc_N`
+## Oscillator N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -20,7 +20,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Oscillator N Unison Detune | `osc_N_unison_detune` | 1, 2, 3 | Percent (0 to 100) | 0% to 100% | 20% | measured | 1.0.7 |  |
 | Oscillator N Unison Voices | `osc_N_unison_voices` | 1, 2, 3 | none | stored 1 to 16 | stored 1 | from facts | 1.0.7 |  |
 
-## `stereo`
+## Stereo
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

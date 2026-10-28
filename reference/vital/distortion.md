@@ -6,7 +6,7 @@ One row per control. In a key, `N` stands for each number listed under Instances
 
 Tags: `from facts` is read from a source we may use; `measured` is confirmed in the app or in a render; `uncalibrated` is an estimate, so tune it by ear with its tuning note. Verified on names the build that confirmed the key and its default.
 
-## `distortion`
+## Distortion
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

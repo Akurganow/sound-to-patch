@@ -10,7 +10,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| Beats Per Minute | `beats_per_minute` | - | none | stored 0.333333333 to 5 | stored 2 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
+| Beats Per Minute | `beats_per_minute` | - | none | stored 0.33333 to 5 | stored 2 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Bypass | `bypass` | - | none | off or on | off | from facts | 1.0.7 |  |
 | Oversampling | `oversampling` | - | none | menu: 1x, 2x, 4x, 8x | 2x | from facts | 1.0.7 |  |
 | View Spectrogram | `view_spectrogram` | - | none | stored 0 to 2 | stored 0 | from facts | 1.0.7 |  |

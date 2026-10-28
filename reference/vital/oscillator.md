@@ -6,7 +6,7 @@ One row per control. In a key, `N` stands for each number listed under Instances
 
 Tags: `from facts` is read from a source we may use; `measured` is confirmed in the app or in a render; `uncalibrated` is an estimate, so tune it by ear with its tuning note. Verified on names the build that confirmed the key and its default.
 
-## `osc_N`
+## Oscillator N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -31,7 +31,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Oscillator N View 2D | `osc_N_view_2d` | 1, 2, 3 | none | stored 0 to 2 | stored 1 | from facts | 1.0.7 |  |
 | Oscillator N Wave Frame | `osc_N_wave_frame` | 1, 2, 3 | none | stored 0 to 256 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 
-## `sample`
+## Sample
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

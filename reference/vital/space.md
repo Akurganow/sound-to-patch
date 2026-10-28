@@ -8,16 +8,16 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 ## Contents
 
-- [`chorus`](#chorus)
+- [Chorus](#chorus)
 - [`compressor`](#compressor)
-- [`delay`](#delay)
-- [`effect`](#effect)
-- [`eq`](#eq)
-- [`flanger`](#flanger)
-- [`phaser`](#phaser)
-- [`reverb`](#reverb)
+- [Delay](#delay)
+- [Effect Chain Order](#effect-chain-order)
+- [EQ](#eq)
+- [Flanger](#flanger)
+- [Phaser](#phaser)
+- [Reverb](#reverb)
 
-## `chorus`
+## Chorus
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -59,7 +59,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Compressor Switch | `compressor_on` | - | none | off or on | off | from facts | 1.0.7 |  |
 | Compressor Release | `compressor_release` | - | Percent (0 to 100) | 0% to 100% | 50% | uncalibrated | 1.0.7 | The compressor response is not measured. Compare the attack and the held level of the stem with the patch and set it by ear. |
 
-## `delay`
+## Delay
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -76,13 +76,13 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Delay Sync | `delay_sync` | - | none | menu: Seconds, Tempo, Tempo Dotted, Tempo Triplets | Tempo | from facts | 1.0.7 |  |
 | Delay Tempo | `delay_tempo` | - | none | menu: 4/1, 2/1, 1/1, 1/2, 1/4, 1/8, 1/16, 1/32, 1/64 | 1/8 | from facts | 1.0.7 |  |
 
-## `effect`
+## Effect Chain Order
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| Effect Chain Order | `effect_chain_order` | - | none | stored 0 to 362879 | stored 0 | from facts | 1.0.7 |  |
+| Effect Chain Order | `effect_chain_order` | - | none | stored 0 to 362880 | stored 0 | from facts | 1.0.7 |  |
 
-## `eq`
+## EQ
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -100,7 +100,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | EQ Low Resonance | `eq_low_resonance` | - | Percent (0 to 100) | 0% to 100% | 10.005% | uncalibrated | 1.0.7 | The EQ shape at this setting is not measured. Sweep it while a note plays and match the brightness of the stem. |
 | EQ Switch | `eq_on` | - | none | off or on | off | from facts | 1.0.7 |  |
 
-## `flanger`
+## Flanger
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -110,11 +110,11 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Flanger Frequency | `flanger_frequency` | - | Hz | 0.03125 Hz to 4 Hz | 4 Hz | from facts | 1.0.7 |  |
 | Flanger Mod Depth | `flanger_mod_depth` | - | Percent (0 to 100) | 0% to 100% | 50% | uncalibrated | 1.0.7 | The depth of the sweep is not measured. Raise it until the movement matches the stem. |
 | Flanger Switch | `flanger_on` | - | none | off or on | off | from facts | 1.0.7 |  |
-| Flanger Phase Offset | `flanger_phase_offset` | - | none | stored 0 to 1 | stored 0.33333333 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
+| Flanger Phase Offset | `flanger_phase_offset` | - | none | stored 0 to 1 | stored 0.33333 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Flanger Sync | `flanger_sync` | - | none | menu: Seconds, Tempo, Tempo Dotted, Tempo Triplets | Tempo | from facts | 1.0.7 |  |
 | Flanger Tempo | `flanger_tempo` | - | none | menu: Freeze, 32/1, 16/1, 8/1, 4/1, 2/1, 1/1, 1/2, 1/4, 1/8, 1/16 | 4/1 | from facts | 1.0.7 |  |
 
-## `phaser`
+## Phaser
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -125,11 +125,11 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Phaser Frequency | `phaser_frequency` | - | Hz | 0.03125 Hz to 4 Hz | 0.125 Hz | from facts | 1.0.7 |  |
 | Phaser Mod Depth | `phaser_mod_depth` | - | Semitones | 0 st to 48 st | 24 st | uncalibrated | 1.0.7 | The depth of the sweep is not measured. Raise it until the movement matches the stem. |
 | Phaser Switch | `phaser_on` | - | none | off or on | off | from facts | 1.0.7 |  |
-| Phaser Phase Offset | `phaser_phase_offset` | - | none | stored 0 to 1 | stored 0.33333333 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
+| Phaser Phase Offset | `phaser_phase_offset` | - | none | stored 0 to 1 | stored 0.33333 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Phaser Sync | `phaser_sync` | - | none | menu: Seconds, Tempo, Tempo Dotted, Tempo Triplets | Tempo | from facts | 1.0.7 |  |
 | Phaser Tempo | `phaser_tempo` | - | none | menu: Freeze, 32/1, 16/1, 8/1, 4/1, 2/1, 1/1, 1/2, 1/4, 1/8, 1/16 | 8/1 | from facts | 1.0.7 |  |
 
-## `reverb`
+## Reverb
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

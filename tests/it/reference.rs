@@ -5,8 +5,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use sound_to_patch::preset::catalogue::unread_keys;
+use sound_to_patch::preset::catalogue::{placement, unread_keys};
 use sound_to_patch::preset::format::format_for;
+use sound_to_patch::preset::registry::registry_for;
 use sound_to_patch::preset::{ApplyRequest, apply_file};
 use sound_to_patch::synth::{Synth, SynthArg};
 
@@ -165,13 +166,20 @@ fn the_catalogue_covers_every_key_of_a_saved_preset() {
     let path = std::env::var("VITAL_PROBE_PRESET")
         .expect("set VITAL_PROBE_PRESET to a preset saved by Vital");
     let bytes = fs::read(&path).unwrap();
-    let model = format_for(Synth::Vital).unwrap().read(&bytes).unwrap();
+    format_for(Synth::Vital).unwrap().read(&bytes).unwrap();
+    let root: Value = serde_json::from_slice(&bytes).unwrap();
+    let registry = registry_for(Synth::Vital).unwrap();
     let listed = unread_keys(Synth::Vital).unwrap();
-    let missing: Vec<String> = model
-        .unknown_keys()
-        .into_iter()
-        .filter_map(|key| key.strip_prefix("settings.").map(str::to_owned))
-        .filter(|key| !listed.contains(&key.as_str()))
+    // The structured parts of `settings`, which the catalogue does not list.
+    let structured = ["lfos", "modulations", "sample", "wavetables"];
+    let missing: Vec<&String> = root["settings"]
+        .as_object()
+        .unwrap()
+        .keys()
+        .filter(|key| {
+            let in_rows = registry.get(key).is_some() && placement(Synth::Vital, key).is_ok();
+            !in_rows && !listed.contains(&key.as_str()) && !structured.contains(&key.as_str())
+        })
         .collect();
     assert!(
         missing.is_empty(),

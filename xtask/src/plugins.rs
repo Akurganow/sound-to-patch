@@ -214,24 +214,49 @@ fn check_plugin(root: &Path, dir: &Path, problems: &mut Vec<String>) -> crate::R
 /// The skill links the shared folder as `reference`, and the project skill
 /// of the same name links the skill.
 fn check_links(root: &Path, skill: &Path, problems: &mut Vec<String>) {
-    let same = |a: &Path, b: &Path| matches!((fs::canonicalize(a), fs::canonicalize(b)), (Ok(a), Ok(b)) if a == b);
-    let link = skill.join(REFERENCE);
-    let is_link = fs::symlink_metadata(&link).is_ok_and(|meta| meta.file_type().is_symlink());
-    if !is_link || !same(&link, &root.join(REFERENCE)) {
-        problems.push(format!(
-            "{} must be a relative link to the shared `reference/` folder, so the installed plugin carries it",
-            shown(root, &link)
-        ));
-    }
+    check_link(
+        root,
+        &skill.join(REFERENCE),
+        &root.join(REFERENCE),
+        problems,
+    );
     let name = skill.file_name().unwrap_or_default();
-    let project = root.join(".claude/skills").join(name);
-    if !same(&project, skill) {
-        problems.push(format!(
-            "{} must be a relative link to {}, the one copy of the skill",
-            shown(root, &project),
-            shown(root, skill)
-        ));
-    }
+    check_link(
+        root,
+        &root.join(".claude/skills").join(name),
+        skill,
+        problems,
+    );
+}
+
+/// `link` must be a relative symbolic link that resolves to `target`. A
+/// checkout without symbolic links, such as git on Windows without them
+/// enabled, leaves a small text file in its place.
+fn check_link(root: &Path, link: &Path, target: &Path, problems: &mut Vec<String>) {
+    let at = shown(root, link);
+    let want = shown(root, target);
+    let problem = match fs::symlink_metadata(link) {
+        Err(_) => Some(format!(
+            "{at} is missing; make it a relative link to {want}"
+        )),
+        Ok(meta) if meta.is_file() => Some(format!(
+            "{at} is a plain file: symlink not checked out. Enable symbolic links (on Windows, Developer Mode or mklink, and git core.symlinks), then check out again"
+        )),
+        Ok(meta) if !meta.file_type().is_symlink() => Some(format!(
+            "{at} must be a relative link to {want}, not a folder of its own"
+        )),
+        Ok(_) => {
+            let relative = fs::read_link(link).is_ok_and(|path| path.is_relative());
+            let same = matches!(
+                (fs::canonicalize(link), fs::canonicalize(target)),
+                (Ok(a), Ok(b)) if a == b
+            );
+            (!relative || !same).then(|| {
+                format!("{at} must be a relative link to {want}, so a clone and the installed plugin resolve it")
+            })
+        }
+    };
+    problems.extend(problem);
 }
 
 fn subdirs(dir: &Path) -> crate::Result<Vec<PathBuf>> {
@@ -250,6 +275,14 @@ fn subdirs(dir: &Path) -> crate::Result<Vec<PathBuf>> {
 
 /// Every file with `extension` below `dir`, sorted.
 fn files(dir: &Path, extension: &str) -> crate::Result<Vec<PathBuf>> {
+    Ok(all_files(dir)?
+        .into_iter()
+        .filter(|path| path.extension().is_some_and(|ext| ext == extension))
+        .collect())
+}
+
+/// Every file below `dir`, sorted. Links to folders are not followed.
+fn all_files(dir: &Path) -> crate::Result<Vec<PathBuf>> {
     let mut found = Vec::new();
     let mut dirs = vec![dir.to_owned()];
     while let Some(dir) = dirs.pop() {
@@ -261,7 +294,7 @@ fn files(dir: &Path, extension: &str) -> crate::Result<Vec<PathBuf>> {
             let path = entry.path();
             if entry.file_type()?.is_dir() {
                 dirs.push(path);
-            } else if path.extension().is_some_and(|ext| ext == extension) {
+            } else {
                 found.push(path);
             }
         }
@@ -346,9 +379,23 @@ fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
     }
 }
 
-/// The size, contents and banned phrases of every file in `reference/`.
+/// The size, contents and banned phrases of every file in `reference/`,
+/// which holds Markdown and JSON only.
 fn check_reference_folder(root: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
     let base = root.join(REFERENCE);
+    for file in all_files(&base)? {
+        let known = file
+            .extension()
+            .is_some_and(|ext| ext == "md" || ext == "json");
+        // Finder writes this file into folders it opens; git never holds it.
+        let finder = file.file_name().is_some_and(|name| name == ".DS_Store");
+        if !known && !finder {
+            problems.push(format!(
+                "{} is neither Markdown nor JSON; the reference holds only those",
+                shown(root, &file)
+            ));
+        }
+    }
     for file in files(&base, "md")? {
         check_reference(root, &base, &file, problems)?;
     }
@@ -465,7 +512,10 @@ fn check_probes(root: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
     Ok(())
 }
 
+// The fixture builds symbolic links, which only Unix creates without
+// special rights.
 #[cfg(test)]
+#[cfg(unix)]
 mod tests {
     use super::*;
 
@@ -633,12 +683,41 @@ mod tests {
             .join("plugins/ref/skills/synth-reference/reference");
         fs::remove_file(&link).unwrap();
         fs::create_dir_all(&link).unwrap();
-        fails_with(
-            &dir,
-            "must be a relative link to the shared `reference/` folder",
-        );
+        fails_with(&dir, "not a folder of its own");
         fs::remove_file(dir.path().join(".claude/skills/synth-reference")).unwrap();
-        fails_with(&dir, "the one copy of the skill");
+        fails_with(&dir, ".claude/skills/synth-reference is missing");
+    }
+
+    #[test]
+    fn a_link_must_be_relative_and_point_at_its_target() {
+        let dir = repo();
+        let link = dir
+            .path()
+            .join("plugins/ref/skills/synth-reference/reference");
+        fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink(dir.path().join("reference"), &link).unwrap();
+        fails_with(&dir, "so a clone and the installed plugin resolve it");
+        fs::remove_file(&link).unwrap();
+        std::os::unix::fs::symlink("../../../../dictionary", &link).unwrap();
+        fails_with(&dir, "so a clone and the installed plugin resolve it");
+    }
+
+    #[test]
+    fn a_link_checked_out_as_a_file_is_named() {
+        let dir = repo();
+        let link = dir
+            .path()
+            .join("plugins/ref/skills/synth-reference/reference");
+        fs::remove_file(&link).unwrap();
+        fs::write(&link, "../../../../reference").unwrap();
+        fails_with(&dir, "symlink not checked out");
+    }
+
+    #[test]
+    fn the_reference_holds_only_markdown_and_json() {
+        let dir = repo();
+        fs::write(dir.path().join("reference/vital/table.csv"), "a,b\n").unwrap();
+        fails_with(&dir, "table.csv is neither Markdown nor JSON");
     }
 
     #[test]

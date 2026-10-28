@@ -186,7 +186,7 @@ impl Catalogue {
 
         let mut body = String::new();
         for (family, rows) in &sections {
-            let _ = writeln!(body, "\n## {}\n", heading(family));
+            let _ = writeln!(body, "\n## {}\n", heading(family, rows));
             body.push_str(
                 "| Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |\n",
             );
@@ -217,13 +217,9 @@ impl Catalogue {
         let lines = text.lines().count() + body.lines().count();
         if lines > CONTENTS_ABOVE && sections.len() > 1 {
             text.push_str("\n## Contents\n\n");
-            for family in sections.keys() {
-                let _ = writeln!(
-                    text,
-                    "- [{}](#{})",
-                    heading(family),
-                    anchor(&heading(family))
-                );
+            for (family, rows) in &sections {
+                let heading = heading(family, rows);
+                let _ = writeln!(text, "- [{heading}](#{})", anchor(&heading));
             }
             if layer.is_none() {
                 text.push_str("- [Legacy keys](#legacy-keys)\n- [Keys of newer builds](#keys-of-newer-builds)\n");
@@ -251,12 +247,27 @@ fn family(pattern: &str) -> String {
     }
 }
 
-/// The heading of a section: the group in code, or the other controls.
-fn heading(family: &str) -> String {
+/// The heading of a section: the words its labels share, else the group
+/// in code, or the other controls.
+fn heading(family: &str, rows: &[&Row]) -> String {
     if family == OTHER {
-        "Other controls".to_owned()
-    } else {
+        return "Other controls".to_owned();
+    }
+    // The words every label of the section starts with, such as `Filter FX`.
+    let mut common: Vec<&str> = rows[0].label.split(' ').collect();
+    for row in &rows[1..] {
+        let words: Vec<&str> = row.label.split(' ').collect();
+        let shared = common
+            .iter()
+            .zip(&words)
+            .take_while(|(a, b)| a == b)
+            .count();
+        common.truncate(shared);
+    }
+    if common.is_empty() {
         format!("`{family}`")
+    } else {
+        common.join(" ")
     }
 }
 
@@ -317,7 +328,12 @@ fn range(spec: &ParamSpec) -> String {
 }
 
 fn stored_range(spec: &ParamSpec) -> String {
-    format!("{} to {}", spec.stored_min, spec.stored_max)
+    format!("{} to {}", five(spec.stored_min), five(spec.stored_max))
+}
+
+/// A number at five significant digits, for reading.
+fn five(value: f64) -> f64 {
+    format!("{value:.4e}").parse().unwrap_or(value)
 }
 
 fn value(spec: &ParamSpec, stored: f64) -> String {
@@ -331,21 +347,19 @@ fn value(spec: &ParamSpec, stored: f64) -> String {
                 }
                 at += 1.0;
             }
-            format!("stored {stored}")
+            format!("stored {}", five(stored))
         }
         ParamKind::Float | ParamKind::Count => spec
             .physical(stored)
-            .map_or_else(|_| format!("stored {stored}"), shown),
+            .map_or_else(|_| format!("stored {}", five(stored)), shown),
     }
 }
 
 /// A physical value at five significant digits, for reading. The
 /// registry keeps the exact value.
 fn shown(value: Physical) -> String {
-    format!("{:.4e}", value.get())
-        .parse::<f64>()
+    Physical::new(value.kind(), five(value.get()))
         .ok()
-        .and_then(|rounded| Physical::new(value.kind(), rounded).ok())
         .unwrap_or(value)
         .to_string()
 }

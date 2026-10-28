@@ -85,9 +85,11 @@ reference --check` fails when a committed file differs; CI runs it.
   characters, or no non-affiliation line;
 - a reference file over 300 lines, or over 100 lines without a
   `## Contents` list before its first section;
-- a plugin skill whose `reference` is not a link to `reference/`, and a
-  project skill under `.claude/skills/` that is not a link to the skill
-  of the plugin;
+- a plugin skill whose `reference` is not a relative link to `reference/`,
+  and a project skill under `.claude/skills/` that is not a relative link
+  to the skill of the plugin; a link checked out as a plain file is
+  reported as "symlink not checked out";
+- a file under `reference/` that is neither Markdown nor JSON;
 - a phrase that a synth folder must not hold: for Vital, the name of the
   other synth and version comparisons such as "older version";
 - a reference file without a probe in `dictionary/probes.json`, and a
@@ -121,8 +123,26 @@ Checked on 2026-10-28, in a local session:
 | `marketplace add <path>` and `install` | the plugin's skill loads; a local folder is read in place |
 | Installing a plugin whose `plugin.json` lists another in `dependencies` | installs both; uninstalling it marks the other as no longer needed |
 | A zip of the plugin folder, nested or flat, as `--plugin-dir` | loads the skill |
-| A linked skill folder under `.claude/skills/` | `plugin validate` reads no link, and says a session follows it |
-| Cloud sessions | not a target. They load the committed project skill, which points into `reference/` |
+| A plugin folder under `.claude/skills/` as `<name>@skills-dir` | not listed by `plugin list` or `plugin details`; the docs say it loads after the trust prompt, in the session's own folder only. Not used |
+| The linked project skill `.claude/skills/synth-reference` in a clean export of a commit | a headless session lists `synth-reference`, and its `reference` link resolves into `reference/` |
+| Cloud sessions | not a target and not run. The docs say a committed project skill loads there and an installed plugin does not |
+
+Which install paths carry `reference/`:
+
+| Install path | Carries `reference/`? |
+| :-- | :-- |
+| `marketplace add Akurganow/sound-to-patch` and `install` (a copy from GitHub into the cache) | yes, checked: the link is copied as the folder |
+| A release zip, through `--plugin-dir` or an `archive` source | yes, checked: `zip` stores the linked files, and the release checks it |
+| `marketplace add <local folder>` and `install` | yes, checked: the folder is read in place, so the link resolves |
+| A plugin copied from a local path, or a `command` source in its default copy mode | no: the docs say such a copy keeps only links inside the plugin's own folder |
+| A clone of the repository, for the project skill | yes, where the checkout makes symbolic links |
+
+Windows: with symbolic links off in git (`core.symlinks=false`), both links
+check out as small text files. The plugin then installs with no reference,
+and the project skill does not load. Enable symbolic links before you
+clone or install from GitHub: turn on Developer Mode or use `mklink`, and
+set `core.symlinks=true`. `cargo xtask check-plugins` reports such a file
+as "symlink not checked out".
 
 ## Sources
 
@@ -130,4 +150,5 @@ Checked on 2026-10-28, in a local session:
 - Plugin and marketplace reference: https://code.claude.com/docs/en/plugins-reference
 - Cloud environments: https://code.claude.com/docs/en/cloud-environments
 - Skills: https://code.claude.com/docs/en/skills
+- Sharing files within a marketplace with symlinks: https://code.claude.com/docs/en/plugins/host-marketplace#share-files-within-a-marketplace-with-symlinks
 - Agent Skills specification: https://agentskills.io/specification

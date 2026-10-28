@@ -17,6 +17,8 @@ Each release also ships this folder as `sound-to-patch-reference-vX.Y.Z.zip`.
 
 The plugin is the entry point for local sessions. A session opened on a clone of this repository also finds the same skill under `.claude/skills/`.
 
+On Windows, enable symbolic links before you install from GitHub or clone the repository: turn on Developer Mode or use `mklink`, and set `git config core.symlinks true`. Without them the link to the reference checks out as a small text file, the plugin installs with no reference, and the project skill does not load.
+
 ## Contents
 
 - `skills/synth-reference/SKILL.md`: the rules to keep and a pointer into the reference.

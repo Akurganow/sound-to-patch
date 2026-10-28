@@ -8,6 +8,8 @@ The files under `<synth>/` are generated from the parameter registry of sound-to
 
 ## Which file answers what
 
+The files shared by every synth will sit under `core/`: the music dictionary and the word entries. It holds no file yet.
+
 | Question | Vital |
 | :-- | :-- |
 | Pitch, glide, voices and bend | [vital/pitch.md](vital/pitch.md) |

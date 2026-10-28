@@ -6,7 +6,7 @@ One row per control. In a key, `N` stands for each number listed under Instances
 
 Tags: `from facts` is read from a source we may use; `measured` is confirmed in the app or in a render; `uncalibrated` is an estimate, so tune it by ear with its tuning note. Verified on names the build that confirmed the key and its default.
 
-## `lfo_N`
+## LFO N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -23,7 +23,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | LFO N Sync Type | `lfo_N_sync_type` | 1, 2, 3, 4, 5, 6, 7, 8 | none | menu: Trigger, Sync, Envelope, Sustain Envelope, Loop Point, Loop Hold | Trigger | from facts | 1.0.7 |  |
 | LFO N Tempo | `lfo_N_tempo` | 1, 2, 3, 4, 5, 6, 7, 8 | none | menu: Freeze, 32/1, 16/1, 8/1, 4/1, 2/1, 1/1, 1/2, 1/4, 1/8, 1/16, 1/32, 1/64 | 1/2 | from facts | 1.0.7 |  |
 
-## `macro`
+## Macro
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -32,13 +32,13 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Macro 3 | `macro_control_3` | - | none | stored 0 to 1 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Macro 4 | `macro_control_4` | - | none | stored 0 to 1 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 
-## `mod`
+## Mod Wheel
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | Mod Wheel | `mod_wheel` | - | none | stored 0 to 1 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 
-## `modulation_N`
+## Modulation N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -48,7 +48,7 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 | Modulation N Power | `modulation_N_power` | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 | none | stored -10 to 10 | stored 0 | uncalibrated | 1.0.7 | No physical unit is claimed for this control. Sweep it while a note holds and stop where the sound matches the stem. |
 | Modulation N Stereo | `modulation_N_stereo` | 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64 | none | off or on | off | from facts | 1.0.7 |  |
 
-## `random_N`
+## Random LFO N
 
 | Control | Key | Instances | Unit | Range | Default | Tag | Verified on | Tuning note |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- | :-- |

@@ -91,8 +91,8 @@ enum Task {
         #[arg(long)]
         check: bool,
     },
-    /// Write the generated files of the reference plugin, or with `--check`
-    /// fail when one differs.
+    /// Write the generated files of the shared reference folder, or with
+    /// `--check` fail when one differs.
     Reference {
         /// Write nothing and fail when a committed file is stale.
         #[arg(long)]
