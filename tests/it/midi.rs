@@ -113,6 +113,7 @@ fn notes_follow_the_tempo_track_of_a_format_1_file() {
                 Ev::On(0, 52, 100),
                 // A note-on of velocity 0 is a note-off.
                 Ev::On(960, 52, 0),
+                Ev::Off(480, 60),
             ],
         ],
     );
@@ -171,6 +172,55 @@ fn a_tempo_other_than_the_bpm_fails_with_both_numbers() {
     assert!(message.contains("notes.mid"), "{message}");
     assert!(message.contains("140.000 BPM"), "{message}");
     assert!(message.contains("--bpm is 120"), "{message}");
+}
+
+/// Each later tempo event within the tolerance starts its own stretch of
+/// the map: ticks after it run at its tempo.
+#[test]
+fn ticks_after_each_tempo_event_run_at_its_tempo() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = save(
+        dir.path(),
+        Format::SingleTrack,
+        PPQ,
+        &[&[
+            Ev::Tempo(0, 120.0),
+            Ev::Tempo(960, 120.005),
+            Ev::Tempo(960, 120.005),
+            Ev::On(96_000, 45, 80),
+            Ev::Off(480, 45),
+        ]],
+    );
+    let notes = read_midi(&path, bpm(120.0)).unwrap();
+    let per_tick =
+        f64::from(u32::try_from(crate::support::cast::round_to_usize(60e6 / 120.005)).unwrap())
+            * 1e-6
+            / 480.0;
+    let note = &notes.notes()[0];
+    assert!((note.onset().get() - (1.0 + 96_960.0 * per_tick)).abs() < 1e-9);
+    assert!((note.offset().get() - (1.0 + 97_440.0 * per_tick)).abs() < 1e-9);
+}
+
+/// Before the first tempo event the file plays at the MIDI default, which
+/// must match the BPM too.
+#[test]
+fn a_late_first_tempo_leaves_the_default_before_it() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = save(
+        dir.path(),
+        Format::SingleTrack,
+        PPQ,
+        &[&[Ev::Tempo(480, 100.0), Ev::On(0, 45, 80), Ev::Off(480, 45)]],
+    );
+    let message = read_midi(&path, bpm(100.0)).unwrap_err().to_string();
+    assert!(message.contains("(the MIDI default"), "{message}");
+}
+
+#[test]
+fn a_missing_file_keeps_the_cause_as_its_source() {
+    let dir = tempfile::tempdir().unwrap();
+    let error = read_midi(&dir.path().join("none.mid"), bpm(120.0)).unwrap_err();
+    assert!(std::error::Error::source(&error).is_some());
 }
 
 #[test]

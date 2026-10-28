@@ -465,6 +465,8 @@ mod tests {
         assert!((contour.f0_at(s(0.5)).get() - 110.0 * 2.0_f64.sqrt()).abs() < 1e-9);
         assert_eq!(contour.f0_at(s(2.0)).get(), 220.0);
         assert_eq!(contour.f0_at(s(0.0)).get(), 110.0);
+        let later = Contour::new(vec![point(1.0, 110.0), point(3.0, 220.0)]).unwrap();
+        assert!((later.f0_at(s(1.5)).get() - 110.0 * 2.0_f64.powf(0.25)).abs() < 1e-9);
         assert!(Contour::new(vec![]).is_err());
         assert!(Contour::new(vec![point(0.0, 110.0), point(0.0, 220.0)]).is_err());
     }

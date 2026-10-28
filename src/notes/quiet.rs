@@ -104,6 +104,54 @@ mod tests {
         assert_eq!(onsets, vec![0.2, 0.9, 2.2]);
     }
 
+    /// 1 s of silence, then 1 s of a 220 Hz sine at full scale, at 8 kHz:
+    /// frames of 200 samples, a hop of 6.25 ms.
+    fn silence_then_tone() -> Vec<f64> {
+        (0..16_000)
+            .map(|n| {
+                let t = f64::from(n) / 8000.0;
+                if n < 8000 {
+                    0.0
+                } else {
+                    (std::f64::consts::TAU * 220.0 * t).sin()
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_note_that_reaches_into_a_loud_passage_is_kept() {
+        let rate = SampleRate::new(8000).unwrap();
+        let notes = NoteList::new(vec![note(0.5, 1.03), note(0.5, 0.9)]);
+        let (kept, dropped) = drop_quiet(&notes, &silence_then_tone(), rate, QUIET_GATE);
+        assert_eq!(dropped, 1);
+        assert!((kept.notes()[0].offset().get() - 1.03).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_note_in_a_10_ms_gap_is_kept_by_the_25_ms_frames_over_it() {
+        let rate = SampleRate::new(8000).unwrap();
+        // The tone, 10 ms of silence from 1 s, then the tone again.
+        let tone = silence_then_tone().split_off(8000);
+        let mut mono = tone.clone();
+        mono.extend(std::iter::repeat_n(0.0, 80));
+        mono.extend(&tone);
+        let notes = NoteList::new(vec![note(1.001, 1.008)]);
+        let (kept, dropped) = drop_quiet(&notes, &mono, rate, QUIET_GATE);
+        assert_eq!((kept.notes().len(), dropped), (1, 0));
+    }
+
+    #[test]
+    fn a_note_shorter_than_a_hop_takes_the_frame_at_its_onset() {
+        let rate = SampleRate::new(8000).unwrap();
+        // From 0.6 to 0.9 of hop 240, inside the tone: the onset rounds up
+        // to frame 241, and the offset reaches no further.
+        let hop = 0.006_25;
+        let notes = NoteList::new(vec![note(240.6 * hop, 240.9 * hop)]);
+        let (kept, dropped) = drop_quiet(&notes, &silence_then_tone(), rate, QUIET_GATE);
+        assert_eq!((kept.notes().len(), dropped), (1, 0));
+    }
+
     #[test]
     fn silence_drops_every_note() {
         let rate = SampleRate::new(8000).unwrap();
