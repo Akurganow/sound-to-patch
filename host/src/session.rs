@@ -12,7 +12,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use sound_to_patch::audio::{Audio, write_wav};
 use sound_to_patch::notes::Velocity;
-use sound_to_patch::render::wire::{Reply, Request, WireNote};
+use sound_to_patch::render::wire::{PROTOCOL_VERSION, Reply, Request, WireNote};
 use sound_to_patch::render::{
     EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of, note_events,
 };
@@ -144,6 +144,7 @@ impl Session {
                 env!("CARGO_PKG_VERSION")
             ),
             arch: std::env::consts::ARCH.to_owned(),
+            protocol: PROTOCOL_VERSION,
             recipe_version: RECIPE_VERSION,
         };
         Ok((

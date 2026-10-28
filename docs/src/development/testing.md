@@ -179,6 +179,14 @@ They run the renderer contract suite, check that the state Vital saves
 back matches the sent one, and check that every render uses 2x
 oversampling. CI lints the host for x86_64 but loads no plug-in.
 
+The failure paths of the host run in CI without a plug-in: unit tests in
+`render::plugin` start shell scripts that stand in for the host. They
+cover a host that exits, hangs, prints bytes that are not UTF-8 or a line
+without its end, comes from another release, closes its pipes and
+lingers, never answers `quit`, lingers after `quit`, or writes a clip that
+does not decode. A unit test cuts plug-in output without line ends at
+64 KB and reads a longer reply whole.
+
 ## Fuzzing
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated

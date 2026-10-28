@@ -164,7 +164,7 @@ fn faults_fail_the_render_they_hit_and_no_other() {
     ));
     assert!(matches!(
         renderer.render(&job(0.3)),
-        Err(RenderError::TimedOut(_))
+        Err(RenderError::TimedOut { .. })
     ));
     let silent = renderer.render(&job(0.3)).unwrap();
     assert!(silent.audio.channels().iter().flatten().all(|s| *s == 0.0));

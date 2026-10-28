@@ -120,7 +120,12 @@ impl Renderer for FakeRenderer {
             .map(|(_, fault)| *fault);
         match fault {
             Some(Fault::Crash) => return Err(RenderError::Crashed("fake crash".to_owned())),
-            Some(Fault::Hang) => return Err(RenderError::TimedOut(Seconds::from_const(30.0))),
+            Some(Fault::Hang) => {
+                return Err(RenderError::TimedOut {
+                    after: Seconds::from_const(30.0),
+                    output: "fake hang".to_owned(),
+                });
+            }
             _ => {}
         }
         if job.state().synth() != self.synth {

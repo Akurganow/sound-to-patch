@@ -130,7 +130,12 @@ joins `READY` when its adapter lands.
   VST3 plug-in headless through `vst3-host` and renders through it. Only
   it depends on `vst3-host`. It speaks `render::wire` and uses the
   library's recipe, note events and tail watch, so both sides render by
-  one rule.
+  one rule. It points file descriptor 1 at standard error before it loads
+  a plug-in and writes replies to the saved standard output, so plug-in
+  output never mixes with a reply. A render holds the state several times
+  over: the preset, its JSON, the base64 request and the host's copies.
+  Memory peaks at about 20 times the preset size, about 800 MB for a
+  40 MB preset.
 - `xtask`: development tasks. It generates the man page and completions,
   fetches pinned datasets, runs the pinned golden-number generator and
   checks its vectors, scores the notes step on generated parts, checks
@@ -164,7 +169,8 @@ joins `READY` when its adapter lands.
 - The library never prints. Only the binary writes to the terminal.
 - The binary holds no logic beyond parsing arguments and printing.
 - No `unsafe` code. The workspace forbids it; the FFI of plug-in hosting
-  stays inside the `vst3-host` dependency of the `host` crate.
+  stays inside the `vst3-host` and `rustix` dependencies of the `host`
+  crate.
 - No test needs the network, a synth plugin (Vital or Serum 2) or a dataset
   unless it is `#[ignore]` with a reason.
 - Estimators report physical units with a confidence. They never round a
@@ -180,7 +186,10 @@ joins `READY` when its adapter lands.
 - Library: all logic, behind unit-typed public APIs.
 - Binary: argument parsing and printing.
 - Host: `host/`, the plug-in host process. A plug-in crash or hang ends
-  that process, never the caller.
+  that process, never the caller: the renderer kills a host that stops
+  answering, and stops one that lingers after its pipes close or after
+  `quit`. The renderer refuses a host whose protocol or recipe version
+  differs from its own.
 - `xtask`: tasks for developers and CI. Nothing in it ships.
 - Tests: unit tests next to the code, one integration-test binary in
   `tests/it/`, command-line cases in `tests/cmd/`, fixtures in

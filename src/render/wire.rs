@@ -16,6 +16,9 @@ use crate::synth::Synth;
 
 /// The start of every reply line.
 pub const REPLY_PREFIX: &str = "@sound-to-patch-host ";
+/// The version of this protocol. The renderer refuses a host with another
+/// version, such as the host of another release.
+pub const PROTOCOL_VERSION: u32 = 1;
 
 /// A request to the host.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -75,6 +78,8 @@ pub enum Reply {
         host: String,
         /// The architecture of the host process.
         arch: String,
+        /// The protocol version the host speaks, [`PROTOCOL_VERSION`].
+        protocol: u32,
         /// The recipe version the host renders with.
         recipe_version: u32,
     },
@@ -113,9 +118,14 @@ pub fn reply_line(reply: &Reply) -> Result<String, serde_json::Error> {
 
 /// Reads a reply line. Returns `None` for a line without the prefix, which
 /// is plug-in output.
+///
+/// Plug-in output without a line end may come before the prefix on the
+/// same line; it comes back first, apart from the reply.
 #[must_use]
-pub fn parse_reply(line: &str) -> Option<Result<Reply, serde_json::Error>> {
-    line.strip_prefix(REPLY_PREFIX).map(serde_json::from_str)
+pub fn parse_reply(line: &str) -> Option<(&str, Result<Reply, serde_json::Error>)> {
+    let at = line.find(REPLY_PREFIX)?;
+    let (output, reply) = line.split_at(at);
+    Some((output, serde_json::from_str(&reply[REPLY_PREFIX.len()..])))
 }
 
 #[cfg(test)]
@@ -144,13 +154,15 @@ mod tests {
             capped: false,
         })
         .unwrap();
-        assert_eq!(
-            parse_reply(&line).unwrap().unwrap(),
-            Reply::Rendered {
-                frames: 176_400,
-                capped: false
-            }
-        );
-        assert!(parse_reply("@sound-to-patch-host {").unwrap().is_err());
+        let rendered = Reply::Rendered {
+            frames: 176_400,
+            capped: false,
+        };
+        let (output, reply) = parse_reply(&line).unwrap();
+        assert_eq!((output, reply.unwrap()), ("", rendered.clone()));
+        let joined = format!("Vital: no line end{line}");
+        let (output, reply) = parse_reply(&joined).unwrap();
+        assert_eq!((output, reply.unwrap()), ("Vital: no line end", rendered));
+        assert!(parse_reply("@sound-to-patch-host {").unwrap().1.is_err());
     }
 }

@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::audio::{AudioError, SampleRate};
 use crate::cast;
-use crate::notes::{MidiError, NoteList, Velocity, read_midi};
+use crate::notes::{MidiError, NoteList, Velocity, read_midi_bytes};
 use crate::preset::format::FormatError;
 use crate::synth::{Synth, SynthError};
 use crate::units::{Bpm, Seconds};
@@ -289,13 +289,7 @@ impl RenderJob {
     /// Returns [`RenderError::Midi`] for a file the MIDI reader refuses, and
     /// the errors of [`RenderNote::from_list`] and [`RenderJob::new`].
     pub fn from_midi(state: PresetState, path: &Path, bpm: Bpm) -> Result<Self, RenderError> {
-        let list = read_midi(path, bpm).map_err(RenderError::Midi)?;
-        let bytes = std::fs::read(path).map_err(|source| {
-            RenderError::Note(format!(
-                "cannot read {} again to hash it ({source}); check that nothing changes the file during the render",
-                path.display()
-            ))
-        })?;
+        let (list, bytes) = read_midi_bytes(path, bpm).map_err(RenderError::Midi)?;
         let notes = RenderNote::from_list(&list, Recipe::current().velocity())?;
         let mut job = Self::new(state, notes, bpm)?;
         job.midi_sha256 = Some(sha256_hex(&bytes));
@@ -476,7 +470,12 @@ pub enum RenderError {
     /// The process that hosts the plug-in stopped.
     Crashed(String),
     /// The process that hosts the plug-in stopped answering.
-    TimedOut(Seconds),
+    TimedOut {
+        /// How long the renderer waited.
+        after: Seconds,
+        /// The host's last output.
+        output: String,
+    },
     /// The plug-in gave audio that is not valid.
     Audio(AudioError),
     /// The preset file is not a valid preset.
@@ -515,9 +514,9 @@ impl fmt::Display for RenderError {
                 f,
                 "the plug-in host stopped: {cause}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
-            Self::TimedOut(after) => write!(
+            Self::TimedOut { after, output } => write!(
                 f,
-                "the plug-in host stopped answering after {after}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
+                "the plug-in host stopped answering after {after}; its last output: {output}. Render the preset again; if it stops again, load the preset in the synth and report it with this message"
             ),
             Self::Audio(source) => write!(
                 f,

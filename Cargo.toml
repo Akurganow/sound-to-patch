@@ -29,6 +29,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["float_roundtrip", "preserve_order"] }
 sha2 = "0.11.1"
 symphonia = { version = "0.6.1", features = ["mp3", "aac", "isomp4", "aiff"] }
+tempfile = "3.27.0"
 
 [dev-dependencies]
 approx = "0.5.1"
@@ -39,8 +40,6 @@ insta = "1.49.0"
 jsonschema = { version = "0.60.2", default-features = false }
 proptest = "1.12.0"
 rust-music-theory = "0.4.0"
-sha2 = "0.11.1"
-tempfile = "3.27.0"
 trycmd = "1.2.1"
 
 [[bench]]
