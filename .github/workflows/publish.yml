@@ -66,6 +66,24 @@ jobs:
         if: steps.existing.outputs.exists != 'true'
         run: cargo build --release --locked --target aarch64-apple-darwin
 
+      # The host loads a plug-in in its own process. Vital 1.0.7 holds
+      # x86_64 code only, so the host ships as a universal binary and runs
+      # as x86_64 under Rosetta for such a plug-in.
+      - name: Build the universal host
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          rustup target add x86_64-apple-darwin
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            cargo build --release --locked -p sound-to-patch-host --target "$target"
+          done
+          mkdir -p target/universal
+          lipo -create -output target/universal/sound-to-patch-host \
+            target/aarch64-apple-darwin/release/sound-to-patch-host \
+            target/x86_64-apple-darwin/release/sound-to-patch-host
+          archs="$(lipo -archs target/universal/sound-to-patch-host)"
+          echo "$archs"
+          [ "$archs" = "x86_64 arm64" ] || { echo "::error::the host holds $archs"; exit 1; }
+
       # The binary must print the version of the tag it was built from.
       - name: Check the version
         if: steps.existing.outputs.exists != 'true'
@@ -73,6 +91,14 @@ jobs:
           printed="$(target/aarch64-apple-darwin/release/sound-to-patch --version)"
           echo "$printed"
           [ "$printed" = "sound-to-patch ${TAG#v}" ]
+          # The x86_64 slice runs only where Rosetta is installed.
+          archs="arm64"
+          [ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ] && archs="arm64 x86_64"
+          for arch in $archs; do
+            printed="$(arch "-$arch" target/universal/sound-to-patch-host --version)"
+            echo "$arch: $printed"
+            [ "$printed" = "sound-to-patch-host ${TAG#v}" ]
+          done
 
       - name: Pack the archive
         if: steps.existing.outputs.exists != 'true'
@@ -82,7 +108,7 @@ jobs:
           mkdir -p "$stage"
           cargo xtask dist --out-dir "$stage"
           cargo about generate --locked --fail -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
-          cp target/aarch64-apple-darwin/release/sound-to-patch LICENSE "$stage/"
+          cp target/aarch64-apple-darwin/release/sound-to-patch target/universal/sound-to-patch-host LICENSE "$stage/"
           mkdir -p target/assets
           tar -czf "target/assets/$name.tar.gz" -C target/stage "$name"
           cp "$stage/THIRD-PARTY-LICENSES.html" target/assets/
@@ -115,5 +141,6 @@ jobs:
           notes="$RUNNER_TEMP/notes.md"
           cog changelog --at "$TAG" > "$notes"
           [ -s "$notes" ] || { echo "::error::no changelog section for $TAG"; exit 1; }
+          printf '\n%s\n' "The archive holds \`sound-to-patch\` for Apple silicon and \`sound-to-patch-host\`, a universal binary for Apple silicon and Intel that \`render\` runs to load a plug-in." >> "$notes"
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "$TAG" --notes-file "$notes" target/assets/*

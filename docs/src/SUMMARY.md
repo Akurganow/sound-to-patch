@@ -7,6 +7,7 @@
 - [Analysing a stem](guide/analyze.md)
 - [Transcribing a stem](guide/notes.md)
 - [Presets](guide/preset.md)
+- [Rendering a preset](guide/render.md)
 
 # Analysis
 
@@ -20,6 +21,7 @@
 - [Formats]()
   - [Vital preset](reference/formats/vital-preset.md)
   - [Layer report](reference/formats/layers.md)
+  - [Render record](reference/formats/render-record.md)
 
 # Development
 

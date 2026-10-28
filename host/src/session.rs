@@ -12,7 +12,9 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 use sound_to_patch::audio::{Audio, write_wav};
 use sound_to_patch::notes::Velocity;
-use sound_to_patch::render::wire::{PROTOCOL_VERSION, Reply, Request, WireNote};
+use sound_to_patch::render::wire::{
+    PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote,
+};
 use sound_to_patch::render::{
     EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of, note_events,
 };
@@ -46,11 +48,12 @@ impl Handler for Sessions {
             Request::Render {
                 state,
                 notes,
+                controls,
                 bpm,
                 audio,
-            } => self
-                .session()
-                .and_then(|session| session.render(&state, &notes, bpm, &audio)),
+            } => self.session().and_then(|session| {
+                session.render(state.as_deref(), &notes, &controls, bpm, &audio)
+            }),
             Request::SaveState => self.session().and_then(Session::save_state),
             Request::Quit => Ok(Reply::Bye),
         };
@@ -167,15 +170,20 @@ impl Session {
 
     fn render(
         &mut self,
-        state: &str,
+        state: Option<&str>,
         notes: &[WireNote],
+        controls: &[WireControl],
         bpm: f64,
         audio: &Path,
     ) -> Result<Reply, Reply> {
         let bad = |cause: String| failed(cause, "Report it; the renderer checks every request");
-        let state = STANDARD
-            .decode(state)
-            .map_err(|error| bad(format!("the state is not base64 ({error})")))?;
+        let state = state
+            .map(|state| {
+                STANDARD
+                    .decode(state)
+                    .map_err(|error| bad(format!("the state is not base64 ({error})")))
+            })
+            .transpose()?;
         let notes = notes
             .iter()
             .map(|note| {
@@ -194,16 +202,26 @@ impl Session {
         if notes.is_empty() {
             return Err(bad("the request holds no notes".to_owned()));
         }
-        self.plugin
-            .load_state(&state)
-            .map_err(step("loading the state"))?;
+        if let Some(state) = state {
+            self.plugin
+                .load_state(&state)
+                .map_err(step("loading the state"))?;
+        }
+        let rate = self.recipe.sample_rate();
+        let controls = controls
+            .iter()
+            .map(|control| {
+                let time = Seconds::new(control.time).map_err(|error| bad(error.to_string()))?;
+                Ok((frame_of(time, rate), control_event(control.kind)))
+            })
+            .collect::<Result<Vec<_>, Reply>>()?;
         self.plugin
             .set_tempo(bpm)
             .map_err(step("setting the tempo"))?;
         self.plugin
             .start_processing()
             .map_err(step("starting processing"))?;
-        let clip = self.pre_roll().and_then(|()| self.clip(&notes));
+        let clip = self.pre_roll().and_then(|()| self.clip(&notes, controls));
         let stop = self
             .plugin
             .stop_processing()
@@ -229,7 +247,16 @@ impl Session {
     /// recipe says; the clip itself starts on a block boundary.
     fn pre_roll(&mut self) -> Result<(), Reply> {
         let rate = self.recipe.sample_rate();
-        for part in self.recipe.pre_roll().to_vec() {
+        // A controller keeps its value across renders, so the pre-roll
+        // centres the bend and zeroes the mod wheel first.
+        let reset = [
+            (
+                0,
+                control_event(WireControlKind::PitchBend { value: CENTRE }),
+            ),
+            (0, control_event(WireControlKind::ModWheel { value: 0 })),
+        ];
+        for (index, part) in self.recipe.pre_roll().to_vec().into_iter().enumerate() {
             let (length, events) = match part {
                 PreRoll::Settle { length } => (length, Vec::new()),
                 PreRoll::WarmUp {
@@ -246,6 +273,11 @@ impl Session {
                     ],
                 ),
             };
+            let events = if index == 0 {
+                reset.iter().copied().chain(events).collect()
+            } else {
+                events
+            };
             let frames = frame_of(length, rate);
             self.play(&events, |frame, _| Ok(frame + 1 >= frames))?;
         }
@@ -255,7 +287,11 @@ impl Session {
     /// Plays the notes from the start of the transport until the tail
     /// watch ends the clip. Returns the two channels, the length and
     /// whether the tail was capped.
-    fn clip(&mut self, notes: &[RenderNote]) -> Result<(Vec<Vec<f64>>, usize, bool), Reply> {
+    fn clip(
+        &mut self,
+        notes: &[RenderNote],
+        controls: Vec<(usize, MidiEvent)>,
+    ) -> Result<(Vec<Vec<f64>>, usize, bool), Reply> {
         let rate = self.recipe.sample_rate();
         self.plugin
             .set_transport_position(TransportPosition {
@@ -263,16 +299,17 @@ impl Session {
                 quarter_notes: 0.0,
             })
             .map_err(step("moving the transport to the start"))?;
-        let events: Vec<(usize, MidiEvent)> = note_events(notes, rate)
-            .iter()
-            .map(|event| {
-                let midi = match event.kind {
-                    EventKind::On => note_on(event.key, event.velocity.get()),
-                    EventKind::Off => note_off(event.key),
-                };
-                (event.frame, midi)
-            })
-            .collect();
+        // Controllers come before the notes of their frame, so a bend at a
+        // note's start applies to the note. The sort keeps that order.
+        let mut events = controls;
+        events.extend(note_events(notes, rate).iter().map(|event| {
+            let midi = match event.kind {
+                EventKind::On => note_on(event.key, event.velocity.get()),
+                EventKind::Off => note_off(event.key),
+            };
+            (event.frame, midi)
+        }));
+        events.sort_by_key(|(frame, _)| *frame);
         let mut watch: TailWatch = self.recipe.tail_watch(notes);
         let mut channels = vec![Vec::new(), Vec::new()];
         let mut end = None;
@@ -335,6 +372,23 @@ fn note_on(key: u8, velocity: u8) -> MidiEvent {
         channel: MidiChannel::Ch1,
         note: key,
         velocity,
+    }
+}
+
+/// The centre of the pitch bend range.
+const CENTRE: u16 = 8192;
+
+fn control_event(kind: WireControlKind) -> MidiEvent {
+    match kind {
+        WireControlKind::PitchBend { value } => MidiEvent::PitchBend {
+            channel: MidiChannel::Ch1,
+            value,
+        },
+        WireControlKind::ModWheel { value } => MidiEvent::ControlChange {
+            channel: MidiChannel::Ch1,
+            controller: 1,
+            value,
+        },
     }
 }
 

@@ -9,24 +9,31 @@
 use std::path::PathBuf;
 
 use serde_json::Value;
+use sound_to_patch::render::check::{LoadFault, render_checked};
 use sound_to_patch::render::plugin::{HOST_ENV, PluginRenderer, find_plugin};
 use sound_to_patch::render::state::{preset_state, readback_mismatches, saved_preset};
-use sound_to_patch::render::{Material, Oversampling, PresetState, Recipe, RenderJob, Renderer};
+use sound_to_patch::render::{
+    Control, ControlKind, Material, Oversampling, PresetState, Recipe, RenderError, RenderJob,
+    Renderer,
+};
 use sound_to_patch::synth::Synth;
-use sound_to_patch::units::Bpm;
+use sound_to_patch::units::{Bpm, Seconds};
 
 use crate::support::render::check_renderer;
 
-fn renderer() -> PluginRenderer {
-    let plugin = find_plugin(Synth::Vital)
-        .unwrap_or_else(|| panic!("no Vital.vst3 in the standard VST3 folders; install Vital"));
-    let host = PathBuf::from(std::env::var_os(HOST_ENV).unwrap_or_else(|| {
+fn host() -> PathBuf {
+    PathBuf::from(std::env::var_os(HOST_ENV).unwrap_or_else(|| {
         panic!(
             "set {HOST_ENV} to a sound-to-patch-host that loads Vital; build one with \
              `cargo build --release -p sound-to-patch-host --target x86_64-apple-darwin`"
         )
-    }));
-    PluginRenderer::start(Synth::Vital, &plugin, &host).unwrap()
+    }))
+}
+
+fn renderer() -> PluginRenderer {
+    let plugin = find_plugin(Synth::Vital)
+        .unwrap_or_else(|| panic!("no Vital.vst3 in the standard VST3 folders; install Vital"));
+    PluginRenderer::start(Synth::Vital, &plugin, &host()).unwrap()
 }
 
 /// The minimal fixture named `Probe`, with `edit` applied to its controls.
@@ -112,6 +119,94 @@ fn the_record_names_the_build_and_the_host() {
     assert_eq!(identity.arch, "x86_64");
 }
 
+/// The probe preset: a slow attack and a closed filter, unlike init.
+fn probe() -> PresetState {
+    state(|settings| {
+        settings.insert("filter_1_on".into(), 1.0.into());
+        settings.insert("filter_1_cutoff".into(), 50.0.into());
+        settings.insert("env_1_attack".into(), 0.3.into());
+    })
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_loaded_preset_passes_the_load_check() {
+    let (_, check) = render_checked(&mut renderer(), &lead(probe())).unwrap();
+    assert!(check.init_distance_db > check.margin_db, "{check:?}");
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_init_patch_is_init_like() {
+    let fault = render_checked(&mut renderer(), &lead(state(|_| {}))).unwrap_err();
+    assert!(matches!(fault, LoadFault::InitLike { .. }), "{fault}");
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_newer_stamp_falls_back_to_init() {
+    let sent = probe();
+    let mut root = saved_preset(sent.bytes()).unwrap();
+    root.insert("synth_version".into(), "1.7.0".into());
+    let mut bytes = serde_json::to_vec(&root).unwrap();
+    bytes.push(0);
+    let fault = render_checked(
+        &mut renderer(),
+        &lead(PresetState::new(Synth::Vital, bytes)),
+    )
+    .unwrap_err();
+    assert!(matches!(fault, LoadFault::InitFallback), "{fault}");
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_preset_with_no_sound_source_is_flagged_silent() {
+    let silent = state(|settings| {
+        settings.insert("osc_1_on".into(), 0.0.into());
+    });
+    let fault = render_checked(&mut renderer(), &lead(silent)).unwrap_err();
+    match fault {
+        LoadFault::Silent { reasons } => {
+            assert_eq!(reasons, ["no oscillator and no sample is on"]);
+        }
+        other => panic!("not flagged silent: {other}"),
+    }
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_key_vital_drops_is_a_readback_mismatch() {
+    let unknown = state(|settings| {
+        settings.insert("filter_1_on".into(), 1.0.into());
+        settings.insert("filter_1_cutoff".into(), 50.0.into());
+        settings.insert("not_a_vital_control".into(), 1.0.into());
+    });
+    let fault = render_checked(&mut renderer(), &lead(unknown)).unwrap_err();
+    assert!(matches!(fault, LoadFault::Readback(_)), "{fault}");
+    assert!(
+        fault
+            .to_string()
+            .contains("settings.not_a_vital_control is missing"),
+        "{fault}"
+    );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_bundle_that_is_no_plug_in_is_a_plug_in_fault() {
+    let dir = tempfile::tempdir().unwrap();
+    let executable = dir.path().join("Broken.vst3/Contents/MacOS");
+    std::fs::create_dir_all(&executable).unwrap();
+    std::fs::copy("/usr/bin/true", executable.join("Broken")).unwrap();
+    let error =
+        PluginRenderer::start(Synth::Vital, &dir.path().join("Broken.vst3"), &host()).unwrap_err();
+    assert!(matches!(error, RenderError::Host { .. }), "{error}");
+    assert!(
+        error.to_string().contains("loading the plug-in failed"),
+        "{error}"
+    );
+}
+
 /// The magnitude of `hz` in the left channel from 1 to 2 s.
 fn magnitude(audio: &sound_to_patch::audio::Audio, hz: f64) -> f64 {
     let left = &audio.channels()[0][44_100..88_200];
@@ -151,5 +246,59 @@ fn a_tuning_does_not_carry_over_to_the_next_preset() {
         "{} at 261.63 Hz, {} at 293.66 Hz",
         magnitude(&plain.audio, 261.63),
         magnitude(&plain.audio, 293.66)
+    );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_full_pitch_bend_raises_the_note_two_semitones() {
+    let mut renderer = renderer();
+    let at = |kind| Control {
+        time: Seconds::new(0.0).unwrap(),
+        kind,
+    };
+    let plain = renderer.render(&lead(state(|_| {}))).unwrap();
+    let bent = renderer
+        .render(&lead(state(|_| {})).with_controls(vec![at(ControlKind::PitchBend(16_383))]))
+        .unwrap();
+    // MIDI 60 is 261.63 Hz; two semitones up is 293.66 Hz.
+    assert!(magnitude(&plain.audio, 261.63) > 10.0 * magnitude(&plain.audio, 293.66));
+    assert!(magnitude(&bent.audio, 293.66) > 10.0 * magnitude(&bent.audio, 261.63));
+    // The pre-roll centres the bend again for the next render.
+    let after = renderer.render(&lead(state(|_| {}))).unwrap();
+    assert!(magnitude(&after.audio, 261.63) > 10.0 * magnitude(&after.audio, 293.66));
+}
+
+fn rms(audio: &sound_to_patch::audio::Audio) -> f64 {
+    let left = &audio.channels()[0][44_100..88_200];
+    (left.iter().map(|x| x * x).sum::<f64>() / 44_100.0).sqrt()
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_mod_wheel_reaches_a_route() {
+    let routed = || {
+        state(|settings| {
+            settings.insert(
+                "modulations".into(),
+                serde_json::json!([{ "source": "mod_wheel", "destination": "osc_1_level" }]),
+            );
+            settings.insert("modulation_1_amount".into(), (-1.0).into());
+        })
+    };
+    let mut renderer = renderer();
+    let still = renderer.render(&lead(routed())).unwrap();
+    let wheel = Control {
+        time: Seconds::new(0.0).unwrap(),
+        kind: ControlKind::ModWheel(127),
+    };
+    let moved = renderer
+        .render(&lead(routed()).with_controls(vec![wheel]))
+        .unwrap();
+    assert!(
+        rms(&moved.audio) < 0.5 * rms(&still.audio),
+        "{} against {}",
+        rms(&moved.audio),
+        rms(&still.audio)
     );
 }

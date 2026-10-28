@@ -1,0 +1,8 @@
+# A missing preset fails with the path and a fix, before any plug-in loads.
+bin.name = "sound-to-patch"
+args = ["render", "no-such.vital", "--midi", "tests/cmd/data/three-notes.mid", "--bpm", "120", "-o", "target/render-missing.wav"]
+status.code = 1
+stdout = ""
+stderr = """
+error: cannot read no-such.vital: No such file or directory (os error 2). Check the path and the permissions
+"""

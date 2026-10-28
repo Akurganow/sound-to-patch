@@ -1,0 +1,8 @@
+# A plug-in bundle that does not exist fails with the path and a fix.
+bin.name = "sound-to-patch"
+args = ["render", "tests/fixtures/vital/routes.vital", "--midi", "tests/cmd/data/three-notes.mid", "--bpm", "120", "-o", "target/render-missing-plugin.wav", "--force", "--plugin", "no-such.vst3"]
+status.code = 1
+stdout = ""
+stderr = """
+error: cannot render through the plug-in host: there is no plug-in at no-such.vst3. Pass --plugin with the path of the plug-in's .vst3 bundle
+"""

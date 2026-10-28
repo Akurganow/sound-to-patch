@@ -11,8 +11,11 @@
 //!
 //! A host call reports success even when the plug-in kept its old sound,
 //! so a backend reads the state back and compares it with the sent one:
-//! the name, the tuning and every control. The plug-in keeps controls as 32-bit floats,
-//! so a number matches within one `f32` step.
+//! the name, the tuning and every control. The plug-in keeps controls as
+//! 32-bit floats, so a number matches within one `f32` step. Structured
+//! parts such as the sample, the wavetables and the routes are not
+//! compared: Vital 1.0.7 re-encodes the sample and restamps the wavetables
+//! when it saves.
 
 use std::fmt;
 
@@ -32,6 +35,8 @@ const MAX_STARTS: usize = 64;
 const TUNING: &str = "tuning";
 /// The highest MIDI note.
 const MAX_MIDI_NOTE: u64 = 127;
+/// How many characters of a value a mismatch message shows.
+const SHOWN_CHARS: usize = 40;
 
 /// Builds the plug-in state of `preset`, a preset file of `synth`.
 ///
@@ -197,15 +202,30 @@ pub struct Mismatch {
 impl fmt::Display for Mismatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.saved {
-            Some(saved) => write!(f, "{} is {saved}, not {}", self.path, self.sent),
+            Some(saved) => write!(
+                f,
+                "{} is {}, not {}",
+                self.path,
+                short(saved),
+                short(&self.sent)
+            ),
             None => write!(f, "{} is missing", self.path),
         }
     }
 }
 
+/// A value as JSON, cut to [`SHOWN_CHARS`] characters.
+fn short(value: &Value) -> String {
+    let text = value.to_string();
+    match text.char_indices().nth(SHOWN_CHARS) {
+        Some((end, _)) => format!("{}... ({} characters)", &text[..end], text.chars().count()),
+        None => text,
+    }
+}
+
 /// Compares the preset JSON of a sent state with the one in a saved
-/// state: the name, the tuning and every part under `settings`. Keys the
-/// plug-in adds on save are ignored.
+/// state: the name, the tuning and every control, a number under
+/// `settings`. Keys the plug-in adds on save are ignored.
 ///
 /// # Errors
 ///
@@ -217,45 +237,48 @@ pub fn readback_mismatches(sent: &PresetState, saved: &[u8]) -> Result<Vec<Misma
         RenderError::State("the state the plug-in saved holds no preset JSON".to_owned())
     })?;
     let mut mismatches = Vec::new();
-    for key in ["preset_name", TUNING, "settings"] {
-        if let Some(value) = sent.get(key) {
-            compare(key, value, saved.get(key), &mut mismatches);
+    let mut check = |path: String, sent: &Value, saved: Option<&Value>| {
+        let same = match (sent, saved) {
+            (Value::Number(a), Some(Value::Number(b))) => a
+                .as_f64()
+                .zip(b.as_f64())
+                .is_some_and(|(a, b)| same_f32(a, b)),
+            (sent, Some(saved)) => sent == saved,
+            (_, None) => false,
+        };
+        if !same {
+            mismatches.push(Mismatch {
+                path,
+                sent: sent.clone(),
+                saved: saved.cloned(),
+            });
+        }
+    };
+    if let Some(name) = sent.get("preset_name") {
+        check("preset_name".to_owned(), name, saved.get("preset_name"));
+    }
+    let tuning = |root: &Map<String, Value>| root.get(TUNING).and_then(Value::as_object).cloned();
+    let saved_tuning = tuning(&saved).unwrap_or_default();
+    for (key, value) in tuning(&sent).unwrap_or_default() {
+        let path = format!("{TUNING}.{key}");
+        match (&value, saved_tuning.get(&key)) {
+            (Value::Array(list), Some(Value::Array(other))) if list.len() == other.len() => {
+                for (index, (value, other)) in list.iter().zip(other).enumerate() {
+                    check(format!("{path}[{index}]"), value, Some(other));
+                }
+            }
+            (value, other) => check(path, value, other),
+        }
+    }
+    let controls =
+        |root: &Map<String, Value>| root.get("settings").and_then(Value::as_object).cloned();
+    let saved_controls = controls(&saved).unwrap_or_default();
+    for (key, value) in controls(&sent).unwrap_or_default() {
+        if value.is_number() {
+            check(format!("settings.{key}"), &value, saved_controls.get(&key));
         }
     }
     Ok(mismatches)
-}
-
-fn compare(path: &str, sent: &Value, saved: Option<&Value>, out: &mut Vec<Mismatch>) {
-    let fail = |out: &mut Vec<Mismatch>| {
-        out.push(Mismatch {
-            path: path.to_owned(),
-            sent: sent.clone(),
-            saved: saved.cloned(),
-        });
-    };
-    match (sent, saved) {
-        (Value::Object(sent), Some(Value::Object(saved))) => {
-            for (key, value) in sent {
-                compare(&format!("{path}.{key}"), value, saved.get(key), out);
-            }
-        }
-        (Value::Array(sent), Some(Value::Array(saved))) if sent.len() == saved.len() => {
-            for (index, (value, other)) in sent.iter().zip(saved).enumerate() {
-                compare(&format!("{path}[{index}]"), value, Some(other), out);
-            }
-        }
-        (Value::Number(a), Some(Value::Number(b))) => {
-            if !a
-                .as_f64()
-                .zip(b.as_f64())
-                .is_some_and(|(a, b)| same_f32(a, b))
-            {
-                fail(out);
-            }
-        }
-        (sent, Some(saved)) if sent == saved => {}
-        _ => fail(out),
-    }
 }
 
 /// Whether two numbers are the same `f32` or neighbours.
@@ -423,6 +446,30 @@ mod tests {
             .map(|m| m.path.clone())
             .collect();
         assert_eq!(paths, ["tuning.reference_midi_note", "tuning.default"]);
+    }
+
+    #[test]
+    fn a_long_value_is_cut_in_a_message() {
+        let mismatch = Mismatch {
+            path: "preset_name".to_owned(),
+            sent: "x".repeat(100).into(),
+            saved: Some("y".into()),
+        };
+        assert_eq!(
+            mismatch.to_string(),
+            format!(
+                "preset_name is \"y\", not \"{}... (102 characters)",
+                "x".repeat(39)
+            )
+        );
+    }
+
+    #[test]
+    fn structured_parts_are_not_compared() {
+        let sent = state();
+        let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
+        saved["settings"]["sample"]["samples"] = "AAAA".into();
+        assert_eq!(readback_mismatches(&sent, &wrapped(&saved)).unwrap(), []);
     }
 
     #[test]

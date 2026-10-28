@@ -1,6 +1,6 @@
 # cargo-about configuration: https://embarkstudios.github.io/cargo-about/
 # Only what ships in the binary needs a notice.
-targets = ["aarch64-apple-darwin"]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
 ignore-build-dependencies = true
 ignore-dev-dependencies = true
 # For an `A OR B` expression the first accepted license wins.

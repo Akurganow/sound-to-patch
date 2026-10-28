@@ -8,8 +8,8 @@
   scope, its acceptance cases and the tests it needs.
 - Improve the docs in `docs/`, the README or the rustdoc.
 
-Out of scope for now: training models, rendering presets to audio, tempo
-detection, drums and running the toolkit in the cloud.
+Out of scope for now: training models, tempo detection, drums and running
+the toolkit in the cloud.
 
 ## Setup
 

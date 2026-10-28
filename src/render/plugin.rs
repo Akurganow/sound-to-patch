@@ -23,9 +23,10 @@ use std::time::{Duration, Instant};
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 
-use super::wire::{self, PROTOCOL_VERSION, Reply, Request, WireNote};
+use super::wire::{self, PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote};
 use super::{
-    ClipEnd, HostIdentity, RECIPE_VERSION, RenderError, RenderJob, RenderRecord, Rendered, Renderer,
+    ClipEnd, ControlKind, HostIdentity, RECIPE_VERSION, RenderError, RenderJob, RenderRecord,
+    Rendered, Renderer,
 };
 use crate::audio::decode;
 use crate::synth::Synth;
@@ -332,6 +333,7 @@ pub struct PluginRenderer {
     readers: Vec<JoinHandle<()>>,
     identity: HostIdentity,
     renders: u64,
+    loaded: bool,
     timeouts: Timeouts,
     /// A private folder for the clips the host writes.
     scratch: tempfile::TempDir,
@@ -346,16 +348,16 @@ impl PluginRenderer {
     /// Returns [`RenderError::Host`] when the platform, the plug-in or the
     /// host binary cannot render, and the host's own errors.
     pub fn start(synth: Synth, plugin: &Path, host: &Path) -> Result<Self, RenderError> {
-        if !cfg!(target_os = "macos") {
-            return Err(host_error(
-                "rendering through a plug-in runs on macOS only",
-                "Render on a Mac",
-            ));
-        }
         if !plugin.exists() {
             return Err(host_error(
                 format!("there is no plug-in at {}", plugin.display()),
                 "Pass --plugin with the path of the plug-in's .vst3 bundle",
+            ));
+        }
+        if !cfg!(target_os = "macos") {
+            return Err(host_error(
+                "rendering through a plug-in runs on macOS only",
+                "Render on a Mac",
             ));
         }
         // `arch` takes no `--`, so an absolute path keeps a host path that
@@ -459,6 +461,7 @@ impl PluginRenderer {
                 arch: String::new(),
             },
             renders: 0,
+            loaded: false,
             timeouts,
             scratch,
         };
@@ -490,23 +493,6 @@ impl PluginRenderer {
                 renderer.identity.arch = arch;
                 Ok(renderer)
             }
-            other => Err(unexpected(&other)),
-        }
-    }
-
-    /// Returns the state the plug-in saves now.
-    ///
-    /// # Errors
-    ///
-    /// Returns the host's error, or [`RenderError::Crashed`] or
-    /// [`RenderError::TimedOut`].
-    pub fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
-        match self.ask(&Request::SaveState, self.timeouts.open)? {
-            Reply::Saved { state } => STANDARD.decode(state).map_err(|source| {
-                RenderError::Crashed(format!(
-                    "the host sent a state that is not base64 ({source})"
-                ))
-            }),
             other => Err(unexpected(&other)),
         }
     }
@@ -693,12 +679,10 @@ fn connect(child: &mut Child) -> Result<Pipes, RenderError> {
     Ok((stdin, replies, tail, readers))
 }
 
-impl Renderer for PluginRenderer {
-    fn identity(&self) -> HostIdentity {
-        self.identity.clone()
-    }
-
-    fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+impl PluginRenderer {
+    /// Renders the job's notes, with its state or with the plug-in's init
+    /// patch.
+    fn play(&mut self, job: &RenderJob, load: bool) -> Result<Rendered, RenderError> {
         if job.state().synth() != self.identity.synth {
             return Err(RenderError::WrongSynth {
                 state: job.state().synth(),
@@ -711,7 +695,7 @@ impl Renderer for PluginRenderer {
             .path()
             .join(format!("clip-{}.wav", self.renders));
         let request = Request::Render {
-            state: STANDARD.encode(job.state().bytes()),
+            state: load.then(|| STANDARD.encode(job.state().bytes())),
             notes: job
                 .notes()
                 .iter()
@@ -722,9 +706,21 @@ impl Renderer for PluginRenderer {
                     velocity: note.velocity().get(),
                 })
                 .collect(),
+            controls: job
+                .controls()
+                .iter()
+                .map(|control| WireControl {
+                    time: control.time.get(),
+                    kind: match control.kind {
+                        ControlKind::PitchBend(value) => WireControlKind::PitchBend { value },
+                        ControlKind::ModWheel(value) => WireControlKind::ModWheel { value },
+                    },
+                })
+                .collect(),
             bpm: job.bpm().get(),
             audio: audio.clone(),
         };
+        self.loaded |= load;
         let timeout = self.timeouts.render + Duration::from_secs_f64(job.last_note_off().get());
         let reply = self.ask(&request, timeout);
         let read = reply.and_then(|reply| match reply {
@@ -751,6 +747,37 @@ impl Renderer for PluginRenderer {
             audio,
             record: RenderRecord::new(self.identity(), job, end),
         })
+    }
+}
+
+impl Renderer for PluginRenderer {
+    fn identity(&self) -> HostIdentity {
+        self.identity.clone()
+    }
+
+    fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        self.play(job, true)
+    }
+
+    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        if self.loaded {
+            return Err(host_error(
+                "the plug-in already holds a loaded state, so its init patch is gone",
+                "Render the init patch before the first render of a preset",
+            ));
+        }
+        self.play(job, false)
+    }
+
+    fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
+        match self.ask(&Request::SaveState, self.timeouts.open)? {
+            Reply::Saved { state } => STANDARD.decode(state).map_err(|source| {
+                RenderError::Crashed(format!(
+                    "the host sent a state that is not base64 ({source})"
+                ))
+            }),
+            other => Err(unexpected(&other)),
+        }
     }
 }
 

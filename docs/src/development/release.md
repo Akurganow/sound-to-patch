@@ -27,10 +27,11 @@ one tags or uploads by hand.
    read it.
 5. The tag starts the publish workflow. It stops unless the tag is
    `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64 binary,
-   the man page, the shell completions and `THIRD-PARTY-LICENSES.html`,
-   checks that the binary prints the tag's version, packs each folder in
-   `plugins/` as its own zip archive, and publishes a release with the
-   changelog section as its notes.
+   the universal plug-in host, the man page, the shell completions and
+   `THIRD-PARTY-LICENSES.html`, checks that both binaries print the tag's
+   version, packs each folder in `plugins/` as its own zip archive, and
+   publishes a release with the changelog section as its notes. The notes
+   end with a line that names both binaries.
 
 The version commit starts the CI workflow again. The `release` job skips a
 commit whose subject starts with `chore(version)`, so the loop stops there.
@@ -42,7 +43,10 @@ The `test` job runs `cargo xtask check-fuzz-lock`, which fails when
 
 `sound-to-patch-vX.Y.Z-aarch64-apple-darwin.tar.gz` holds:
 
-- `sound-to-patch`, the binary;
+- `sound-to-patch`, the binary, for Apple silicon;
+- `sound-to-patch-host`, the plug-in host that `render` starts, a
+  universal binary for Apple silicon and Intel: Vital 1.0.7 holds Intel
+  code only, so the host runs as Intel under Rosetta for it;
 - `man/sound-to-patch.1`;
 - `completions/` for bash, zsh and fish;
 - `THIRD-PARTY-LICENSES.html`;

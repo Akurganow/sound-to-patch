@@ -156,11 +156,26 @@ that CI does not install by default:
 - `a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
   saved after loading a written preset, from `VITAL_SAVED_PRESET`.
 
-## The Vital plug-in
+## Rendering
 
-The `render_vital` tests render generated presets through the installed
-Vital plug-in, in the plug-in host process. The host loads the plug-in as
-a library and opens no window. The tests need:
+What runs in CI, with no plug-in:
+
+- The renderer contract suite on the fake renderer, and two tests that show
+  the suite fails a silent renderer and a renderer with one silent channel.
+- The load check on the fake: a passing render, and one case each for
+  silence, an init fallback, a changed saved state, a plug-in fault and an
+  init-like render.
+- The recipe, its snapshot and its hash, the note events, the tail watch,
+  the MIDI reading with its hash, and the record against its schema.
+- The wire protocol, the host's request loop, the architecture pick from
+  Mach-O headers, and the WAV writer read back through the decoder.
+- The `render` command cases in `tests/cmd/`, with the hidden
+  `--backend fake`.
+- Clippy on the host crate for `x86_64-apple-darwin`.
+
+What needs Vital: the `render_vital` tests render generated presets
+through the installed plug-in, in the plug-in host process. The host loads
+the plug-in as a library and opens no window. They need:
 
 - Vital in a standard VST3 folder: `/Library/Audio/Plug-Ins/VST3`, or the
   same folder under the user's `Library`.
@@ -175,9 +190,13 @@ SOUND_TO_PATCH_HOST="$PWD/target/x86_64-apple-darwin/release/sound-to-patch-host
   cargo nextest run --run-ignored only -E 'test(render_vital)'
 ```
 
-They run the renderer contract suite, check that the state Vital saves
-back matches the sent one, and check that every render uses 2x
-oversampling. CI lints the host for x86_64 but loads no plug-in.
+They run the contract suite, read the saved state back, check the forced
+2x oversampling, and run the load check on a loaded preset, the init
+patch, a newer stamp, a preset with no sound source, a dropped key and a
+bundle that is no plug-in. Two more send a full pitch bend and a mod wheel
+move and measure their effect.
+
+What needs Serum 2: nothing yet. Its renderer follows in its own epic.
 
 The failure paths of the host run in CI without a plug-in: unit tests in
 `render::plugin` start shell scripts that stand in for the host. They

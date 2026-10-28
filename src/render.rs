@@ -28,7 +28,9 @@ use crate::preset::format::FormatError;
 use crate::synth::{Synth, SynthError};
 use crate::units::{Bpm, Seconds};
 
+pub mod check;
 pub mod fake;
+pub mod file;
 pub mod plugin;
 pub mod recipe;
 pub mod state;
@@ -255,9 +257,30 @@ impl PresetState {
 pub struct RenderJob {
     state: PresetState,
     notes: Vec<RenderNote>,
+    controls: Vec<Control>,
     bpm: Bpm,
     recipe: Recipe,
     midi_sha256: Option<String>,
+}
+
+/// A MIDI controller change at a time of the clip. A plug-in in a VST3 host
+/// gets controllers only through its MIDI mapping; a controller it does not
+/// map is dropped without an error.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ControlKind {
+    /// Pitch bend, 0 to 16383 with the centre at 8192.
+    PitchBend(u16),
+    /// The mod wheel, MIDI controller 1, 0 to 127.
+    ModWheel(u8),
+}
+
+/// A controller change and its time.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Control {
+    /// When the change happens, from the start of the clip.
+    pub time: Seconds,
+    /// The change.
+    pub kind: ControlKind,
 }
 
 impl RenderJob {
@@ -273,6 +296,7 @@ impl RenderJob {
         Ok(Self {
             state,
             notes,
+            controls: Vec::new(),
             bpm,
             recipe: Recipe::current(),
             midi_sha256: None,
@@ -303,6 +327,7 @@ impl RenderJob {
         Self {
             state,
             notes: recipe.notes(material),
+            controls: Vec::new(),
             bpm,
             recipe,
             midi_sha256: None,
@@ -331,6 +356,20 @@ impl RenderJob {
     #[must_use]
     pub fn recipe(&self) -> &Recipe {
         &self.recipe
+    }
+
+    /// Adds controller changes. The clip still ends by the notes and the
+    /// tail, so a change after the clip's end has no effect.
+    #[must_use]
+    pub fn with_controls(mut self, controls: Vec<Control>) -> Self {
+        self.controls = controls;
+        self
+    }
+
+    /// Returns the controller changes.
+    #[must_use]
+    pub fn controls(&self) -> &[Control] {
+        &self.controls
     }
 
     /// Returns the SHA-256 of the MIDI file the notes came from, in hex.
@@ -393,6 +432,9 @@ pub struct RenderRecord {
     /// notes that came from no file, such as the recipe's notes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub midi_sha256: Option<String>,
+    /// The load check of the render, when it ran.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub load_check: Option<check::LoadCheck>,
 }
 
 impl RenderRecord {
@@ -414,6 +456,7 @@ impl RenderRecord {
             length: rate.seconds(end.frames),
             tail_capped: end.capped,
             midi_sha256: job.midi_sha256.clone(),
+            load_check: None,
         }
     }
 }
@@ -449,6 +492,23 @@ pub trait Renderer {
     /// Returns a [`RenderError`] when the state does not load, the plug-in
     /// fails or the audio is not valid.
     fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError>;
+
+    /// Renders the job's notes with the plug-in's own init patch: the job's
+    /// state is not loaded. Only a renderer that has loaded no state yet
+    /// holds the init patch, so the load check calls this first.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RenderError::Host`] once a state has loaded, and the
+    /// errors of [`Renderer::render`].
+    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError>;
+
+    /// Returns the state the plug-in saves now.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`RenderError`] when the plug-in fails.
+    fn save_state(&mut self) -> Result<Vec<u8>, RenderError>;
 }
 
 /// A render that failed.
@@ -526,7 +586,7 @@ impl fmt::Display for RenderError {
             Self::Synth(source) => write!(f, "{source}"),
             Self::Midi(source) => write!(f, "{source}"),
             Self::Host { cause, fix } => {
-                write!(f, "the plug-in host failed: {cause}. {fix}")
+                write!(f, "cannot render through the plug-in host: {cause}. {fix}")
             }
         }
     }

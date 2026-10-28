@@ -59,6 +59,17 @@ impl Oversampling {
     }
 }
 
+impl std::fmt::Display for Oversampling {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::X1 => "1x",
+            Self::X2 => "2x",
+            Self::X4 => "4x",
+            Self::X8 => "8x",
+        })
+    }
+}
+
 /// How the host tells the plug-in it processes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -253,6 +264,15 @@ impl Recipe {
         self.vital_oversampling
     }
 
+    /// The tail floor as a gain: a sample below it in every channel is
+    /// quiet.
+    #[must_use]
+    pub fn tail_floor_gain(&self) -> f64 {
+        // The floor is a finite dB value, so the gain is a finite number
+        // above zero.
+        10_f64.powf(self.tail_floor.get() / 20.0)
+    }
+
     /// Starts a watch for the end of a clip that plays `notes`. The last
     /// note-off is the latest note-off frame of [`super::note_events`], so a
     /// note shorter than a frame ends where its event does.
@@ -266,9 +286,7 @@ impl Recipe {
             .max()
             .unwrap_or(0);
         TailWatch {
-            // The floor is a finite dB value, so the gain is a finite
-            // number above zero.
-            floor: 10_f64.powf(self.tail_floor.get() / 20.0),
+            floor: self.tail_floor_gain(),
             min_frames: frame_of(self.clip, rate),
             last_off,
             hold: frame_of(self.tail_hold, rate),

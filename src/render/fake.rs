@@ -1,6 +1,7 @@
 //! A fake renderer for tests: a seeded additive synth with no plug-in.
 //!
-//! Its patch is JSON in the preset state. Each note sums the patch's
+//! Its patch is JSON in the preset state, under `settings` as in a Vital
+//! state, so the load check reads it back the same way. Each note sums the patch's
 //! harmonics under a linear attack and an exponential release, and a
 //! render draws a random phase per harmonic and a small level jitter, so
 //! repeat renders vary the way a synth with random unison phases does.
@@ -8,7 +9,9 @@
 //! hang is simulated: the render returns [`RenderError::TimedOut`] at once
 //! and never waits.
 //!
-//! The fake keeps no state between renders, so it plays no pre-roll.
+//! The fake keeps no sound between renders, so it plays no pre-roll. It
+//! remembers the last state it loaded, which [`Renderer::save_state`]
+//! returns; before any load it holds [`FakePatch::init`].
 
 use std::f64::consts::TAU;
 
@@ -41,6 +44,16 @@ pub struct FakePatch {
 }
 
 impl FakePatch {
+    /// The fake's init patch: a bright tone with a short release.
+    #[must_use]
+    pub fn init() -> Self {
+        Self {
+            harmonics: vec![1.0, 0.5, 0.33, 0.25, 0.2],
+            attack: Seconds::from_const(0.005),
+            release: Seconds::from_const(0.2),
+        }
+    }
+
     /// Returns the patch as the state of `synth`.
     ///
     /// # Errors
@@ -48,7 +61,17 @@ impl FakePatch {
     /// Returns the serializer's error. A patch of finite numbers always
     /// serializes.
     pub fn state(&self, synth: Synth) -> Result<PresetState, serde_json::Error> {
-        Ok(PresetState::new(synth, serde_json::to_vec(self)?))
+        let root = serde_json::json!({ "preset_name": "fake", "settings": self });
+        Ok(PresetState::new(synth, serde_json::to_vec(&root)?))
+    }
+
+    /// Reads a patch from a state.
+    fn of_state(state: &[u8]) -> Result<Self, RenderError> {
+        let not_fake = |cause: String| RenderError::State(format!("not a fake patch ({cause})"));
+        let root: serde_json::Value =
+            serde_json::from_slice(state).map_err(|source| not_fake(source.to_string()))?;
+        serde_json::from_value(root["settings"].clone())
+            .map_err(|source| not_fake(source.to_string()))
     }
 }
 
@@ -62,6 +85,12 @@ pub enum Fault {
     Hang,
     /// The plug-in renders silence.
     Silence,
+    /// The state does not load: the plug-in keeps and saves its init
+    /// patch.
+    KeepInit,
+    /// The state loads, but the state the plug-in saves names another
+    /// preset.
+    Rename,
 }
 
 /// A seeded additive synth behind the [`Renderer`] trait.
@@ -71,6 +100,8 @@ pub struct FakeRenderer {
     seed: u64,
     renders: u64,
     faults: Vec<(u64, Fault)>,
+    loaded: Option<Vec<u8>>,
+    fixed: Option<FakePatch>,
 }
 
 impl FakeRenderer {
@@ -83,7 +114,17 @@ impl FakeRenderer {
             seed,
             renders: 0,
             faults: Vec::new(),
+            loaded: None,
+            fixed: None,
         }
+    }
+
+    /// Plays `patch` whatever state a job holds, as a plug-in that loads
+    /// any preset of its synth. The saved state is still the loaded one.
+    #[must_use]
+    pub fn with_patch(mut self, patch: FakePatch) -> Self {
+        self.fixed = Some(patch);
+        self
     }
 
     /// Injects `fault` into the render with index `at`, counted from 0.
@@ -111,6 +152,35 @@ impl Renderer for FakeRenderer {
     }
 
     fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        self.play_job(job, true)
+    }
+
+    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        if self.loaded.is_some() {
+            return Err(RenderError::Host {
+                cause: "the fake already holds a loaded state".to_owned(),
+                fix: "Render the init patch first".to_owned(),
+            });
+        }
+        self.play_job(job, false)
+    }
+
+    fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
+        match &self.loaded {
+            Some(state) => Ok(state.clone()),
+            None => Ok(init_state(self.synth)?.bytes().to_vec()),
+        }
+    }
+}
+
+fn init_state(synth: Synth) -> Result<PresetState, RenderError> {
+    FakePatch::init()
+        .state(synth)
+        .map_err(|source| RenderError::State(source.to_string()))
+}
+
+impl FakeRenderer {
+    fn play_job(&mut self, job: &RenderJob, load: bool) -> Result<Rendered, RenderError> {
         let index = self.renders;
         self.renders += 1;
         let fault = self
@@ -134,8 +204,27 @@ impl Renderer for FakeRenderer {
                 renderer: self.synth,
             });
         }
-        let patch: FakePatch = serde_json::from_slice(job.state().bytes())
-            .map_err(|source| RenderError::State(format!("not a fake patch ({source})")))?;
+        let patch = if load && fault != Some(Fault::KeepInit) {
+            let patch = match &self.fixed {
+                Some(patch) => patch.clone(),
+                None => FakePatch::of_state(job.state().bytes())?,
+            };
+            let mut saved = job.state().bytes().to_vec();
+            if fault == Some(Fault::Rename) {
+                let mut root: serde_json::Value = serde_json::from_slice(&saved)
+                    .map_err(|source| RenderError::State(source.to_string()))?;
+                root["preset_name"] = "renamed".into();
+                saved = serde_json::to_vec(&root)
+                    .map_err(|source| RenderError::State(source.to_string()))?;
+            }
+            self.loaded = Some(saved);
+            patch
+        } else {
+            if load {
+                self.loaded = Some(init_state(self.synth)?.bytes().to_vec());
+            }
+            FakePatch::init()
+        };
         let mut rng = SplitMix::for_render(self.seed, index);
         let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence))?;
         let audio = Audio::new(job.recipe().sample_rate(), vec![mono.clone(), mono])?;

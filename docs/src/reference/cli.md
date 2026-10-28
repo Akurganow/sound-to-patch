@@ -16,6 +16,7 @@ Commands:
   analyze  Analyse a stem and write layers.json and spectrogram.png
   notes    Transcribe a stem and write notes.mid
   preset   Read, inspect and write synth presets
+  render   Render a preset and a MIDI file to a WAV file through the synth
   help     Print this message or the help of the given subcommand(s)
 
 Options:
@@ -345,3 +346,56 @@ a list of edits. Each edit is one of four records, and each carries a
   cause and the fix.
 
 The [guide](../guide/preset.md) walks through one edit list.
+
+## render
+
+```console
+$ sound-to-patch render --help
+Render a preset and a MIDI file to a WAV file through the synth.
+
+The synth's plug-in loads headless in the plug-in host process. A render counts only after the load check: the clip sounds, the state the plug-in saves back holds the preset, and the clip differs from the plug-in's init patch. Each step prints what it found.
+
+Example: sound-to-patch render bass.vital --midi notes.mid --bpm 140 -o bass.wav
+
+Usage: sound-to-patch render [OPTIONS] --midi <FILE> --bpm <BPM> --out <WAV> <PRESET>
+
+Arguments:
+  <PRESET>
+          The preset to render
+
+Options:
+      --midi <FILE>
+          The MIDI file with the notes, read as `analyze --notes` reads it
+
+      --bpm <BPM>
+          The tempo of the MIDI file in beats per minute, 4 to 1000
+
+  -o, --out <WAV>
+          The WAV file to write; the render record goes next to it with .json
+
+      --plugin <BUNDLE>
+          The synth's .vst3 bundle [default: the bundle in /Library/Audio/Plug-Ins/VST3, else in the user's VST3 folder]
+
+      --synth <SYNTH>
+          The target synth [default: the extension of the preset file, else vital]
+
+          Possible values:
+          - vital:  Vital, with `.vital` preset files
+          - serum2: Serum 2, with `.SerumPreset` preset files
+
+      --force
+          Replace an existing WAV or record file
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+```
+
+`render` writes two files: the WAV file named by `--out`, 32-bit float
+stereo at 44.1 kHz, and the render record next to it, with `.json` in
+place of `.wav`. The record follows `schemas/render-record.schema.json`;
+the [render record page](formats/render-record.md) lists its fields.
+
+The plug-in loads in `sound-to-patch-host`, a second program that ships
+next to `sound-to-patch`. `SOUND_TO_PATCH_HOST` names another copy. The
+[guide](../guide/render.md) walks through one render and the load check.

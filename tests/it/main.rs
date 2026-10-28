@@ -17,6 +17,8 @@ mod fixtures;
 #[cfg(test)]
 mod golden;
 #[cfg(test)]
+mod load_check;
+#[cfg(test)]
 mod lomb;
 mod mapper;
 #[cfg(test)]
