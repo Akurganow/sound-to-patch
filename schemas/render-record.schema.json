@@ -47,14 +47,15 @@
       "pattern": "^[0-9a-f]{64}$"
     },
     "load_check": {
-      "description": "The load check of the render, when it ran: the octave-band distance of the clip from the plug-in's init patch, the distance between two init renders, and the margin the first had to exceed. All in dB.",
+      "description": "The load check of the render, when it ran: the octave-band distance of the clip from the plug-in's init patch, the distance between two init renders and the margin, all in dB, and whether the clip lies within the margin, which is a warning.",
       "type": "object",
-      "required": ["init_distance_db", "init_spread_db", "margin_db"],
+      "required": ["init_distance_db", "init_spread_db", "margin_db", "init_like"],
       "additionalProperties": false,
       "properties": {
         "init_distance_db": { "type": "number", "minimum": 0 },
         "init_spread_db": { "type": "number", "minimum": 0 },
-        "margin_db": { "type": "number", "exclusiveMinimum": 0 }
+        "margin_db": { "type": "number", "exclusiveMinimum": 0 },
+        "init_like": { "type": "boolean" }
       }
     }
   }

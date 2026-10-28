@@ -62,9 +62,10 @@ pub enum Command {
     /// Render a preset and a MIDI file to a WAV file through the synth.
     ///
     /// The synth's plug-in loads headless in the plug-in host process. A
-    /// render counts only after the load check: the clip sounds, the state
-    /// the plug-in saves back holds the preset, and the clip differs from
-    /// the plug-in's init patch. Each step prints what it found.
+    /// render counts only after the load check: the clip sounds, and the
+    /// state the plug-in saves back holds the preset. A clip whose octave
+    /// bands match the plug-in's init patch gives a warning. Each step
+    /// prints what it found.
     ///
     /// Example: sound-to-patch render bass.vital --midi notes.mid --bpm 140 -o bass.wav
     Render(render::RenderArgs),
@@ -201,10 +202,16 @@ fn render(args: &render::RenderArgs) -> Result<Output, Box<dyn Error + Send + Sy
         force: args.force,
         backend: args.backend,
     })?;
-    Ok(report
-        .summary()
-        .into_iter()
-        .map(|line| line + "\n")
-        .collect::<String>()
-        .into())
+    Ok(Output {
+        stdout: report
+            .summary()
+            .into_iter()
+            .map(|line| line + "\n")
+            .collect(),
+        stderr: report
+            .warnings()
+            .into_iter()
+            .map(|warning| "warning: ".to_owned() + &warning + "\n")
+            .collect(),
+    })
 }

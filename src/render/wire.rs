@@ -94,6 +94,15 @@ pub struct WireControl {
     pub kind: WireControlKind,
 }
 
+impl From<WireControlKind> for super::ControlKind {
+    fn from(kind: WireControlKind) -> Self {
+        match kind {
+            WireControlKind::PitchBend { value } => Self::PitchBend(value),
+            WireControlKind::ModWheel { value } => Self::ModWheel(value),
+        }
+    }
+}
+
 /// A reply from the host.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "reply", rename_all = "snake_case")]

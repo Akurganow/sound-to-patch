@@ -1,5 +1,5 @@
-//! The load check (#250) on the fake renderer: a passing render and one
-//! case per fault, each with its own message.
+//! The load check (#250) on the fake renderer: a passing render, one case
+//! per fault, each with its own message, and the init-like warning.
 
 use sound_to_patch::render::check::{LoadFault, render_checked};
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer, Fault};
@@ -86,16 +86,17 @@ fn a_plug_in_fault_keeps_its_own_message() {
 }
 
 #[test]
-fn a_render_of_the_init_patch_is_init_like() {
+fn a_render_of_the_init_patch_passes_with_a_warning() {
     let mut renderer = FakeRenderer::new(Synth::Vital, 7);
-    let fault = render_checked(&mut renderer, &job(&FakePatch::init())).unwrap_err();
-    assert!(matches!(fault, LoadFault::InitLike { .. }), "{fault}");
-    assert!(
-        fault
-            .to_string()
-            .contains("sounds like the plug-in's init patch"),
-        "{fault}"
-    );
+    let (_, check) = render_checked(&mut renderer, &job(&FakePatch::init())).unwrap();
+    assert!(check.init_like, "{check:?}");
+    let warning = check.warning().unwrap();
+    assert!(warning.contains("within the margin"), "{warning}");
+    assert!(warning.contains("the preset loaded"), "{warning}");
+    assert!(!warning.contains("authorized"), "{warning}");
+    let (_, check) =
+        render_checked(&mut FakeRenderer::new(Synth::Vital, 7), &job(&dark())).unwrap();
+    assert!(!check.init_like && check.warning().is_none(), "{check:?}");
 }
 
 #[test]

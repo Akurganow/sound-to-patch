@@ -1094,6 +1094,23 @@ mod tests {
         }
 
         #[test]
+        fn a_host_crash_in_the_load_check_is_a_render_fault() {
+            let mut renderer = start(&format!(
+                "{OPEN}read -r line; echo 'plug-in crashed' >&2; exit 6"
+            ))
+            .unwrap();
+            let fault = crate::render::check::render_checked(&mut renderer, &job()).unwrap_err();
+            assert!(
+                matches!(
+                    fault,
+                    crate::render::check::LoadFault::Render(RenderError::Crashed(_))
+                ),
+                "{fault}"
+            );
+            assert!(fault.to_string().contains("plug-in crashed"), "{fault}");
+        }
+
+        #[test]
         fn a_host_that_lingers_after_bye_is_stopped() {
             let script = format!(
                 r#"{OPEN}read -r line; printf '%s{{"reply":"bye"}}\n' "$PREFIX"; exec sleep 30"#

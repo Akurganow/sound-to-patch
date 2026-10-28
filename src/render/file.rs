@@ -62,6 +62,8 @@ pub struct RenderReport {
     pub wav: PathBuf,
     /// The record file.
     pub record_path: PathBuf,
+    /// The tail cap of the job's recipe.
+    pub tail_cap: Seconds,
 }
 
 impl RenderReport {
@@ -83,7 +85,7 @@ impl RenderReport {
         let tail = if record.tail_capped {
             format!(
                 "the tail was still sounding at the cap, {} after the last note-off",
-                Seconds::from_const(30.0)
+                self.tail_cap
             )
         } else {
             "the tail went quiet".to_owned()
@@ -108,14 +110,26 @@ impl RenderReport {
                 "init patch: 2 renders, {:.2} dB apart",
                 self.check.init_spread_db
             ),
-            format!(
-                "load check: passed; the saved state matches, and the render lies {:.2} dB from the init patch, beyond the margin of {:.2} dB",
-                self.check.init_distance_db, self.check.margin_db
-            ),
+            if self.check.init_like {
+                "load check: passed with a warning; the saved state matches".to_owned()
+            } else {
+                format!(
+                    "load check: passed; the saved state matches, and the render lies {:.2} dB from the init patch, beyond the margin of {:.2} dB",
+                    self.check.init_distance_db, self.check.margin_db
+                )
+            },
             format!("clip: {:.3} s, {tail}", record.length.get()),
             format!("wrote {}", self.wav.display()),
             format!("wrote {}", self.record_path.display()),
         ]
+    }
+}
+
+impl RenderReport {
+    /// The warnings of the render: an init-like clip.
+    #[must_use]
+    pub fn warnings(&self) -> Vec<String> {
+        self.check.warning().into_iter().collect()
     }
 }
 
@@ -198,7 +212,11 @@ fn fake_patch() -> FakePatch {
 /// that fails or does not pass the load check.
 pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFileError> {
     let out = request.out;
-    if out.extension().and_then(|ext| ext.to_str()) != Some("wav") {
+    let is_wav = out
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"));
+    if !is_wav {
         return Err(RenderFileError::Output {
             path: out.to_owned(),
             cause: "the name does not end in .wav".to_owned(),
@@ -206,6 +224,17 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
         });
     }
     let record_path = out.with_extension("json");
+    let folder = out
+        .parent()
+        .filter(|folder| !folder.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    if !folder.is_dir() {
+        return Err(RenderFileError::Output {
+            path: out.to_owned(),
+            cause: format!("the folder {} does not exist", folder.display()),
+            fix: "Create the folder, or write to one that exists".to_owned(),
+        });
+    }
     for path in [out, record_path.as_path()] {
         if !request.force && path.exists() {
             return Err(RenderFileError::Output {
@@ -250,22 +279,30 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
     };
     let (mut output, check) = render_checked(renderer.as_mut(), &job)?;
     output.record.load_check = Some(check);
-    write_wav(out, &output.audio).map_err(|source| RenderFileError::Output {
-        path: out.to_owned(),
-        cause: source.to_string(),
-        fix: "Check that the folder exists and is writable".to_owned(),
-    })?;
     let json =
         serde_json::to_string_pretty(&output.record).map_err(|source| RenderFileError::Output {
             path: record_path.clone(),
             cause: source.to_string(),
             fix: "Report it; a record always encodes".to_owned(),
         })?;
-    std::fs::write(&record_path, json + "\n").map_err(|source| RenderFileError::Output {
-        path: record_path.clone(),
-        cause: source.to_string(),
-        fix: "Check that the folder exists and is writable".to_owned(),
-    })?;
+    // A partial WAV file, or one without its record, would block the next
+    // run, so a failed write removes it.
+    if let Err(source) = write_wav(out, &output.audio) {
+        let _ = std::fs::remove_file(out);
+        return Err(RenderFileError::Output {
+            path: out.to_owned(),
+            cause: source.to_string(),
+            fix: "Check that the folder is writable and the disk has room".to_owned(),
+        });
+    }
+    if let Err(source) = std::fs::write(&record_path, json + "\n") {
+        let _ = std::fs::remove_file(out);
+        return Err(RenderFileError::Output {
+            path: record_path,
+            cause: source.to_string(),
+            fix: "Check that the folder is writable and the disk has room".to_owned(),
+        });
+    }
     Ok(RenderReport {
         plugin,
         name,
@@ -274,5 +311,6 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
         record: output.record,
         wav: out.to_owned(),
         record_path,
+        tail_cap: job.recipe().tail_cap(),
     })
 }

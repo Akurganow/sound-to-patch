@@ -16,7 +16,8 @@ use sound_to_patch::render::wire::{
     PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote,
 };
 use sound_to_patch::render::{
-    EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of, note_events,
+    ControlKind, EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of,
+    note_events,
 };
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::Seconds;
@@ -212,6 +213,9 @@ impl Session {
             .iter()
             .map(|control| {
                 let time = Seconds::new(control.time).map_err(|error| bad(error.to_string()))?;
+                ControlKind::from(control.kind)
+                    .checked()
+                    .map_err(|error| bad(error.to_string()))?;
                 Ok((frame_of(time, rate), control_event(control.kind)))
             })
             .collect::<Result<Vec<_>, Reply>>()?;

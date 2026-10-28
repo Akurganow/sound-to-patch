@@ -80,9 +80,13 @@ jobs:
           lipo -create -output target/universal/sound-to-patch-host \
             target/aarch64-apple-darwin/release/sound-to-patch-host \
             target/x86_64-apple-darwin/release/sound-to-patch-host
-          archs="$(lipo -archs target/universal/sound-to-patch-host)"
-          echo "$archs"
-          [ "$archs" = "x86_64 arm64" ] || { echo "::error::the host holds $archs"; exit 1; }
+          # `-verify_arch` takes one architecture per call on this lipo.
+          for arch in x86_64 arm64; do
+            lipo target/universal/sound-to-patch-host -verify_arch "$arch" || {
+              echo "::error::the host holds $(lipo -archs target/universal/sound-to-patch-host), with no $arch slice"
+              exit 1
+            }
+          done
 
       # The binary must print the version of the tag it was built from.
       - name: Check the version
@@ -93,7 +97,11 @@ jobs:
           [ "$printed" = "sound-to-patch ${TAG#v}" ]
           # The x86_64 slice runs only where Rosetta is installed.
           archs="arm64"
-          [ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ] && archs="arm64 x86_64"
+          if [ -e /Library/Apple/usr/libexec/oah/libRosettaRuntime ]; then
+            archs="arm64 x86_64"
+          else
+            echo "::warning::Rosetta is not installed, so the x86_64 slice of the host was not run"
+          fi
           for arch in $archs; do
             printed="$(arch "-$arch" target/universal/sound-to-patch-host --version)"
             echo "$arch: $printed"
@@ -107,7 +115,8 @@ jobs:
           stage="target/stage/$name"
           mkdir -p "$stage"
           cargo xtask dist --out-dir "$stage"
-          cargo about generate --locked --fail -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
+          cargo about generate --locked --fail -m host/Cargo.toml -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
+          grep -q '>vst3-host ' "$stage/THIRD-PARTY-LICENSES.html"
           cp target/aarch64-apple-darwin/release/sound-to-patch target/universal/sound-to-patch-host LICENSE "$stage/"
           mkdir -p target/assets
           tar -czf "target/assets/$name.tar.gz" -C target/stage "$name"

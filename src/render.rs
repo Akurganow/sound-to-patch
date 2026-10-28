@@ -274,6 +274,31 @@ pub enum ControlKind {
     ModWheel(u8),
 }
 
+/// The largest pitch bend value: 14 bits.
+pub const MAX_PITCH_BEND: u16 = 16_383;
+/// The largest value of a MIDI controller: 7 bits.
+pub const MAX_CONTROLLER: u8 = 127;
+
+impl ControlKind {
+    /// Returns the change when its value fits its MIDI message.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RenderError::Control`] for a pitch bend above
+    /// [`MAX_PITCH_BEND`] or a mod wheel above [`MAX_CONTROLLER`].
+    pub fn checked(self) -> Result<Self, RenderError> {
+        match self {
+            Self::PitchBend(value) if value > MAX_PITCH_BEND => Err(RenderError::Control(format!(
+                "pitch bend {value} is above {MAX_PITCH_BEND}; pass 0 to {MAX_PITCH_BEND}, with the centre at 8192"
+            ))),
+            Self::ModWheel(value) if value > MAX_CONTROLLER => Err(RenderError::Control(format!(
+                "mod wheel {value} is above {MAX_CONTROLLER}; pass 0 to {MAX_CONTROLLER}"
+            ))),
+            kind => Ok(kind),
+        }
+    }
+}
+
 /// A controller change and its time.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Control {
@@ -360,10 +385,17 @@ impl RenderJob {
 
     /// Adds controller changes. The clip still ends by the notes and the
     /// tail, so a change after the clip's end has no effect.
-    #[must_use]
-    pub fn with_controls(mut self, controls: Vec<Control>) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns [`RenderError::Control`] for a value that does not fit its
+    /// MIDI message, as [`ControlKind::checked`] does.
+    pub fn with_controls(mut self, controls: Vec<Control>) -> Result<Self, RenderError> {
+        for control in &controls {
+            control.kind.checked()?;
+        }
         self.controls = controls;
-        self
+        Ok(self)
     }
 
     /// Returns the controller changes.
@@ -518,6 +550,8 @@ pub enum RenderError {
     Note(String),
     /// The job holds no note.
     NoNotes,
+    /// A controller change does not fit its MIDI message.
+    Control(String),
     /// The synth did not take the state.
     State(String),
     /// The state belongs to another synth than the renderer's.
@@ -558,6 +592,7 @@ impl fmt::Display for RenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Note(cause) => write!(f, "cannot play a note: {cause}"),
+            Self::Control(cause) => write!(f, "cannot send a controller change: {cause}"),
             Self::NoNotes => write!(
                 f,
                 "cannot render: the job has no notes. Pass a MIDI file with at least one note"
@@ -648,6 +683,32 @@ mod tests {
             "{error}"
         );
         assert!(RenderNote::new(60, s(0.0), s(1e300), v(100)).is_err());
+    }
+
+    #[test]
+    fn a_controller_value_must_fit_its_midi_message() {
+        let job = || {
+            RenderJob::new(
+                PresetState::new(Synth::Vital, Vec::new()),
+                vec![RenderNote::new(60, s(0.0), s(1.0), v(100)).unwrap()],
+                Bpm::new(120.0).unwrap(),
+            )
+            .unwrap()
+        };
+        let at = |kind| Control { time: s(0.5), kind };
+        let error = job()
+            .with_controls(vec![at(ControlKind::PitchBend(MAX_PITCH_BEND + 1))])
+            .unwrap_err();
+        assert!(error.to_string().contains("pass 0 to 16383"), "{error}");
+        let error = job()
+            .with_controls(vec![at(ControlKind::ModWheel(128))])
+            .unwrap_err();
+        assert!(error.to_string().contains("pass 0 to 127"), "{error}");
+        let edges = vec![
+            at(ControlKind::PitchBend(MAX_PITCH_BEND)),
+            at(ControlKind::ModWheel(MAX_CONTROLLER)),
+        ];
+        assert_eq!(job().with_controls(edges).unwrap().controls().len(), 2);
     }
 
     fn frames(notes: &[RenderNote]) -> Vec<(usize, EventKind)> {

@@ -30,7 +30,7 @@ cargo nextest run --workspace
 cargo test --workspace --doc
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
-cargo about generate --locked --fail -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
+cargo about generate --locked --fail -m host/Cargo.toml -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
 ```
 
 The book check needs mdBook, its KaTeX preprocessor and lychee:

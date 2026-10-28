@@ -29,7 +29,7 @@ sound-to-patch render bass.vital --midi notes.mid --bpm 120 -o bass.wav
 ```
 
 ```text
-plug-in: Vital 1.0.7 from /Library/Audio/Plug-Ins/VST3/Vital.vst3, in sound-to-patch-host 0.14.0 (vst3-host 0.10.0) as x86_64
+plug-in: Vital 1.0.7 from /Library/Audio/Plug-Ins/VST3/Vital.vst3, in sound-to-patch-host 0.15.0 (vst3-host 0.10.0) as x86_64
 preset: routes, 2x oversampling
 notes: 3, the last note-off at 3.000 s, 120 BPM
 init patch: 2 renders, 0.04 dB apart
@@ -39,9 +39,10 @@ wrote bass.wav
 wrote bass.json
 ```
 
-This run played the `routes.vital` test fixture, the built-in template
-with three routes, through Vital 1.0.7. The MIDI file holds MIDI 48, 55
-and 60 at velocity 100, one second each, back to back.
+This is one local run: it played the `routes.vital` test fixture, the
+built-in template with three routes, through Vital 1.0.7. The MIDI file
+holds MIDI 48, 55 and 60 at velocity 100, one second each, back to back.
+The dB figures change a little from run to run.
 
 Each line names one step:
 
@@ -54,8 +55,9 @@ Each line names one step:
   the tempo. The file must be one that `analyze --notes` reads: every
   tempo in it within 0.01 BPM of `--bpm`, and the notes off channel 10.
 - `init patch`: the plug-in renders the same notes twice with its own init
-  patch before the preset loads. The two renders differ a little, because
-  Vital starts its voices at random phases.
+  patch before the preset loads. The two renders differ a little: Vital's
+  oscillators randomize their start phase fully by default
+  (`osc_1_random_phase` defaults to 1 in the registry).
 - `load check`: see below.
 - `clip`: the length of the WAV file. A clip is at least 4 s long. It ends
   once the output has stayed below -96 dBFS for 1 s after the last
@@ -65,23 +67,26 @@ Each line names one step:
 ## The load check
 
 A plug-in can report that it loaded a preset and still play its old sound.
-So a render counts only when three checks pass:
+So a render counts only when two checks pass:
 
 1. The clip sounds. A clip whose every sample stays below -96 dBFS is
    silent, and the error names what in the preset can explain it, such as
    no oscillator and no sample being on.
 2. The state the plug-in saves after the render holds the preset: its name
-   and every control, each within one step of a 32-bit float. When the
-   saved state is the init patch, the plug-in did not load the preset at
-   all, as with a preset saved by a newer build of Vital.
-3. The clip differs from the init patch. Each clip is measured as its level
-   in octave bands, and the distance is the largest band difference in dB.
-   It must exceed three times the distance between the two init renders,
-   and at least 0.1 dB. A clip within that margin sounds like the init
-   patch: the plug-in may not be authorized, or the preset may equal the
-   init patch.
+   and every numeric control, each within one step of a 32-bit float. When
+   the saved state is the init patch, the plug-in did not load the preset
+   at all, as with a preset saved by a newer build of Vital.
 
 Each failure has its own message, and the command writes no file.
+
+A third check only warns. Each clip is measured as its level in octave
+bands, and the distance from the init render is the largest band
+difference in dB. A clip within three times the distance between the two
+init renders, and within at least 0.1 dB, sounds like the init patch. The
+render still counts, and `render` prints a warning. Mean band levels miss
+a change of envelope or modulation: a slower attack on the init patch can
+lie within the margin. The margin is a stopgap. Two init renders give no
+distribution, and a later release measures the spread over many renders.
 
 ## The output
 

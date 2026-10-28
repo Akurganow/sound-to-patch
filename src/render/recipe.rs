@@ -273,6 +273,13 @@ impl Recipe {
         10_f64.powf(self.tail_floor.get() / 20.0)
     }
 
+    /// Returns how long after the last note-off a tail may sound before the
+    /// clip is cut.
+    #[must_use]
+    pub fn tail_cap(&self) -> Seconds {
+        self.tail_cap
+    }
+
     /// Starts a watch for the end of a clip that plays `notes`. The last
     /// note-off is the latest note-off frame of [`super::note_events`], so a
     /// note shorter than a frame ends where its event does.

@@ -162,9 +162,13 @@ What runs in CI, with no plug-in:
 
 - The renderer contract suite on the fake renderer, and two tests that show
   the suite fails a silent renderer and a renderer with one silent channel.
-- The load check on the fake: a passing render, and one case each for
-  silence, an init fallback, a changed saved state, a plug-in fault and an
-  init-like render.
+- The load check on the fake: a passing render, one case each for
+  silence, an init fallback, a changed saved state and a plug-in fault,
+  and the warning of an init-like render. A scripted host that crashes
+  inside the load check gives the plug-in fault too.
+- The `render` command's files on the fake: the `.wav` name in any case,
+  an existing output without `--force`, a missing folder, and a record
+  that cannot be written, which removes the clip.
 - The recipe, its snapshot and its hash, the note events, the tail watch,
   the MIDI reading with its hash, and the record against its schema.
 - The wire protocol, the host's request loop, the architecture pick from
@@ -192,9 +196,9 @@ SOUND_TO_PATCH_HOST="$PWD/target/x86_64-apple-darwin/release/sound-to-patch-host
 
 They run the contract suite, read the saved state back, check the forced
 2x oversampling, and run the load check on a loaded preset, the init
-patch, a newer stamp, a preset with no sound source, a dropped key and a
-bundle that is no plug-in. Two more send a full pitch bend and a mod wheel
-move and measure their effect.
+patch, a slower attack on the init patch, a newer stamp, a preset with no
+sound source, a dropped key and a bundle that is no plug-in. Two more send
+a full pitch bend and a mod wheel move and measure their effect.
 
 What needs Serum 2: nothing yet. Its renderer follows in its own epic.
 

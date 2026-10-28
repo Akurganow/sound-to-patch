@@ -37,6 +37,8 @@ mod reference;
 #[cfg(test)]
 mod render;
 #[cfg(test)]
+mod render_file;
+#[cfg(test)]
 mod render_vital;
 #[cfg(test)]
 mod report;

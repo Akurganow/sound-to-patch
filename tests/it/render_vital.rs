@@ -138,8 +138,25 @@ fn a_loaded_preset_passes_the_load_check() {
 #[test]
 #[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
 fn the_init_patch_is_init_like() {
-    let fault = render_checked(&mut renderer(), &lead(state(|_| {}))).unwrap_err();
-    assert!(matches!(fault, LoadFault::InitLike { .. }), "{fault}");
+    let (_, check) = render_checked(&mut renderer(), &lead(state(|_| {}))).unwrap();
+    assert!(check.init_like, "{check:?}");
+}
+
+/// A slower attack changes the sound little in mean band levels, so it
+/// may lie within the margin; the render passes either way, because the
+/// read-back matched.
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn an_envelope_change_passes_the_load_check() {
+    let attack = |seconds: f64| {
+        state(move |settings| {
+            settings.insert("env_1_attack".into(), seconds.into());
+        })
+    };
+    for seconds in [0.4, 0.45] {
+        let result = render_checked(&mut renderer(), &lead(attack(seconds)));
+        assert!(result.is_ok(), "attack {seconds}: {}", result.unwrap_err());
+    }
 }
 
 #[test]
@@ -198,6 +215,11 @@ fn a_bundle_that_is_no_plug_in_is_a_plug_in_fault() {
     let executable = dir.path().join("Broken.vst3/Contents/MacOS");
     std::fs::create_dir_all(&executable).unwrap();
     std::fs::copy("/usr/bin/true", executable.join("Broken")).unwrap();
+    std::fs::write(
+        dir.path().join("Broken.vst3/Contents/Info.plist"),
+        "<dict><key>CFBundleExecutable</key><string>Broken</string></dict>",
+    )
+    .unwrap();
     let error =
         PluginRenderer::start(Synth::Vital, &dir.path().join("Broken.vst3"), &host()).unwrap_err();
     assert!(matches!(error, RenderError::Host { .. }), "{error}");
@@ -259,7 +281,11 @@ fn a_full_pitch_bend_raises_the_note_two_semitones() {
     };
     let plain = renderer.render(&lead(state(|_| {}))).unwrap();
     let bent = renderer
-        .render(&lead(state(|_| {})).with_controls(vec![at(ControlKind::PitchBend(16_383))]))
+        .render(
+            &lead(state(|_| {}))
+                .with_controls(vec![at(ControlKind::PitchBend(16_383))])
+                .unwrap(),
+        )
         .unwrap();
     // MIDI 60 is 261.63 Hz; two semitones up is 293.66 Hz.
     assert!(magnitude(&plain.audio, 261.63) > 10.0 * magnitude(&plain.audio, 293.66));
@@ -293,7 +319,7 @@ fn the_mod_wheel_reaches_a_route() {
         kind: ControlKind::ModWheel(127),
     };
     let moved = renderer
-        .render(&lead(routed()).with_controls(vec![wheel]))
+        .render(&lead(routed()).with_controls(vec![wheel]).unwrap())
         .unwrap();
     assert!(
         rms(&moved.audio) < 0.5 * rms(&still.audio),

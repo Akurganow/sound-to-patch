@@ -8,14 +8,15 @@
 //! 2. The state the plug-in saves after the render must hold the sent
 //!    preset: the name and every control. When it holds the init patch
 //!    instead, the plug-in fell back to init.
-//! 3. The clip must differ from the plug-in's own init patch by more than
-//!    two renders of the init patch differ. Each clip is reduced to its
-//!    level in octave bands, and the distance is the largest band
-//!    difference in dB.
+//! 3. The clip is compared with the plug-in's own init patch. Each clip is
+//!    reduced to its level in octave bands, and the distance is the
+//!    largest band difference in dB. A clip within three times the
+//!    distance of two init renders is init-like.
 //!
-//! The init renders come first, from a renderer that has loaded no state.
-//! An init-like clip can mean a plug-in that is not authorized, an init
-//! fallback, or a render that started too early.
+//! The first two are faults. The third is a warning: mean band levels miss
+//! a change of envelope or modulation, so a preset that loaded can still
+//! lie within the margin. The margin stands in for a spread measured over
+//! many renders, which a later release stores.
 
 use std::fmt;
 
@@ -46,6 +47,7 @@ const BAND_FLOOR_DB: f64 = -90.0;
 const BAND_RANGE_DB: f64 = 30.0;
 /// The distance between two init renders is scaled by this factor to give
 /// the margin: a clip within the margin of the init patch is init-like.
+/// Two renders give no distribution, so the factor is a stopgap.
 const SPREAD_FACTOR: f64 = 3.0;
 /// The smallest margin in dB, for a plug-in whose init renders match
 /// almost exactly.
@@ -140,6 +142,22 @@ pub struct LoadCheck {
     pub init_spread_db: f64,
     /// The margin the distance had to exceed, in dB.
     pub margin_db: f64,
+    /// Whether the clip lies within the margin of the init patch. The
+    /// render still counts, because the read-back matched.
+    pub init_like: bool,
+}
+
+impl LoadCheck {
+    /// The warning of an init-like render, if this one is.
+    #[must_use]
+    pub fn warning(&self) -> Option<String> {
+        self.init_like.then(|| {
+            format!(
+                "the render lies {:.2} dB from the init patch, within the margin of {:.2} dB. The saved state matches, so the preset loaded; octave-band levels miss changes of envelope and modulation. Listen to the clip to check that it differs from the init patch",
+                self.init_distance_db, self.margin_db
+            )
+        })
+    }
 }
 
 /// Why a render does not count.
@@ -158,13 +176,6 @@ pub enum LoadFault {
     InitFallback,
     /// The state the plug-in saved differs from the sent one.
     Readback(Vec<Mismatch>),
-    /// The clip sounds like the init patch.
-    InitLike {
-        /// The distance from the init patch, in dB.
-        distance_db: f64,
-        /// The margin the distance had to exceed, in dB.
-        margin_db: f64,
-    },
 }
 
 impl fmt::Display for LoadFault {
@@ -202,13 +213,6 @@ impl fmt::Display for LoadFault {
                     }
                 )
             }
-            Self::InitLike {
-                distance_db,
-                margin_db,
-            } => write!(
-                f,
-                "the render sounds like the plug-in's init patch: its octave-band levels lie {distance_db:.2} dB from the init render, within the margin of {margin_db:.2} dB. Check that the plug-in is authorized and that the preset differs from the init patch"
-            ),
         }
     }
 }
@@ -264,18 +268,13 @@ pub fn render_checked(
     let spread = init.distance(&BandLevels::of(&second.audio));
     let distance = BandLevels::of(&output.audio).distance(&init);
     let margin = (SPREAD_FACTOR * spread).max(MIN_MARGIN_DB);
-    if distance <= margin {
-        return Err(LoadFault::InitLike {
-            distance_db: distance,
-            margin_db: margin,
-        });
-    }
     Ok((
         output,
         LoadCheck {
             init_distance_db: distance,
             init_spread_db: spread,
             margin_db: margin,
+            init_like: distance <= margin,
         },
     ))
 }

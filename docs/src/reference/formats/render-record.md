@@ -25,7 +25,7 @@ Times are in seconds and the tempo in beats per minute.
 | `length` | The clip length. |
 | `tail_capped` | `true` when the tail still sounded 30 s after the last note-off and the clip was cut there. |
 | `midi_sha256` | The SHA-256 of the MIDI file, 64 lowercase hex digits. |
-| `load_check` | The [load check](../../guide/render.md#the-load-check): `init_distance_db`, `init_spread_db` and `margin_db`. |
+| `load_check` | The [load check](../../guide/render.md#the-load-check): `init_distance_db`, `init_spread_db`, `margin_db` and `init_like`, which is `true` when the clip lies within the margin and `render` warned. |
 
 `midi_sha256` and `load_check` are absent from a record whose notes came
 from no file or whose render skipped the load check, such as the renders
