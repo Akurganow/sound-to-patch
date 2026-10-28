@@ -31,11 +31,17 @@ fn renderer() -> PluginRenderer {
 
 /// The minimal fixture named `Probe`, with `edit` applied to its controls.
 fn state(edit: impl FnOnce(&mut serde_json::Map<String, Value>)) -> PresetState {
+    preset(|preset| edit(preset["settings"].as_object_mut().unwrap()))
+}
+
+/// The minimal fixture named `Probe`, with `edit` applied to the whole
+/// preset.
+fn preset(edit: impl FnOnce(&mut Value)) -> PresetState {
     let mut preset: Value =
         serde_json::from_slice(&std::fs::read("tests/fixtures/vital/minimal.vital").unwrap())
             .unwrap();
     preset["preset_name"] = "Probe".into();
-    edit(preset["settings"].as_object_mut().unwrap());
+    edit(&mut preset);
     preset_state(
         Synth::Vital,
         &serde_json::to_vec(&preset).unwrap(),
@@ -104,4 +110,46 @@ fn the_record_names_the_build_and_the_host() {
         identity.host
     );
     assert_eq!(identity.arch, "x86_64");
+}
+
+/// The magnitude of `hz` in the left channel from 1 to 2 s.
+fn magnitude(audio: &sound_to_patch::audio::Audio, hz: f64) -> f64 {
+    let left = &audio.channels()[0][44_100..88_200];
+    let (re, im) = left
+        .iter()
+        .enumerate()
+        .fold((0.0, 0.0), |(re, im), (n, x)| {
+            let phase =
+                std::f64::consts::TAU * hz * f64::from(u32::try_from(n).unwrap()) / 44_100.0;
+            (re + x * phase.cos(), im - x * phase.sin())
+        });
+    (re * re + im * im).sqrt() / 44_100.0
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_tuning_does_not_carry_over_to_the_next_preset() {
+    let up_two = preset(|preset| {
+        preset["tuning"] = serde_json::json!({
+            "scale_start_midi_note": 60,
+            "reference_midi_note": 2,
+            "tuning_name": "Up two",
+            "mapping_name": "",
+            "default": false,
+            "scale": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        });
+    });
+    let mut renderer = renderer();
+    let tuned = renderer.render(&lead(up_two.clone())).unwrap();
+    assert!(magnitude(&tuned.audio, 293.66) > 10.0 * magnitude(&tuned.audio, 261.63));
+    let saved = renderer.save_state().unwrap();
+    assert_eq!(readback_mismatches(&up_two, &saved).unwrap(), []);
+    // A preset without a tuning plays in the default tuning, not the last one.
+    let plain = renderer.render(&lead(state(|_| {}))).unwrap();
+    assert!(
+        magnitude(&plain.audio, 261.63) > 10.0 * magnitude(&plain.audio, 293.66),
+        "{} at 261.63 Hz, {} at 293.66 Hz",
+        magnitude(&plain.audio, 261.63),
+        magnitude(&plain.audio, 293.66)
+    );
 }

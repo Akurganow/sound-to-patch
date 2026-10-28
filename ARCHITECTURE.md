@@ -51,7 +51,9 @@ synth lives in its adapter, never in the neutral core.
   estimators.
 - `preset_state` (`render::state`): builds the plug-in state of a preset
   for the VST3 host. Vital's is the preset JSON with the recipe's
-  oversampling, followed by a NUL.
+  oversampling and a tuning, followed by a NUL. A preset without a tuning
+  gets Vital's default, because the plug-in keeps its last tuning when a
+  state has none.
 - The agent reference: the controls, the gotchas and the word-to-control
   maps of the synth.
 

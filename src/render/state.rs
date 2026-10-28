@@ -5,9 +5,13 @@
 //! the plug-in saves itself. The builder forces the recipe's oversampling
 //! into the controls, because oversampling changes the sound.
 //!
+//! The builder also gives each state a tuning: the preset's own, or
+//! Vital's default. The plug-in keeps its current tuning when a state has
+//! none, so one host session would play the next preset in the last tuning.
+//!
 //! A host call reports success even when the plug-in kept its old sound,
 //! so a backend reads the state back and compares it with the sent one:
-//! the name and every control. The plug-in keeps controls as 32-bit floats,
+//! the name, the tuning and every control. The plug-in keeps controls as 32-bit floats,
 //! so a number matches within one `f32` step.
 
 use std::fmt;
@@ -16,7 +20,7 @@ use serde_json::{Map, Value};
 
 use super::{PresetState, Recipe, RenderError};
 use crate::cast;
-use crate::preset::format::{PresetFormat, Stored};
+use crate::preset::format::{FormatError, PresetFormat, Stored};
 use crate::preset::vital;
 use crate::synth::{Synth, SynthError};
 
@@ -24,6 +28,10 @@ use crate::synth::{Synth, SynthError};
 const OVERSAMPLING: &str = "oversampling";
 /// How many `{` bytes [`saved_preset`] tries as the start of the JSON.
 const MAX_STARTS: usize = 64;
+/// The top-level key of the tuning in a Vital state.
+const TUNING: &str = "tuning";
+/// The highest MIDI note.
+const MAX_MIDI_NOTE: u64 = 127;
 
 /// Builds the plug-in state of `preset`, a preset file of `synth`.
 ///
@@ -50,11 +58,110 @@ fn vital_state(preset: &[u8], recipe: &Recipe) -> Result<PresetState, RenderErro
             Stored::Float(recipe.vital_oversampling().stored()),
         )
         .map_err(RenderError::Preset)?;
-    let mut bytes = vital::FORMAT
+    let bytes = vital::FORMAT
         .write(model.as_ref())
         .map_err(RenderError::Preset)?;
+    let mut root: Map<String, Value> =
+        serde_json::from_slice(&bytes).map_err(|source| RenderError::State(source.to_string()))?;
+    match root.get_mut(TUNING) {
+        Some(tuning) => {
+            check_tuning(tuning)?;
+            // The plug-in saves no empty mapping, so the read-back would
+            // miss it.
+            if let Some(tuning) = tuning.as_object_mut()
+                && tuning
+                    .get("mapping")
+                    .and_then(Value::as_array)
+                    .is_some_and(Vec::is_empty)
+            {
+                tuning.remove("mapping");
+            }
+        }
+        None => {
+            root.insert(TUNING.to_owned(), default_tuning());
+        }
+    }
+    let mut bytes =
+        serde_json::to_vec(&root).map_err(|source| RenderError::State(source.to_string()))?;
     bytes.push(0);
     Ok(PresetState::new(Synth::Vital, bytes))
+}
+
+/// Vital's default tuning as the plug-in saves it: twelve equal steps an
+/// octave, the scale starting at MIDI 60 (`Tuning::stateToJson`, source
+/// 1.0.6).
+fn default_tuning() -> Value {
+    serde_json::json!({
+        "scale_start_midi_note": 60,
+        "reference_midi_note": 0.0,
+        "tuning_name": "",
+        "mapping_name": "",
+        "default": true,
+        "scale": [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0],
+    })
+}
+
+/// Checks a preset's tuning against what `Tuning::jsonToState` reads. The
+/// plug-in answers a missing key or a wrong type with a dialog box, and an
+/// out-of-range note or mapping with a read out of bounds, so such a
+/// tuning never reaches it.
+fn check_tuning(tuning: &Value) -> Result<(), RenderError> {
+    let fail = |cause: String| {
+        Err(RenderError::Preset(FormatError::new(
+            "cannot render the .vital preset",
+            cause,
+            "Remove `tuning` to play in the default tuning, or load the tuning in Vital and save the preset again",
+        )))
+    };
+    let Value::Object(tuning) = tuning else {
+        return fail("`tuning` is not a JSON object".to_owned());
+    };
+    if tuning
+        .get("scale_start_midi_note")
+        .and_then(Value::as_u64)
+        .is_none_or(|note| note > MAX_MIDI_NOTE)
+    {
+        return fail("`tuning.scale_start_midi_note` is not a MIDI note from 0 to 127".to_owned());
+    }
+    if !tuning
+        .get("reference_midi_note")
+        .is_some_and(Value::is_number)
+    {
+        return fail("`tuning.reference_midi_note` is missing or not a number".to_owned());
+    }
+    for key in ["tuning_name", "mapping_name"] {
+        if !tuning.get(key).is_some_and(Value::is_string) {
+            return fail(format!("`tuning.{key}` is missing or not a text"));
+        }
+    }
+    if tuning
+        .get("default")
+        .is_some_and(|value| !value.is_boolean())
+    {
+        return fail("`tuning.default` is not true or false".to_owned());
+    }
+    let Some(scale) = tuning
+        .get("scale")
+        .and_then(Value::as_array)
+        .filter(|scale| scale.iter().all(Value::is_number))
+    else {
+        return fail("`tuning.scale` is missing or not a list of numbers".to_owned());
+    };
+    if let Some(mapping) = tuning.get("mapping") {
+        let fits = mapping.as_array().is_some_and(|mapping| {
+            mapping.iter().all(|step| {
+                step.as_u64()
+                    .and_then(|step| usize::try_from(step).ok())
+                    .is_some_and(|step| step < scale.len())
+            })
+        });
+        if !fits {
+            return fail(
+                "`tuning.mapping` is not a list of positions in `tuning.scale`".to_owned(),
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Finds the preset JSON inside a state: the first JSON object that holds
@@ -97,8 +204,8 @@ impl fmt::Display for Mismatch {
 }
 
 /// Compares the preset JSON of a sent state with the one in a saved
-/// state: the name and every part under `settings`. Keys the plug-in adds
-/// on save are ignored.
+/// state: the name, the tuning and every part under `settings`. Keys the
+/// plug-in adds on save are ignored.
 ///
 /// # Errors
 ///
@@ -110,7 +217,7 @@ pub fn readback_mismatches(sent: &PresetState, saved: &[u8]) -> Result<Vec<Misma
         RenderError::State("the state the plug-in saved holds no preset JSON".to_owned())
     })?;
     let mut mismatches = Vec::new();
-    for key in ["preset_name", "settings"] {
+    for key in ["preset_name", TUNING, "settings"] {
         if let Some(value) = sent.get(key) {
             compare(key, value, saved.get(key), &mut mismatches);
         }
@@ -223,7 +330,7 @@ mod tests {
     fn a_saved_state_matches_within_an_f32_step() {
         let sent = state();
         let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
-        saved["tuning"] = serde_json::json!({ "default": true });
+        saved["added_on_save"] = true.into();
         saved["settings"]["filter_1_cutoff"] = f64::from(cast::f64_to_f32(60.1)).into();
         assert_eq!(readback_mismatches(&sent, &wrapped(&saved)).unwrap(), []);
     }
@@ -245,6 +352,77 @@ mod tests {
             paths.contains(&"settings.oversampling".to_owned()),
             "{paths:?}"
         );
+    }
+
+    /// The minimal preset with `tuning` set to `tuning`.
+    fn tuned(tuning: Value) -> Result<PresetState, RenderError> {
+        let mut preset: Value = serde_json::from_slice(&preset()).unwrap();
+        preset[TUNING] = tuning;
+        preset_state(
+            Synth::Vital,
+            &serde_json::to_vec(&preset).unwrap(),
+            &Recipe::current(),
+        )
+    }
+
+    fn up_two() -> Value {
+        let mut tuning = default_tuning();
+        tuning["reference_midi_note"] = 2.into();
+        tuning["default"] = false.into();
+        tuning
+    }
+
+    #[test]
+    fn a_preset_without_a_tuning_gets_the_default_one() {
+        assert_eq!(
+            saved_preset(state().bytes()).unwrap()[TUNING],
+            default_tuning()
+        );
+    }
+
+    #[test]
+    fn a_preset_keeps_its_own_tuning() {
+        let mut tuning = up_two();
+        tuning["mapping"] = serde_json::json!([]);
+        let state = tuned(tuning).unwrap();
+        assert_eq!(saved_preset(state.bytes()).unwrap()[TUNING], up_two());
+    }
+
+    #[test]
+    fn a_tuning_the_plug_in_cannot_read_is_refused() {
+        let broken: [(&str, Value); 7] = [
+            ("scale_start_midi_note", 128.into()),
+            ("reference_midi_note", "2".into()),
+            ("tuning_name", Value::Null),
+            ("default", 1.into()),
+            ("scale", serde_json::json!([0, "1"])),
+            ("mapping", serde_json::json!([0, 13])),
+            ("mapping", serde_json::json!([-1])),
+        ];
+        for (key, value) in broken {
+            let mut tuning = default_tuning();
+            tuning[key] = value;
+            let error = tuned(tuning).unwrap_err();
+            assert!(matches!(error, RenderError::Preset(_)), "{key}: {error}");
+            assert!(
+                error.to_string().contains(&format!("`tuning.{key}`")),
+                "{error}"
+            );
+        }
+        assert!(matches!(tuned(12.into()), Err(RenderError::Preset(_))));
+    }
+
+    #[test]
+    fn a_tuning_the_plug_in_did_not_load_is_named() {
+        let sent = tuned(up_two()).unwrap();
+        let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
+        saved[TUNING] = default_tuning();
+        let paths: Vec<String> = readback_mismatches(&sent, &wrapped(&saved))
+            .unwrap()
+            .iter()
+            .map(|m| m.path.clone())
+            .collect();
+        assert_eq!(paths, ["tuning.reference_midi_note", "tuning.default"]);
     }
 
     #[test]
