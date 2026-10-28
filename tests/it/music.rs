@@ -7,7 +7,7 @@ use std::fs;
 use serde_json::Value;
 use sound_to_patch::music::check::coverage;
 use sound_to_patch::music::chord::parse_chord;
-use sound_to_patch::music::entry::{Fragment, Group, Rule};
+use sound_to_patch::music::entry::{Fragment, Group, Rule, Tag};
 use sound_to_patch::music::roman::parse_line;
 use sound_to_patch::music::{MusicError, TOPICS, dictionary};
 
@@ -273,6 +273,22 @@ fn the_dictionary_holds_the_published_rows() {
     assert_eq!(count(Group::Progression), 22);
     assert_eq!(count(Group::Genre), 20);
     assert_eq!(count(Group::Phrase), 7);
+}
+
+/// The genre guide is non-commercial, so an entry keeps its tempo or
+/// skeleton only when a second source agrees, or says it has one source.
+#[test]
+fn a_genre_guide_value_has_a_second_source_or_says_it_has_none() {
+    let lone: Vec<&str> = dictionary()
+        .unwrap()
+        .entries
+        .iter()
+        .filter(|entry| entry.source.iter().any(|source| source == "genre-guide"))
+        .filter(|entry| entry.tag != Tag::SingleSource)
+        .filter(|entry| entry.source.len() < 2 || entry.n_sources < 2)
+        .map(|entry| entry.id.as_str())
+        .collect();
+    assert_eq!(lone, Vec::<&str>::new());
 }
 
 /// The maqam entries of the scale group, beside the 57 scale rows.

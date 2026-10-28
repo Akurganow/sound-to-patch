@@ -21,7 +21,7 @@ genre.trance 125 Some(138.0) 150
 genre.psytrance 125 None 150
 genre.drum-and-bass 160 Some(174.0) 180
 genre.dubstep 132 Some(140.0) 142
-genre.trap 130 Some(140.0) 170
+genre.trap 130 Some(140.0) 160
 genre.boom-bap 85 None 100
 genre.deep-house 110 Some(125.0) 128
 genre.tech-house 120 None 132

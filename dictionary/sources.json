@@ -14,8 +14,6 @@
   { "id": "sheet-chords", "name": "Chordonomicon chord sheets", "url": "https://huggingface.co/datasets/ailsntua/Chordonomicon", "licence": "CC BY-NC 4.0", "revision": "f3a8b67", "use": "counts only" },
   { "id": "key-set-1", "name": "GiantSteps key data, 604 annotated EDM tracks", "url": "https://github.com/GiantSteps/giantsteps-key-dataset", "licence": "no licence stated", "revision": "6bcd492", "use": "counts only" },
   { "id": "key-set-2", "name": "GiantSteps MTG key data, 1,486 annotated EDM tracks", "url": "https://github.com/GiantSteps/giantsteps-mtg-key-dataset", "licence": "no licence stated", "revision": "fd7b8c5", "use": "counts only" },
-  { "id": "stream-keys", "name": "A streaming-service track feature dataset upload", "url": "https://huggingface.co/datasets/maharshipandya/spotify-tracks-dataset", "licence": "BSD per its card; the fields come from a commercial API", "revision": "635b034", "use": "counts only" },
-  { "id": "crowd-tabs", "name": "A crowd-labelled key popularity page", "url": "https://www.hooktheory.com/cheat-sheet/key-popularity", "licence": "terms ban bulk extraction", "use": "counts only" },
   { "id": "pop909", "name": "POP909 dataset", "url": "https://github.com/music-x-lab/POP909-Dataset", "licence": "MIT; the songs keep their copyright", "revision": "d83e6ed", "use": "counts only" },
   { "id": "lmd", "name": "Lakh MIDI Dataset, clean subset", "url": "https://colinraffel.com/projects/lmd/", "licence": "CC BY 4.0 for the collection; the songs keep their copyright", "use": "counts only" },
   { "id": "midicaps", "name": "MidiCaps captioned MIDI", "url": "https://huggingface.co/datasets/amaai-lab/MidiCaps", "licence": "CC BY-SA 4.0", "use": "counts only" },

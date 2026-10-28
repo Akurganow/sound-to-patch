@@ -111,7 +111,7 @@
   },
   {
     "file": "reference/core/statistics-keys.md",
-    "question": "Which share counts major keys among crowd-labelled songs?",
-    "answer": "crowd-mode.major"
+    "question": "Which share counts minor tracks in the 604-track annotated set?",
+    "answer": "minor-share.set1"
   }
 ]

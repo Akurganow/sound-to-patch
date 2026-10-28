@@ -335,8 +335,6 @@ and ideas, from which we copy no code, text or data.
 
 ### Datasets
 
-- [A crowd-labelled key popularity page](https://www.hooktheory.com/cheat-sheet/key-popularity) (terms ban bulk extraction): mode shares read from the public page, nothing stored. Inspiration only.
-- [A streaming-service track feature upload](https://huggingface.co/datasets/maharshipandya/spotify-tracks-dataset) (BSD per its card, fields from a commercial API): key and mode shares by genre, counts only. Inspiration only.
 - [AKWF-FREE](https://github.com/KristofferKarlAxelEkstrand/AKWF-FREE) (CC0-1.0): single-cycle waveforms as bench data for wavetable matching.
 - [AudioSet ontology](https://github.com/audioset/ontology) (CC BY-SA 4.0): class names for effect tags. Inspiration only.
 - [Chordonomicon](https://huggingface.co/datasets/ailsntua/Chordonomicon) (CC BY-NC 4.0): progression shares and chord frequencies of the music dictionary, counts only. Inspiration only.

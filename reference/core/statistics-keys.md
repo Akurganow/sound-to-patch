@@ -6,9 +6,6 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 
 ## Contents
 
-- [Crowd major root](#crowd-major-root)
-- [Crowd minor root](#crowd-minor-root)
-- [Crowd mode](#crowd-mode)
 - [Feel](#feel)
 - [Happier mode](#happier-mode)
 - [Key test](#key-test)
@@ -23,40 +20,6 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 - [Rhythm, swing and feel](#rhythm-swing-and-feel)
 - [Swing](#swing)
 - [Top key](#top-key)
-
-## Crowd major root
-
-| Claim | Id | Share % | Counts | Tag | Sources |
-| :-- | :-- | --: | :-- | :-- | :-- |
-| Share of crowd-labelled major keys with tonic C. | `crowd-major-root.c` | 15 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled major keys with tonic D. | `crowd-major-root.d` | 12 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled major keys with tonic G. | `crowd-major-root.g` | 12 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled major keys with tonic A. | `crowd-major-root.a` | 10 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled major keys with tonic E. | `crowd-major-root.e` | 9 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled major keys with tonic F. | `crowd-major-root.f` | 8 |  | single source | lexicon, crowd-tabs |
-
-## Crowd minor root
-
-| Claim | Id | Share % | Counts | Tag | Sources |
-| :-- | :-- | --: | :-- | :-- | :-- |
-| Share of crowd-labelled minor keys with tonic A. | `crowd-minor-root.a` | 13 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled minor keys with tonic C. | `crowd-minor-root.c` | 12 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled minor keys with tonic E. | `crowd-minor-root.e` | 12 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled minor keys with tonic D. | `crowd-minor-root.d` | 11 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled minor keys with tonic B. | `crowd-minor-root.b` | 9 |  | single source | lexicon, crowd-tabs |
-| Share of crowd-labelled minor keys with tonic G. | `crowd-minor-root.g` | 8 |  | single source | lexicon, crowd-tabs |
-
-## Crowd mode
-
-| Claim | Id | Share % | Counts | Tag | Sources |
-| :-- | :-- | --: | :-- | :-- | :-- |
-| Share of the 79,149 crowd-labelled keys in major. | `crowd-mode.major` | 51.1 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in natural minor. | `crowd-mode.minor` | 36.6 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in Mixolydian. | `crowd-mode.mixolydian` | 5.6 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in Dorian. | `crowd-mode.dorian` | 4.4 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in Phrygian. | `crowd-mode.phrygian` | 1.3 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in Lydian. | `crowd-mode.lydian` | 0.8 |  | single source | lexicon, crowd-tabs |
-| Share of the 79,149 crowd-labelled keys in Locrian. | `crowd-mode.locrian` | 0.2 |  | single source | lexicon, crowd-tabs |
 
 ## Feel
 
@@ -80,12 +43,11 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 | Claim | Id | Share % | Counts | Tag | Sources |
 | :-- | :-- | --: | :-- | :-- | :-- |
 | Chance share of two pitch classes out of twelve. | `key-test.chance-two-roots` | 16.7 | 2 of 12 | single source | lexicon |
-| Chance share of four pitch classes out of twelve. | `key-test.chance-three-roots` | 33.3 | 4 of 12 | single source | lexicon |
+| Chance share of four pitch classes out of twelve. | `key-test.chance-four-roots` | 33.3 | 4 of 12 | single source | lexicon |
 | Share of tracks in the 604-track set with relative-minor root F or C. | `key-test.f-c-set1` | 23.2 |  | single source | lexicon, key-set-1 |
 | Share of tracks in the 1,350-track set with relative-minor root F or C. | `key-test.f-c-set2` | 23.9 |  | single source | lexicon, key-set-2 |
 | Share of tracks in the 604-track set with relative-minor root E, F, F# or G. | `key-test.e-to-g-set1` | 40.2 |  | single source | lexicon, key-set-1 |
 | Share of tracks in the 1,350-track set with relative-minor root E, F, F# or G. | `key-test.e-to-g-set2` | 36.4 |  | single source | lexicon, key-set-2 |
-| Share of streaming tracks with relative-minor root E, F, F# or G. | `key-test.e-to-g-streaming` | 35.3 |  | single source | lexicon, stream-keys |
 | Share of tracks in the 604-track set with relative-minor root F#, G#, A# or B. | `key-test.sharp-roots-set1` | 24.3 |  | single source | lexicon, key-set-1 |
 | Share of tracks in the 1,350-track set with relative-minor root F#, G#, A# or B. | `key-test.sharp-roots-set2` | 26.2 |  | single source | lexicon, key-set-2 |
 
@@ -123,8 +85,6 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 | :-- | :-- | --: | :-- | :-- | :-- |
 | Share of tracks in the 604-track annotated set that are minor. | `minor-share.set1` | 84.6 |  | single source | lexicon, key-set-1 |
 | Share of tracks in the 1,350-track annotated set that are minor. | `minor-share.set2` | 68.2 |  | single source | lexicon, key-set-2 |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres that are minor. | `minor-share.streaming-edm` | 47.2 |  | single source | lexicon, stream-keys |
-| Share of all 100,045 streaming tracks that are minor. | `minor-share.streaming-all` | 36.6 |  | single source | lexicon, stream-keys |
 | Share of Breaks tracks in the 1,350-track set that are minor. | `minor-share.set2-breaks` | 84 |  | single source | lexicon, key-set-2 |
 | Share of Psy-Trance tracks in the 1,350-track set that are minor. | `minor-share.set2-psy-trance` | 84 |  | single source | lexicon, key-set-2 |
 | Share of Techno tracks in the 1,350-track set that are minor. | `minor-share.set2-techno` | 77 |  | single source | lexicon, key-set-2 |
@@ -148,15 +108,6 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 | Share of trance tracks in the 604-track set that are minor. | `minor-share.set1-trance` | 88 |  | single source | lexicon, key-set-1 |
 | Share of dubstep tracks in the 604-track set that are minor. | `minor-share.set1-dubstep` | 91 |  | single source | lexicon, key-set-1 |
 | Share of drum and bass tracks in the 604-track set that are minor. | `minor-share.set1-drum-and-bass` | 82 |  | single source | lexicon, key-set-1 |
-| Share of techno streaming tracks that are minor. | `minor-share.streaming-techno` | 44 |  | single source | lexicon, stream-keys |
-| Share of trance streaming tracks that are minor. | `minor-share.streaming-trance` | 52 |  | single source | lexicon, stream-keys |
-| Share of dubstep streaming tracks that are minor. | `minor-share.streaming-dubstep` | 42 |  | single source | lexicon, stream-keys |
-| Share of drum and bass streaming tracks that are minor. | `minor-share.streaming-drum-and-bass` | 52 |  | single source | lexicon, stream-keys |
-| Share of deep house streaming tracks that are minor. | `minor-share.streaming-deep-house` | 52 |  | single source | lexicon, stream-keys |
-| Share of hip-hop streaming tracks that are minor. | `minor-share.streaming-hip-hop` | 54 |  | single source | lexicon, stream-keys |
-| Share of ambient streaming tracks that are minor. | `minor-share.streaming-ambient` | 38 |  | single source | lexicon, stream-keys |
-| Share of pop streaming tracks that are minor. | `minor-share.streaming-pop` | 48 |  | single source | lexicon, stream-keys |
-| Share of heavy metal streaming tracks that are minor. | `minor-share.streaming-heavy-metal` | 41 |  | single source | lexicon, stream-keys |
 
 ## Outside share
 
@@ -217,18 +168,6 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 | Share of tracks in the 1,350-track annotated set whose relative-minor root is A. | `relative-minor-root.set2-a` | 7.7 |  | single source | lexicon, key-set-2 |
 | Share of tracks in the 1,350-track annotated set whose relative-minor root is A#. | `relative-minor-root.set2-a-sharp` | 6.8 |  | single source | lexicon, key-set-2 |
 | Share of tracks in the 1,350-track annotated set whose relative-minor root is B. | `relative-minor-root.set2-b` | 8.1 |  | single source | lexicon, key-set-2 |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is C. | `relative-minor-root.streaming-edm-c` | 4 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is C#. | `relative-minor-root.streaming-edm-c-sharp` | 6.1 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is D. | `relative-minor-root.streaming-edm-d` | 4.5 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is D#. | `relative-minor-root.streaming-edm-d-sharp` | 5.3 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is E. | `relative-minor-root.streaming-edm-e` | 12.4 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is F. | `relative-minor-root.streaming-edm-f` | 10 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is F#. | `relative-minor-root.streaming-edm-f-sharp` | 8.4 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is G. | `relative-minor-root.streaming-edm-g` | 4.5 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is G#. | `relative-minor-root.streaming-edm-g-sharp` | 6.2 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is A. | `relative-minor-root.streaming-edm-a` | 10.6 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is A#. | `relative-minor-root.streaming-edm-a-sharp` | 15.4 |  | single source | lexicon, stream-keys |
-| Share of tracks in the 15,246 streaming tracks in EDM-like genres whose relative-minor root is B. | `relative-minor-root.streaming-edm-b` | 12.5 |  | single source | lexicon, stream-keys |
 | Share per pitch class when the twelve roots are equally likely. | `relative-minor-root.uniform` | 8.3 | 1 of 12 | single source | lexicon |
 
 ## Rhythm, swing and feel

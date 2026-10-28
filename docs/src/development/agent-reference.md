@@ -154,7 +154,14 @@ changed number shows in review.
 Most shares in `dictionary/music/stats.json` are transcribed from the
 published lexicon, whose aggregation scripts are not committed; they carry
 the tag `single source` and cite `lexicon` next to their corpus. Only a
-share with counts is recomputed.
+share with counts is recomputed. A source whose terms forbid bulk
+extraction or model evaluation, or whose fields come from a commercial
+API, gives no share. A non-commercial chord database gives aggregate
+shares only, never a row or a song. A genre entry that cites the
+non-commercial genre guide keeps its tempo range or drum skeleton only
+when a second source agrees and cites both; otherwise it carries the tag
+`single source`. Tempos and skeletons are written in this dictionary's
+own form: a range with a centre and slot sets on a 16-step grid.
 
 ## Checks
 
