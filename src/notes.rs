@@ -81,6 +81,12 @@ impl Velocity {
         }
     }
 
+    /// Builds a velocity in a `const` item. Every caller passes a literal
+    /// from 1 to 127 that a test also builds through [`Self::new`].
+    pub(crate) const fn from_const(value: u8) -> Self {
+        Self(value)
+    }
+
     /// Returns the velocity.
     #[must_use]
     pub fn get(self) -> u8 {

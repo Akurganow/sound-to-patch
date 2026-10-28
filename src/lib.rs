@@ -23,6 +23,9 @@
 //!   traits, the parameter registry with its laws, the template, the edit
 //!   list and its applier, the mapper trait that turns layer values into
 //!   edits, and the Vital adapter.
+//! - [`render`]: rendering a preset and its notes to audio: the recipe, the
+//!   render job and record, the renderer trait and a fake renderer for
+//!   tests.
 //! - [`report`]: the outputs of a stem: `layers.json` and the spectrogram
 //!   image with the `analyze` pipeline that writes them, and `notes.mid`
 //!   with the `notes` command.
@@ -38,6 +41,7 @@ pub mod confidence;
 pub mod dsp;
 pub mod notes;
 pub mod preset;
+pub mod render;
 pub mod report;
 pub mod synth;
 pub mod units;

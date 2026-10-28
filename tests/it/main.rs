@@ -31,6 +31,8 @@ mod preset;
 #[cfg(test)]
 mod reference;
 #[cfg(test)]
+mod render;
+#[cfg(test)]
 mod report;
 #[cfg(test)]
 mod stem;

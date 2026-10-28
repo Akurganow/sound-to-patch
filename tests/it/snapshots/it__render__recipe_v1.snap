@@ -1,0 +1,47 @@
+---
+source: tests/it/render.rs
+expression: recipe_json()
+---
+{
+  "version": 1,
+  "sample_rate": 44100,
+  "channels": 2,
+  "block_size": 512,
+  "process_mode": "offline",
+  "velocity": 100,
+  "bass": [
+    36
+  ],
+  "lead": [
+    60
+  ],
+  "pad": [
+    60,
+    64,
+    67
+  ],
+  "hold": 3.0,
+  "clip": 4.0,
+  "tail_floor": -96.0,
+  "tail_hold": 1.0,
+  "tail_cap": 30.0,
+  "pre_roll": [
+    {
+      "step": "settle",
+      "length": 0.5
+    },
+    {
+      "step": "warm_up",
+      "key": 60,
+      "velocity": 100,
+      "start": 0.0,
+      "end": 0.5,
+      "length": 1.0
+    },
+    {
+      "step": "settle",
+      "length": 0.5
+    }
+  ],
+  "vital_oversampling": "2x"
+}
