@@ -72,6 +72,8 @@ enum Task {
     CheckArchitecture,
     /// Check that `Cargo.lock` holds no ONNX Runtime crate.
     CheckNoOrt,
+    /// Check that `fuzz/Cargo.lock` names the crate version of `Cargo.lock`.
+    CheckFuzzLock,
     /// Check that every cited source has a credit with a licence.
     CheckCredits,
     /// Check the agent plugins: manifests, the marketplace, skill sizes and
@@ -108,7 +110,7 @@ enum Task {
         #[arg(long, conflicts_with = "check")]
         coverage: bool,
     },
-    /// Write a release version into the workspace manifest and the lock file.
+    /// Write a release version into the workspace manifest and the lock files.
     SetVersion {
         /// The new version, without a `v` prefix.
         version: String,
@@ -124,6 +126,7 @@ fn main() -> ExitCode {
         Task::GoldenCheck => golden::check(root()),
         Task::CheckArchitecture => architecture::check(root()),
         Task::CheckNoOrt => lock::check_no_ort(root()),
+        Task::CheckFuzzLock => lock::check_fuzz_lock(root()),
         Task::CheckCredits => credits::check(root()),
         Task::CheckPlugins => plugins::check(root()),
         Task::CheckRustVersion => version::check_rust_version(root()),

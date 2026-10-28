@@ -17,8 +17,10 @@ one tags or uploads by hand.
    - any other type alone bumps nothing. The job ends green and the change
      ships with the next release.
 3. A bump runs `cargo xtask set-version`, which writes the version into
-   `Cargo.toml` and `Cargo.lock`, updates `CHANGELOG.md` and creates the
-   commit `chore(version): vX.Y.Z` with the tag `vX.Y.Z`.
+   `Cargo.toml`, `Cargo.lock` and `fuzz/Cargo.lock`, updates
+   `CHANGELOG.md` and creates the commit `chore(version): vX.Y.Z` with the
+   tag `vX.Y.Z`. The `test` job runs `cargo xtask check-fuzz-lock`, which
+   fails when the two lock files name different versions of the crate.
 4. The job pushes the commit and the tag in one atomic push with the
    release deploy key. The main ruleset lets only that key push to `main`
    directly. The private key is a secret of the `release` environment,
