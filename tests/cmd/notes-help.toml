@@ -1,0 +1,36 @@
+bin.name = "sound-to-patch"
+args = ["notes", "--help"]
+stdout = """
+Transcribe a stem and write notes.mid.
+
+The pitch range, the voicing and the minimum note length come from the stem unless --profile sets them. Each step prints what it found.
+
+Example: sound-to-patch notes bass.wav --bpm 140
+
+Usage: sound-to-patch notes [OPTIONS] --bpm <BPM> <STEM>
+
+Arguments:
+  <STEM>
+          The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A
+
+Options:
+      --bpm <BPM>
+          The tempo of the stem in beats per minute, 4 to 1000
+
+      --profile <PROFILE>
+          Decode with the settings of this kind of stem instead of the detected ones
+
+          Possible values:
+          - bass: B0 to F#4, with the minimum length from the BPM
+          - lead: C2 to B6, with the minimum length from the BPM. Plucks use it too
+          - pad:  C2 to B6, with the decoder's default minimum length. Chords use it too
+
+  -o, --out <DIR>
+          The output folder [default: a folder named after the stem, next to it]
+
+      --force
+          Write next to a report of another stem in the output folder
+
+  -h, --help
+          Print help (see a summary with '-h')
+"""

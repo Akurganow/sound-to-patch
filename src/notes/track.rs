@@ -211,6 +211,54 @@ mod tests {
     use super::*;
     use crate::cast;
 
+    fn frame(time: f64, f0: Option<f64>) -> TrackFrame {
+        TrackFrame {
+            time: Seconds::new(time).unwrap(),
+            f0: f0.map(|hz| Hz::new(hz).unwrap()),
+            level: Decibels::new(0.0).unwrap(),
+        }
+    }
+
+    #[test]
+    fn voiced_frames_run_from_the_onset_up_to_the_offset() {
+        let track = PitchTrack::from_frames(vec![
+            frame(0.1, Some(110.0)),
+            frame(0.2, None),
+            frame(0.3, Some(220.0)),
+            frame(0.4, Some(440.0)),
+        ]);
+        let s = |value| Seconds::new(value).unwrap();
+        let times: Vec<f64> = track
+            .voiced_between(s(0.1), s(0.4))
+            .map(|(time, _)| time.get())
+            .collect();
+        assert_eq!(times, [0.1, 0.3]);
+        let pitches: Vec<f64> = track
+            .voiced_pitches()
+            .iter()
+            .map(|p| p.get().round())
+            .collect();
+        assert_eq!(pitches, [45.0, 57.0, 69.0]);
+    }
+
+    #[test]
+    fn errors_name_their_cause_and_keep_their_source() {
+        let not_finite = TrackError::NotFinite(7);
+        assert_eq!(
+            not_finite.to_string(),
+            "cannot track f0: sample 7 is not finite"
+        );
+        assert!(not_finite.source().is_none());
+        let native = SampleRate::new(48_000).unwrap();
+        let resample = TrackError::Resample(resample(&[f64::NAN], native, MODEL_RATE).unwrap_err());
+        assert!(
+            resample
+                .to_string()
+                .starts_with("cannot prepare the stem for the f0 track: ")
+        );
+        assert!(resample.source().is_some());
+    }
+
     /// The constructor of the tracker panics unless these hold; the
     /// settings are constants, so this test is their only check.
     #[test]

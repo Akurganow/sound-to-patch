@@ -187,7 +187,7 @@
           "properties": {
             "model_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
             "crate_version": { "type": "string" },
-            "profile": { "type": "string" },
+            "profile": { "enum": ["bass", "lead", "pad", "detected"] },
             "note_params": {
               "type": "object",
               "propertyNames": { "$ref": "#/$defs/name" },

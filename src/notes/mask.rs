@@ -248,9 +248,14 @@ mod tests {
     }
 
     fn mask_of(list: &NoteList) -> FrameMask {
+        mask_with(list, MaskParams::new())
+    }
+
+    /// The mask at 1 s with bins of 10.77 Hz, 44.1 kHz over 4096 samples.
+    fn mask_with(list: &NoteList, params: MaskParams) -> FrameMask {
         let rate = SampleRate::new(44_100).unwrap();
         let stft = StftParams::new(4096).unwrap();
-        let mut masker = Masker::new(list, MaskParams::new(), stft, rate);
+        let mut masker = Masker::new(list, params, stft, rate);
         let mut mask = FrameMask::new(stft.bins());
         masker.frame(Seconds::new(1.0).unwrap(), &mut mask);
         mask
@@ -269,13 +274,52 @@ mod tests {
     }
 
     #[test]
-    fn a_silent_frame_has_no_mask() {
+    fn a_silent_frame_clears_the_mask_of_the_frame_before() {
         let list = notes(&[45.0]);
         let rate = SampleRate::new(44_100).unwrap();
         let stft = StftParams::new(4096).unwrap();
         let mut masker = Masker::new(&list, MaskParams::new(), stft, rate);
         let mut mask = FrameMask::new(stft.bins());
+        masker.frame(Seconds::new(1.0).unwrap(), &mut mask);
+        assert!(mask.is_masked(10));
         masker.frame(Seconds::new(11.0).unwrap(), &mut mask);
         assert!((0..stft.bins()).all(|bin| !mask.is_masked(bin)));
+    }
+
+    #[test]
+    fn each_parameter_narrows_the_mask_of_a2() {
+        // 110 Hz lies 2.33 Hz above the centre of bin 10.
+        let a2 = notes(&[45.0]);
+        let default = mask_of(&a2);
+        assert!(default.is_masked(10) && default.is_masked(20));
+        let fundamental = mask_with(&a2, MaskParams::new().with_harmonics(1));
+        assert!(fundamental.is_masked(10) && !fundamental.is_masked(20));
+        let narrow = mask_with(&a2, MaskParams::new().with_sigma(Hz::new(1.0).unwrap()));
+        assert!(!narrow.is_masked(10));
+        let strict = mask_with(
+            &a2,
+            MaskParams::new().with_threshold(Normalized::new(0.99).unwrap()),
+        );
+        assert!(!strict.is_masked(10));
+    }
+
+    #[test]
+    fn a_note_on_one_bin_masks_that_bin() {
+        let bin_hz = 44_100.0 / 4096.0;
+        let pitch = MidiPitch::try_from(Hz::new(10.0 * bin_hz).unwrap()).unwrap();
+        let list = notes(&[pitch.get()]);
+        let params = MaskParams::new()
+            .with_harmonics(1)
+            .with_sigma(Hz::new(0.1).unwrap());
+        let mask = mask_with(&list, params);
+        assert_eq!(mask.owner(10), Some(0));
+        assert!(!mask.is_masked(9) && !mask.is_masked(11));
+    }
+
+    #[test]
+    fn of_two_equal_notes_the_first_owns_the_bin() {
+        let mask = mask_of(&notes(&[45.0, 45.0]));
+        assert_eq!(mask.owner(10), Some(0));
+        assert!(mask.is_shared(10));
     }
 }

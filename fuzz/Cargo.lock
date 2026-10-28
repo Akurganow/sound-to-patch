@@ -139,6 +139,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb3451e4cab45754c5e23241aef4dc22d31c2efb0f41b8b876e1f4fcd17c53ca"
 dependencies = [
+ "serde",
  "thiserror 2.0.21",
  "tract-onnx",
 ]
@@ -1418,7 +1419,7 @@ checksum = "d0d5d4b1981b8bbbb7aed204cae5726d683d5d6ac7e74ec54122ea28f315e7c8"
 
 [[package]]
 name = "sound-to-patch"
-version = "0.11.0"
+version = "0.12.0"
 dependencies = [
  "base64",
  "basic-pitch-rs",

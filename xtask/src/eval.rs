@@ -2,8 +2,9 @@
 //!
 //! Every part runs the model once, then decodes with each manual profile
 //! and with the detected settings. The tables score each decode by the
-//! `mir_eval` rules, compare detection with the right profile per part
-//! class, and show what the quiet-note guard does to a part with bleed.
+//! `mir_eval` rules, raw and after the cleanup, compare detection with
+//! the right profile per part class, count the notes after each cleanup
+//! step, and show what the quiet-note guard does to a part with bleed.
 //! The set and the results stay local; nothing here is committed.
 
 mod matcher;
@@ -13,8 +14,8 @@ use std::collections::BTreeMap;
 
 use sound_to_patch::audio::SampleRate;
 use sound_to_patch::notes::{
-    DecodeSettings, Detection, NoteList, PitchTrack, Profile, QUIET_GATE, REGISTER_WINDOW,
-    Transcriber, detect, detect_with_window, drop_quiet,
+    CleanupSteps, DecodeSettings, Detection, NoteList, PitchTrack, Profile, QUIET_GATE,
+    REGISTER_WINDOW, Transcriber, clean_up, detect, detect_with_window, drop_quiet,
 };
 use sound_to_patch::units::{Bpm, Decibels};
 
@@ -122,9 +123,11 @@ const COLUMNS: [&str; 7] = [
 /// The scores and rows the tables print, summed over the parts.
 #[derive(Default)]
 struct Tally {
-    by_class: BTreeMap<(Class, &'static str), Scores>,
+    /// Raw and clean scores per class and settings.
+    by_class: BTreeMap<(Class, &'static str, bool), Scores>,
     by_group: BTreeMap<(&'static str, &'static str, bool), Score>,
     detections: Vec<String>,
+    steps: Vec<String>,
     bleed_rows: Vec<String>,
 }
 
@@ -152,32 +155,49 @@ impl Tally {
         for (name, decode) in columns {
             let notes = model.decode(&decode)?;
             let scores = Scores::of(&part.notes, &eval_notes(&notes));
-            let (kept, _) = drop_quiet(&notes, &part.audio, rate, QUIET_GATE);
-            let guarded = Scores::of(&part.notes, &eval_notes(&kept));
+            let voicing = Profile::ALL
+                .into_iter()
+                .find(|profile| profile.name() == name)
+                .map_or(detection.voicing, Profile::voicing);
+            let (kept, steps) = clean_up(&notes, &model, &track, voicing, &part.audio, rate);
+            let clean = Scores::of(&part.notes, &eval_notes(&kept));
             println!(
-                "{:<28} {:<9} {} {:>5.3}",
+                "{:<28} {:<9} {} {:>4} {:>5.3} {:>5.3} {:>3}",
                 part.name,
                 name,
                 scores.row(),
-                guarded.onset.f1()
+                kept.notes().len(),
+                clean.onset.recall(),
+                clean.onset.f1(),
+                clean.octave_up + clean.octave_down
             );
+            if name == "detected" {
+                self.steps.push(steps_row(part, &steps));
+            }
+            if name == "bass" {
+                check_60(part, &notes, &kept)?;
+            }
             if verbose {
                 println!("  reference {}", listing(&part.notes));
                 println!("  estimated {}", listing(&eval_notes(&notes)));
+                println!("  clean     {}", listing(&eval_notes(&kept)));
             }
             if part.class == Class::Silence && !notes.is_empty() {
                 return Err(
                     format!("{name} found {} notes in silence", notes.notes().len()).into(),
                 );
             }
-            let entry = self.by_class.entry((part.class, name)).or_default();
-            *entry = entry.add(scores);
-            for (is_guarded, score) in [(false, scores.onset), (true, guarded.onset)] {
+            for (is_clean, score) in [(false, scores), (true, clean)] {
                 let entry = self
-                    .by_group
-                    .entry((group(part), name, is_guarded))
+                    .by_class
+                    .entry((part.class, name, is_clean))
                     .or_default();
                 *entry = entry.add(score);
+                let entry = self
+                    .by_group
+                    .entry((group(part), name, is_clean))
+                    .or_default();
+                *entry = entry.add(score.onset);
             }
             if name == "detected" && !part.bleed.is_empty() {
                 self.bleed_rows.extend(bleed_row(part, &notes, rate)?);
@@ -190,10 +210,12 @@ impl Tally {
     /// Prints the verdict table and returns the classes where detection
     /// scores worse than the right profile.
     fn verdict(&self) -> Vec<&'static str> {
-        println!("\nDetection against the right manual profile, onset F1 over each class\n");
         println!(
-            "{:<8} {:>8} {:>8} {:>8} {:>8}  verdict",
-            "class", "profile", "detected", "pc prof", "pc det"
+            "\nDetection against the right manual profile, onset F1 over each class, raw and clean\n"
+        );
+        println!(
+            "{:<8} {:>8} {:>8} {:>8} {:>8} {:>8} {:>8}  verdict",
+            "class", "profile", "detected", "pc prof", "pc det", "clean pr", "clean de"
         );
         let mut worse = Vec::new();
         for class in [Class::Bass, Class::Lead, Class::Pad] {
@@ -201,32 +223,44 @@ impl Tally {
                 continue;
             };
             // A class with no part in the selection has nothing to compare.
-            if !self.by_class.contains_key(&(class, profile)) {
+            if !self.by_class.contains_key(&(class, profile, false)) {
                 continue;
             }
-            let manual = self
-                .by_class
-                .get(&(class, profile))
-                .copied()
-                .unwrap_or_default();
-            let detected = self
-                .by_class
-                .get(&(class, "detected"))
-                .copied()
-                .unwrap_or_default();
-            let verdict = if detected.onset.f1() + 1e-12 >= manual.onset.f1() {
+            let get = |name, clean| {
+                self.by_class
+                    .get(&(class, name, clean))
+                    .copied()
+                    .unwrap_or_default()
+            };
+            let (manual, detected) = (get(profile, false), get("detected", false));
+            let (manual_clean, detected_clean) = (get(profile, true), get("detected", true));
+            let verdict = if detected.onset.f1() + 1e-12 >= manual.onset.f1()
+                && detected_clean.onset.f1() + 1e-12 >= manual_clean.onset.f1()
+            {
                 "no worse"
             } else {
                 worse.push(class.name());
                 "WORSE"
             };
             println!(
-                "{:<8} {:>8.3} {:>8.3} {:>8.3} {:>8.3}  {verdict}",
+                "{:<8} {:>8.3} {:>8.3} {:>8.3} {:>8.3} {:>8.3} {:>8.3}  {verdict}",
                 class.name(),
                 manual.onset.f1(),
                 detected.onset.f1(),
                 manual.pitch_class.f1(),
                 detected.pitch_class.f1(),
+                manual_clean.onset.f1(),
+                detected_clean.onset.f1(),
+            );
+            println!(
+                "{:<8} {:>8.3} {:>8.3} {:>8} {:>8} {:>8.3} {:>8.3}  recall",
+                "",
+                manual.onset.recall(),
+                detected.onset.recall(),
+                "",
+                "",
+                manual_clean.onset.recall(),
+                detected_clean.onset.recall(),
             );
         }
         worse
@@ -234,20 +268,20 @@ impl Tally {
 
     fn groups(&self) {
         println!(
-            "\nOnset F1 (matched/estimated/reference) per group, raw and after the {} dB quiet-note guard.\nThe detected settings read the f0 register within {} dB of the loudest frame.\n",
+            "\nOnset F1 (matched/estimated/reference) per group, raw and clean: after the octave check,\nthe ghost merge, the split join and the {} dB quiet-note guard.\nThe detected settings read the f0 register within {} dB of the loudest frame.\n",
             QUIET_GATE.get(),
             REGISTER_WINDOW.get()
         );
         println!(
             "{:<11} {:<9} {:>22} {:>22}",
-            "group", "settings", "raw", "guarded"
+            "group", "settings", "raw", "clean"
         );
         for group in ["bass clean", "bass bleed", "bass transient", "lead", "pad"] {
             for name in COLUMNS {
-                let cell = |guarded| {
+                let cell = |clean| {
                     let score = self
                         .by_group
-                        .get(&(group, name, guarded))
+                        .get(&(group, name, clean))
                         .copied()
                         .unwrap_or_default();
                     format!(
@@ -286,8 +320,20 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
     }
     println!("Scores per part (onset tolerance 50 ms, pitch 50 cents, offsets 20 % or 50 ms)\n");
     println!(
-        "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>5}",
-        "part", "settings", "est", "P", "R", "F1", "F1off", "F1pc", "oct", "F1g"
+        "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>4} {:>5} {:>5} {:>3}",
+        "part",
+        "settings",
+        "est",
+        "P",
+        "R",
+        "F1",
+        "F1off",
+        "F1pc",
+        "oct",
+        "kept",
+        "Rc",
+        "F1c",
+        "oct"
     );
     let mut tally = Tally::default();
     for part in &parts {
@@ -301,6 +347,14 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
         "part", "voicing", "chords", "f0 register", "probe", "range", "frames", "holds"
     );
     for row in &tally.detections {
+        println!("{row}");
+    }
+    println!("\nCleanup steps per part (detected settings): notes after each step\n");
+    println!(
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
+        "part", "decoded", "moved", "flagged", "unchecked", "merged", "joined", "quiet", "kept"
+    );
+    for row in &tally.steps {
         println!("{row}");
     }
     println!("\nQuiet-note guard on the bleed parts (detected settings)\n");
@@ -370,6 +424,53 @@ fn detection_row(part: &Part, detection: &Detection) -> String {
         high,
         detection.settings.min_note_frames,
         if holds { "yes" } else { "NO" },
+    )
+}
+
+/// The goldens of #60 on the bass profile. The dry 110 Hz saw shows the
+/// octave ghost at MIDI 57 before the cleanup; after it every note is a
+/// true A2, and 5 of the 6 match, because the model misses the onset of the
+/// fourth. Its six notes through reverb give the six true notes.
+fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<()> {
+    let at_57 = |list: &NoteList| {
+        list.notes()
+            .iter()
+            .filter(|note| (note.pitch().get() - 57.0).abs() < 0.5)
+            .count()
+    };
+    let found = eval_notes(clean);
+    let matched = onset_score(&part.notes, &found).matched;
+    let fail = |what: String| Err(format!("#60 golden, {}: {what}", part.name).into());
+    let expected = match part.name.as_str() {
+        "bass 110 Hz release 0.3 s" if at_57(decoded) == 0 => {
+            return fail("the decoder gave no ghost at MIDI 57 to remove".to_owned());
+        }
+        "bass 110 Hz release 0.3 s" => 5,
+        "bass 110 Hz release 0.3 s+reverb" => 6,
+        _ => return Ok(()),
+    };
+    if found.len() == expected && matched == expected {
+        Ok(())
+    } else {
+        fail(format!(
+            "{} notes after the cleanup, {matched} of them true, not {expected} true notes alone",
+            found.len()
+        ))
+    }
+}
+
+fn steps_row(part: &Part, steps: &CleanupSteps) -> String {
+    format!(
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
+        part.name,
+        steps.decoded,
+        steps.octaves.moved,
+        steps.octaves.flagged,
+        steps.octaves.unchecked,
+        steps.merged,
+        steps.joined,
+        steps.quiet,
+        steps.kept
     )
 }
 

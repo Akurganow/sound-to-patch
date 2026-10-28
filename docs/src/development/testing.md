@@ -38,6 +38,29 @@ needs from the matrix below and names them in its issue.
 | Test bench | ● | ○ | – | – | ○ | ○ | – | – | – | – | ● |
 | Skill and docs | – | – | ● | ● | ○ | – | – | – | – | – | ○ |
 
+## Benchmarks
+
+`cargo bench --bench notes` runs the benchmark harness groups of the notes step on
+one generated 60 s stem: the model load, the model run at one thread and
+at all threads, the f0 track, the MIDI write and the whole step at both
+thread counts. A run takes about 30 minutes, most of it in the f0 track.
+CI compiles the benches and never runs them.
+
+The notes budget is the median plus 25 %, per minute of audio. The median
+is the benchmark's own `median` estimate, from a run with nothing else
+on the machine:
+
+| Threads | Median | Budget |
+| :-- | :-- | :-- |
+| 1 | 30.05 s | 37.6 s |
+| All | 29.17 s | 36.5 s |
+
+A run above the budget names its step: the f0 track takes 29.31 s of the
+30.05 s. `cargo run --release --example notes_memory -- <stage>` runs one
+stage on the same stem, so a tool that reports a process's peak memory
+measures each stage. The [pipeline page](../analysis/pipeline.md#time-budget)
+gives every group.
+
 ## Running the tests
 
 ```sh
@@ -185,7 +208,12 @@ unit test with the input bytes inline, next to the code it broke.
   its audio on each run and commits nothing. Run it as a release build:
   the f0 tracker's generic code compiles at our crate's level, so a debug
   run is about 55 times slower. `--part TEXT` runs the matching parts and
-  prints their notes.
+  prints their notes, raw and clean. It fails when a golden of the
+  cleanup breaks. The dry 110 Hz saw must show its octave copy at MIDI 57
+  before the cleanup, and only true notes after it: 5 of its 6, since the
+  model misses one onset. Its six notes through reverb must give the six
+  true notes. Those stems take minutes in a debug build, so no test in CI
+  runs them.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

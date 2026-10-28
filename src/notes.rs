@@ -22,19 +22,25 @@ use std::fmt;
 
 use crate::units::{Hz, MidiPitch, Seconds};
 
+mod cleanup;
 mod detect;
 mod mask;
 mod midi;
 mod profile;
 mod quiet;
+mod stem;
 mod track;
 mod transcribe;
 mod write;
 
+pub use cleanup::{
+    COPY_SLACK, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES, OCTAVE_TOLERANCE,
+    OctaveCheck, SPLIT_GAP, SPLIT_ONSET, check_octaves, join_splits, merge_overlaps,
+};
 pub use detect::{
-    CHORD_OFFSET_WINDOW, CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, PROBE_HOLD_SHARE,
-    REFERENCE_PERCENTILE, REGISTER_MARGIN, REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource,
-    Voicing, detect, detect_with_window, probe_settings,
+    CHORD_OVERLAP, CHORD_SHARE, Detection, HOLD_WINDOW, REFERENCE_PERCENTILE, REGISTER_MARGIN,
+    REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource, Voicing, detect, detect_with_window,
+    probe_settings,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
@@ -43,12 +49,17 @@ pub use profile::{
     Profile, RangeError, min_note_frames,
 };
 pub use quiet::{QUIET_FRAME, QUIET_GATE, drop_quiet};
+pub use stem::{
+    CleanupSteps, NotesError, TRANSCRIBER_VERSION, Transcription, TranscriptionRecord, clean_up,
+    transcribe_stem,
+};
 pub use track::{
     PitchTrack, TRACK_FMAX, TRACK_FMIN, TRACK_FRAME, TRACK_HOP, TrackError, TrackFrame,
 };
 pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
 pub use write::{
-    DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, write_midi,
+    DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, midi_track_name,
+    write_midi, write_named_midi,
 };
 
 /// A MIDI velocity from 1 to 127. Velocity 0 means a note-off in MIDI, so
@@ -454,6 +465,8 @@ mod tests {
         assert!((contour.f0_at(s(0.5)).get() - 110.0 * 2.0_f64.sqrt()).abs() < 1e-9);
         assert_eq!(contour.f0_at(s(2.0)).get(), 220.0);
         assert_eq!(contour.f0_at(s(0.0)).get(), 110.0);
+        let later = Contour::new(vec![point(1.0, 110.0), point(3.0, 220.0)]).unwrap();
+        assert!((later.f0_at(s(1.5)).get() - 110.0 * 2.0_f64.powf(0.25)).abs() < 1e-9);
         assert!(Contour::new(vec![]).is_err());
         assert!(Contour::new(vec![point(0.0, 110.0), point(0.0, 220.0)]).is_err());
     }

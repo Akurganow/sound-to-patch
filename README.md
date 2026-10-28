@@ -232,6 +232,7 @@ and ideas, from which we copy no code, text or data.
 - [Essentia](https://github.com/MTG/essentia) (AGPL-3.0): audio descriptor extractor design. Inspiration only.
 - [Essentia models](https://essentia.upf.edu/models.html) (CC BY-NC-SA 4.0): bright/dark, instrument and dry/wet classifier heads trained on NSynth. Inspiration only.
 - [FCPE](https://github.com/CNChTu/FCPE) (MIT): comparison model and local-argmax decoding.
+- [FCPE ONNX export](https://huggingface.co/tuneperfect/fcpe-onnx) (license not checked): the ONNX form of FCPE, tested for the f0 track and not used. Inspiration only.
 - [ferraus-pitch](https://github.com/djynnius/ferraus) (Apache-2.0 OR MIT): pYIN note segmentation defaults.
 - [FL-Automation](https://github.com/Realynx/FL-Automation) (MIT, in its `sdk/` folders): frame-by-frame labels of Serum 2 wavetables and a state schema.
 - [Flow Synthesizer](https://github.com/acids-ircam/flow_synthesizer) (MIT): nested parameter subsets, audio-versus-parameter error, timbre tag vocabulary.
@@ -314,6 +315,7 @@ and ideas, from which we copy no code, text or data.
 - [WildFX](https://github.com/IsaacYQH/WildFX) (no license): DAW-hosted plugin pipeline for effect-estimation data. Inspiration only.
 - [WORLD](https://github.com/mmorise/World) (BSD-3-Clause): CheapTrick F0-adaptive spectral envelope, ported with attribution if needed.
 - [YAMNet](https://github.com/tensorflow/models/tree/master/research/audioset/yamnet) (Apache-2.0): AudioSet event classifier, read as a distortion tag probe.
+- [YourMT3](https://github.com/mimbres/YourMT3) (GPL-3.0): the rules that cut a note at the next onset of its key and drop zero-length notes, in the MIDI writer. Inspiration only.
 
 ### Datasets
 

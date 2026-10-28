@@ -7,6 +7,7 @@ use std::fmt;
 use basic_pitch::NoteParams;
 use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 
+use super::Voicing;
 use crate::cast;
 use crate::units::{Bpm, Hz, MidiPitch};
 
@@ -140,7 +141,7 @@ impl DecodeSettings {
 }
 
 /// A fixed set of decode settings for one kind of stem.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, clap::ValueEnum)]
 pub enum Profile {
     /// B0 to F#4, with the minimum length from the BPM.
     Bass,
@@ -173,6 +174,16 @@ impl Profile {
             // five-string bass. Above F#4 a bass has no fundamental.
             Self::Bass => PitchRange::from_const(23, 66),
             Self::Lead | Self::Pad => PitchRange::from_const(36, 95),
+        }
+    }
+
+    /// Returns the voicing the cleanup assumes: chords for `pad`, one note
+    /// at a time otherwise.
+    #[must_use]
+    pub fn voicing(self) -> Voicing {
+        match self {
+            Self::Bass | Self::Lead => Voicing::Monophonic,
+            Self::Pad => Voicing::Polyphonic,
         }
     }
 
@@ -368,6 +379,11 @@ mod tests {
         assert_eq!(Profile::Pad.settings(bpm(200.0)).min_note_frames, 11);
         assert_eq!(Profile::Bass.settings(bpm(200.0)).min_note_frames, 5);
         assert_eq!(Profile::ALL.map(Profile::name), ["bass", "lead", "pad"]);
+        let plain = DecodeSettings {
+            melodia: false,
+            ..Profile::Lead.settings(bpm(120.0))
+        };
+        assert!(!plain.note_params().melodia_trick);
     }
 
     /// Posteriorgrams of 60 frames with one note at A3 from frame 10 for

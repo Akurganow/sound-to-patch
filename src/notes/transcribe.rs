@@ -9,15 +9,18 @@ use std::error::Error;
 use std::fmt;
 use std::num::NonZeroUsize;
 
-use basic_pitch::notes::{NoteEvent, model_output_to_notes};
+use basic_pitch::notes::{NoteEvent, frame_to_time, model_output_to_notes};
 use basic_pitch::{BasicPitch, Posteriorgrams};
 
 pub use basic_pitch::model::{Backend, MODEL_SHA256};
 
-use super::{DecodeSettings, Note, NoteList, Velocity};
+use super::{DecodeSettings, LOWEST_MODEL_PITCH, Note, NoteList, Velocity};
 use crate::audio::{ResampleError, SampleRate, resample};
 use crate::cast;
 use crate::units::{MidiPitch, Seconds};
+
+/// Samples between two model frames.
+const MODEL_HOP: u16 = 256;
 
 /// The input rate of the model.
 pub const MODEL_RATE: SampleRate = SampleRate::from_const(22_050);
@@ -86,10 +89,33 @@ pub struct ModelRun {
 }
 
 impl ModelRun {
+    /// Wraps hand-built posteriorgrams, as a test's.
+    #[cfg(test)]
+    pub(crate) fn from_posteriorgrams(posteriorgrams: Posteriorgrams) -> Self {
+        Self { posteriorgrams }
+    }
+
     /// Returns the note, onset and contour activations.
     #[must_use]
     pub fn posteriorgrams(&self) -> &Posteriorgrams {
         &self.posteriorgrams
+    }
+
+    /// Returns the strongest onset activation of a key, 0 to 1, over the
+    /// frames that start within one frame of `time`, or `None` outside the
+    /// run or the model's keys. The decoder starts a note on an onset peak,
+    /// or grows one from the note activations when no onset fires.
+    #[must_use]
+    pub fn onset_strength(&self, time: Seconds, pitch: MidiPitch) -> Option<f64> {
+        let onsets = &self.posteriorgrams.onset;
+        let bin = cast::round_to_usize(pitch.get() - f64::from(LOWEST_MODEL_PITCH))
+            .filter(|&bin| bin < onsets.n_bins())?;
+        let hop = f64::from(MODEL_HOP) / f64::from(MODEL_RATE.get());
+        (0..onsets.n_frames())
+            .filter(|&frame| (frame_to_time(frame) - time.get()).abs() <= hop)
+            .filter_map(|frame| onsets.get(frame, bin))
+            .map(f64::from)
+            .reduce(f64::max)
     }
 
     /// Decodes the notes with one set of settings, without running the

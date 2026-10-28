@@ -42,7 +42,8 @@ impl AnalyzeArgs {
     }
 }
 
-fn parse_bpm(text: &str) -> Result<Bpm, String> {
+/// Parses `--bpm`: a number from 4 to 1000.
+pub(crate) fn parse_bpm(text: &str) -> Result<Bpm, String> {
     let value: f64 = text
         .trim()
         .parse()

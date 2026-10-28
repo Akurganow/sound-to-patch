@@ -16,15 +16,16 @@
 //! - [`dsp`]: the signal core: windows, STFT, peak picking, active frames,
 //!   the analytic signal and decay fits.
 //! - [`notes`]: the note list that every layer reads, the transcriber with
-//!   its profiles and its register detection, the f0 track, the quiet-note
-//!   guard, the MIDI reader and writer, and the harmonic masks built from
-//!   the list.
+//!   its profiles and its register detection, the f0 track, the cleanup
+//!   with the quiet-note guard, the notes step of a stem, the MIDI reader
+//!   and writer, and the harmonic masks built from the list.
 //! - [`preset`]: preset files behind one adapter per synth: the format
 //!   traits, the parameter registry with its laws, the template, the edit
 //!   list and its applier, the mapper trait that turns layer values into
 //!   edits, and the Vital adapter.
-//! - [`report`]: the analysis report of a stem, `layers.json` and the
-//!   spectrogram image, and the `analyze` pipeline that writes them.
+//! - [`report`]: the outputs of a stem: `layers.json` and the spectrogram
+//!   image with the `analyze` pipeline that writes them, and `notes.mid`
+//!   with the `notes` command.
 //! - [`synth`]: the target synth, the shared `--synth` argument and what
 //!   each synth offers in structure.
 //! - [`units`]: unit newtypes, checked once when built, with their

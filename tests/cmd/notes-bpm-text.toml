@@ -1,0 +1,10 @@
+# A tempo outside 4 to 1000 BPM, or not a number, is a usage error.
+bin.name = "sound-to-patch"
+args = ["notes", "tests/cmd/data/layer2.mp2", "--bpm", "abc"]
+status.code = 2
+stdout = ""
+stderr = """
+error: invalid value 'abc' for '--bpm <BPM>': `abc` is not a number
+
+For more information, try '--help'.
+"""

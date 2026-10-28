@@ -2,7 +2,8 @@
 
 use midly::{Format, MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use sound_to_patch::notes::{
-    DEFAULT_VELOCITY, Note, NoteList, TICKS_PER_BEAT, Velocities, Velocity, read_midi, write_midi,
+    DEFAULT_VELOCITY, MidiWriteError, Note, NoteList, TICKS_PER_BEAT, Velocities, Velocity,
+    read_midi, write_midi,
 };
 use sound_to_patch::units::{Bpm, MidiPitch, Seconds};
 
@@ -229,4 +230,43 @@ fn a_fractional_pitch_rounds_to_the_nearest_key() {
 fn an_empty_list_is_an_error() {
     let error = write_midi(&NoteList::default(), bpm(120.0), constant()).unwrap_err();
     assert_eq!(error.to_string(), "cannot write a MIDI file without notes");
+}
+
+/// A delta past 2^28 - 1 ticks, 279,620 s at 120 BPM, names the time of
+/// the event that overflows.
+#[test]
+fn an_event_past_the_longest_delta_names_its_time() {
+    let notes = NoteList::new(vec![note(300_000.0, 300_001.0, 60.0)]);
+    match write_midi(&notes, bpm(120.0), constant()) {
+        Err(MidiWriteError::TooLong(at)) => assert!((at.get() - 300_000.0).abs() < 1e-6),
+        other => panic!("expected TooLong, got {other:?}"),
+    }
+}
+
+/// A named file carries its stem name as the first event, and our reader
+/// still reads its notes.
+#[test]
+fn a_named_file_reads_back_its_name_and_its_notes() {
+    use sound_to_patch::notes::{midi_track_name, write_named_midi};
+    let list = NoteList::new(vec![note(0.0, 0.5, 45.0), note(0.5, 1.0, 57.0)]);
+    let named = write_named_midi(&list, bpm(120.0), constant(), "bass.wav").unwrap();
+    assert_eq!(midi_track_name(&named).as_deref(), Some("bass.wav"));
+    let smf = Smf::parse(&named).unwrap();
+    assert_eq!(
+        smf.tracks[0][0].kind,
+        TrackEventKind::Meta(MetaMessage::TrackName(b"bass.wav"))
+    );
+    let plain = write_midi(&list, bpm(120.0), constant()).unwrap();
+    assert_eq!(midi_track_name(&plain), None);
+    assert_eq!(midi_track_name(b"not a MIDI file"), None);
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("notes.mid");
+    std::fs::write(&path, named).unwrap();
+    let read: Vec<(f64, f64)> = read_midi(&path, bpm(120.0))
+        .unwrap()
+        .notes()
+        .iter()
+        .map(|n| (n.onset().get(), n.pitch().get()))
+        .collect();
+    assert_eq!(read, vec![(0.0, 45.0), (0.5, 57.0)]);
 }

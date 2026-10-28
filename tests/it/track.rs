@@ -258,4 +258,18 @@ fn a_quiet_stem_still_reads_voiced() {
         voiced * 10 >= middle * 9,
         "{voiced} of {middle} frames voiced"
     );
+    // Levels are relative to the loudest frame; a frame of digital
+    // silence reads -200 dB.
+    let levels: Vec<f64> = track
+        .frames()
+        .iter()
+        .map(|frame| frame.level.get())
+        .collect();
+    let loudest = levels.iter().copied().fold(f64::MIN, f64::max);
+    assert!(loudest.abs() < 1e-9, "loudest frame at {loudest} dB");
+    assert!(
+        (levels[0] + 200.0).abs() < 1e-9,
+        "first frame at {} dB",
+        levels[0]
+    );
 }

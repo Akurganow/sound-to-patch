@@ -1,8 +1,9 @@
 # Analysis pipeline
 
 `sound-to-patch analyze` turns a stem into `layers.json` and
-`spectrogram.png`. This page follows the stem through each stage, with the
-formula, the convention and the limits of each. The
+`spectrogram.png`, and `sound-to-patch notes` turns it into `notes.mid`.
+This page follows the stem through each stage, with the formula, the
+convention and the limits of each. The
 [common methods page](methods.md) holds the rules that every stage
 shares: the window, the frame rule, active frames and the statistics.
 
@@ -39,7 +40,13 @@ layer estimators of later releases call [fact].
   µs; the lag is documented and not compensated [synthetic]. A NaN or
   infinite sample stops the conversion with its index [fact].
 
-## Transcription model
+## The notes step
+
+`sound-to-patch notes` turns a stem into `notes.mid`: one model run, one f0
+track, the decode settings, the decode, the cleanup and the MIDI file, in
+that order [fact]. `analyze` does not call it in this release [fact].
+
+### Transcription model
 
 - The notes come from a transcription model that ships inside the binary
   and runs on a pure-Rust inference engine, with no native library
@@ -53,8 +60,45 @@ layer estimators of later releases call [fact].
   repository grants Apache-2.0 to every file it holds, the model
   included. The upstream NOTICE text ships in `THIRD-PARTY-LICENSES.html`
   with every release.
+- The model reads the mono stem resampled to 22050 Hz as 32-bit floats,
+  in 2 s windows that start every 1.64 s [fact]. It returns three
+  activation matrices with one frame every 256 samples (11.6 ms): note,
+  onset and fine pitch, 88 keys from A0 to C8 [fact].
+- It runs once per stem, and every decode reads that one run [fact]. The
+  thread count does not change the activations; a test compares 1 and 8
+  threads bit for bit [fact]. The inference engine's output differs
+  between processors by up to about 5e-4, so a note near a threshold can
+  flip from one machine to another [fact].
+- A NaN or infinite sample stops the run with its index before any window
+  runs [fact]. Silence gives no note and no error from the model [fact].
 
-## f0 track
+### Profiles
+
+| Profile | Range | Minimum length | Voicing for the cleanup |
+| :-- | :-- | :-- | :-- |
+| `bass` | B0 to F#4, MIDI 23 to 66 | from the BPM | one note at a time |
+| `lead` | C2 to B6, MIDI 36 to 95 | from the BPM | one note at a time |
+| `pad` | C2 to B6, MIDI 36 to 95 | 11 frames, 127.7 ms | chords |
+
+- A range becomes the decoder's frequency bounds: the frequency of its
+  lowest key and of the key above its highest. Every range from MIDI 21
+  to 108 keeps exactly its own keys [fact].
+- Every profile keeps the decoder's thresholds (onset 0.5, note 0.3, 11
+  quiet frames end a note), turns on the decode of notes without an
+  onset, and turns pitch bends off [fact]. The ranges and lengths are
+  [proposal].
+
+### Minimum note length
+
+- With the BPM rule, the shortest kept note is half a sixteenth note,
+  $0.5 \cdot 15000 / \text{BPM}$ ms, clamped to 58 to 127.7 ms and
+  rounded to whole model frames, half to even: 5 to 11 frames [proposal].
+  At 120 BPM that is 5 frames, 58.0 ms [fact].
+- The decoder keeps a note strictly longer than the setting: 11 frames
+  keep notes of 12 frames, 139.3 ms, or more [fact]. A note grown without
+  an onset needs one frame more [fact].
+
+### f0 track
 
 - One probabilistic YIN run covers the whole stem at 22050 Hz: frames of
   2048 samples, a hop of 128 (5.8 ms), pitch bins of a tenth of a
@@ -63,21 +107,26 @@ layer estimators of later releases call [fact].
   above it read as a subharmonic [synthetic].
 - The copy the tracker reads is scaled to a peak of 1, because the
   tracker treats a frame below a fixed energy as silence [fact]. A sine
-  bank at 30.87, 41.2 and 55 Hz reads within 20 cents with no octave
-  error [synthetic]. Glides of 150 and 400 ms rise within 5 % of their
-  true 10-90 % time; a 50 ms glide reads 35 ms against a true 40 ms
+  bank at 30.87, 41.2 and 55 Hz reads within 5 cents with no frame an
+  octave off [synthetic]. Glides of 150 and 400 ms rise within 5 % of
+  their true 10-90 % time; a 50 ms glide reads 41 ms, where the reference
+  implementation reads 23 ms, because a 93 ms frame cannot resolve it
   [synthetic].
+- The track fills each note's f0 contour with its voiced frames, and
+  sets the register and the octave check [fact].
 
-## Register and voicing
+### Register and voicing
 
-- The detection sets the decode settings from a probe decode over the
-  model's whole range and the f0 track [fact].
-- Voicing: a part is polyphonic when 65 % or more of the probe notes start
-  within 50 ms of a note of another pitch class and end within 100 ms of
-  it, or within a quarter of the shorter note [proposal]. On the generated
-  set lines read 0.40 or less and pads 0.88 or more [synthetic]. An
-  octave-up ghost shares its note's pitch class and does not count, and
-  reverb tails do not end together [fact].
+- Without `--profile`, the detection sets the decode settings from a
+  probe decode over the model's whole range and the f0 track [fact].
+- Voicing: a part is polyphonic when 68 % or more of the probe notes
+  share at least half their span with a note of another pitch class
+  [proposal]. On the generated set lines read 0.56 or less, the highest a
+  melody with reverb, and chord parts 0.79 or more, the lowest a broken
+  chord with the sustain held [synthetic]. Chords with releases 150 ms
+  apart, a moving inner voice under held notes and strums 30 ms between
+  strings all read 1.00 [synthetic]. An octave-up ghost shares its note's
+  pitch class and does not count [fact].
 - Register of a monophonic part: the 1st to 99th percentile of the voiced
   f0 frames within 20 dB of a reference level, plus 2 semitones on each
   side [proposal]. The reference is the 95th percentile of the voiced
@@ -85,19 +134,176 @@ layer estimators of later releases call [fact].
   [synthetic]. A polyphonic part takes the lowest and highest probe notes
   instead, because the tracker reads a chord as one low common period
   [synthetic].
-- When the f0 range holds fewer than 80 % of the loud probe notes that
-  sound alone for at least half their span, the range spans the probe
-  notes as well, so a misread f0 track cannot drop the part [proposal]. A
-  line plays one note at a time, so an octave-up ghost or bleed over the
-  line shares its span with another pitch and does not count [synthetic].
+- The range of a monophonic part widens to every hold candidate outside
+  it, so a note the tracker misreads still lands inside [proposal]. A hold
+  candidate is a probe note whose median frame lies within 10 dB of the
+  reference and that sounds alone for at least half its span [proposal].
+  A line plays one note at a time, so an octave-up ghost or bleed over the
+  line shares its span with another pitch and does not count; a weaker
+  note an octave away does not count against a note, since the decoder
+  gives every note such a twin [synthetic]. In a fast run at 140 BPM that
+  jumps from A2 to A3, the tracker reads 43 to 52 and the A3 widens the
+  range to 41 to 59 [synthetic].
 - A monophonic part takes the minimum note length from the BPM; a
   polyphonic part keeps the decoder's 127.7 ms [proposal].
-- Limit: bleed louder than -20 dB in a passage where the part rests still
-  widens the register, and its notes then fall inside the range
-  [synthetic]. Pass `--profile` for such a stem.
+- Limit: bleed within 20 dB of the stem's loud frames, in a passage where
+  the part rests, enters the register window, so the range widens to its
+  notes [fact]. Pass `--profile` for such a stem.
 - Limit: a line with an occasional held double stop reads as monophonic,
   and the upper note of the stop can fall outside the range [synthetic].
   Pass `--profile pad` for such a stem.
+
+### Cleanup
+
+The cleanup runs four steps and prints the note count after each [fact].
+
+- Octave check, on a part played one note at a time: each note meets the
+  median pitch of the voiced f0 frames inside it, given 3 or more
+  [proposal]. Within 1 semitone the note is fine. A note 12 semitones
+  above the median, within half a semitone, over a median no more than
+  half a semitone above A2 (110 Hz), is a copy when a note of the lower
+  key holds it within 2 model frames at each end and has a higher
+  velocity [proposal]. The copy moves onto that note, its key and span
+  [fact]. Any other gap keeps the pitch and sets the note's octave flag
+  [fact]. A chord part skips the check, because the tracker reads a chord
+  as one low common period [synthetic].
+- Why the velocity: the decoder gives every note of an octave bass a twin
+  an octave away with nearly its span, and the tracker can hold the lower
+  octave through a true upper note [synthetic]. On a bass that alternates
+  A2 and A3 in sixteenths, true notes decode at velocity 81 to 100 and
+  their twins at 34 to 52 [synthetic]. The velocity of a decoded note is
+  its mean activation [fact].
+- Ghost merge: notes of one key that overlap become one note, from the
+  first onset to the last offset [fact]. A moved copy has its lower note's
+  span, so it merges into that note alone and never bridges two repeats
+  [fact]. The decoder gives no two notes of one key that overlap, so a
+  decoded repeat never merges [fact]: on every generated part the merge
+  removes exactly the moved copies [synthetic].
+- Split join: a note that starts within 2 model frames (23 ms) of the end
+  of a note of the same key, on an onset activation below 0.68, with a
+  velocity no higher than that note's, joins it [proposal]. On the
+  generated set every piece of a held note starts on 0.66 or less, and
+  every repeated note on 0.70 or more: the weakest are sixteenths at
+  175 BPM [synthetic]. The margin is thin on both sides, so a faster
+  repeat can still join the note before it [synthetic]. A weaker piece before a
+  stronger note is an early fragment of the attack and stays, since
+  joining it would move the onset [synthetic].
+- Quiet-note guard: a note whose span holds no 25 ms frame within 40 dB
+  of the stem's loudest frame is dropped [proposal]. The model scales each
+  window by its own level, so near-silent bleed fills its range and gives
+  notes [fact].
+- The ghost: a dry 110 Hz saw (a band-limited saw at amplitude 0.3, 0.5 s
+  notes with a 5 ms attack and a 0.3 s linear release) decodes with the
+  bass profile as the true note plus a 70 ms copy at MIDI 57 that ends
+  about 80 ms after the onset [synthetic]. The copy needs a minimum length
+  below 70 ms: the 11 frames of the `pad` profile remove it [synthetic].
+  After the cleanup the stem gives the A2 alone [synthetic]. Six such
+  notes through a 1.5 s reverb give seven notes, one of them a tail
+  fragment, and six after the cleanup [synthetic].
+- Limit: a lone note an octave above the tracker's reading is flagged,
+  never moved [synthetic]. Only a weaker copy inside its lower note moves.
+- Limit: a chord part keeps its octave copies, since it skips the check.
+  Three generated triads decode as 10 notes for 9 [synthetic].
+- Limit: the guard gate is relative to the loudest frame, so only digital
+  silence, every sample exactly 0, gives no note. A file of DC alone or of
+  hiss at -70 dBFS gives notes [synthetic].
+- Limit: a repeated note whose onset the model misses merges into the
+  note before it, and note ends stay late; a later release fixes ends
+  [synthetic].
+
+### MIDI file
+
+- Format 0, one track, 480 ticks per beat, a tempo event of
+  $\text{round}(60 \cdot 10^6 / \text{BPM})$ µs per beat and 4/4 at
+  tick 0, every note on channel 1 [fact]. Our own MIDI reader reads the
+  file back [fact].
+- Every note has velocity 100: the decoder's velocity is a confidence,
+  not a loudness [proposal].
+- Times become ticks with $\text{round}(t \cdot \text{BPM} / 60 \cdot
+  480)$ [fact]. A note lasts at least 10 ms and one tick; a note of one key
+  is cut at the next onset of that key, and a note left with no length is
+  dropped [fact]. A fractional pitch rounds to the nearest key [fact].
+- A list with no note is an error, so a silent stem writes nothing
+  [fact].
+
+### Evaluation
+
+`cargo xtask eval` scores the notes step on 37 generated parts with known
+notes: saws, sines, an 808, plucks, pads, strums, a broken chord with
+sustain, glides, octave basses, sixteenths at 175 BPM with repeats, a
+fast run with an octave jump, reverb, bleed, loud transients over a bass line,
+silence and an A6 saw [fact]. A note matches when its onset lies within
+50 ms and its pitch within 50 cents, one-to-one [fact]. Onset F1 with
+matched, estimated and reference notes, raw and after the cleanup
+[synthetic]:
+
+| Group | Right profile, raw | Right profile, clean | Detected, raw | Detected, clean |
+| :-- | :-- | :-- | :-- | :-- |
+| bass, 13 clean parts | 0.755 (239/381/252) | 0.893 (239/283/252) | 0.791 (239/352/252) | 0.905 (239/276/252) |
+| bass, 4 parts with bleed | 0.457 (32/108/32) | 0.627 (32/70/32) | 0.615 (32/72/32) | 0.865 (32/42/32) |
+| bass, 3 parts with transients | 0.622 (23/50/24) | 0.821 (23/32/24) | 0.742 (23/38/24) | 0.920 (23/26/24) |
+| lead, 9 parts | 0.945 (130/143/132) | 0.974 (130/135/132) | 0.945 (130/143/132) | 0.974 (130/135/132) |
+| pad, 7 parts | 0.784 (80/111/93) | 0.856 (80/94/93) | 0.784 (80/111/93) | 0.856 (80/94/93) |
+
+Recall over each class, raw and after the cleanup, is the same for the
+right profile and for detection [synthetic]:
+
+| Class | Raw | Clean |
+| :-- | :-- | :-- |
+| bass, 20 parts | 0.955 | 0.955 |
+| lead, 9 parts | 0.985 | 0.985 |
+| pad, 7 parts | 0.860 | 0.860 |
+
+- The cleanup removes no matched note on any part [synthetic].
+- Silence gives no note under any setting [synthetic]. Detection scores
+  no worse than the right profile on every class, raw and clean
+  [synthetic].
+- The strummed part matches 19 of its 32 notes under the pad settings,
+  and 31 under the lead settings [synthetic]. Pass `--profile lead` for a
+  strummed part.
+- The 808 parts score an onset F1 of 0: the pitch is right, but the
+  onsets come 100 to 170 ms late, after the pitch drop [synthetic].
+- These are generated signals, a best case. Real stems add bleed, effects
+  and noise, and score lower [proposal].
+
+### Time budget
+
+`cargo bench --bench notes` times each step on one generated 60 s stem at
+22050 Hz, saw and sine notes from A2 to G4, with 10 samples per heavy
+step [fact]. Medians, from the benchmark's own `median` estimate, with
+nothing else running [synthetic]:
+
+| Step | 1 thread | All threads |
+| :-- | :-- | :-- |
+| Model load | 17.6 ms | |
+| Model run | 0.816 s | 0.101 s |
+| f0 track | 29.31 s | |
+| MIDI write | 3.9 µs | |
+| End to end, without decoding the file | 30.05 s | 29.17 s |
+
+- The budget is the median plus 25 %: 37.6 s per minute of audio at one
+  thread and 36.5 s at all threads [proposal]. The cost grows linearly
+  with the stem [fact].
+- The f0 track runs on one thread and takes 98 % of the step at one
+  thread; at all threads the step costs the track plus the model run of
+  0.1 s, and the two medians lie within their run-to-run spread
+  [synthetic].
+- Peak memory, measured as the peak resident size of one process per
+  stage with `cargo run --release --example notes_memory -- <stage>`
+  [synthetic]:
+
+| Stage | Peak memory |
+| :-- | :-- |
+| The stem alone | 14 MB |
+| Model run | 165 MB |
+| f0 track | 1.17 GB |
+| Model run, decode and cleanup | 183 MB |
+| End to end | 1.28 GB |
+
+- The f0 track holds the peak; the decode and the cleanup add 18 MB to the
+  model run [synthetic]. On a 4-minute stem the track alone peaked at
+  4.1 GB and took 120 s [synthetic]. This release measures the cost and
+  does not reduce it [fact].
 
 ## The stem
 
