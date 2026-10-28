@@ -99,17 +99,14 @@ impl RenderNote {
             .iter()
             .map(|note| {
                 let pitch = note.pitch().get();
-                if (pitch - pitch.round()).abs() > KEY_TOLERANCE {
-                    return Err(RenderError::Note(format!(
-                        "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
-                        note.onset()
-                    )));
-                }
+                // A MIDI pitch lies in 0 to 127, so only a fractional pitch
+                // fails here.
                 let key = cast::round_to_usize(pitch)
                     .and_then(|key| u8::try_from(key).ok())
+                    .filter(|key| (pitch - f64::from(*key)).abs() <= KEY_TOLERANCE)
                     .ok_or_else(|| {
                         RenderError::Note(format!(
-                            "pitch {pitch} at {} is outside the MIDI keys; pass keys 0 to {MAX_KEY}",
+                            "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
                             note.onset()
                         ))
                     })?;
@@ -488,8 +485,13 @@ mod tests {
 
     #[test]
     fn a_note_must_end_after_it_starts_and_fit_the_key_range() {
-        assert!(RenderNote::new(60, s(1.0), s(1.0), v(100)).is_err());
-        assert!(RenderNote::new(128, s(0.0), s(1.0), v(100)).is_err());
+        let error = RenderNote::new(60, s(1.0), s(1.0), v(100)).unwrap_err();
+        assert!(
+            error.to_string().contains("end each note after it starts"),
+            "{error}"
+        );
+        let error = RenderNote::new(128, s(0.0), s(1.0), v(100)).unwrap_err();
+        assert!(error.to_string().contains("pass keys 0 to 127"), "{error}");
         assert!(RenderNote::new(127, s(0.0), s(1.0), v(100)).is_ok());
     }
 
