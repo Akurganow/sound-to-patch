@@ -25,6 +25,10 @@ expression: "serde_json::to_string_pretty(&shape(pitch)).unwrap()"
             {
               "code": "pitch_jitter",
               "value": "<number>"
+            },
+            {
+              "code": "curve_bound",
+              "value": false
             }
           ],
           "estimate": true
@@ -44,6 +48,10 @@ expression: "serde_json::to_string_pretty(&shape(pitch)).unwrap()"
           "reasons": [
             {
               "code": "fit_residual",
+              "value": "<number>"
+            },
+            {
+              "code": "attack_time",
               "value": "<number>"
             }
           ],

@@ -39,6 +39,10 @@ pub const CURVE_RANGE: (f64, f64) = (0.2, 5.0);
 /// A fitted `p` within this factor of a bound of [`CURVE_RANGE`] sits on
 /// the bound.
 pub const CURVE_EDGE: f64 = 1.05;
+/// The largest RMS residual of a glide whose `p` sits on the upper bound
+/// of [`CURVE_RANGE`]. Exponential portamento, `1 - exp(-t / tau)`, fits
+/// the bound within 20 cents; a smeared step on that bound fits worse.
+pub const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
 pub const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
@@ -93,8 +97,10 @@ pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 
 it, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
 before joins it when the full-band RMS does not rise 6 dB in the gap and the pitch keeps moving \
 after the gap the way it jumped; motion of 35 to 90 ms, over the detected span or the fitted \
-time, counts as too short; a fit of 90 ms or more with p within 5 % of 0.2 or 5, or an RMS \
-residual above 40 cents, is no glide";
+time, counts as too short; a fit of 90 ms or more with p within 5 % of 0.2, with p within 5 % \
+of 5 and an RMS residual above 20 cents, a detected span under 90 ms or a start from silence, \
+or with an RMS residual above 40 cents, is no glide; a glide with p within 5 % of 5 reads at low \
+confidence with the reason curve_bound";
 
 /// A fitted glide.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -115,6 +121,10 @@ pub struct GlideFit {
     pub residual: Cents,
     /// The RMS deviation of the stable pitches from their medians.
     pub jitter: Cents,
+    /// The fitted `p` sits on the upper bound of [`CURVE_RANGE`]: a glide
+    /// that approaches its target exponentially, as an RC portamento does,
+    /// runs past the curve family.
+    pub on_bound: bool,
     /// The number of frames the fit read.
     pub frames: usize,
 }
@@ -287,10 +297,14 @@ pub fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds
 /// step. Otherwise the fitted time decides, with the same bounds: the
 /// track smears a step between two 808 notes over a detected span of 100
 /// to 450 ms, while the fit finds the motion short. A fit of
-/// [`GLIDE_TIME_MIN`] or more whose `p` sits on a bound of [`CURVE_RANGE`],
-/// or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does not follow the
-/// curve, so the motion is no glide. A motion whose fit fails is too short
-/// when its detected span is.
+/// [`GLIDE_TIME_MIN`] or more whose `p` sits on the lower bound of
+/// [`CURVE_RANGE`], or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does
+/// not follow the curve, so the motion is no glide. On the upper bound the
+/// residual must stay within [`BOUND_MAX_RESIDUAL`], the detected span must
+/// last [`GLIDE_TIME_MIN`] or more, the glide must not come from silence,
+/// and it is marked: a melody step on a sine and a driven drop read as
+/// glides on that bound otherwise. A motion whose fit fails is too short when its detected span
+/// is.
 fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option<GlideFit>) {
     let length = span.1 - span.0;
     if length < GLIDE_STEP_MAX.get() {
@@ -310,11 +324,16 @@ fn classify(read: &mut GlideRead, span: (f64, f64), fit: impl FnOnce() -> Option
         return;
     }
     let (lo, hi) = CURVE_RANGE;
-    if glide.curve > CURVE_EDGE * lo
-        && glide.curve < hi / CURVE_EDGE
-        && glide.residual <= GLIDE_MAX_RESIDUAL
-    {
-        read.glides.push(glide);
+    let on_bound = glide.curve >= hi / CURVE_EDGE;
+    let follows = if on_bound {
+        glide.residual <= BOUND_MAX_RESIDUAL
+            && !glide.from_silence
+            && length >= GLIDE_TIME_MIN.get()
+    } else {
+        glide.residual <= GLIDE_MAX_RESIDUAL
+    };
+    if glide.curve > CURVE_EDGE * lo && follows {
+        read.glides.push(GlideFit { on_bound, ..glide });
     }
 }
 
@@ -605,6 +624,7 @@ fn glide(
         residual: Cents::new((sse / cast::usize_to_f64(frames)).sqrt()).ok()?,
         jitter: Cents::new(jitter).ok()?,
         frames,
+        on_bound: false,
     })
 }
 

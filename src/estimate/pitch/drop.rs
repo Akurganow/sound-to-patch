@@ -31,6 +31,11 @@ pub const DROP_MAX_RESIDUAL: f64 = 0.15;
 /// The onset of a strike: the first sample whose band envelope reaches
 /// this share of its peak.
 pub const DROP_ONSET_SHARE: f64 = 0.5;
+/// The attack of a strike starts where the band envelope reaches this
+/// share of its peak.
+pub const ATTACK_FROM: f64 = 0.1;
+/// The attack ends where the band envelope reaches this share of its peak.
+pub const ATTACK_TO: f64 = 0.9;
 /// The centred average of the band envelope that the onset search reads.
 pub const ONSET_SMOOTHING: Seconds = Seconds::from_const(0.01);
 /// The largest `tau` the search covers.
@@ -47,8 +52,10 @@ the sub-band line from 7 ms to 400 ms after the onset, or to the end of the note
 grid and golden-section search from 3.04 ms, where exp(-7 ms / tau) = 0.1, to 1 s, f_end and \
 df linear for each tau; df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample \
 after the lowest point of the onset search where the 20 to 200 Hz envelope, averaged over a \
-centred 10 ms, reaches half the peak that follows, and the full-band RMS over the 20 ms after \
-it is 6 dB or more above the 20 ms that end 25 ms before it; residual is the RMS residual over \
+centred 10 ms, reaches half the peak that follows; a drop with tau under 10 ms, one that \
+starts at 200 Hz or above, or one whose envelope takes over 30 ms from 10 to 90 % of its peak \
+needs the full-band RMS over the 20 ms after the onset 6 dB or more above the 20 ms that end \
+25 ms before it; residual is the RMS residual over \
 the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when df_st is above 2 and at \
 most 36, that fall is above 2 semitones too, tau is above the bound of the search, residual is \
 below 0.15, and f_end lies within 100 cents of a sounding note";
@@ -121,6 +128,34 @@ impl DropFit {
 /// every period. A centred average leaves the midpoint of a step in place.
 #[must_use]
 pub fn band_onset(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
+    let (start, smooth) = smoothed_envelope(line, from, to)?;
+    let (low, peak) = low_and_peak(&smooth)?;
+    let first = smooth[low..]
+        .iter()
+        .position(|&e| e >= DROP_ONSET_SHARE * peak)?;
+    Some(line.sample_time(start + low + first))
+}
+
+/// The attack of a strike inside `from..to`.
+///
+/// It is the time the band envelope, averaged as for [`band_onset`], takes
+/// from [`ATTACK_FROM`] to [`ATTACK_TO`] of the peak that follows its
+/// lowest point. `None` when no attack lies inside the span.
+#[must_use]
+pub fn band_attack(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
+    let (_, smooth) = smoothed_envelope(line, from, to)?;
+    let (low, peak) = low_and_peak(&smooth)?;
+    let after = &smooth[low..];
+    let first = after.iter().position(|&e| e >= ATTACK_FROM * peak)?;
+    let last = after.iter().position(|&e| e >= ATTACK_TO * peak)?;
+    Some(Seconds::clamped(
+        cast::usize_to_f64(last.saturating_sub(first)) / line.sample_rate().hz().get(),
+    ))
+}
+
+/// The band envelope inside `from..to`, averaged over a centred
+/// [`ONSET_SMOOTHING`], with the index of its first sample.
+fn smoothed_envelope(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<(usize, Vec<f64>)> {
     let rate = line.sample_rate().hz().get();
     let half = cast::round_to_usize(0.5 * ONSET_SMOOTHING.get() * rate).unwrap_or(0);
     let envelope = line.envelope();
@@ -133,20 +168,22 @@ pub fn band_onset(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seco
     for e in envelope {
         sums.push(sums[sums.len() - 1] + e);
     }
-    let smooth: Vec<f64> = (start..end)
+    let smooth = (start..end)
         .map(|n| {
             let (a, b) = (n.saturating_sub(half), (n + half + 1).min(envelope.len()));
             (sums[b] - sums[a]) / cast::usize_to_f64(b - a)
         })
         .collect();
+    Some((start, smooth))
+}
+
+/// The lowest point of a smoothed envelope and the peak after it, or
+/// `None` when the lowest point already stands above
+/// [`DROP_ONSET_SHARE`] of that peak.
+fn low_and_peak(smooth: &[f64]) -> Option<(usize, f64)> {
     let low = (0..smooth.len()).min_by(|&a, &b| smooth[a].total_cmp(&smooth[b]))?;
-    let after = &smooth[low..];
-    let peak = after.iter().copied().fold(0.0, f64::max);
-    if peak <= 0.0 || smooth[low] > DROP_ONSET_SHARE * peak {
-        return None;
-    }
-    let first = after.iter().position(|&e| e >= DROP_ONSET_SHARE * peak)?;
-    Some(line.sample_time(start + low + first))
+    let peak = smooth[low..].iter().copied().fold(0.0, f64::max);
+    (peak > 0.0 && smooth[low] <= DROP_ONSET_SHARE * peak).then_some((low, peak))
 }
 
 /// Fits the drop model to the line from `onset` on, up to `end` at most.

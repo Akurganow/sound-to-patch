@@ -29,7 +29,7 @@ use sound_to_patch::units::{Bpm, Decibels, Hz, MidiPitch, Seconds};
 use crate::report::{shape, validator};
 use crate::support::cast::round_to_usize;
 use crate::support::golden::{Golden, Tolerance, assert_close, float, floats};
-use crate::support::pitch::{BassLine, Glide, Hits, PitchDrop, Trill, Vibrato};
+use crate::support::pitch::{BassLine, Glide, Hits, PitchDrop, RcGlide, Trill, Vibrato};
 use crate::support::rng::gaussian;
 use crate::support::signals::write_wav16;
 
@@ -53,6 +53,7 @@ enum Signal {
     Scoop(Glide),
     Vibrato(Vibrato),
     Hits(Hits),
+    Rc(RcGlide),
     Trill(Trill),
     /// A constant 0.3 for 1 s.
     Dc,
@@ -71,6 +72,7 @@ impl Signal {
                 out
             }
             Self::Hits(hits) => hits.render(f64::from(RATE)),
+            Self::Rc(rc) => rc.render(f64::from(RATE)),
             Self::Trill(trill) => trill.render(f64::from(RATE)),
             Self::Dc => vec![0.3; round_to_usize(f64::from(RATE))],
             Self::Bass => BassLine::render(f64::from(RATE)),
@@ -113,6 +115,14 @@ impl Signal {
                 "gap_s": h.gap_s,
                 "lead_s": h.lead_s,
                 "drive": h.drive,
+            }),
+            Self::Rc(r) => json!({
+                "kind": "rc_glide",
+                "start_hz": r.start_hz,
+                "semitones": r.semitones,
+                "tau_s": r.tau_s,
+                "hold_s": r.hold_s,
+                "tail_s": r.tail_s,
             }),
             Self::Trill(t) => json!({
                 "kind": "trill",
@@ -296,6 +306,15 @@ fn review_glides() -> Vec<(String, Signal)> {
             Signal::Scoop(scoop(0.3, 2.5)),
         ),
     ];
+    for (name, start_hz, semitones, tau) in [
+        ("rc-glide-110hz-7st-tau50ms", 110.0, 7.0, 0.05),
+        ("rc-glide-196hz-down-5st-tau80ms", 196.0, -5.0, 0.08),
+    ] {
+        cases.push((
+            name.to_owned(),
+            Signal::Rc(RcGlide::new(start_hz, semitones, tau)),
+        ));
+    }
     for (full, p) in [(0.2, 1.0), (0.2, 2.5), (0.3, 2.5), (0.3, 1.0)] {
         cases.push((
             glide_name("unison-in-phase", full, p),
@@ -681,6 +700,111 @@ fn a_glide_from_silence_reads_into_its_note() {
 }
 
 #[test]
+fn an_rc_portamento_reads_on_the_curve_bound_at_low_confidence() {
+    // 1 - exp(-t / tau) approaches its target slower than any power of the
+    // curve family, so p sits on its bound of 5.
+    for (name, semitones) in [
+        ("rc-glide-110hz-7st-tau50ms", 7.0),
+        ("rc-glide-196hz-down-5st-tau80ms", -5.0),
+    ] {
+        let read = layer(name, case(name));
+        assert_eq!(read.glides.len(), 1, "{name}: {:?}", read.glides);
+        let glide = &read.glides[0];
+        assert!(
+            glide.value.on_bound && glide.value.curve > 4.7,
+            "{name}: {glide:?}"
+        );
+        assert!(
+            (glide.value.interval.get() - semitones).abs() <= 0.15,
+            "{name}: {glide:?}"
+        );
+        assert!(
+            (glide.value.start.get() - 0.5).abs() <= 0.02,
+            "{name}: {glide:?}"
+        );
+        assert_eq!(glide.confidence.level(), Some(Level::Low), "{name}");
+    }
+}
+
+#[test]
+fn drops_on_a_ringing_808_line_read_without_a_level_rise() {
+    // Notes of 0.4 s with a drop of one octave on the second and fourth,
+    // with or without a 40 ms release. The note before still rings, so the
+    // level rises 9 dB at a 0.3 s decay, under 3 dB at 2 s.
+    const LINE: [f64; 5] = [28.0, 31.0, 26.0, 28.0, 33.0];
+    const DROPS: [(usize, f64, f64); 2] = [(1, 1.0, 0.025), (3, 1.0, 0.02)];
+    for (decay, release) in [(0.3, 0.04), (0.6, 0.0), (1.0, 0.04), (2.0, 0.04)] {
+        let hits = Hits {
+            hit_s: 0.4,
+            decay_s: decay,
+            drops: &DROPS,
+            release_s: release,
+            ..Hits::new(&LINE, 0.0)
+        };
+        // The notes end at 90 % of each hit, as a MIDI file would give them.
+        let notes = |hits: &Hits| -> NoteList {
+            let list: Vec<(f64, f64, f64)> = hits
+                .notes()
+                .into_iter()
+                .map(|(on, _, pitch)| (on, on + 0.36, pitch))
+                .collect();
+            note_list(&list)
+        };
+        let read = drop_layer(&hits.render(f64::from(RATE)), &notes(&hits));
+        assert_eq!(read.drops.len(), 2, "{decay} {release}: {:?}", read.drops);
+        for (drop, (index, ratio, tau)) in read.drops.iter().zip(DROPS) {
+            let f = 440.0 * 2f64.powf((LINE[index] - 69.0) / 12.0);
+            let fit = drop.value;
+            assert!((fit.f_end.get() - f).abs() <= 1.5, "{decay}: {fit:?}");
+            assert!(
+                (fit.df_hz / (ratio * f) - 1.0).abs() <= 0.25,
+                "{decay}: {fit:?}"
+            );
+            assert!(
+                (fit.tau.get() / tau - 1.0).abs() <= 0.25,
+                "{decay}: {fit:?}"
+            );
+        }
+        // The same line with no drop, and a retriggered same-pitch line,
+        // read none: the restart swing fits a tau under 10 ms and needs a
+        // 6 dB strike.
+        for pitches in [&LINE[..], &[28.0; 5][..]] {
+            let plain = Hits {
+                pitches,
+                drops: &[],
+                ..hits
+            };
+            let read = drop_layer(&plain.render(f64::from(RATE)), &notes(&plain));
+            assert_eq!(read.drops, [], "{decay} {release} {pitches:?}");
+        }
+    }
+}
+
+#[test]
+fn a_fast_or_slowly_attacked_drop_reads_at_medium_confidence() {
+    // tau 5 ms: the fit sees a quarter of the fall from 7 ms on.
+    let fast = PitchDrop::row(45.0, 100.0, 0.005);
+    let read = drop_layer(
+        &fast.render(f64::from(RATE)),
+        &note_list(&[(0.25, 1.2, 30.0)]),
+    );
+    assert_eq!(read.drops.len(), 1, "{:?}", read.drops);
+    assert_eq!(read.drops[0].confidence.level(), Some(Level::Medium));
+    // A 40 ms attack: the pitch falls before the onset, and df reads low.
+    let slow = PitchDrop {
+        attack_s: 0.04,
+        ..PitchDrop::row(41.2, 41.2, 0.03)
+    };
+    let read = drop_layer(&slow.render(f64::from(RATE)), &drop_notes(0));
+    assert_eq!(read.drops.len(), 1, "{:?}", read.drops);
+    assert_eq!(read.drops[0].confidence.level(), Some(Level::Medium));
+    // The rows of the drop table, with no attack ramp, read high.
+    let sharp = PitchDrop::row(41.2, 41.2, 0.03);
+    let read = drop_layer(&sharp.render(f64::from(RATE)), &drop_notes(0));
+    assert_eq!(read.drops[0].confidence.level(), Some(Level::High));
+}
+
+#[test]
 fn steps_between_808_notes_report_no_glide_or_drop() {
     // The track smears each step over 100 to 450 ms; the fit finds the
     // motion short or on a bound of the curve power.
@@ -720,7 +844,6 @@ fn a_fall_into_the_band_is_a_glide_and_no_drop() {
     let name = "glide-mono-220hz-down-4st-200ms-p2.5";
     let read = layer(name, case(name));
     assert_eq!(read.drops, []);
-    assert_eq!(read.counts.drop_candidates, 0);
     assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
     let glide = &read.glides[0].value;
     assert!((glide.interval.get() + 4.0).abs() <= 0.15, "{glide:?}");

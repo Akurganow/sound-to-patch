@@ -143,11 +143,11 @@ A glide:
 | `start_s` | seconds | 0 or more | The fitted start of the motion. |
 | `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
 | `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
-| `curve` | power | 0.21 to 4.76 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the search bounds 0.2 and 5 is no glide. |
+| `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, reads low with `curve_bound`. |
 | `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. |
 
-Its reasons are `motion_span` (seconds), `fit_residual` (cents) and
-`pitch_jitter` (cents).
+Its reasons are `motion_span` (seconds), `fit_residual` (cents),
+`pitch_jitter` (cents) and `curve_bound` (flag).
 
 A drop:
 
@@ -160,7 +160,9 @@ A drop:
 | `tau_s` | seconds | above 0.003 | The time constant of `f_end + df exp(-t / tau)`, above the 3.04 ms floor of the search. |
 | `residual` | share | 0 to 0.15 | The RMS residual of the fit over the fall it shows from 7 ms on, `df_hz exp(-7 ms / tau_s)`. |
 
-Its reason is `fit_residual`.
+Its reasons are `fit_residual` and `attack_time` (seconds): the time the
+band envelope of the strike takes from 10 % to 90 % of its peak. A drop
+with `tau_s` under 0.01 or an attack over 12 ms reads at most medium.
 
 A vibrato:
 

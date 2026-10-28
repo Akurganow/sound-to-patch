@@ -151,6 +151,12 @@ reason_codes! {
     /// moment over the squared second: 1.5 for a sine, 1.0 for a square
     /// wave such as a trill between two notes.
     ContourKurtosis,
+    /// The time the band envelope of a strike takes from 10 % to 90 % of its
+    /// peak, in seconds. A slow attack hides the start of a pitch drop.
+    AttackTime,
+    /// A glide's fitted curve power sits on the upper bound of its range:
+    /// an exponential approach, read with less certainty.
+    CurveBound,
     /// The share of the track frames inside the notes that are voiced
     /// within 100 cents of a sounding note. Noise or DC under a note list
     /// reads near 0.

@@ -14,14 +14,15 @@ mod line;
 mod vibrato;
 
 pub use drop::{
-    DROP_CONVENTION, DROP_FIT_END, DROP_FIT_START, DROP_MAX, DROP_MAX_RESIDUAL, DROP_MIN,
-    DROP_ONSET_SHARE, DROP_TAU_MIN, DropFit, ONSET_SMOOTHING, band_onset, fit_drop,
+    ATTACK_FROM, ATTACK_TO, DROP_CONVENTION, DROP_FIT_END, DROP_FIT_START, DROP_MAX,
+    DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE, DROP_TAU_MIN, DropFit, ONSET_SMOOTHING,
+    band_attack, band_onset, fit_drop,
 };
 pub use glide::{
-    CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX, GAP_MOTION_MIN, GLIDE_CONVENTION, GLIDE_INTERVAL_MIN,
-    GLIDE_MAX_RESIDUAL, GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN, GlideFit, GlideRead,
-    NOTE_MATCH, ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES, STEADY_SPLIT,
-    find_glides, steady_spans, track_lag,
+    BOUND_MAX_RESIDUAL, CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX, GAP_MOTION_MIN, GLIDE_CONVENTION,
+    GLIDE_INTERVAL_MIN, GLIDE_MAX_RESIDUAL, GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN,
+    GlideFit, GlideRead, NOTE_MATCH, ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES,
+    STEADY_SPLIT, find_glides, steady_spans, track_lag,
 };
 pub use line::{
     LINE_CONVENTION, LINE_HI, LINE_LO, LINE_MEDIAN, SubBandLine, median_filter, median_len,
@@ -61,8 +62,14 @@ pub const WEAK_FROM: Seconds = Seconds::from_const(0.05);
 /// wide. Below this factor a fit that reads the harmonic settles 1200
 /// cents off the note and fails.
 pub const WEAK_RATIO: f64 = 2.0;
-/// A strike raises the full-band RMS by this factor, 6 dB.
+/// A strike raises the full-band RMS by this factor, 6 dB. The glide
+/// search reads it as a new note, and a drop that is fast or starts at the
+/// top of the band needs it.
 pub const STRIKE_RISE: f64 = 2.0;
+/// A drop with `tau` under this needs a strike of [`STRIKE_RISE`]. The swing
+/// of the line where a ringing tone restarts its phase fits a fast fall:
+/// a plain retriggered 808 read 32 semitones with a `tau` of 4 ms.
+pub const FAST_TAU: Seconds = Seconds::from_const(0.01);
 /// The spans, in seconds from a band onset, of the RMS before and after
 /// it that a strike compares. A pitch falling into the band from above
 /// raises the band envelope with no strike. The span before ends 25 ms
@@ -90,6 +97,10 @@ pub const RESIDUAL_HIGH: f64 = 15.0;
 /// The largest jitter of a high-confidence glide, in cents. A unison
 /// beats, and the track then wanders on the stable pitches.
 pub const JITTER_HIGH: f64 = 3.0;
+/// The largest curve power of a high-confidence glide. A faster start
+/// reads its rise less well: up to 11 % off at `p` 4.4 on the generated
+/// sets, within 7.1 % at 3 or less.
+pub const CURVE_HIGH: f64 = 3.0;
 /// The shortest motion of a high-confidence glide.
 pub const SPAN_HIGH: Seconds = Seconds::from_const(0.15);
 /// The jitter above which a glide reads at low confidence.
@@ -98,6 +109,16 @@ pub const SPAN_HIGH: Seconds = Seconds::from_const(0.15);
 /// mono ones 0 to 5.6, so the jitter alone cannot tell the two apart: a
 /// mono glide above it reads low too.
 pub const JITTER_LOW: f64 = 3.5;
+/// A drop without a full-band rise needs an attack this short or shorter.
+/// Struck 808 notes read 9 to 13 ms; a unison falling into the band from
+/// above reads 190 ms.
+pub const STRIKE_ATTACK: Seconds = Seconds::from_const(0.03);
+/// The longest attack of a high-confidence drop.
+///
+/// The pitch falls during a slower attack, before the fit span starts, and
+/// `df` reads low. The 10 ms average of the envelope spreads a sharp strike
+/// to 9 to 11 ms; a 20 ms ramp reads about 17.5 ms.
+pub const ATTACK_HIGH: Seconds = Seconds::from_const(0.012);
 /// A drop whose residual share stays below this reads at high confidence.
 pub const DROP_RESIDUAL_HIGH: f64 = 0.05;
 /// A vibrato whose sine explains at least this share of the power reads
@@ -239,7 +260,8 @@ impl PitchLayer {
         let note_frames = note_frames(input.track, input.notes);
         let mut flags = PitchFlags::default();
         let mut counts = counts;
-        let drops = strikes(input, &mut flags, &mut counts)?;
+        let struck = strikes(input, &mut flags, &mut counts)?;
+        let drops: Vec<DropFit> = struck.iter().map(|s| s.fit).collect();
         let read = glides(input, &drops);
         counts.too_short = read.too_short;
         flags.glide_too_short = read.too_short > 0;
@@ -250,7 +272,10 @@ impl PitchLayer {
                 .into_iter()
                 .map(rate_glide)
                 .collect::<Result<_, _>>()?,
-            drops: drops.into_iter().map(rate_drop).collect::<Result<_, _>>()?,
+            drops: struck
+                .into_iter()
+                .map(rate_drop)
+                .collect::<Result<_, _>>()?,
             vibrato: vibrato
                 .into_iter()
                 .map(rate_vibrato)
@@ -438,14 +463,14 @@ fn count(n: usize) -> u64 {
 /// Fits a drop at the strike of each low note. A note that continues the
 /// one before it, with no fall of the band envelope between them, has no
 /// onset and so no fit; nor has a band onset where the full-band level
-/// does not rise by [`STRIKE_RISE`].
+/// does not rise as [`struck_enough`] asks.
 fn strikes(
     input: &PitchInput<'_>,
     flags: &mut PitchFlags,
     counts: &mut PitchCounts,
-) -> Result<Vec<DropFit>, PitchError> {
+) -> Result<Vec<Strike>, PitchError> {
     let rate = input.rate.hz().get();
-    let mut drops: Vec<DropFit> = Vec::new();
+    let mut drops: Vec<Strike> = Vec::new();
     // The search of each note starts after the previous note's search
     // ended, so it never finds the previous strike again.
     let mut previous_to = 0.0_f64;
@@ -477,14 +502,24 @@ fn strikes(
         };
         if drops
             .iter()
-            .any(|d| (d.onset.get() - onset.get()).abs() < 1e-9)
+            .any(|d| (d.fit.onset.get() - onset.get()).abs() < 1e-9)
         {
             continue;
         }
-        if !rises(segment, input.rate, start, onset, STRIKE_SPANS, STRIKE_RISE) {
+        let rise = rise_ratio(segment, input.rate, start, onset, STRIKE_SPANS);
+        let attack = band_attack(
+            &line,
+            Seconds::clamped(search_from),
+            Seconds::clamped(search_to),
+        )
+        .unwrap_or(Seconds::clamped(0.0));
+        counts.drop_candidates += 1;
+        let Some(fit) = fit_drop(&line, onset, Seconds::clamped(note_off.max(onset.get()))) else {
+            continue;
+        };
+        if !struck_enough(&fit, rise, attack) {
             continue;
         }
-        counts.drop_candidates += 1;
         let window = (
             Seconds::clamped(onset.get().max(note_on) + WEAK_FROM.get()),
             Seconds::clamped((onset.get() + DROP_FIT_END.get()).min(note_off)),
@@ -493,14 +528,28 @@ fn strikes(
             flags.weak_fundamental = true;
             continue;
         }
-        let Some(fit) = fit_drop(&line, onset, Seconds::clamped(note_off.max(onset.get()))) else {
-            continue;
-        };
         if fit.accepted() && settles_on_a_note(input.notes, &fit) {
-            drops.push(fit);
+            drops.push(Strike { fit, attack });
         }
     }
     Ok(drops)
+}
+
+/// Whether the strike under a drop rises enough for its fit.
+///
+/// A fall with `tau` under [`FAST_TAU`] needs [`STRIKE_RISE`], since the
+/// line swings where a ringing tone restarts its phase. So does a fall
+/// that starts at [`LINE_HI`] or above, since a pitch falling into the band
+/// from above raises the band envelope with no strike. A slower fall that
+/// starts inside the band, with an attack of [`STRIKE_ATTACK`] or less,
+/// needs no rise: an 808 note struck while the one before still rings
+/// rises by that note's decay alone, under 3 dB with 0.4 s notes and a 1 s
+/// decay.
+fn struck_enough(fit: &DropFit, rise: f64, attack: Seconds) -> bool {
+    rise >= STRIKE_RISE
+        || fit.tau >= FAST_TAU
+            && fit.f_end.get() + fit.df_hz < LINE_HI.get()
+            && attack <= STRIKE_ATTACK
 }
 
 /// Whether a drop settles on a note: a note sounds while the drop is
@@ -521,17 +570,29 @@ fn settles_on_a_note(notes: &NoteList, fit: &DropFit) -> bool {
     })
 }
 
-/// Whether the full-band level rises at `at`: the RMS over `after`
-/// reaches `rise` times the RMS over `before`, both spans in
-/// seconds from `at`. `samples` start at `start`.
+/// Whether the full-band level rises at `at` by `rise` or more, as
+/// [`rise_ratio`] reads it.
 fn rises(
     samples: &[f64],
     rate: SampleRate,
     start: Seconds,
     at: Seconds,
-    [before, after]: [(f64, f64); 2],
+    spans: [(f64, f64); 2],
     rise: f64,
 ) -> bool {
+    rise_ratio(samples, rate, start, at, spans) >= rise
+}
+
+/// The full-band RMS over `after` over the RMS over `before`, both spans in
+/// seconds from `at`; infinite when the span before is silent. `samples`
+/// start at `start`.
+fn rise_ratio(
+    samples: &[f64],
+    rate: SampleRate,
+    start: Seconds,
+    at: Seconds,
+    [before, after]: [(f64, f64); 2],
+) -> f64 {
     let r = rate.hz().get();
     let index = |t: f64| {
         cast::round_to_usize(((at.get() + t - start.get()) * r).max(0.0))
@@ -545,7 +606,14 @@ fn rises(
         }
         (samples[a..b].iter().map(|x| x * x).sum::<f64>() / cast::usize_to_f64(b - a)).sqrt()
     };
-    rms(after) >= rise * rms(before)
+    let (a, b) = (rms(after), rms(before));
+    if b > 0.0 {
+        a / b
+    } else if a > 0.0 {
+        f64::INFINITY
+    } else {
+        0.0
+    }
 }
 
 /// Whether the fundamental of a struck note is weaker than its second
@@ -624,9 +692,13 @@ fn vibratos(
 
 fn rate_glide(glide: GlideFit) -> Result<Rated<GlideFit>, ConfidenceError> {
     let (residual, jitter) = (glide.residual.get(), glide.jitter.get());
-    let level = if jitter > JITTER_LOW {
+    let level = if jitter > JITTER_LOW || glide.on_bound {
         Level::Low
-    } else if residual <= RESIDUAL_HIGH && jitter <= JITTER_HIGH && glide.detected >= SPAN_HIGH {
+    } else if residual <= RESIDUAL_HIGH
+        && jitter <= JITTER_HIGH
+        && glide.detected >= SPAN_HIGH
+        && glide.curve <= CURVE_HIGH
+    {
         Level::High
     } else {
         Level::Medium
@@ -639,14 +711,24 @@ fn rate_glide(glide: GlideFit) -> Result<Rated<GlideFit>, ConfidenceError> {
                 Reason::new(ReasonCode::MotionSpan, Signal::Number(glide.detected.get()))?,
                 Reason::new(ReasonCode::FitResidual, Signal::Number(residual))?,
                 Reason::new(ReasonCode::PitchJitter, Signal::Number(jitter))?,
+                Reason::new(ReasonCode::CurveBound, Signal::Flag(glide.on_bound))?,
             ],
         )?,
         value: glide,
     })
 }
 
-fn rate_drop(drop: DropFit) -> Result<Rated<DropFit>, ConfidenceError> {
-    let level = if drop.residual < DROP_RESIDUAL_HIGH {
+/// An accepted drop with the attack of its strike.
+#[derive(Clone, Copy, Debug)]
+struct Strike {
+    fit: DropFit,
+    attack: Seconds,
+}
+
+fn rate_drop(strike: Strike) -> Result<Rated<DropFit>, ConfidenceError> {
+    let Strike { fit, attack } = strike;
+    let level = if fit.residual < DROP_RESIDUAL_HIGH && fit.tau >= FAST_TAU && attack <= ATTACK_HIGH
+    {
         Level::High
     } else {
         Level::Medium
@@ -655,12 +737,12 @@ fn rate_drop(drop: DropFit) -> Result<Rated<DropFit>, ConfidenceError> {
         confidence: Confidence::estimate(
             level,
             None,
-            vec![Reason::new(
-                ReasonCode::FitResidual,
-                Signal::Number(drop.residual),
-            )?],
+            vec![
+                Reason::new(ReasonCode::FitResidual, Signal::Number(fit.residual))?,
+                Reason::new(ReasonCode::AttackTime, Signal::Number(attack.get()))?,
+            ],
         )?,
-        value: drop,
+        value: fit,
     })
 }
 

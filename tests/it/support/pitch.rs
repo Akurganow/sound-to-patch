@@ -124,8 +124,9 @@ impl Glide {
 }
 
 /// An 808-style tone: a sine whose frequency falls as
-/// `f(t) = f_end + df exp(-t / tau)`, times `exp(-t / decay_s)`, from
-/// `lead_s` of silence on, for `length_s` in all.
+/// `f(t) = f_end + df exp(-t / tau)`, times `exp(-t / decay_s)` and a
+/// linear attack of `attack_s`, from `lead_s` of silence on, for
+/// `length_s` in all.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct PitchDrop {
     pub(crate) f_end_hz: f64,
@@ -134,6 +135,7 @@ pub(crate) struct PitchDrop {
     pub(crate) decay_s: f64,
     pub(crate) lead_s: f64,
     pub(crate) length_s: f64,
+    pub(crate) attack_s: f64,
 }
 
 impl PitchDrop {
@@ -153,6 +155,7 @@ impl PitchDrop {
             decay_s: 0.5,
             lead_s: 0.25,
             length_s: 1.25,
+            attack_s: 0.0,
         }
     }
 
@@ -165,7 +168,12 @@ impl PitchDrop {
                 }
                 let phase =
                     self.f_end_hz * t + self.df_hz * self.tau_s * (1.0 - (-t / self.tau_s).exp());
-                0.8 * (TAU * phase).sin() * (-t / self.decay_s).exp()
+                let ramp = if self.attack_s > 0.0 {
+                    (t / self.attack_s).min(1.0)
+                } else {
+                    1.0
+                };
+                0.8 * ramp * (TAU * phase).sin() * (-t / self.decay_s).exp()
             })
             .collect()
     }
@@ -175,7 +183,10 @@ impl PitchDrop {
 /// restarts its phase at each hit, driven through `tanh(drive x)` when
 /// `drive` is above zero, with a 3 ms attack, times `exp(-t / decay_s)`,
 /// `hit_s` long and followed by `gap_s` of silence. `lead_s` of silence
-/// comes before the first hit and after the last.
+/// comes before the first hit and after the last. A hit fades out
+/// linearly over its last `release_s`. Each `(index, ratio,
+/// tau_s)` of `drops` gives that hit a pitch drop,
+/// `f (1 + ratio exp(-t / tau_s))`.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Hits {
     pub(crate) pitches: &'static [f64],
@@ -184,6 +195,8 @@ pub(crate) struct Hits {
     pub(crate) gap_s: f64,
     pub(crate) lead_s: f64,
     pub(crate) drive: f64,
+    pub(crate) drops: &'static [(usize, f64, f64)],
+    pub(crate) release_s: f64,
 }
 
 impl Hits {
@@ -196,27 +209,54 @@ impl Hits {
             gap_s,
             lead_s: 0.2,
             drive: 0.0,
+            drops: &[],
+            release_s: 0.0,
         }
+    }
+
+    /// The notes of the hits: onset, offset, pitch.
+    pub(crate) fn notes(&self) -> Vec<(f64, f64, f64)> {
+        let step = self.hit_s + self.gap_s;
+        self.pitches
+            .iter()
+            .enumerate()
+            .map(|(k, &pitch)| {
+                let on = self.lead_s + step * f64::from(u32::try_from(k).unwrap());
+                (on, on + self.hit_s, pitch)
+            })
+            .collect()
     }
 
     pub(crate) fn render(&self, rate: f64) -> Vec<f64> {
         let hit = round_to_usize(rate * self.hit_s);
         let attack = round_to_usize(rate * 0.003);
         let mut out = vec![0.0; round_to_usize(rate * self.lead_s)];
-        for &pitch in self.pitches {
+        for (k, &pitch) in self.pitches.iter().enumerate() {
             let f = 440.0 * 2f64.powf((pitch - 69.0) / 12.0);
+            let (ratio, tau) = self
+                .drops
+                .iter()
+                .find(|d| d.0 == k)
+                .map_or((0.0, 1.0), |d| (d.1, d.2));
             out.extend((0..hit).map(|n| {
                 let t = f64::from(u32::try_from(n).unwrap()) / rate;
+                let phase = f * t + f * ratio * tau * (1.0 - (-t / tau).exp());
+                let left = self.hit_s - t;
+                let release = if self.release_s > 0.0 {
+                    (left / self.release_s).min(1.0)
+                } else {
+                    1.0
+                };
                 let ramp = (f64::from(u32::try_from(n).unwrap())
                     / f64::from(u32::try_from(attack).unwrap()))
                 .min(1.0);
-                let x = (TAU * f * t).sin();
+                let x = (TAU * phase).sin();
                 let x = if self.drive > 0.0 {
                     (self.drive * x).tanh()
                 } else {
                     x
                 };
-                0.5 * ramp * x * (-t / self.decay_s).exp()
+                0.5 * ramp * release * x * (-t / self.decay_s).exp()
             }));
             out.extend(std::iter::repeat_n(0.0, round_to_usize(rate * self.gap_s)));
         }
@@ -320,6 +360,44 @@ impl Trill {
     }
 }
 
+/// A saw that holds `start_hz` for `hold_s`, then approaches `semitones`
+/// above it as `1 - exp(-t / tau_s)`, an RC portamento, for `tail_s`.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct RcGlide {
+    pub(crate) start_hz: f64,
+    pub(crate) semitones: f64,
+    pub(crate) tau_s: f64,
+    pub(crate) hold_s: f64,
+    pub(crate) tail_s: f64,
+}
+
+impl RcGlide {
+    pub(crate) fn new(start_hz: f64, semitones: f64, tau_s: f64) -> Self {
+        Self {
+            start_hz,
+            semitones,
+            tau_s,
+            hold_s: 0.5,
+            tail_s: 0.9,
+        }
+    }
+
+    pub(crate) fn render(&self, rate: f64) -> Vec<f64> {
+        let me = *self;
+        let f = move |t: f64| {
+            let x = if t < me.hold_s {
+                0.0
+            } else {
+                1.0 - (-(t - me.hold_s) / me.tau_s).exp()
+            };
+            me.start_hz * 2f64.powf(me.semitones * x / 12.0)
+        };
+        let top = me.start_hz * 2f64.powf(me.semitones.max(0.0) / 12.0);
+        let length = round_to_usize(rate * (me.hold_s + me.tail_s));
+        unison(f, top, rate, length, (1, 0.0), false)
+    }
+}
+
 /// A bass line: an 808 drop to E1 at 0.25 s that decays until 1.0 s, then
 /// a saw A1 from 1.2 s that glides up 5 semitones in 150 ms at 1.7 s and
 /// holds D2 until 2.5 s, with a 50 ms fade at each end.
@@ -344,6 +422,7 @@ impl BassLine {
             decay_s: 0.5,
             lead_s: 0.25,
             length_s: 1.0,
+            attack_s: 0.0,
         }
         .render(rate);
         let fade = |t: f64, from: f64, to: f64| {

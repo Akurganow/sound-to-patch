@@ -87,13 +87,25 @@ settled pitch.
   the midpoint of a step in place [fact]. A note that the transcriber
   splits off a held note, as under vibrato, has no attack and no candidate
   [fact].
-- Strike. The full-band RMS over the 20 ms after the onset must reach twice,
-  6 dB, the RMS from 45 to 25 ms before it, or the note is no candidate
-  [proposal]. A saw falling from 220 Hz into the band raises the band
-  envelope with no strike; without this check its 4-semitone glide also
-  read as a drop of 4.6 semitones [synthetic]. The span before ends 25 ms
-  early, since the band onset of white noise lags the start of the noise
-  by 14 ms [synthetic].
+- Strike. The rise is the full-band RMS over the 20 ms after the onset
+  against the RMS from 45 to 25 ms before it [fact]. A drop needs a rise
+  of 6 dB when its $\tau$ is under 10 ms, when its fall starts at 200 Hz
+  or above, or when the band envelope takes over 30 ms from 10 to 90 % of
+  its peak; otherwise it needs no rise [proposal].
+  - A saw falling from 220 Hz into the band raises the band envelope with
+    no strike; without the rule its 4-semitone glide also read as a drop
+    of 4.6 semitones [synthetic]. A 7-voice unison falling the same way
+    reads an attack of 191 ms [synthetic].
+  - Where a ringing tone restarts its phase, the line swings and fits a
+    fast fall: a plain retriggered 808 read 32 semitones with $\tau$ of
+    4 ms [synthetic].
+  - An 808 note struck while the one before still rings rises only by
+    that note's decay. With 0.4 s notes the rise is 9 to 10 dB at a decay
+    of 0.3 s, 4 to 5 dB at 0.6 s, 2 to 3 dB at 1 s and under 1.5 dB at 2 s
+    [synthetic]. Its drop starts near 100 Hz with an attack of 9 to 13 ms,
+    so it needs no rise [synthetic].
+  - The span before ends 25 ms early, since the band onset of white noise
+    lags the start of the noise by 14 ms [synthetic].
 - Fit. $f(t) = f_\text{end} + \Delta f\, e^{-t/\tau}$ is fitted by least
   squares to the line from 7 ms to 400 ms after the onset, or to the end of
   the note [fact]. For each $\tau$ the fit is linear in $f_\text{end}$ and
@@ -140,7 +152,20 @@ settled pitch.
   several partials share the band and the line swings; on a generated 55
   Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
   settling at 49.7 Hz, which this rule rejects [synthetic].
-- Confidence. High below a residual of 5 %, else medium [proposal].
+- Confidence. High needs a residual below 5 %, $\tau$ of 10 ms or more
+  and an attack of 12 ms or less, else medium [proposal]. The reasons are
+  `fit_residual` and `attack_time` [fact].
+  - The fit sees $e^{-7\ \mathrm{ms}/\tau}$ of the fall, a quarter at
+    $\tau$ = 5 ms: kick drops with $\tau$ of 3 to 8 ms read $\Delta f$
+    from -31 to +25 % [synthetic].
+  - During a slower attack the pitch falls before the onset, and
+    $\Delta f$ reads low: by up to 30 % with a 10 ms ramp, 46 % with
+    20 ms and 73 % with 40 ms [synthetic]. The 10 ms average spreads a
+    sharp strike to an attack of 9 to 11 ms, a 20 ms ramp to about 17.5 ms
+    [synthetic].
+  - On the generated sets, high-confidence drops read $\Delta f$ within
+    17 %, with one at -30 % (a 10 ms ramp on a 15 ms fall), $\tau$ within
+    8.3 % and $f_\text{end}$ within 0.1 Hz [synthetic].
 
 Drops on an 808 tone, a sine times a 0.5 s amplitude decay, through the
 transcriber's notes [synthetic]:
@@ -169,10 +194,18 @@ Limits:
   between the partials and no drop is read [synthetic].
 - A legato note, which follows the previous run with no fall of the band
   envelope, has no onset and no drop [fact].
-- A drop needs a strike: a slow attack that rises less than 6 dB over
-  45 ms has no drop [fact].
-- Retriggered 808 hits at one pitch, with and without gaps, and 808 lines
-  stepping up to 7 semitones report no drop [synthetic].
+- A struck note whose band envelope does not dip first has no onset and
+  no drop: with no release before it and a decay of 1 s or more, the dip
+  of an 808's 3 ms attack is lost in the 10 ms average [synthetic]. Of 18
+  drops on generated 808 lines with given notes, 14 read; the misses are
+  those notes and a soft note after a loud one [synthetic]. Through the
+  transcriber's notes fewer read, since its onsets move the search
+  [synthetic].
+- A fast drop, $\tau$ under 10 ms, after a ringing note needs a 6 dB
+  strike, and a drop with a slow attack needs one too [fact].
+- Retriggered 808 hits at one pitch, with and without gaps, ringing or
+  not, and 808 lines stepping up to 7 semitones report no drop
+  [synthetic].
 
 ## Glides
 
@@ -214,11 +247,18 @@ A glide is pitch moving from one stable pitch to another.
   starts slow, $p = 1$ is linear in pitch [fact]. A grid of 9 powers, 8
   times and 13 starts seeds a Nelder-Mead simplex; $p$ stays within 0.2 to
   5 [fact].
-- Shape. A fit of 90 ms or more with $p$ within 5 % of 0.2 or 5, or with an
-  RMS residual above 40 cents, does not follow the curve and is no glide
-  [proposal]. The glides of the generated signals fit within 22 cents with
-  $p$ from 0.85 to 3.32; the false glides at 808 steps sat on a bound of
-  $p$ or fitted under 90 ms [synthetic].
+- Shape. A fit of 90 ms or more with $p$ within 5 % of 0.2, or with an RMS
+  residual above 40 cents, does not follow the curve and is no glide
+  [proposal]. The glides of the generated signals fit within 22 cents; the
+  false glides at 808 steps sat on a bound of $p$ or fitted under 90 ms
+  [synthetic].
+- Curve bound. An exponential (RC) portamento, $1 - e^{-t/\tau}$,
+  approaches its target slower than any power of the curve, so its $p$
+  sits on the upper bound of 5 [fact]. A fit within 5 % of that bound
+  counts when its residual is 20 cents or less, its detected span lasts
+  90 ms or more, and it does not come from silence; it reads low with the
+  reason `curve_bound` [proposal]. Without those conditions a melody step
+  on a sine and two driven drops read as glides on the bound [synthetic].
 - `time_s` is the full 0 to 100 % time [fact]. `start_s` is the fitted
   start less the track's lag at the start pitch [fact].
 - From silence. When a voiced run starts away from its first stable pitch
@@ -233,13 +273,19 @@ A glide is pitch moving from one stable pitch to another.
   [proposal].
 - Confidence. The reasons are the motion span, the RMS residual of the fit
   in cents and the jitter: the RMS deviation of the two stable pitches
-  from their medians [fact]. High needs a residual of 15 cents or less, a
-  jitter of 3 cents or less and a motion of 150 ms or more; low comes with
-  a jitter above 3.5 cents [proposal]. A unison beats and the track wanders
-  on the stable pitches, but the jitter tells a unison only roughly: on the
-  generated signals the unison glides jitter 3.5 to 7.1 cents and the mono
-  ones 0 to 5.6 [synthetic]. Every unison glide read reads low; a mono
-  glide above 3.5 cents reads low too [synthetic].
+  from their medians, and `curve_bound` [fact]. High needs a residual of
+  15 cents or less, a jitter of 3 cents or less, a motion of 150 ms or
+  more and $p$ of 3 or less; low comes with a jitter above 3.5 cents or a
+  curve on the bound [proposal].
+  - A faster start reads its rise less well: on the generated sets, up to
+    11 % off at $p$ 4.4, while high-confidence glides read their rise
+    within 7.1 % [synthetic].
+  - A unison beats and the track wanders on the stable pitches, but the
+    jitter tells a unison only roughly. On the generated signals the
+    unison glides jitter 3.45 to 7.1 cents and the mono ones 0 to 5.6
+    [synthetic]. The unison glides read low, except one at 44.1 kHz with a
+    jitter of 3.45 cents, which reads medium; a mono glide above 3.5 cents
+    reads low too [synthetic].
 
 Glides of 7 semitones up from 110 Hz on a band-limited saw, 0.5 s holds
 [synthetic]. The rise is the 10 to 90 % time derived from the fitted time
@@ -281,9 +327,13 @@ Other glides, mono [synthetic]:
 | From silence into 82.4 Hz, up 5 semitones, 150 ms, $p$ 1 | +4.70 st, 150 ms, $p$ 0.85, rise +1.9 %, low |
 | From silence into 82.4 Hz, up 5 semitones, 300 ms, $p$ 2.5 | +4.48 st, 252 ms, $p$ 1.74, rise +1.0 %, low |
 | 808 lines stepping up to 7 semitones, legato, driven or staccato | none |
+| RC portamento from 110 Hz up 7 semitones, $\tau$ 50 ms | +6.9 st, $p$ 5.00, low, `curve_bound` |
+| RC portamento from 196 Hz down 5 semitones, $\tau$ 80 ms | -5.0 st, $p$ 5.00, low, `curve_bound` |
 
 The track's first frames of a tone read low, so a glide from silence reads
-its interval up to 0.6 semitones short [synthetic].
+its interval up to 0.6 semitones short [synthetic]. Of 16 generated RC
+glides, $\tau$ 30 to 120 ms at 110 to 247 Hz, all read, at low confidence
+[synthetic].
 
 Limits:
 
@@ -294,6 +344,9 @@ Limits:
 - A vibrato of ±100 cents at 3 Hz holds each extreme long enough to read
   as a stable pitch, and its swings read as glides of 1.9 semitones, each
   at low confidence [synthetic].
+- An 808 slide reads low: its stable pitches jitter like a unison's
+  [synthetic].
+- A falling slide of 7 semitones from 49 Hz is not read [synthetic].
 - A glide inside chords has no method here [fact].
 
 ## Vibrato
@@ -361,6 +414,13 @@ Limits:
   confidence: its contour jumps between two levels [fact].
 - From 4.5 Hz the transcriber gives a ±100-cent vibrato as overlapping
   notes, the line reads as chords, and the layer is skipped [synthetic].
+- A vibrato whose depth ramps in over the span reads its extent 9 to 51 %
+  low, since the sine averages the ramp [synthetic].
+- A triangle LFO reads its extent 20 to 26 % low at high confidence: the
+  fitted sine holds $8/\pi^2$ of a triangle's amplitude, and the extent is
+  the sine's [fact, synthetic for the range].
+- A vibrato whose rate sweeps from 4 to 6 Hz reads no vibrato
+  [synthetic].
 - A vibrato that starts late in a note is diluted by the steady part
   before it [fact].
 
