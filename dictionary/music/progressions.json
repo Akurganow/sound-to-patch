@@ -1223,14 +1223,14 @@
     "id": "progression.backdoor",
     "group": "progression",
     "word": "backdoor",
-    "aliases": ["ii-bVII7-I"],
-    "meaning": "ii-bVII7-I, which reaches the tonic through the flat-seven dominant.",
+    "aliases": ["iv7-bVII7-Imaj7", "backdoor ii-V"],
+    "meaning": "iv7-bVII7-Imaj7, Fm7, Bb7 and Cmaj7 in C: the minor four and the flat-seven dominant reach the tonic from below.",
     "sense": null,
     "default": true,
     "conflicts": [],
     "rule": {
       "kind": "cycle",
-      "roots": [2, 10, 0],
+      "roots": [5, 10, 0],
       "chords": ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"],
       "bars_per_chord": null
     },
@@ -1239,8 +1239,8 @@
       "bpm": null,
       "grid": 16,
       "notes": [
-        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
         {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
         {"pitch": 58, "start": 16, "len": 4, "vel": 90},
         {"pitch": 62, "start": 16, "len": 4, "vel": 90},
         {"pitch": 48, "start": 32, "len": 4, "vel": 90},
@@ -1256,8 +1256,8 @@
         {"pitch": 53, "start": 0, "len": 4, "vel": 90},
         {"pitch": 58, "start": 16, "len": 4, "vel": 90},
         {"pitch": 62, "start": 16, "len": 4, "vel": 90},
-        {"pitch": 49, "start": 32, "len": 4, "vel": 90},
-        {"pitch": 53, "start": 32, "len": 4, "vel": 90}
+        {"pitch": 48, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 32, "len": 4, "vel": 90}
       ]
     },
     "roles": [],
@@ -2368,14 +2368,14 @@
     "group": "harmony",
     "word": "double chromatic mediant",
     "aliases": [],
-    "meaning": "A chromatic mediant whose chord shares no tone with the last chord, such as a major triad a tritone away.",
+    "meaning": "A chord whose root lies 3, 4, 8 or 9 semitones away in the opposite quality, so the two chords share no tone: C major to Eb minor or Ab minor, and C minor to E major or A major.",
     "sense": null,
     "default": true,
     "conflicts": ["harmony.chromatic-mediant"],
     "rule": {
       "kind": "cycle",
-      "roots": [0, 6],
-      "chords": ["chord.major-triad", "chord.major-triad"],
+      "roots": [0, 3],
+      "chords": ["chord.major-triad", "chord.minor-triad"],
       "bars_per_chord": null
     },
     "example_pass": {
@@ -2386,9 +2386,9 @@
         {"pitch": 60, "start": 0, "len": 4, "vel": 90},
         {"pitch": 64, "start": 0, "len": 4, "vel": 90},
         {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 63, "start": 16, "len": 4, "vel": 90},
         {"pitch": 66, "start": 16, "len": 4, "vel": 90},
-        {"pitch": 70, "start": 16, "len": 4, "vel": 90},
-        {"pitch": 73, "start": 16, "len": 4, "vel": 90}
+        {"pitch": 70, "start": 16, "len": 4, "vel": 90}
       ]
     },
     "example_fail": {
@@ -2407,9 +2407,9 @@
     "roles": [],
     "genres": [],
     "tier": "M3",
-    "n_sources": 1,
+    "n_sources": 2,
     "source": ["guides"],
-    "tag": "single source",
+    "tag": "source states",
     "verified": "2026-10-25",
     "notes_trigger": true,
     "controls": [],

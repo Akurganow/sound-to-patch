@@ -69,12 +69,12 @@ impl Key {
     }
 
     /// Sharps or flats for display: flats for F, Bb, Eb, Ab and Db major
-    /// and for D, G, C, F and Bb minor; sharps otherwise.
+    /// and for D, G, C, F, Bb, Eb and Ab minor; sharps otherwise.
     #[must_use]
     pub fn spelling(self) -> Spelling {
         let flats: &[u8] = match self.mode {
             Mode::Major => &[5, 10, 3, 8, 1],
-            Mode::Minor => &[2, 7, 0, 5, 10],
+            Mode::Minor => &[2, 7, 0, 5, 10, 3, 8],
         };
         if flats.contains(&self.tonic) {
             Spelling::Flats
@@ -221,6 +221,9 @@ pub struct KeyReading {
 }
 
 /// Parses a key name.
+///
+/// A key is major or minor. A mode name such as `A dorian` is a scale, so
+/// read it through the scale entries.
 ///
 /// # Errors
 ///
@@ -432,7 +435,7 @@ mod tests {
     #[test]
     fn rejects_text_outside_the_grammar() {
         for text in [
-            "13A", "0A", "Z", "Am7", "A7", "", "8C", "13m", "A minorr", "Bes",
+            "13A", "0A", "Z", "Am7", "A7", "", "8C", "13m", "A minorr", "Bes", "A dorian",
         ] {
             assert!(parse_key(text).is_err(), "{text}");
         }
@@ -515,6 +518,8 @@ mod tests {
         assert_eq!(Key::new(10, Mode::Major).to_string(), "Bb major");
         assert_eq!(Key::new(6, Mode::Minor).to_string(), "F# minor");
         assert_eq!(Key::new(10, Mode::Minor).to_string(), "Bb minor");
-        assert_eq!(Key::new(8, Mode::Minor).to_string(), "G# minor");
+        assert_eq!(Key::new(8, Mode::Minor).to_string(), "Ab minor");
+        assert_eq!(Key::new(3, Mode::Minor).to_string(), "Eb minor");
+        assert_eq!(Key::new(1, Mode::Minor).to_string(), "C# minor");
     }
 }

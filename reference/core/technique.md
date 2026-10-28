@@ -23,13 +23,14 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | 303 slide | `articulation.303-slide` | the next note starts at least 5 ms before this one ends | A flagged acid step glides into the next, and the slide gate starts one step later. Slide only 15 to 35 percent of the notes. Glide time is 60 to 120 ms. | M2 | inferred | lexicon |
 | 303 accent | `articulation.303-accent` | velocity 100 to 127 | An accented acid step: velocity 100 to 127 against 70 to 90 for the rest. The preset must send velocity to level and cutoff, or the accent is silent. | M2 | inferred | lexicon |
 | 808 slide | `articulation.808-slide` | the next note starts at least 5 ms before this one ends | A mono 808 glide: the end of one note overlaps the next and the notes run long. Glide time is 80 to 150 ms, fast 30 to 50 ms, slow 200 ms and more. | M2 | inferred | lexicon |
-| pp | `articulation.pp` | velocity 32 to 39 | The dynamic mark pp (very quiet) as velocity 32 to 39. | M3 | snippet | guides |
-| p | `articulation.p` | velocity 48 to 61 | The dynamic mark p (quiet) as velocity 48 to 61. | M3 | snippet | guides |
-| mp | `articulation.mp` | velocity 64 to 71 | The dynamic mark mp (medium quiet) as velocity 64 to 71. | M3 | snippet | guides |
-| mf | `articulation.mf` | velocity 80 to 84 | The dynamic mark mf (medium loud) as velocity 80 to 84. | M3 | snippet | guides |
-| f | `articulation.f` | velocity 96 to 98 | The dynamic mark f (loud) as velocity 96 to 98. | M3 | snippet | guides |
-| ff | `articulation.ff` | velocity 112 to 113 | The dynamic mark ff (very loud) as velocity 112 to 113. | M3 | snippet | guides |
-| fff | `articulation.fff` | velocity 126 to 127 | The dynamic mark fff (fortississimo, the loudest) as velocity 126 to 127. | M3 | snippet | guides |
+| ppp | `articulation.ppp` | velocity 1 to 31 | The dynamic mark ppp (extremely quiet) as velocity 1 to 31. The bands are contiguous and cover 1 to 127. No published table gives ppp. | M3 | proposal | lexicon |
+| pp | `articulation.pp` | velocity 32 to 47 | The dynamic mark pp (very quiet) as velocity 32 to 47. The bands are contiguous and cover 1 to 127. One published table puts pp at 32 to 39. | M3 | proposal | guides, lexicon |
+| p | `articulation.p` | velocity 48 to 63 | The dynamic mark p (quiet) as velocity 48 to 63. The bands are contiguous and cover 1 to 127. One published table puts p at 48 to 61. | M3 | proposal | guides, lexicon |
+| mp | `articulation.mp` | velocity 64 to 79 | The dynamic mark mp (moderately quiet) as velocity 64 to 79. The bands are contiguous and cover 1 to 127. One published table puts mp at 64 to 71. | M3 | proposal | guides, lexicon |
+| mf | `articulation.mf` | velocity 80 to 95 | The dynamic mark mf (moderately loud) as velocity 80 to 95. The bands are contiguous and cover 1 to 127. One published table puts mf at 80 to 84. | M3 | proposal | guides, lexicon |
+| f | `articulation.f` | velocity 96 to 111 | The dynamic mark f (loud) as velocity 96 to 111. The bands are contiguous and cover 1 to 127. One published table puts f at 96 to 98. | M3 | proposal | guides, lexicon |
+| ff | `articulation.ff` | velocity 112 to 125 | The dynamic mark ff (very loud) as velocity 112 to 125. The bands are contiguous and cover 1 to 127. One published table puts ff at 112 to 113. | M3 | proposal | guides, lexicon |
+| fff | `articulation.fff` | velocity 126 to 127 | The dynamic mark fff (extremely loud) as velocity 126 to 127. The bands are contiguous and cover 1 to 127. One published table puts fff at 126 to 127. | M3 | proposal | guides, lexicon |
 | polyphony | `articulation.polyphony` | none | The number of notes that can sound at once. In Serum 2 the POLY limit may count unison voices as voices. It is a preset matter. | M3 | inferred | lexicon |
 
 ## Bass techniques

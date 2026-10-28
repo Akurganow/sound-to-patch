@@ -274,8 +274,8 @@ impl fmt::Display for MusicError {
             Self::UnknownKey(text) => write!(
                 f,
                 "`{text}` is not a key name: write a letter with an optional sharp or flat and \
-                 mode, such as `A minor` or `Bb`, a Camelot code such as `8A`, or an Open Key \
-                 code such as `1m`"
+                 major or minor, such as `A minor` or `Bb`, a Camelot code such as `8A`, or an \
+                 Open Key code such as `1m`; a mode such as dorian is a scale entry"
             ),
             Self::UnknownNote(text) => write!(
                 f,

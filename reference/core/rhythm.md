@@ -44,14 +44,14 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | straight | `swing.straight` | 16th swing, pair percent 50 to 50 | No swing: the pair percent is 50 and every second note starts exactly on its slot. | M1 | derived | lexicon |
 | light swing | `swing.light-swing` | 16th swing, pair percent 52 to 56 | A pair percent near 54 that only loosens a straight beat. The second sixteenth is about 8 percent of a sixteenth late. | M3 | derived | lexicon |
-| boom bap swing (boom bap) | `swing.boom-bap-swing` | 16th swing, pair percent 58 to 62 | Swung sixteenths at 58 to 62 percent, usually 58. The second sixteenth of each pair is 16 to 24 percent of a sixteenth late. | M1 | source states | guides |
+| boom bap swing (boom bap) | `swing.boom-bap-swing` | 16th swing, pair percent 54 to 62 | Swung sixteenths at 54 to 62 percent, usually 58; 54 only loosens the beat. The second sixteenth of each pair is 8 to 24 percent of a sixteenth late. | M1 | source states | guides |
 | triplet swing (triplet shuffle, triplet feel) | `swing.triplet-swing` | 8th swing, pair percent 65 to 68 | Swung eighths at 66.7 percent, a long note twice as long as the short one. Producers also call it a triplet shuffle. | M3 | derived | lexicon |
 | dotted swing | `swing.dotted-swing` | 16th swing, pair percent 73 to 77 | Swung sixteenths at 75 percent, a long note three times as long as the short one. | M3 | derived | lexicon |
-| jazz swing (jazz feel) | `swing.jazz-swing` | 8th swing, pair percent 53 to 67 | Swung eighths at about 61 percent by default. The ratio is near 1 at fast tempo and near 3.5 at slow tempo. Real jazz files put the offbeat at 53 to 67 percent. | M2 | derived | groove, guides |
+| jazz swing (jazz feel) | `swing.jazz-swing` | 8th swing, pair percent 50 to 78 | Swung eighths, written at 2:1 (66.7 percent) by default. The ratio runs from about 1:1 at fast tempo to about 3.5:1 (78 percent) at slow tempo, and real jazz drum files put the offbeat at a median of 61 percent. | M2 | derived | groove, guides |
 | UK garage swing (garage swing) | `swing.uk-garage-swing` | 16th swing, pair percent 59 to 64 | Swung sixteenth hats at about 59 to 64 percent, with extra hits at slot mod 4 of 1 and 3. | M3 | single source | guides |
-| shuffle, sense `eighth-swing`, default | `swing.shuffle.eighth-swing` | 8th swing, pair percent 65 to 68 | Eighth notes swung 2:1 (66.7 percent), the blues and jazz shuffle. With no genre named, take this sense. | M2 | proposal | lexicon |
-| shuffle, sense `garage-sixteenth` | `swing.shuffle.garage-sixteenth` | 16th swing, pair percent 59 to 64 | Sixteenth notes swung at 59 to 64 percent, as in UK garage. | M2 | proposal | lexicon |
-| shuffle, sense `drum-pattern` | `swing.shuffle.drum-pattern` | none | A whole shuffled drum groove, not only a swing amount. The genre template supplies the pattern. | M2 | proposal | lexicon |
+| shuffle, sense `eighth-swing`, default | `swing.shuffle.eighth-swing` | 8th swing, pair percent 65 to 68 | Eighth notes swung 2:1 (66.7 percent), the blues and jazz shuffle. With no genre named, take this sense. | M2 | source states | lexicon |
+| shuffle, sense `garage-sixteenth` | `swing.shuffle.garage-sixteenth` | 16th swing, pair percent 59 to 64 | Sixteenth notes swung at 59 to 64 percent, as in UK garage. | M2 | single source | lexicon |
+| shuffle, sense `drum-pattern` | `swing.shuffle.drum-pattern` | none | A whole shuffled drum groove, not only a swing amount. The genre template supplies the pattern. | M2 | inferred | lexicon |
 
 ## Feel and humanize
 
@@ -65,7 +65,7 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | accent (accented) | `feel.accent` | velocity 100 to 127 | A hit at velocity 100 to 127 among notes at 70 to 90. The sound only follows velocity when the preset routes velocity to level or cutoff. | M1 | source states | guides |
 | soft velocity (soft hit) | `feel.soft-velocity` | velocity 46 to 69 | A soft hit, velocity 46 to 69. | M3 | proposal | lexicon |
 | normal velocity (normal hit) | `feel.normal-velocity` | velocity 70 to 99 | A normal hit, velocity 70 to 99. Velocity 0 is a note-off and never a quiet note. | M3 | proposal | lexicon |
-| groove | `feel.groove` | none | The feel of a pattern: its swing, its push and pull, and its accents together. No single note rule carries it. | M1 | proposal | lexicon |
+| groove | `feel.groove` | none | The feel of a pattern: its swing, its push and pull, and its accents together. No single note rule carries it. | M1 | inferred | lexicon |
 
 ## Named rhythms
 
@@ -73,14 +73,14 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | tresillo | `rhythm.tresillo` | E(3,8) rotated 0: steps 0 3 6 | The 3+3+2 figure, a Euclidean pattern of 3 onsets in 8 steps. One bar holds slots 0, 3, 6, 8, 11 and 14. | M1 | source states | guides, euclid-paper |
 | two-step (2-step, 2 step) | `rhythm.two-step` | kick at 0 10; snare at 4 12 | Kick on slots 0 and 10, snare on 4 and 12. Drum and bass runs it near 172 BPM and garage near 132. | M1 | source states | guides |
-| beat | `rhythm.beat` | none | One quarter note. Tempo is counted in quarter-note beats per minute and never in eighths. | M1 | proposal | lexicon |
+| beat | `rhythm.beat` | none | One quarter note. Tempo is counted in quarter-note beats per minute and never in eighths. | M1 | inferred | lexicon |
 | dembow | `rhythm.dembow` | kick at 0 4 8 12; snare at 3 6 11 14 | Kick on every beat and snare on slots 3, 6, 11 and 14, at 88 to 100 BPM, with the 808 on the chord root. | M2 | source states | guides |
 | son clave (clave), sense `three-two`, default | `rhythm.son-clave.three-two` | any at 0 3 6 10 12 | The son clave in its 3-2 order: slots 0, 3, 6, 10 and 12. | M2 | source states | guides |
 | son clave, sense `two-three` | `rhythm.son-clave.two-three` | any at 2 4 8 11 14 | The son clave in its 2-3 order: slots 2, 4, 8, 11 and 14. | M2 | source states | guides |
 | bossa (bossa nova) | `rhythm.bossa` | any at 0 3 6 10 13 | The bossa pattern: slots 0, 3, 6, 10 and 13. | M2 | source states | guides |
 | one drop | `rhythm.one-drop` | kick at 8; rim at 8; hat at 0 2 4 6 8 10 12 14 | Beat 1 stays empty. Kick and rim play together only on slot 8, and the hats run on eighths. | M2 | source states | guides |
 | breakbeat | `rhythm.breakbeat` | kick at 0 7 10; snare at 4 12 | Kick on slot 0 plus extras at 7 and 10, snare on 4 and 12. All 21 grids of the pattern set start with a kick at 0 and only one puts every kick on a beat. | M2 | source states | guides, drum-patterns |
-| amen-style break (amen break) | `rhythm.amen-style-break` | kick at 0 2 10 11; snare at 4 7 9 12 15; ride at 0 2 4 6 8 10 12 14 | A four-bar break. Bar 1 has kick on 0, 2, 10 and 11, snare on 4 and 12, quiet snares on 7, 9 and 15, and ride on eighths. Bars 3 and 4 delay the last snare an eighth. | M2 | source states | guides |
+| amen-style break (amen break) | `rhythm.amen-style-break` | kick at 0 2 10 11; snare at 4 7 9 12 15; ride at 0 2 4 6 8 10 12 14 | A four-bar break. Bar 1 has kick on 0, 2, 10 and 11, snare on 4 and 12, quiet snares on 7, 9 and 15, and ride on eighths. Guides say bars 3 and 4 delay the last snare an eighth; that variation is not checked against a recording. | M2 | snippet | guides |
 | gallop, sense `forward`, default | `rhythm.gallop.forward` | any at 0 2 3 4 6 7 8 10 11 12 14 15 | Per beat, a long note then two short ones at +0, +0.5 and +0.75 beat, with lengths 0.5, 0.25 and 0.25. Staccato halves the lengths. | M2 | source states | guides |
 | gallop, sense `reverse` | `rhythm.gallop.reverse` | any at 0 1 2 4 5 6 8 9 10 12 13 14 | The reverse gallop: per beat two short notes then a long one at +0, +0.25 and +0.5 beat. | M2 | source states | guides |
 | hat roll (trap hat roll) | `rhythm.hat-roll` | none | Trap hats on sixteenths, downbeats at velocity 100 to 127 and upbeats at 40 to 70. A roll of 3 to 4 hits rises in velocity into the snare, written as sixteenth triplets. | M2 | source states | guides |

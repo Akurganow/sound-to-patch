@@ -4,7 +4,7 @@
     "group": "role",
     "word": "sub bass",
     "aliases": [],
-    "meaning": "The sub band below about 60 Hz, played one note at a time. Many systems fail below note 30, so the core stays at 26 to 35.",
+    "meaning": "The sub band below about 60 Hz, played one note at a time. Many playback systems roll off below about 30 Hz, between notes 23 and 24, so the core stays at 26 to 35.",
     "sense": null,
     "default": true,
     "conflicts": [],

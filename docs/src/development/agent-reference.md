@@ -97,13 +97,23 @@ Each entry is one sense of a word:
   break the rule. The loader checks that they are well formed and in
   range; the text-to-notes task evaluates them.
 - `tier` says how much the entry is needed: every planned M1 entry must
-  land, at least half of M2 and a quarter of M3. `tag` says how the claim
-  is known, and `source` names ids from `dictionary/sources.json`.
+  land, at least half of M2 and a quarter of M3. `source` names ids from
+  `dictionary/sources.json`.
+- `tag` says how the claim is known, one of `source states`, `measured`,
+  `derived` (our computation on public data), `inferred` (our reading),
+  `snippet` (a search excerpt), `single source` and `proposal` (a value or
+  policy we chose, such as a default pick or a velocity band). An entry
+  that is mostly facts takes the tag of its facts.
 - A word with several senses has one entry per sense and exactly one
   default. An ask word carries the one question on its default sense.
 - Chord entries list their spellings in `symbols`; the chord parser reads
   only those, so a spelling outside the dictionary is an error that names
   it.
+
+Roman numerals take the mode of the key when it is given. Without one, a
+line is minor only when it starts with `i` or holds a bare `III`, `VI` or
+`VII`; any other line reads as major and is flagged as an assumption.
+`X/Y` is a secondary chord read in the key of Y.
 
 The middle-C convention is named by the label a program gives note 60:
 `C3`, `C4` (scientific) or `C5`. Notes are stored as MIDI numbers, and a
@@ -121,14 +131,30 @@ To add or change a music entry:
 4. Raise the group's count in `dictionary/music/plan.json` when the entry is planned.
 5. Run `cargo xtask reference` to rewrite `reference/core/`.
 
-The oracle libraries never enter the repository. `chordparser` and
-`rust-music-theory` are dev-dependencies: the tests compare every chord
-spelling and the scales they share. `pychord` and `music21` are pinned in
-the golden tools; `cargo xtask golden` passes the spellings on stdin to
+The oracle libraries never enter the repository, and they cover only part
+of the dictionary:
+
+| Oracle | Where it runs | What it compares |
+| :-- | :-- | :-- |
+| `rust-music-theory` | CI, dev-dependency | 13 of the 57 scale rows; 23 chord qualities |
+| `chordparser` | CI, dev-dependency | every chord spelling; 14 of 137 do not parse |
+| `pychord` | golden tools, local | every chord spelling; 87 of 137 do not parse |
+| `music21` | golden tools, local | every chord spelling; 65 of 137 do not parse |
+
+The npm table the published lexicon was checked against is not run, so
+the lexicon's 56-of-57 scale and 22-of-31 chord comparisons are not
+repeated here. `cargo xtask golden` passes the spellings on stdin to
 `xtask/golden/music_oracle.py`, which runs in the temp folder and writes
 only which spellings agree, differ or do not parse. The tests pin the
 spellings that differ, so a change in either the dictionary or an oracle
-fails them.
+fails them. Snapshot tests pin every scale's offsets, every onset set and
+pattern, every tempo and progression root and every stated share, so a
+changed number shows in review.
+
+Most shares in `dictionary/music/stats.json` are transcribed from the
+published lexicon, whose aggregation scripts are not committed; they carry
+the tag `single source` and cite `lexicon` next to their corpus. Only a
+share with counts is recomputed.
 
 ## Checks
 
@@ -150,8 +176,9 @@ fails them.
   reported as "symlink not checked out";
 - a file under `reference/` that is neither Markdown nor JSON;
 - a phrase that a folder must not hold: for Vital, the name of the other
-  synth; for `core/`, a program name other than Serum 2 and Vital; for
-  both, version comparisons such as "older version";
+  synth; for `core/`, a program or service name other than Serum 2 and
+  Vital, kept in the source as SHA-256 digests so the names stay out of
+  the tree; for both, version comparisons such as "older version";
 - a reference file without a probe in `dictionary/probes.json`, and a
   probe answer that appears in no file or in more than one.
 

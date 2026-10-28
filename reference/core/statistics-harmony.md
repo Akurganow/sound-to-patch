@@ -14,158 +14,158 @@ Shares the music dictionary rests on, in percent. A share with counts is recompu
 
 | Claim | Id | Share % | Counts | Tag | Sources |
 | :-- | :-- | --: | :-- | :-- | :-- |
-| Share of all chords in the chord-sheet corpus that are dominant 7, 9, 11 and 13 chords. | `chords.dominant-family.sheet` | 3.87 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are minor 7 chords and up. | `chords.minor-seventh-up.sheet` | 2.7 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are maj7 chords and up. | `chords.major-seventh-up.sheet` | 1.45 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are suspended chords. | `chords.sus.sheet` | 1.41 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are power chords. | `chords.power.sheet` | 1.4 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are add chords. | `chords.add.sheet` | 1.23 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are 9th chords. | `chords.ninth.sheet` | 1.09 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are 13th chords. | `chords.thirteenth.sheet` | 0.47 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are 6th chords. | `chords.sixth.sheet` | 0.41 |  | derived | sheet-chords |
-| Share of all chords in the chord-sheet corpus that are diminished chords. | `chords.diminished.sheet` | 0.2 |  | derived | sheet-chords |
-| Share of chords in the chord-sheet corpus that have three notes. | `chords.three-notes.sheet` | 89 |  | derived | sheet-chords |
-| Share of chords in soul chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-soul` | 7.92 |  | derived | sheet-chords |
-| Share of chords in soul chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-soul` | 11.73 |  | derived | sheet-chords |
-| Share of chords in soul chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-soul` | 6.2 |  | derived | sheet-chords |
-| Share of chords in jazz chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-jazz` | 12.75 |  | derived | sheet-chords |
-| Share of chords in jazz chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-jazz` | 6.56 |  | derived | sheet-chords |
-| Share of chords in jazz chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-jazz` | 2.74 |  | derived | sheet-chords |
-| Share of chords in electronic chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-electronic` | 1.71 |  | derived | sheet-chords |
-| Share of chords in electronic chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-electronic` | 2.66 |  | derived | sheet-chords |
-| Share of chords in electronic chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-electronic` | 1.49 |  | derived | sheet-chords |
-| Share of chords in metal chord sheets that are power chords. | `chords.power.sheet-metal` | 5.76 |  | derived | sheet-chords |
-| Share of chords in punk chord sheets that are power chords. | `chords.power.sheet-punk` | 5.73 |  | derived | sheet-chords |
+| Share of all chords in the chord-sheet corpus that are dominant 7, 9, 11 and 13 chords. | `chords.dominant-family.sheet` | 3.87 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are minor 7 chords and up. | `chords.minor-seventh-up.sheet` | 2.7 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are maj7 chords and up. | `chords.major-seventh-up.sheet` | 1.45 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are suspended chords. | `chords.sus.sheet` | 1.41 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are power chords. | `chords.power.sheet` | 1.4 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are add chords. | `chords.add.sheet` | 1.23 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are 9th chords. | `chords.ninth.sheet` | 1.09 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are 13th chords. | `chords.thirteenth.sheet` | 0.47 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are 6th chords. | `chords.sixth.sheet` | 0.41 |  | single source | lexicon, sheet-chords |
+| Share of all chords in the chord-sheet corpus that are diminished chords. | `chords.diminished.sheet` | 0.2 |  | single source | lexicon, sheet-chords |
+| Share of chords in the chord-sheet corpus that have three notes. | `chords.three-notes.sheet` | 89 |  | single source | lexicon, sheet-chords |
+| Share of chords in soul chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-soul` | 7.92 |  | single source | lexicon, sheet-chords |
+| Share of chords in soul chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-soul` | 11.73 |  | single source | lexicon, sheet-chords |
+| Share of chords in soul chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-soul` | 6.2 |  | single source | lexicon, sheet-chords |
+| Share of chords in jazz chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-jazz` | 12.75 |  | single source | lexicon, sheet-chords |
+| Share of chords in jazz chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-jazz` | 6.56 |  | single source | lexicon, sheet-chords |
+| Share of chords in jazz chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-jazz` | 2.74 |  | single source | lexicon, sheet-chords |
+| Share of chords in electronic chord sheets that are dominant 7 to 13 chords. | `chords.dominant.sheet-electronic` | 1.71 |  | single source | lexicon, sheet-chords |
+| Share of chords in electronic chord sheets that are minor 7 and up chords. | `chords.minor-seventh.sheet-electronic` | 2.66 |  | single source | lexicon, sheet-chords |
+| Share of chords in electronic chord sheets that are maj7 and up chords. | `chords.major-seventh.sheet-electronic` | 1.49 |  | single source | lexicon, sheet-chords |
+| Share of chords in metal chord sheets that are power chords. | `chords.power.sheet-metal` | 5.76 |  | single source | lexicon, sheet-chords |
+| Share of chords in punk chord sheets that are power chords. | `chords.power.sheet-punk` | 5.73 |  | single source | lexicon, sheet-chords |
 
 ## Harmony
 
 | Claim | Id | Share % | Counts | Tag | Sources |
 | :-- | :-- | --: | :-- | :-- | :-- |
-| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold one chord. | `harmony.bar-one-chord` | 75.8 |  | derived | chart-chords |
-| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold two chords. | `harmony.bar-two-chords` | 20.3 |  | derived | chart-chords |
-| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold three chords. | `harmony.bar-three-chords` | 3.1 |  | derived | chart-chords |
-| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold four chords. | `harmony.bar-four-chords` | 0.7 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 1.33 beats. | `harmony.run-1-33-beats` | 7.5 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 1 beats. | `harmony.run-1-beats` | 2.5 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 2 beats. | `harmony.run-2-beats` | 35.6 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 4 beats. | `harmony.run-4-beats` | 34.9 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 6 beats. | `harmony.run-6-beats` | 1.8 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 8 beats. | `harmony.run-8-beats` | 11.8 |  | derived | chart-chords |
-| Share of chord runs in the chart annotation set that last 16 beats. | `harmony.run-16-beats` | 1.3 |  | derived | chart-chords |
-| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 8 bars. | `harmony.section-8-bars` | 31.3 |  | derived | chart-chords |
-| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 16 bars. | `harmony.section-16-bars` | 14 |  | derived | chart-chords |
-| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 4 bars. | `harmony.section-4-bars` | 13.5 |  | derived | chart-chords |
-| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 12 bars. | `harmony.section-12-bars` | 7.1 |  | derived | chart-chords |
-| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 4-bar chord pattern exactly. | `harmony.repeat-4-bar` | 17.2 |  | derived | chart-chords |
-| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 2-bar chord pattern exactly. | `harmony.repeat-2-bar` | 8.1 |  | derived | chart-chords |
-| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 1-bar chord pattern exactly. | `harmony.repeat-1-bar` | 5.9 |  | derived | chart-chords |
-| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat an 8-bar chord pattern exactly. | `harmony.repeat-8-bar` | 4 |  | derived | chart-chords |
-| Share of the 6,174 sections of 8 or more bars in the chart annotation set that do not repeat exactly. | `harmony.repeat-none` | 64 |  | derived | chart-chords |
-| Share of sections in the chord-sheet corpus where a cycle of at most 8 changes repeats. | `harmony.cycle-repeats.sheet` | 32.9 |  | derived | sheet-chords |
-| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 4 chords. | `harmony.cycle-4-chords.sheet` | 47.6 |  | derived | sheet-chords |
-| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 3 chords. | `harmony.cycle-3-chords.sheet` | 17.8 |  | derived | sheet-chords |
-| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 2 chords. | `harmony.cycle-2-chords.sheet` | 11.7 |  | derived | sheet-chords |
-| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 5 chords. | `harmony.cycle-5-chords.sheet` | 8.9 |  | derived | sheet-chords |
+| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold one chord. | `harmony.bar-one-chord` | 75.8 |  | single source | lexicon, chart-chords |
+| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold two chords. | `harmony.bar-two-chords` | 20.3 |  | single source | lexicon, chart-chords |
+| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold three chords. | `harmony.bar-three-chords` | 3.1 |  | single source | lexicon, chart-chords |
+| Share of bars in the chart annotation set (831 songs in 4/4, 84,109 bars) that hold four chords. | `harmony.bar-four-chords` | 0.7 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 1.33 beats. | `harmony.run-1-33-beats` | 7.5 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 1 beats. | `harmony.run-1-beats` | 2.5 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 2 beats. | `harmony.run-2-beats` | 35.6 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 4 beats. | `harmony.run-4-beats` | 34.9 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 6 beats. | `harmony.run-6-beats` | 1.8 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 8 beats. | `harmony.run-8-beats` | 11.8 |  | single source | lexicon, chart-chords |
+| Share of chord runs in the chart annotation set that last 16 beats. | `harmony.run-16-beats` | 1.3 |  | single source | lexicon, chart-chords |
+| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 8 bars. | `harmony.section-8-bars` | 31.3 |  | single source | lexicon, chart-chords |
+| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 16 bars. | `harmony.section-16-bars` | 14 |  | single source | lexicon, chart-chords |
+| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 4 bars. | `harmony.section-4-bars` | 13.5 |  | single source | lexicon, chart-chords |
+| Share of the 8,406 sections of 2 or more bars in the chart annotation set that last 12 bars. | `harmony.section-12-bars` | 7.1 |  | single source | lexicon, chart-chords |
+| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 4-bar chord pattern exactly. | `harmony.repeat-4-bar` | 17.2 |  | single source | lexicon, chart-chords |
+| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 2-bar chord pattern exactly. | `harmony.repeat-2-bar` | 8.1 |  | single source | lexicon, chart-chords |
+| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat a 1-bar chord pattern exactly. | `harmony.repeat-1-bar` | 5.9 |  | single source | lexicon, chart-chords |
+| Share of the 6,174 sections of 8 or more bars in the chart annotation set that repeat an 8-bar chord pattern exactly. | `harmony.repeat-8-bar` | 4 |  | single source | lexicon, chart-chords |
+| Share of the 6,174 sections of 8 or more bars in the chart annotation set that do not repeat exactly. | `harmony.repeat-none` | 64 |  | single source | lexicon, chart-chords |
+| Share of sections in the chord-sheet corpus where a cycle of at most 8 changes repeats. | `harmony.cycle-repeats.sheet` | 32.9 |  | single source | lexicon, sheet-chords |
+| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 4 chords. | `harmony.cycle-4-chords.sheet` | 47.6 |  | single source | lexicon, sheet-chords |
+| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 3 chords. | `harmony.cycle-3-chords.sheet` | 17.8 |  | single source | lexicon, sheet-chords |
+| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 2 chords. | `harmony.cycle-2-chords.sheet` | 11.7 |  | single source | lexicon, sheet-chords |
+| Share of repeating cycles of at most 8 changes in the chord-sheet corpus that have 5 chords. | `harmony.cycle-5-chords.sheet` | 8.9 |  | single source | lexicon, sheet-chords |
 
 ## Progressions and harmony
 
 | Claim | Id | Share % | Counts | Tag | Sources |
 | :-- | :-- | --: | :-- | :-- | :-- |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet` | 17.96 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-pop` | 19.31 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-metal` | 20.72 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-rap` | 12.54 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-jazz` | 7.41 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-electronic` | 20.86 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.chart` | 5.2 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet` | 14.85 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-pop` | 14.77 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-metal` | 10.36 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-rap` | 7.45 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-jazz` | 8.81 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-electronic` | 10.91 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.chart` | 12.4 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet` | 14.42 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-pop` | 12.71 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-metal` | 11.08 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-rap` | 6.41 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-jazz` | 12.26 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-electronic` | 10.45 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.chart` | 11.6 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet` | 13.11 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-pop` | 14.61 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-metal` | 22.06 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-rap` | 9.31 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-jazz` | 6.4 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-electronic` | 13.75 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.chart` | 8 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet` | 9.14 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-pop` | 10.15 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-metal` | 7.02 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-rap` | 5.38 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-jazz` | 4.91 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-electronic` | 8.46 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.chart` | 2.1 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet` | 7.55 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-pop` | 8.88 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-metal` | 2.57 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-rap` | 3.72 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-jazz` | 9.1 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-electronic` | 4.44 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.chart` | 5.2 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet` | 5.95 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-pop` | 6.64 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-metal` | 9.56 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-rap` | 4.19 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-jazz` | 2.84 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-electronic` | 7.25 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.chart` | 1.5 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet` | 4.43 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-pop` | 5.53 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-metal` | 7.22 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-rap` | 3.47 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-jazz` | 2.69 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-electronic` | 5.44 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.chart` | 4.3 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet` | 3.58 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-pop` | 4.51 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-metal` | 4.78 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-rap` | 2.63 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-jazz` | 2.16 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-electronic` | 2.99 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.chart` | 2.6 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet` | 3.13 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-pop` | 3.59 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-metal` | 6.2 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-rap` | 2.4 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-jazz` | 3.41 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-electronic` | 1.85 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.chart` | 3.5 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet` | 1.89 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-pop` | 2.03 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-metal` | 0.13 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-rap` | 0.89 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-jazz` | 9.68 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-electronic` | 0.64 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.chart` | 6.5 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus (679,807 songs) that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet` | 27.68 |  | derived | sheet-chords |
-| Share of pop songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-pop` | 21.92 |  | derived | sheet-chords |
-| Share of metal songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-metal` | 12.04 |  | derived | sheet-chords |
-| Share of rap songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-rap` | 10.12 |  | derived | sheet-chords |
-| Share of jazz songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-jazz` | 34.18 |  | derived | sheet-chords |
-| Share of electronic songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-electronic` | 14.75 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.chart` | 30.3 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus that contain the cycle I-IV-V-IV in any rotation inside one section. | `progressions.one-four-five-four.sheet` | 18.4 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set that contain the cycle I-IV-V-IV in any rotation inside one section. | `progressions.one-four-five-four.chart` | 18.9 |  | derived | chart-chords |
-| Share of songs in the chart annotation set with ii-V-I by annotated label, not key-free. | `progressions.ii-v-i.chart-label` | 11.8 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus that contain I-iii-IV-V in any rotation inside one section. | `progressions.one-three-four-five.sheet` | 5.5 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set that contain I-iii-IV-V in any rotation inside one section. | `progressions.one-three-four-five.chart` | 3.9 |  | derived | chart-chords |
-| Share of songs in the chord-sheet corpus that contain the loop bVI-bVII-I-IV in any rotation inside one section. | `progressions.flat-six-flat-seven-one.sheet` | 1.4 |  | derived | sheet-chords |
-| Share of songs in the chart annotation set that contain the loop bVI-bVII-I-IV in any rotation inside one section. | `progressions.flat-six-flat-seven-one.chart` | 1.7 |  | derived | chart-chords |
-| Share of songs in the chart annotation set that contain bII-i. | `progressions.phrygian-menace.chart` | 1.2 |  | derived | chart-chords |
-| Share of songs in the chart annotation set that contain I-vi-ii-V as an ordered cycle. | `progressions.turnaround.chart` | 2.5 |  | derived | chart-chords |
-| Share of songs in the chart annotation set that contain IV-iv-I. | `progressions.minor-plagal.chart` | 7.2 |  | derived | chart-chords |
-| Share of country songs in the chord-sheet corpus that contain the cycle I-IV-I-V. | `progressions.one-four-five.sheet-country` | 47.8 |  | derived | sheet-chords |
-| Share of country songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV. | `progressions.mixolydian-loop.sheet-country` | 19.2 |  | derived | sheet-chords |
-| Share of punk songs in the chord-sheet corpus that contain the axis loop. | `progressions.axis.sheet-punk` | 21.5 |  | derived | sheet-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet` | 17.96 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-pop` | 19.31 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-metal` | 20.72 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-rap` | 12.54 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-jazz` | 7.41 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.sheet-electronic` | 20.86 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the axis loop I-V-vi-IV in any rotation inside one section. | `progressions.axis.chart` | 5.2 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet` | 14.85 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-pop` | 14.77 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-metal` | 10.36 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-rap` | 7.45 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-jazz` | 8.81 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.sheet-electronic` | 10.91 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the 50s loop I-vi-IV-V in any rotation inside one section. | `progressions.fifties.chart` | 12.4 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet` | 14.42 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-pop` | 12.71 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-metal` | 11.08 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-rap` | 6.41 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-jazz` | 12.26 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.sheet-electronic` | 10.45 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Mixolydian loop I-bVII-IV in any rotation inside one section. | `progressions.mixolydian-loop.chart` | 11.6 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet` | 13.11 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-pop` | 14.61 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-metal` | 22.06 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-rap` | 9.31 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-jazz` | 6.4 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.sheet-electronic` | 13.75 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Aeolian shuttle i-bVII-bVI-bVII in any rotation inside one section. | `progressions.aeolian-shuttle.chart` | 8 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet` | 9.14 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-pop` | 10.15 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-metal` | 7.02 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-rap` | 5.38 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-jazz` | 4.91 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.sheet-electronic` | 8.46 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop I-IV-vi-V in any rotation inside one section. | `progressions.one-four-six-five.chart` | 2.1 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet` | 7.55 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-pop` | 8.88 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-metal` | 2.57 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-rap` | 3.72 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-jazz` | 9.1 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.sheet-electronic` | 4.44 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-iv-bVII-bIII in any rotation inside one section. | `progressions.minor-loop-with-iv.chart` | 5.2 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet` | 5.95 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-pop` | 6.64 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-metal` | 9.56 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-rap` | 4.19 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-jazz` | 2.84 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.sheet-electronic` | 7.25 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-bIII-bVII-bVI in any rotation inside one section. | `progressions.minor-three-seven-six.chart` | 1.5 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet` | 4.43 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-pop` | 5.53 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-metal` | 7.22 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-rap` | 3.47 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-jazz` | 2.69 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.sheet-electronic` | 5.44 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the loop i-v-bVI-bVII in any rotation inside one section. | `progressions.minor-five-six-seven.chart` | 4.3 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet` | 3.58 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-pop` | 4.51 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-metal` | 4.78 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-rap` | 2.63 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-jazz` | 2.16 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.sheet-electronic` | 2.99 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the royal road loop IV-V-iii-vi in any rotation inside one section. | `progressions.royal-road.chart` | 2.6 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet` | 3.13 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-pop` | 3.59 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-metal` | 6.2 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-rap` | 2.4 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-jazz` | 3.41 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.sheet-electronic` | 1.85 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the Andalusian cadence i-bVII-bVI-V in any rotation inside one section. | `progressions.andalusian-cadence.chart` | 3.5 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet` | 1.89 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-pop` | 2.03 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-metal` | 0.13 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-rap` | 0.89 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-jazz` | 9.68 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.sheet-electronic` | 0.64 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain ii7-V7-Imaj7 with sevenths in any rotation inside one section. | `progressions.ii-v-i.chart` | 6.5 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus (679,807 songs) that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet` | 27.68 |  | single source | lexicon, sheet-chords |
+| Share of pop songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-pop` | 21.92 |  | single source | lexicon, sheet-chords |
+| Share of metal songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-metal` | 12.04 |  | single source | lexicon, sheet-chords |
+| Share of rap songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-rap` | 10.12 |  | single source | lexicon, sheet-chords |
+| Share of jazz songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-jazz` | 34.18 |  | single source | lexicon, sheet-chords |
+| Share of electronic songs in the chord-sheet corpus that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.sheet-electronic` | 14.75 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set (890 songs, 1958 to 1991) that contain the cycle I-IV-I-V in any rotation inside one section. | `progressions.one-four-five.chart` | 30.3 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus that contain the cycle I-IV-V-IV in any rotation inside one section. | `progressions.one-four-five-four.sheet` | 18.4 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set that contain the cycle I-IV-V-IV in any rotation inside one section. | `progressions.one-four-five-four.chart` | 18.9 |  | single source | lexicon, chart-chords |
+| Share of songs in the chart annotation set with ii-V-I by annotated label, not key-free. | `progressions.ii-v-i.chart-label` | 11.8 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus that contain I-iii-IV-V in any rotation inside one section. | `progressions.one-three-four-five.sheet` | 5.5 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set that contain I-iii-IV-V in any rotation inside one section. | `progressions.one-three-four-five.chart` | 3.9 |  | single source | lexicon, chart-chords |
+| Share of songs in the chord-sheet corpus that contain the loop bVI-bVII-I-IV in any rotation inside one section. | `progressions.flat-six-flat-seven-one.sheet` | 1.4 |  | single source | lexicon, sheet-chords |
+| Share of songs in the chart annotation set that contain the loop bVI-bVII-I-IV in any rotation inside one section. | `progressions.flat-six-flat-seven-one.chart` | 1.7 |  | single source | lexicon, chart-chords |
+| Share of songs in the chart annotation set that contain bII-i. | `progressions.phrygian-menace.chart` | 1.2 |  | single source | lexicon, chart-chords |
+| Share of songs in the chart annotation set that contain I-vi-ii-V as an ordered cycle. | `progressions.turnaround.chart` | 2.5 |  | single source | lexicon, chart-chords |
+| Share of songs in the chart annotation set that contain IV-iv-I. | `progressions.minor-plagal.chart` | 7.2 |  | single source | lexicon, chart-chords |
+| Share of country songs in the chord-sheet corpus that contain the cycle I-IV-I-V. | `progressions.one-four-five.sheet-country` | 47.8 |  | single source | lexicon, sheet-chords |
+| Share of country songs in the chord-sheet corpus that contain the Mixolydian loop I-bVII-IV. | `progressions.mixolydian-loop.sheet-country` | 19.2 |  | single source | lexicon, sheet-chords |
+| Share of punk songs in the chord-sheet corpus that contain the axis loop. | `progressions.axis.sheet-punk` | 21.5 |  | single source | lexicon, sheet-chords |
 | Share of the 20 best-selling singles in Japan as of 2023 that use the royal road. | `progressions.royal-road.japan-top-20` | 40 | 8 of 20 | source states | guides |

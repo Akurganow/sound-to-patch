@@ -17,7 +17,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 
+use crate::fetch::Sha256Digest;
 use crate::reference::{CONTENTS_ABOVE, REFERENCE};
 
 /// The line every plugin manifest description, plugin README and
@@ -42,32 +44,11 @@ const REFERENCE_LINES: usize = 300;
 
 /// Phrases a folder must not hold, lowercased. A file about one synth
 /// explains it on its own terms; a core file names no program but Serum 2
-/// and Vital.
+/// and Vital, which [`CORE_NAMES`] checks.
 fn banned(synth: &str) -> &'static [&'static str] {
     match synth {
-        "core" => &[
-            "ableton",
-            "bitwig",
-            "cakewalk",
-            "cubase",
-            "fl studio",
-            "garageband",
-            "logic pro",
-            "pro tools",
-            "reaper",
-            "studio one",
-            "beatport",
-            "hooktheory",
-            "mixed in key",
-            "spotify",
-            "serum1",
-            "serum 1",
-            "older version",
-            "previous version",
-            "compared to",
-        ],
         "vital" => &["serum", "older version", "previous version", "compared to"],
-        "serum2" => &[
+        "core" | "serum2" => &[
             "serum1",
             "serum 1",
             "older version",
@@ -76,6 +57,50 @@ fn banned(synth: &str) -> &'static [&'static str] {
         ],
         _ => &[],
     }
+}
+
+/// SHA-256 digests of the lowercased program and service names a core file
+/// must not hold, so the names stay out of the tree. A text matches when a
+/// run of one to three of its words, joined by single spaces, has one of
+/// these digests.
+const CORE_NAMES: [&str; 14] = [
+    "bc31050d72dc7334dd3e28d6ddd1143acf233338a37a9093273a82fba310a6f9",
+    "0a5951779b8ceaf3b51a0a9dac97ffaa834721015e3faab88dc34c63121e98ee",
+    "b7b00c94a88f356d89baef4be71d02820a9749c2577c31be1547f2755e260b3f",
+    "1f0da16b89bf6c2a2e85d2f44d83eb9816da8bc8a9b6e1c059ce880a64f2adf5",
+    "d004e3a0139c442de2f55e46796e106f7245ab9c61899e3f4798944eb9eb4666",
+    "2ae280b7b47499a3d8e51fa136c1b97f2f0533c5f5f95c49094a2a39b3fb891d",
+    "a2c7aa6e8f8f04429e1ba13e655bb5f4c59ecdeb8b9fd95ec2a8afc62bdc7223",
+    "bdf8c1e06ce18e12c5abbb3e1857415ebe1370d42b618c602aa20df0ff0c15ab",
+    "fc8db96bab2a414d1db52c4177a15d3e292fb9d4354d0992f29bfc3f4715825e",
+    "611d633fc825d472109337c21040d5588040946fd31c8547a2937f8561db7dd9",
+    "01b8dedd23e7e7469deea34266c0d9191d331db841a2423bd9e9606a111594d3",
+    "8fde962c49b9fb89f65c43edcba2812160797b782fd70bcd507620a63465db5a",
+    "a74f107d4dd994404383164ec72405a451f02781f5ca4251e42e24684b520c1a",
+    "2b78da3dc866654e6ea7cb2f654df44746b6f02876acbb2a05726ab3d915e47e",
+];
+
+/// The longest name in [`CORE_NAMES`], in words.
+const CORE_NAME_WORDS: usize = 3;
+
+/// The runs of one to three words of `text` whose digest is in `digests`.
+fn hashed_names(text: &str, digests: &[&str]) -> Vec<String> {
+    let lower = text.to_lowercase();
+    let words: Vec<&str> = lower
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|word| !word.is_empty())
+        .collect();
+    let mut found = BTreeSet::new();
+    for size in 1..=CORE_NAME_WORDS {
+        for run in words.windows(size) {
+            let phrase = run.join(" ");
+            let digest = Sha256Digest(Sha256::digest(phrase.as_bytes()).into()).to_string();
+            if digests.contains(&digest.as_str()) {
+                found.insert(phrase);
+            }
+        }
+    }
+    found.into_iter().collect()
 }
 
 /// Words a synth folder must not hold, compared whole and lowercased.
@@ -478,6 +503,14 @@ fn check_banned(root: &Path, base: &Path, file: &Path, text: &str, problems: &mu
             ));
         }
     }
+    if synth == "core" {
+        for name in hashed_names(text, &CORE_NAMES) {
+            problems.push(format!(
+                "{at} holds the program or service name {name:?}; a core file names no program \
+                 but Serum 2 and Vital"
+            ));
+        }
+    }
     let words: BTreeSet<&str> = lower.split(|c: char| !c.is_alphanumeric()).collect();
     for word in banned_words(&synth) {
         if words.contains(word) {
@@ -600,6 +633,23 @@ mod tests {
     #[test]
     fn a_good_plugin_passes() {
         check(repo().path()).unwrap();
+    }
+
+    #[test]
+    fn hashed_names_match_runs_of_one_to_three_words() {
+        let digest = |text: &str| Sha256Digest(Sha256::digest(text.as_bytes()).into()).to_string();
+        let one = digest("zorblax");
+        let three = digest("mixed nuts here");
+        let digests = [one.as_str(), three.as_str()];
+        assert_eq!(
+            hashed_names("Use ZorBlax, then mixed  nuts-here.", &digests),
+            ["mixed nuts here", "zorblax"]
+        );
+        assert_eq!(
+            hashed_names("zorbla x mixed nuts", &digests),
+            Vec::<String>::new()
+        );
+        assert!(CORE_NAMES.iter().all(|name| name.len() == 64));
     }
 
     #[test]

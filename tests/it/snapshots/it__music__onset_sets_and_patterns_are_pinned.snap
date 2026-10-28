@@ -1,0 +1,43 @@
+---
+source: tests/it/music.rs
+expression: "pins(dictionary.entries.iter().filter_map(|entry|\n{\n    match &entry.rule\n    {\n        Rule::OnsetSet { parts } =>\n        {\n            let parts: Vec<String> =\n            parts.iter().map(|part|\n            format!(\"{} {:?}\", part.part, part.slots)).collect();\n            Some(format!(\"{} {}\", entry.id, parts.join(\"; \")))\n        } Rule::Pattern { k, n, rotation } =>\n        Some(format!(\"{} E({k},{n}) r{rotation}\", entry.id)), _ => None,\n    }\n}))"
+---
+position.four-on-the-floor kick [0, 4, 8, 12]
+position.backbeat snare [4, 12]
+position.half-time.snare-on-three snare [8]
+position.dotted any [0, 3, 6, 9, 12]
+position.open.hat open-hat [2, 6, 10, 14]
+rhythm.tresillo E(3,8) r0
+rhythm.two-step kick [0, 10]; snare [4, 12]
+rhythm.dembow kick [0, 4, 8, 12]; snare [3, 6, 11, 14]
+rhythm.son-clave.three-two any [0, 3, 6, 10, 12]
+rhythm.son-clave.two-three any [2, 4, 8, 11, 14]
+rhythm.bossa any [0, 3, 6, 10, 13]
+rhythm.one-drop kick [8]; rim [8]; hat [0, 2, 4, 6, 8, 10, 12, 14]
+rhythm.breakbeat kick [0, 7, 10]; snare [4, 12]
+rhythm.amen-style-break kick [0, 2, 10, 11]; snare [4, 7, 9, 12, 15]; ride [0, 2, 4, 6, 8, 10, 12, 14]
+rhythm.gallop.forward any [0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15]
+rhythm.gallop.reverse any [0, 1, 2, 4, 5, 6, 8, 9, 10, 12, 13, 14]
+rhythm.rumba-clave any [0, 3, 7, 10, 12]
+rhythm.cinquillo E(5,8) r0
+euclid.euclidean E(5,16) r0
+bass.offbeat-bass bass [2, 6, 10, 14]
+bass.rolling.grid kick [0, 4, 8, 12]; bass [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15]
+bass.walking-bass bass [0, 4, 8, 12]
+pad.held-chords chord [0]
+pad.piano-house chord [0, 3, 6, 9, 12]
+pad.pumping bass [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15]
+genre.house kick [0, 4, 8, 12]; clap [4, 12]; open-hat [2, 6, 10, 14]
+genre.techno kick [0, 4, 8, 12]; hat [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]; clap [4, 12]
+genre.trance kick [0, 4, 8, 12]; clap [4, 12]; open-hat [2, 6, 10, 14]
+genre.psytrance kick [0, 4, 8, 12]
+genre.drum-and-bass kick [0, 10]; snare [4, 12]
+genre.dubstep kick [0]; snare [8]
+genre.trap kick [0, 10]; snare [8]; hat [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+genre.boom-bap kick [0, 10]; snare [4, 12]
+genre.lo-fi kick [0, 6, 9]; snare [4, 12]
+genre.future-bass snare [8]
+genre.uk-garage kick [0, 10]; snare [4, 12]
+genre.reggaeton kick [0, 4, 8, 12]; snare [3, 6, 11, 14]
+genre.afrobeats kick [0, 6, 10]; rim [3, 6, 11, 14]
+genre.hardstyle kick [0, 4, 8, 12]; bass [2, 6, 10, 14]

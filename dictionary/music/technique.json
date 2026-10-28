@@ -706,22 +706,65 @@
     "default_pick": null
   },
   {
+    "id": "articulation.ppp",
+    "group": "articulation",
+    "word": "ppp",
+    "aliases": [],
+    "meaning": "The dynamic mark ppp (extremely quiet) as velocity 1 to 31. The bands are contiguous and cover 1 to 127. No published table gives ppp.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 1, "max": 31},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 1},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 31}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 1},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 32}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
     "id": "articulation.pp",
     "group": "articulation",
     "word": "pp",
     "aliases": [],
-    "meaning": "The dynamic mark pp (very quiet) as velocity 32 to 39.",
+    "meaning": "The dynamic mark pp (very quiet) as velocity 32 to 47. The bands are contiguous and cover 1 to 127. One published table puts pp at 32 to 39.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 32, "max": 39},
+    "rule": {"kind": "velocity", "min": 32, "max": 47},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 32},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 39}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 47}
       ]
     },
     "example_fail": {
@@ -730,15 +773,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 32},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 48}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -753,18 +796,18 @@
     "group": "articulation",
     "word": "p",
     "aliases": [],
-    "meaning": "The dynamic mark p (quiet) as velocity 48 to 61.",
+    "meaning": "The dynamic mark p (quiet) as velocity 48 to 63. The bands are contiguous and cover 1 to 127. One published table puts p at 48 to 61.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 48, "max": 61},
+    "rule": {"kind": "velocity", "min": 48, "max": 63},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 48},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 61}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 63}
       ]
     },
     "example_fail": {
@@ -773,15 +816,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 48},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 64}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -796,18 +839,18 @@
     "group": "articulation",
     "word": "mp",
     "aliases": [],
-    "meaning": "The dynamic mark mp (medium quiet) as velocity 64 to 71.",
+    "meaning": "The dynamic mark mp (moderately quiet) as velocity 64 to 79. The bands are contiguous and cover 1 to 127. One published table puts mp at 64 to 71.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 64, "max": 71},
+    "rule": {"kind": "velocity", "min": 64, "max": 79},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 64},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 71}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 79}
       ]
     },
     "example_fail": {
@@ -816,15 +859,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 64},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 80}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -839,18 +882,18 @@
     "group": "articulation",
     "word": "mf",
     "aliases": [],
-    "meaning": "The dynamic mark mf (medium loud) as velocity 80 to 84.",
+    "meaning": "The dynamic mark mf (moderately loud) as velocity 80 to 95. The bands are contiguous and cover 1 to 127. One published table puts mf at 80 to 84.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 80, "max": 84},
+    "rule": {"kind": "velocity", "min": 80, "max": 95},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 80},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 84}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 95}
       ]
     },
     "example_fail": {
@@ -859,15 +902,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 80},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 96}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -882,18 +925,18 @@
     "group": "articulation",
     "word": "f",
     "aliases": [],
-    "meaning": "The dynamic mark f (loud) as velocity 96 to 98.",
+    "meaning": "The dynamic mark f (loud) as velocity 96 to 111. The bands are contiguous and cover 1 to 127. One published table puts f at 96 to 98.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 96, "max": 98},
+    "rule": {"kind": "velocity", "min": 96, "max": 111},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 96},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 98}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 111}
       ]
     },
     "example_fail": {
@@ -902,15 +945,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 96},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 112}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -925,18 +968,18 @@
     "group": "articulation",
     "word": "ff",
     "aliases": [],
-    "meaning": "The dynamic mark ff (very loud) as velocity 112 to 113.",
+    "meaning": "The dynamic mark ff (very loud) as velocity 112 to 125. The bands are contiguous and cover 1 to 127. One published table puts ff at 112 to 113.",
     "sense": null,
     "default": true,
     "conflicts": [],
-    "rule": {"kind": "velocity", "min": 112, "max": 113},
+    "rule": {"kind": "velocity", "min": 112, "max": 125},
     "example_pass": {
       "root": null,
       "bpm": null,
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 112},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 113}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 125}
       ]
     },
     "example_fail": {
@@ -945,15 +988,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 112},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 30}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 126}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],
@@ -968,7 +1011,7 @@
     "group": "articulation",
     "word": "fff",
     "aliases": [],
-    "meaning": "The dynamic mark fff (fortississimo, the loudest) as velocity 126 to 127.",
+    "meaning": "The dynamic mark fff (extremely loud) as velocity 126 to 127. The bands are contiguous and cover 1 to 127. One published table puts fff at 126 to 127.",
     "sense": null,
     "default": true,
     "conflicts": [],
@@ -988,15 +1031,15 @@
       "grid": 16,
       "notes": [
         {"pitch": 60, "start": 0, "len": 1, "vel": 126},
-        {"pitch": 62, "start": 4, "len": 1, "vel": 30}
+        {"pitch": 62, "start": 4, "len": 1, "vel": 125}
       ]
     },
     "roles": [],
     "genres": [],
     "tier": "M3",
     "n_sources": 1,
-    "source": ["guides"],
-    "tag": "snippet",
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
     "verified": "2026-10-25",
     "notes_trigger": false,
     "controls": [],

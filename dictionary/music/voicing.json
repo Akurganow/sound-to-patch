@@ -250,11 +250,11 @@
     "group": "voicing",
     "word": "drop-2",
     "aliases": [],
-    "meaning": "Take a close voicing and lower its second voice from the top by an octave. Four notes then span 15 or 16 semitones, and a triad lowers its middle voice.",
+    "meaning": "Take a close voicing and lower its second voice from the top by an octave. Four notes then span 13 to 17 semitones, and a triad lowers its middle voice.",
     "sense": null,
     "default": true,
     "conflicts": ["voicing.drop-3"],
-    "rule": {"kind": "voicing", "shape": "drop-2", "drop": [2], "min_span": 15, "max_span": 16},
+    "rule": {"kind": "voicing", "shape": "drop-2", "drop": [2], "min_span": 13, "max_span": 17},
     "example_pass": {
       "root": 0,
       "bpm": null,

@@ -8,6 +8,7 @@ use serde_json::Value;
 use sound_to_patch::music::check::coverage;
 use sound_to_patch::music::chord::parse_chord;
 use sound_to_patch::music::entry::{Fragment, Group, Rule};
+use sound_to_patch::music::roman::parse_line;
 use sound_to_patch::music::{MusicError, TOPICS, dictionary};
 
 fn validator(schema: &str) -> jsonschema::Validator {
@@ -86,7 +87,7 @@ fn every_chord_spelling_parses_to_its_entry() {
     for entry in dictionary().unwrap().group(Group::Chord) {
         for symbol in &entry.symbols {
             let chord = parse_chord(&format!("C{symbol}")).unwrap();
-            assert_eq!(chord.entry, entry.id, "C{symbol}");
+            assert_eq!(chord.entry, Some(entry.id.as_str()), "C{symbol}");
         }
     }
     assert!(matches!(
@@ -124,15 +125,15 @@ fn chordparser_differs_only_on_the_pinned_spellings() {
 }
 
 /// Spellings where the dictionary's policy differs from `chordparser`: the
-/// minor 13 without its 11th, `4` as add11, `+9` and `-9` as altered
-/// ninths, the `alt` set, and the flat 13 and major 11 stacks.
+/// minor 13 without its 11th, the 11 chords with their third, `+9` and
+/// `-9` as altered ninths, the `alt` set, and the flat 13.
 const CHORDPARSER_DIFFERS: [&str; 9] = [
-    "C-13", "C4", "C7+9", "C7-9", "C7alt", "C7b13", "Calt", "Cm13", "Cmaj11",
+    "C-13", "C11", "C7+9", "C7-9", "C7alt", "C7b13", "Calt", "Cm13", "Cmaj11",
 ];
 
 /// Spellings `chordparser` cannot parse.
-const CHORDPARSER_UNSUPPORTED: [&str; 15] = [
-    "C2", "C7alt7", "Cdom", "Cdom7", "Cdom9", "Ch", "Ch7", "Cm/M7", "Cm/maj7", "Cmadd9", "Cmaj#4",
+const CHORDPARSER_UNSUPPORTED: [&str; 14] = [
+    "C7alt7", "Cdom", "Cdom7", "Cdom9", "Ch", "Ch7", "Cm/M7", "Cm/maj7", "Cmadd9", "Cmaj#4",
     "Cquartal", "Cquintal", "C−", "C−7",
 ];
 
@@ -238,16 +239,10 @@ fn the_chords_rust_music_theory_has_differ_only_by_policy() {
             differ.push(id);
         }
     }
-    // The dictionary's policy: the dominant 11 has no third, and a 13 chord
-    // has no eleventh.
+    // The dictionary's policy: a 13 chord has no eleventh.
     assert_eq!(
         differ,
-        [
-            "chord.dominant-11",
-            "chord.dominant-13",
-            "chord.major-13",
-            "chord.minor-13"
-        ]
+        ["chord.dominant-13", "chord.major-13", "chord.minor-13"]
     );
 }
 
@@ -547,15 +542,12 @@ fn the_python_oracles_cover_every_spelling_and_differ_only_where_pinned() {
     let vector = load("tests/fixtures/golden/music-oracles.json");
     let symbols: BTreeSet<String> = spellings().into_iter().map(|(symbol, _)| symbol).collect();
     let pinned = [
-        (
-            "pychord",
-            &["C6/9", "Cm6/9", "C11", "C13", "Cmaj13", "CM13"][..],
-        ),
+        ("pychord", &["C6/9", "Cm6/9", "C13", "Cmaj13", "CM13"][..]),
         (
             "music21",
             &[
-                "C-", "C-7", "C2", "C-9", "C-7b5", "C+5", "C-6", "C69", "C-69", "C4", "C11",
-                "C-11", "C13", "CM13", "Cm13", "C-13", "Cmaj#4",
+                "C-", "C-7", "C-9", "C-7b5", "C+5", "C-6", "C69", "C-69", "C-11", "C13", "CM13",
+                "Cm13", "C-13", "Cmaj#4",
             ][..],
         ),
     ];
@@ -580,4 +572,105 @@ fn the_python_oracles_cover_every_spelling_and_differ_only_where_pinned() {
             .collect();
         assert_eq!(found, differ.iter().copied().collect(), "{oracle}");
     }
+}
+
+#[test]
+fn every_roman_alias_parses_to_its_progression_roots() {
+    let mut checked = 0;
+    for entry in dictionary().unwrap().group(Group::Progression) {
+        let Rule::Cycle { roots, .. } = &entry.rule else {
+            panic!("{} has no cycle", entry.id)
+        };
+        for alias in &entry.aliases {
+            let Ok(line) = parse_line(alias, None) else {
+                continue;
+            };
+            if line.numerals.len() == roots.len() {
+                let parsed: Vec<u8> = line.numerals.iter().map(|numeral| numeral.offset).collect();
+                assert!(
+                    &parsed == roots || relative_rotation(&parsed, roots),
+                    "{}: {alias} gives {parsed:?}, not {roots:?}",
+                    entry.id
+                );
+                checked += 1;
+            }
+        }
+    }
+    assert!(checked >= 15, "only {checked} aliases checked");
+}
+
+/// Whether `parsed` is the loop `roots` read from the relative key: the
+/// same cycle, rotated, with every root a minor third or a major sixth off.
+fn relative_rotation(parsed: &[u8], roots: &[u8]) -> bool {
+    [3, 9].iter().any(|shift| {
+        (0..roots.len()).any(|turn| {
+            (0..roots.len()).all(|i| (parsed[i] + shift) % 12 == roots[(i + turn) % roots.len()])
+        })
+    })
+}
+
+/// One line per pinned value, so a changed number shows in the snapshot
+/// diff.
+fn pins(lines: impl Iterator<Item = String>) -> String {
+    lines.collect::<Vec<_>>().join("\n")
+}
+
+#[test]
+fn stat_values_are_pinned() {
+    let dictionary = dictionary().unwrap();
+    insta::assert_snapshot!(pins(dictionary.stats.iter().map(|stat| {
+        format!(
+            "{} {} {:?} {:?}",
+            stat.id, stat.share, stat.count, stat.total
+        )
+    })));
+}
+
+#[test]
+fn scale_offsets_are_pinned() {
+    let dictionary = dictionary().unwrap();
+    insta::assert_snapshot!(pins(dictionary.group(Group::Scale).filter_map(|entry| {
+        match &entry.rule {
+            Rule::PitchSet { offsets, .. } => Some(format!("{} {offsets:?}", entry.id)),
+            _ => None,
+        }
+    })));
+}
+
+#[test]
+fn onset_sets_and_patterns_are_pinned() {
+    let dictionary = dictionary().unwrap();
+    insta::assert_snapshot!(pins(dictionary.entries.iter().filter_map(|entry| {
+        match &entry.rule {
+            Rule::OnsetSet { parts } => {
+                let parts: Vec<String> = parts
+                    .iter()
+                    .map(|part| format!("{} {:?}", part.part, part.slots))
+                    .collect();
+                Some(format!("{} {}", entry.id, parts.join("; ")))
+            }
+            Rule::Pattern { k, n, rotation } => {
+                Some(format!("{} E({k},{n}) r{rotation}", entry.id))
+            }
+            _ => None,
+        }
+    })));
+}
+
+#[test]
+fn tempos_and_progression_roots_are_pinned() {
+    let dictionary = dictionary().unwrap();
+    let tempos = dictionary.entries.iter().filter_map(|entry| {
+        entry
+            .bpm
+            .map(|bpm| format!("{} {} {:?} {}", entry.id, bpm.low, bpm.center, bpm.high))
+    });
+    let roots = dictionary
+        .entries
+        .iter()
+        .filter_map(|entry| match &entry.rule {
+            Rule::Cycle { roots, chords, .. } => Some(format!("{} {roots:?} {chords:?}", entry.id)),
+            _ => None,
+        });
+    insta::assert_snapshot!(pins(tempos.chain(roots)));
 }

@@ -6,8 +6,8 @@
     "share": 51.1,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.minor",
@@ -16,8 +16,8 @@
     "share": 36.6,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.mixolydian",
@@ -26,8 +26,8 @@
     "share": 5.6,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.dorian",
@@ -36,8 +36,8 @@
     "share": 4.4,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.phrygian",
@@ -46,8 +46,8 @@
     "share": 1.3,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.lydian",
@@ -56,8 +56,8 @@
     "share": 0.8,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-mode.locrian",
@@ -66,8 +66,8 @@
     "share": 0.2,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.c",
@@ -76,8 +76,8 @@
     "share": 15,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.d",
@@ -86,8 +86,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.g",
@@ -96,8 +96,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.a",
@@ -106,8 +106,8 @@
     "share": 10,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.e",
@@ -116,8 +116,8 @@
     "share": 9,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-major-root.f",
@@ -126,8 +126,8 @@
     "share": 8,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.a",
@@ -136,8 +136,8 @@
     "share": 13,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.c",
@@ -146,8 +146,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.e",
@@ -156,8 +156,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.d",
@@ -166,8 +166,8 @@
     "share": 11,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.b",
@@ -176,8 +176,8 @@
     "share": 9,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "crowd-minor-root.g",
@@ -186,8 +186,8 @@
     "share": 8,
     "count": null,
     "total": null,
-    "source": ["crowd-tabs"],
-    "tag": "derived"
+    "source": ["lexicon", "crowd-tabs"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-c",
@@ -196,8 +196,8 @@
     "share": 10.3,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-c-sharp",
@@ -206,8 +206,8 @@
     "share": 5.8,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-d",
@@ -216,8 +216,8 @@
     "share": 8.1,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-d-sharp",
@@ -226,8 +226,8 @@
     "share": 6.8,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-e",
@@ -236,8 +236,8 @@
     "share": 9.3,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-f",
@@ -246,8 +246,8 @@
     "share": 12.9,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-f-sharp",
@@ -256,8 +256,8 @@
     "share": 7.0,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-g",
@@ -266,8 +266,8 @@
     "share": 11.1,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-g-sharp",
@@ -276,8 +276,8 @@
     "share": 5.6,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-a",
@@ -286,8 +286,8 @@
     "share": 11.4,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-a-sharp",
@@ -296,8 +296,8 @@
     "share": 4.8,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set1-b",
@@ -306,8 +306,8 @@
     "share": 7.0,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1",
@@ -316,8 +316,8 @@
     "share": 84.6,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-c",
@@ -326,8 +326,8 @@
     "share": 11.7,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-c-sharp",
@@ -336,8 +336,8 @@
     "share": 8.7,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-d",
@@ -346,8 +346,8 @@
     "share": 8.7,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-d-sharp",
@@ -356,8 +356,8 @@
     "share": 6.4,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-e",
@@ -366,8 +366,8 @@
     "share": 9.9,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-f",
@@ -376,8 +376,8 @@
     "share": 12.2,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-f-sharp",
@@ -386,8 +386,8 @@
     "share": 5.9,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-g",
@@ -396,8 +396,8 @@
     "share": 8.4,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-g-sharp",
@@ -406,8 +406,8 @@
     "share": 5.4,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-a",
@@ -416,8 +416,8 @@
     "share": 7.7,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-a-sharp",
@@ -426,8 +426,8 @@
     "share": 6.8,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.set2-b",
@@ -436,8 +436,8 @@
     "share": 8.1,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2",
@@ -446,8 +446,8 @@
     "share": 68.2,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-c",
@@ -456,8 +456,8 @@
     "share": 4.0,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-c-sharp",
@@ -466,8 +466,8 @@
     "share": 6.1,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-d",
@@ -476,8 +476,8 @@
     "share": 4.5,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-d-sharp",
@@ -486,8 +486,8 @@
     "share": 5.3,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-e",
@@ -496,8 +496,8 @@
     "share": 12.4,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-f",
@@ -506,8 +506,8 @@
     "share": 10.0,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-f-sharp",
@@ -516,8 +516,8 @@
     "share": 8.4,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-g",
@@ -526,8 +526,8 @@
     "share": 4.5,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-g-sharp",
@@ -536,8 +536,8 @@
     "share": 6.2,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-a",
@@ -546,8 +546,8 @@
     "share": 10.6,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-a-sharp",
@@ -556,8 +556,8 @@
     "share": 15.4,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.streaming-edm-b",
@@ -566,8 +566,8 @@
     "share": 12.5,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-edm",
@@ -576,8 +576,8 @@
     "share": 47.2,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-all",
@@ -586,8 +586,8 @@
     "share": 36.6,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "relative-minor-root.uniform",
@@ -597,7 +597,7 @@
     "count": 1,
     "total": 12,
     "source": ["lexicon"],
-    "tag": "derived"
+    "tag": "single source"
   },
   {
     "id": "key-test.chance-two-roots",
@@ -607,7 +607,7 @@
     "count": 2,
     "total": 12,
     "source": ["lexicon"],
-    "tag": "derived"
+    "tag": "single source"
   },
   {
     "id": "key-test.chance-three-roots",
@@ -617,7 +617,7 @@
     "count": 4,
     "total": 12,
     "source": ["lexicon"],
-    "tag": "derived"
+    "tag": "single source"
   },
   {
     "id": "key-test.f-c-set1",
@@ -626,8 +626,8 @@
     "share": 23.2,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "key-test.f-c-set2",
@@ -636,8 +636,8 @@
     "share": 23.9,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "key-test.e-to-g-set1",
@@ -646,8 +646,8 @@
     "share": 40.2,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "key-test.e-to-g-set2",
@@ -656,8 +656,8 @@
     "share": 36.4,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "key-test.e-to-g-streaming",
@@ -666,8 +666,8 @@
     "share": 35.3,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "key-test.sharp-roots-set1",
@@ -676,8 +676,8 @@
     "share": 24.3,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "key-test.sharp-roots-set2",
@@ -686,8 +686,8 @@
     "share": 26.2,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "psytrance-key.tonic-d-to-g",
@@ -696,8 +696,8 @@
     "share": 59.8,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "psytrance-key.relative-root-d-to-g",
@@ -706,8 +706,8 @@
     "share": 54.0,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-breaks",
@@ -716,8 +716,8 @@
     "share": 84,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-psy-trance",
@@ -726,8 +726,8 @@
     "share": 84,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-techno",
@@ -736,8 +736,8 @@
     "share": 77,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-tech-house",
@@ -746,8 +746,8 @@
     "share": 76,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-minimal",
@@ -756,8 +756,8 @@
     "share": 74,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-drum-and-bass",
@@ -766,8 +766,8 @@
     "share": 73,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-dubstep",
@@ -776,8 +776,8 @@
     "share": 70,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-progressive-house",
@@ -786,8 +786,8 @@
     "share": 68,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-electro-house",
@@ -796,8 +796,8 @@
     "share": 68,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-deep-house",
@@ -806,8 +806,8 @@
     "share": 68,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-hip-hop",
@@ -816,8 +816,8 @@
     "share": 66,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-house",
@@ -826,8 +826,8 @@
     "share": 65,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-trance",
@@ -836,8 +836,8 @@
     "share": 65,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-hard-dance",
@@ -846,8 +846,8 @@
     "share": 63,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-chill-out",
@@ -856,8 +856,8 @@
     "share": 54,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set2-electronica",
@@ -866,8 +866,8 @@
     "share": 40,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-techno",
@@ -876,8 +876,8 @@
     "share": 82,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-deep-house",
@@ -886,8 +886,8 @@
     "share": 95,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-tech-house",
@@ -896,8 +896,8 @@
     "share": 88,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-progressive",
@@ -906,8 +906,8 @@
     "share": 76,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-trance",
@@ -916,8 +916,8 @@
     "share": 88,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-dubstep",
@@ -926,8 +926,8 @@
     "share": 91,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.set1-drum-and-bass",
@@ -936,8 +936,8 @@
     "share": 82,
     "count": null,
     "total": null,
-    "source": ["key-set-1"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-1"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-techno",
@@ -946,8 +946,8 @@
     "share": 44,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-trance",
@@ -956,8 +956,8 @@
     "share": 52,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-dubstep",
@@ -966,8 +966,8 @@
     "share": 42,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-drum-and-bass",
@@ -976,8 +976,8 @@
     "share": 52,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-deep-house",
@@ -986,8 +986,8 @@
     "share": 52,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-hip-hop",
@@ -996,8 +996,8 @@
     "share": 54,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-ambient",
@@ -1006,8 +1006,8 @@
     "share": 38,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-pop",
@@ -1016,8 +1016,8 @@
     "share": 48,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "minor-share.streaming-heavy-metal",
@@ -1026,8 +1026,8 @@
     "share": 41,
     "count": null,
     "total": null,
-    "source": ["stream-keys"],
-    "tag": "derived"
+    "source": ["lexicon", "stream-keys"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-techno-d-sharp-minor",
@@ -1036,8 +1036,8 @@
     "share": 17,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-techno-d-minor",
@@ -1046,8 +1046,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-techno-c-minor",
@@ -1056,8 +1056,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-drum-and-bass-c-minor",
@@ -1066,8 +1066,8 @@
     "share": 16,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-drum-and-bass-c-sharp-minor",
@@ -1076,8 +1076,8 @@
     "share": 11,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-drum-and-bass-f-minor",
@@ -1086,8 +1086,8 @@
     "share": 10,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-dubstep-f-minor",
@@ -1096,8 +1096,8 @@
     "share": 11,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-house-f-minor",
@@ -1106,8 +1106,8 @@
     "share": 13,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-house-a-sharp",
@@ -1116,8 +1116,8 @@
     "share": 12,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-psy-trance-f-minor",
@@ -1126,8 +1126,8 @@
     "share": 14,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-psy-trance-g-minor",
@@ -1136,8 +1136,8 @@
     "share": 14,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "top-key.set2-psy-trance-e-minor",
@@ -1146,8 +1146,8 @@
     "share": 13,
     "count": null,
     "total": null,
-    "source": ["key-set-2"],
-    "tag": "derived"
+    "source": ["lexicon", "key-set-2"],
+    "tag": "single source"
   },
   {
     "id": "pop-mode.major",
@@ -1156,8 +1156,8 @@
     "share": 53.1,
     "count": 402,
     "total": 757,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "pop-mode.minor",
@@ -1166,8 +1166,8 @@
     "share": 46.9,
     "count": 355,
     "total": 757,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.overall",
@@ -1176,8 +1176,8 @@
     "share": 34.2,
     "count": 57543,
     "total": 168242,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-dark",
@@ -1186,8 +1186,8 @@
     "share": 42.9,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-epic",
@@ -1196,8 +1196,8 @@
     "share": 41.3,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-dream",
@@ -1206,8 +1206,8 @@
     "share": 43.6,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-happy",
@@ -1216,8 +1216,8 @@
     "share": 31.4,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-relaxing",
@@ -1226,8 +1226,8 @@
     "share": 33.0,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.tag-love",
@@ -1236,8 +1236,8 @@
     "share": 25.9,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.dark-files-major",
@@ -1246,8 +1246,8 @@
     "share": 57.0,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-trance",
@@ -1256,8 +1256,8 @@
     "share": 64,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-house",
@@ -1266,8 +1266,8 @@
     "share": 69,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-metal",
@@ -1276,8 +1276,8 @@
     "share": 71,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-techno",
@@ -1286,8 +1286,8 @@
     "share": 47,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-electronic",
@@ -1296,8 +1296,8 @@
     "share": 37.6,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-minor.genre-pop",
@@ -1306,8 +1306,8 @@
     "share": 30.0,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-meter.four-four",
@@ -1316,8 +1316,8 @@
     "share": 83.5,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-meter.four-four-trance",
@@ -1326,8 +1326,8 @@
     "share": 97,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-meter.four-four-techno",
@@ -1336,8 +1336,8 @@
     "share": 98,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "midi-meter.four-four-house",
@@ -1346,8 +1346,8 @@
     "share": 100,
     "count": null,
     "total": null,
-    "source": ["midicaps"],
-    "tag": "derived"
+    "source": ["lexicon", "midicaps"],
+    "tag": "single source"
   },
   {
     "id": "happier-mode.ionian",
@@ -1416,8 +1416,8 @@
     "share": 0.27,
     "count": null,
     "total": null,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "outside-share.pop-minor",
@@ -1426,8 +1426,8 @@
     "share": 0.57,
     "count": null,
     "total": null,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "outside-share.pop-minor-offset-11",
@@ -1436,8 +1436,8 @@
     "share": 0.27,
     "count": null,
     "total": null,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "outside-share.pop-minor-offset-9",
@@ -1446,8 +1446,8 @@
     "share": 0.16,
     "count": null,
     "total": null,
-    "source": ["pop909"],
-    "tag": "derived"
+    "source": ["lexicon", "pop909"],
+    "tag": "single source"
   },
   {
     "id": "chords.dominant-family.sheet",
@@ -1456,8 +1456,8 @@
     "share": 3.87,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.minor-seventh-up.sheet",
@@ -1466,8 +1466,8 @@
     "share": 2.7,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.major-seventh-up.sheet",
@@ -1476,8 +1476,8 @@
     "share": 1.45,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.sus.sheet",
@@ -1486,8 +1486,8 @@
     "share": 1.41,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.power.sheet",
@@ -1496,8 +1496,8 @@
     "share": 1.4,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.add.sheet",
@@ -1506,8 +1506,8 @@
     "share": 1.23,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.ninth.sheet",
@@ -1516,8 +1516,8 @@
     "share": 1.09,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.thirteenth.sheet",
@@ -1526,8 +1526,8 @@
     "share": 0.47,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.sixth.sheet",
@@ -1536,8 +1536,8 @@
     "share": 0.41,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.diminished.sheet",
@@ -1546,8 +1546,8 @@
     "share": 0.2,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.three-notes.sheet",
@@ -1556,8 +1556,8 @@
     "share": 89,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.dominant.sheet-soul",
@@ -1566,8 +1566,8 @@
     "share": 7.92,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.minor-seventh.sheet-soul",
@@ -1576,8 +1576,8 @@
     "share": 11.73,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.major-seventh.sheet-soul",
@@ -1586,8 +1586,8 @@
     "share": 6.2,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.dominant.sheet-jazz",
@@ -1596,8 +1596,8 @@
     "share": 12.75,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.minor-seventh.sheet-jazz",
@@ -1606,8 +1606,8 @@
     "share": 6.56,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.major-seventh.sheet-jazz",
@@ -1616,8 +1616,8 @@
     "share": 2.74,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.dominant.sheet-electronic",
@@ -1626,8 +1626,8 @@
     "share": 1.71,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.minor-seventh.sheet-electronic",
@@ -1636,8 +1636,8 @@
     "share": 2.66,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.major-seventh.sheet-electronic",
@@ -1646,8 +1646,8 @@
     "share": 1.49,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.power.sheet-metal",
@@ -1656,8 +1656,8 @@
     "share": 5.76,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "chords.power.sheet-punk",
@@ -1666,8 +1666,8 @@
     "share": 5.73,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet",
@@ -1676,8 +1676,8 @@
     "share": 17.96,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-pop",
@@ -1686,8 +1686,8 @@
     "share": 19.31,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-metal",
@@ -1696,8 +1696,8 @@
     "share": 20.72,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-rap",
@@ -1706,8 +1706,8 @@
     "share": 12.54,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-jazz",
@@ -1716,8 +1716,8 @@
     "share": 7.41,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-electronic",
@@ -1726,8 +1726,8 @@
     "share": 20.86,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.chart",
@@ -1736,8 +1736,8 @@
     "share": 5.2,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet",
@@ -1746,8 +1746,8 @@
     "share": 14.85,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet-pop",
@@ -1756,8 +1756,8 @@
     "share": 14.77,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet-metal",
@@ -1766,8 +1766,8 @@
     "share": 10.36,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet-rap",
@@ -1776,8 +1776,8 @@
     "share": 7.45,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet-jazz",
@@ -1786,8 +1786,8 @@
     "share": 8.81,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.sheet-electronic",
@@ -1796,8 +1796,8 @@
     "share": 10.91,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.fifties.chart",
@@ -1806,8 +1806,8 @@
     "share": 12.4,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet",
@@ -1816,8 +1816,8 @@
     "share": 14.42,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-pop",
@@ -1826,8 +1826,8 @@
     "share": 12.71,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-metal",
@@ -1836,8 +1836,8 @@
     "share": 11.08,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-rap",
@@ -1846,8 +1846,8 @@
     "share": 6.41,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-jazz",
@@ -1856,8 +1856,8 @@
     "share": 12.26,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-electronic",
@@ -1866,8 +1866,8 @@
     "share": 10.45,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.chart",
@@ -1876,8 +1876,8 @@
     "share": 11.6,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet",
@@ -1886,8 +1886,8 @@
     "share": 13.11,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet-pop",
@@ -1896,8 +1896,8 @@
     "share": 14.61,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet-metal",
@@ -1906,8 +1906,8 @@
     "share": 22.06,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet-rap",
@@ -1916,8 +1916,8 @@
     "share": 9.31,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet-jazz",
@@ -1926,8 +1926,8 @@
     "share": 6.4,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.sheet-electronic",
@@ -1936,8 +1936,8 @@
     "share": 13.75,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.aeolian-shuttle.chart",
@@ -1946,8 +1946,8 @@
     "share": 8.0,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet",
@@ -1956,8 +1956,8 @@
     "share": 9.14,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet-pop",
@@ -1966,8 +1966,8 @@
     "share": 10.15,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet-metal",
@@ -1976,8 +1976,8 @@
     "share": 7.02,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet-rap",
@@ -1986,8 +1986,8 @@
     "share": 5.38,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet-jazz",
@@ -1996,8 +1996,8 @@
     "share": 4.91,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.sheet-electronic",
@@ -2006,8 +2006,8 @@
     "share": 8.46,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-six-five.chart",
@@ -2016,8 +2016,8 @@
     "share": 2.1,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet",
@@ -2026,8 +2026,8 @@
     "share": 7.55,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet-pop",
@@ -2036,8 +2036,8 @@
     "share": 8.88,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet-metal",
@@ -2046,8 +2046,8 @@
     "share": 2.57,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet-rap",
@@ -2056,8 +2056,8 @@
     "share": 3.72,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet-jazz",
@@ -2066,8 +2066,8 @@
     "share": 9.1,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.sheet-electronic",
@@ -2076,8 +2076,8 @@
     "share": 4.44,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-loop-with-iv.chart",
@@ -2086,8 +2086,8 @@
     "share": 5.2,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet",
@@ -2096,8 +2096,8 @@
     "share": 5.95,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet-pop",
@@ -2106,8 +2106,8 @@
     "share": 6.64,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet-metal",
@@ -2116,8 +2116,8 @@
     "share": 9.56,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet-rap",
@@ -2126,8 +2126,8 @@
     "share": 4.19,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet-jazz",
@@ -2136,8 +2136,8 @@
     "share": 2.84,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.sheet-electronic",
@@ -2146,8 +2146,8 @@
     "share": 7.25,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-three-seven-six.chart",
@@ -2156,8 +2156,8 @@
     "share": 1.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet",
@@ -2166,8 +2166,8 @@
     "share": 4.43,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet-pop",
@@ -2176,8 +2176,8 @@
     "share": 5.53,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet-metal",
@@ -2186,8 +2186,8 @@
     "share": 7.22,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet-rap",
@@ -2196,8 +2196,8 @@
     "share": 3.47,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet-jazz",
@@ -2206,8 +2206,8 @@
     "share": 2.69,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.sheet-electronic",
@@ -2216,8 +2216,8 @@
     "share": 5.44,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-five-six-seven.chart",
@@ -2226,8 +2226,8 @@
     "share": 4.3,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet",
@@ -2236,8 +2236,8 @@
     "share": 3.58,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet-pop",
@@ -2246,8 +2246,8 @@
     "share": 4.51,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet-metal",
@@ -2256,8 +2256,8 @@
     "share": 4.78,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet-rap",
@@ -2266,8 +2266,8 @@
     "share": 2.63,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet-jazz",
@@ -2276,8 +2276,8 @@
     "share": 2.16,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.sheet-electronic",
@@ -2286,8 +2286,8 @@
     "share": 2.99,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.chart",
@@ -2296,8 +2296,8 @@
     "share": 2.6,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet",
@@ -2306,8 +2306,8 @@
     "share": 3.13,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet-pop",
@@ -2316,8 +2316,8 @@
     "share": 3.59,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet-metal",
@@ -2326,8 +2326,8 @@
     "share": 6.2,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet-rap",
@@ -2336,8 +2336,8 @@
     "share": 2.4,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet-jazz",
@@ -2346,8 +2346,8 @@
     "share": 3.41,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.sheet-electronic",
@@ -2356,8 +2356,8 @@
     "share": 1.85,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.andalusian-cadence.chart",
@@ -2366,8 +2366,8 @@
     "share": 3.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet",
@@ -2376,8 +2376,8 @@
     "share": 1.89,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet-pop",
@@ -2386,8 +2386,8 @@
     "share": 2.03,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet-metal",
@@ -2396,8 +2396,8 @@
     "share": 0.13,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet-rap",
@@ -2406,8 +2406,8 @@
     "share": 0.89,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet-jazz",
@@ -2416,8 +2416,8 @@
     "share": 9.68,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.sheet-electronic",
@@ -2426,8 +2426,8 @@
     "share": 0.64,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.chart",
@@ -2436,8 +2436,8 @@
     "share": 6.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet",
@@ -2446,8 +2446,8 @@
     "share": 27.68,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-pop",
@@ -2456,8 +2456,8 @@
     "share": 21.92,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-metal",
@@ -2466,8 +2466,8 @@
     "share": 12.04,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-rap",
@@ -2476,8 +2476,8 @@
     "share": 10.12,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-jazz",
@@ -2486,8 +2486,8 @@
     "share": 34.18,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-electronic",
@@ -2496,8 +2496,8 @@
     "share": 14.75,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.chart",
@@ -2506,8 +2506,8 @@
     "share": 30.3,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five-four.sheet",
@@ -2516,8 +2516,8 @@
     "share": 18.4,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five-four.chart",
@@ -2526,8 +2526,8 @@
     "share": 18.9,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.ii-v-i.chart-label",
@@ -2536,8 +2536,8 @@
     "share": 11.8,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-three-four-five.sheet",
@@ -2546,8 +2546,8 @@
     "share": 5.5,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-three-four-five.chart",
@@ -2556,8 +2556,8 @@
     "share": 3.9,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.flat-six-flat-seven-one.sheet",
@@ -2566,8 +2566,8 @@
     "share": 1.4,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.flat-six-flat-seven-one.chart",
@@ -2576,8 +2576,8 @@
     "share": 1.7,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.phrygian-menace.chart",
@@ -2586,8 +2586,8 @@
     "share": 1.2,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.turnaround.chart",
@@ -2596,8 +2596,8 @@
     "share": 2.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.minor-plagal.chart",
@@ -2606,8 +2606,8 @@
     "share": 7.2,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.one-four-five.sheet-country",
@@ -2616,8 +2616,8 @@
     "share": 47.8,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.mixolydian-loop.sheet-country",
@@ -2626,8 +2626,8 @@
     "share": 19.2,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.axis.sheet-punk",
@@ -2636,8 +2636,8 @@
     "share": 21.5,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "progressions.royal-road.japan-top-20",
@@ -2656,8 +2656,8 @@
     "share": 75.8,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.bar-two-chords",
@@ -2666,8 +2666,8 @@
     "share": 20.3,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.bar-three-chords",
@@ -2676,8 +2676,8 @@
     "share": 3.1,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.bar-four-chords",
@@ -2686,8 +2686,8 @@
     "share": 0.7,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-1-33-beats",
@@ -2696,8 +2696,8 @@
     "share": 7.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-1-beats",
@@ -2706,8 +2706,8 @@
     "share": 2.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-2-beats",
@@ -2716,8 +2716,8 @@
     "share": 35.6,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-4-beats",
@@ -2726,8 +2726,8 @@
     "share": 34.9,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-6-beats",
@@ -2736,8 +2736,8 @@
     "share": 1.8,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-8-beats",
@@ -2746,8 +2746,8 @@
     "share": 11.8,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.run-16-beats",
@@ -2756,8 +2756,8 @@
     "share": 1.3,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.section-8-bars",
@@ -2766,8 +2766,8 @@
     "share": 31.3,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.section-16-bars",
@@ -2776,8 +2776,8 @@
     "share": 14.0,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.section-4-bars",
@@ -2786,8 +2786,8 @@
     "share": 13.5,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.section-12-bars",
@@ -2796,8 +2796,8 @@
     "share": 7.1,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.repeat-4-bar",
@@ -2806,8 +2806,8 @@
     "share": 17.2,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.repeat-2-bar",
@@ -2816,8 +2816,8 @@
     "share": 8.1,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.repeat-1-bar",
@@ -2826,8 +2826,8 @@
     "share": 5.9,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.repeat-8-bar",
@@ -2836,8 +2836,8 @@
     "share": 4.0,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.repeat-none",
@@ -2846,8 +2846,8 @@
     "share": 64,
     "count": null,
     "total": null,
-    "source": ["chart-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "chart-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.cycle-repeats.sheet",
@@ -2856,8 +2856,8 @@
     "share": 32.9,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.cycle-4-chords.sheet",
@@ -2866,8 +2866,8 @@
     "share": 47.6,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.cycle-3-chords.sheet",
@@ -2876,8 +2876,8 @@
     "share": 17.8,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.cycle-2-chords.sheet",
@@ -2886,8 +2886,8 @@
     "share": 11.7,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "harmony.cycle-5-chords.sheet",
@@ -2896,8 +2896,8 @@
     "share": 8.9,
     "count": null,
     "total": null,
-    "source": ["sheet-chords"],
-    "tag": "derived"
+    "source": ["lexicon", "sheet-chords"],
+    "tag": "single source"
   },
   {
     "id": "position.four-on-the-floor-grids",
@@ -2966,7 +2966,7 @@
     "share": 61.0,
     "count": null,
     "total": null,
-    "source": ["groove"],
-    "tag": "derived"
+    "source": ["lexicon", "groove"],
+    "tag": "single source"
   }
 ]

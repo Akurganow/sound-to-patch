@@ -8,7 +8,7 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 
 | Word | Id | Rule | Meaning | Tier | Tag | Sources |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| sub bass | `role.sub-bass` | core 26 to 35, hard 24 to 40, mono | The sub band below about 60 Hz, played one note at a time. Many systems fail below note 30, so the core stays at 26 to 35. | M1 | source states | guides, lexicon |
+| sub bass | `role.sub-bass` | core 26 to 35, hard 24 to 40, mono | The sub band below about 60 Hz, played one note at a time. Many playback systems roll off below about 30 Hz, between notes 23 and 24, so the core stays at 26 to 35. | M1 | source states | guides, lexicon |
 | 808 | `role.808` | core 24 to 36, hard 23 to 40, mono | A tuned bass drum played one note at a time. Trap roots sit at 28 to 33 and drill roots at 29 to 33, and a root under 23 moves up an octave. | M1 | source states | guides, lexicon |
 | bass (mid bass, synth bass, reese, rolling bass) | `role.bass` | core 28 to 48, hard 24 to 60, mono | Mid, synth, reese and rolling bass, played one note at a time. Most notes sit at 28 to 48, and notes outside 24 to 60 are rejected. | M1 | derived | lmd, lexicon |
 | lead | `role.lead` | core 60 to 84, hard 48 to 96, mono | A single-voice melody sound. Most notes sit at 60 to 84, and notes outside 48 to 96 are rejected. | M1 | derived | lmd, lexicon |

@@ -711,7 +711,7 @@ mod tests {
             "{table}"
         );
         assert!(
-            table.contains("| 1 | G# minor | B major | 6m and 6d |"),
+            table.contains("| 1 | Ab minor | B major | 6m and 6d |"),
             "{table}"
         );
     }
