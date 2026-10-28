@@ -25,7 +25,8 @@ with its masks and its MIDI reader, the signal core that the estimators
 share, and the report with the `stem` group and the spectrogram, the
 transcriber with its profiles and its register detection, the f0 track,
 the note cleanup, the MIDI writer, and the layer map of the agent
-reference. The reference itself is an agent plugin under `plugins/`.
+reference. The reference itself is the folder `reference/`, which an
+agent plugin and a project skill both read.
 
 ## Synth adapter seam
 
@@ -115,11 +116,14 @@ joins `READY` when its adapter lands.
   registry data from a local checkout of the open source, generates
   the Vital test fixtures, writes the catalogue files of the agent
   reference from the registry, and checks the agent plugins.
+- `reference`: the agent reference, one folder of plain files: the router
+  `README.md`, the generated catalogue files per synth and layer, and
+  example edit lists. Nothing else holds a copy.
 - `plugins`: the agent plugins, each folder shipped as its own release
   archive and listed in `.claude-plugin/marketplace.json`.
-  `sound-to-patch-reference` holds the skill `synth-reference`: the router
-  `SKILL.md`, the generated catalogue files per synth and layer, and
-  example edit lists.
+  `sound-to-patch-reference` holds the skill `synth-reference`, which
+  links `reference/`. `.claude/skills/synth-reference` links that skill, so
+  a session on a clone of the repository finds it too.
 - `dictionary`: the data of the agent reference: the word entries per
   axis, the source list and the probe questions, with their schemas in
   `schemas/`.

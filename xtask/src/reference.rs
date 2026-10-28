@@ -1,8 +1,8 @@
-//! Writes the generated files of the reference plugin from the registry of
-//! each ready synth.
+//! Writes the generated files of the shared `reference/` folder from the
+//! registry of each ready synth.
 //!
 //! Each synth gets one catalogue file per layer and one `global` file
-//! under `reference/<synth>/` of the skill. A control with several
+//! under `reference/<synth>/`. A control with several
 //! instances is one row, and the registry never leaves this crate as a
 //! whole table: the files hold one row per pattern.
 
@@ -15,8 +15,9 @@ use sound_to_patch::preset::catalogue::{Layer, placement, unread_keys};
 use sound_to_patch::preset::registry::{ParamKind, ParamSpec, Physical, Provenance, registry_for};
 use sound_to_patch::synth::Synth;
 
-/// The skill folder, relative to the repository root.
-pub(crate) const SKILL: &str = "plugins/sound-to-patch-reference/skills/synth-reference";
+/// The shared reference folder, relative to the repository root. The
+/// plugin and the project skill read it through links.
+pub(crate) const REFERENCE: &str = "reference";
 
 /// Files above this many lines open with a table of contents.
 pub(crate) const CONTENTS_ABOVE: usize = 100;
@@ -45,9 +46,13 @@ pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
         }
     }
     for synth in Synth::READY {
-        let dir = root.join(SKILL).join("reference").join(synth.as_str());
+        let dir = root.join(REFERENCE).join(synth.as_str());
         for entry in fs::read_dir(&dir).into_iter().flatten() {
-            let path = entry?.path();
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                continue;
+            }
+            let path = entry.path();
             let relative = path.strip_prefix(root)?.to_owned();
             if !files.contains_key(&relative) {
                 stale.push(format!("{} (not generated; delete it)", relative.display()));
@@ -69,7 +74,7 @@ pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
 pub(crate) fn generate() -> crate::Result<BTreeMap<PathBuf, String>> {
     let mut files = BTreeMap::new();
     for synth in Synth::READY {
-        let dir = Path::new(SKILL).join("reference").join(synth.as_str());
+        let dir = Path::new(REFERENCE).join(synth.as_str());
         let catalogue = Catalogue::of(synth)?;
         for layer in Layer::ALL {
             files.insert(

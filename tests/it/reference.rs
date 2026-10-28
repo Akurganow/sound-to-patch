@@ -1,4 +1,4 @@
-//! The data and the examples of the reference plugin.
+//! The data and the examples of the shared reference folder.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -10,7 +10,7 @@ use sound_to_patch::preset::format::format_for;
 use sound_to_patch::preset::{ApplyRequest, apply_file};
 use sound_to_patch::synth::{Synth, SynthArg};
 
-const SKILL: &str = "plugins/sound-to-patch-reference/skills/synth-reference";
+const REFERENCE: &str = "reference";
 
 fn validator(schema: &str) -> jsonschema::Validator {
     let schema: Value = serde_json::from_str(&fs::read_to_string(schema).unwrap()).unwrap();
@@ -112,7 +112,7 @@ fn a_measure_outside_the_fixed_list_fails() {
 }
 
 fn examples(synth: Synth) -> Vec<PathBuf> {
-    let dir = Path::new(SKILL).join("examples").join(synth.as_str());
+    let dir = Path::new(REFERENCE).join(synth.as_str()).join("examples");
     let mut files: Vec<PathBuf> = fs::read_dir(dir)
         .map(|entries| {
             entries
@@ -127,17 +127,15 @@ fn examples(synth: Synth) -> Vec<PathBuf> {
 
 #[test]
 fn every_example_writes_a_preset_on_the_built_in_template() {
-    let counts: Value = serde_json::from_str(
-        &fs::read_to_string(Path::new(SKILL).join("examples/count.json")).unwrap(),
-    )
-    .unwrap();
+    let counts: Value =
+        serde_json::from_str(&fs::read_to_string("dictionary/examples.json").unwrap()).unwrap();
     let dir = tempfile::tempdir().unwrap();
     for synth in Synth::READY {
         let files = examples(synth);
         assert_eq!(
             u64::try_from(files.len()).ok(),
             counts[synth.as_str()].as_u64(),
-            "examples/count.json must list {} examples for {synth}; one was added or deleted",
+            "dictionary/examples.json must list {} examples for {synth}; one was added or deleted",
             files.len()
         );
         let format = format_for(synth).unwrap();

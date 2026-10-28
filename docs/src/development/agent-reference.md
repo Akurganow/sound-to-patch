@@ -1,31 +1,48 @@
 # Agent reference
 
-The agent reference is an agent plugin in this repository,
-`plugins/sound-to-patch-reference`. Its skill `synth-reference` tells an
+The agent reference is a folder of plain files, `reference/`. It tells an
 agent which controls a synth has, by layer, with the preset key, the unit,
 the range, the default, how sure each value is and how to tune it by ear.
-The audio path and the text path will ship as plugins of their own that
-depend on it.
+Two thin entry points route an agent into it, and both read the same
+files:
+
+- the plugin `plugins/sound-to-patch-reference`, the entry point for local
+  sessions. Its skill `synth-reference` links the folder as `reference`.
+  The audio path and the text path will ship as plugins of their own that
+  depend on it;
+- the project skill `.claude/skills/synth-reference`, a link to the skill
+  of the plugin, which a session opened on a clone of this repository
+  loads.
 
 ## Layout
 
 ```text
+reference/                             the shared reference, one copy
+  README.md                            which file answers which question
+  vital/<layer>.md                     generated: one file per layer
+  vital/global.md                      generated: controls outside the layers
+  vital/examples/*.json                edit lists that CI applies
 .claude-plugin/marketplace.json        the marketplace: one entry per plugin
 plugins/sound-to-patch-reference/
   .claude-plugin/plugin.json           name, description, licence; no version
   README.md
   skills/synth-reference/
-    SKILL.md                           the router and the rules to keep
-    reference/vital/<layer>.md         generated: one file per layer
-    reference/vital/global.md          generated: controls outside the layers
-    examples/vital/*.json              edit lists that CI applies
-    examples/count.json                the expected number of examples per synth
+    SKILL.md                           the rules to keep and a pointer
+    reference -> ../../../../reference
+.claude/skills/synth-reference -> ../../plugins/sound-to-patch-reference/skills/synth-reference
 dictionary/
   words/<axis>.json                    neutral word entries, one file per axis
   sources.json                         every source the dictionary cites
   probes.json                          one probe question per reference file
+  examples.json                        the expected number of examples per synth
 schemas/words.schema.json, schemas/sources.schema.json
 ```
+
+Edit the reference only in `reference/`. An installed plugin keeps the
+linked files: the harness copies a linked folder into its cache when it
+installs a plugin from a repository, while files outside the plugin with
+no link are left out. A zip of the plugin folder carries them too, because
+`zip` stores the linked files.
 
 The plugin carries no version. Users who install it from the marketplace
 track the commits of `main`, and each release also ships the folder as
@@ -68,6 +85,9 @@ reference --check` fails when a committed file differs; CI runs it.
   characters, or no non-affiliation line;
 - a reference file over 300 lines, or over 100 lines without a
   `## Contents` list before its first section;
+- a plugin skill whose `reference` is not a link to `reference/`, and a
+  project skill under `.claude/skills/` that is not a link to the skill
+  of the plugin;
 - a phrase that a synth folder must not hold: for Vital, the name of the
   other synth and version comparisons such as "older version";
 - a reference file without a probe in `dictionary/probes.json`, and a
@@ -75,7 +95,7 @@ reference --check` fails when a committed file differs; CI runs it.
 
 The integration tests check the dictionary files against their schemas,
 apply every example edit list to the built-in template of its synth, and
-compare the number of examples with `examples/count.json`. A local test,
+compare the number of examples with `dictionary/examples.json`. A local test,
 ignored by default, checks that the catalogue covers every key of a preset
 that the app saved; set `VITAL_PROBE_PRESET` to the preset's path and run
 it with `--run-ignored only`.
@@ -92,21 +112,17 @@ claude plugin validate plugins/sound-to-patch-reference
 
 ## Plugin loading
 
-Checked on 2026-10-28 with two stub plugins in a scratch marketplace, in a
-local session:
+Checked on 2026-10-28, in a local session:
 
 | Check | Result |
 | :-- | :-- |
+| Files outside the plugin folder after an install from the repository on GitHub | absent: the plugin is copied into a cache. A link inside the plugin to a folder elsewhere in the repository is copied as that folder, with its files |
 | `plugin validate` on the marketplace root and on each plugin folder | passes; it warns that no `version` is set, which is intended |
-| `marketplace add <path>` and `install` | the plugin's skill loads |
-| Installing a plugin whose `plugin.json` lists the other in `dependencies` | installs both; uninstalling it marks the other as no longer needed |
+| `marketplace add <path>` and `install` | the plugin's skill loads; a local folder is read in place |
+| Installing a plugin whose `plugin.json` lists another in `dependencies` | installs both; uninstalling it marks the other as no longer needed |
 | A zip of the plugin folder, nested or flat, as `--plugin-dir` | loads the skill |
-| A plugin folder under `.claude/skills/` (`<name>@skills-dir`) | not listed by the non-interactive commands; the docs say it loads after the trust prompt, in the session's own folder only |
-| Cloud sessions | the docs say an installed plugin does not load there, while a committed project skill does |
-
-Cloud sessions are not supported for now: the tool runs locally and
-writes the preset files, and committed copies under `.claude/skills/`
-would also load in every session that works on this repository.
+| A linked skill folder under `.claude/skills/` | `plugin validate` reads no link, and says a session follows it |
+| Cloud sessions | not a target. They load the committed project skill, which points into `reference/` |
 
 ## Sources
 

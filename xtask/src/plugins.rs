@@ -1,4 +1,11 @@
-//! Checks the agent plugins under `plugins/` and the root marketplace file.
+//! Checks the shared `reference/` folder, its entry points and the root
+//! marketplace file.
+//!
+//! The reference lives once, in `reference/`. Each skill of a plugin links
+//! it as `reference`, and the committed project skill under
+//! `.claude/skills/` links the skill of the plugin, so both entry points
+//! read the same files. An installed plugin keeps such a link: the harness
+//! copies the linked folder into its cache.
 //!
 //! The limits come from the portable skill specification and the plugin
 //! docs of the agent harness: the six frontmatter fields, a description of
@@ -11,7 +18,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use crate::reference::CONTENTS_ABOVE;
+use crate::reference::{CONTENTS_ABOVE, REFERENCE};
 
 /// The line every plugin manifest description, plugin README and
 /// `SKILL.md` carries, as the README states it.
@@ -65,7 +72,8 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
     for dir in &plugins {
         check_plugin(root, dir, &mut problems)?;
     }
-    check_probes(root, &plugins, &mut problems)?;
+    check_reference_folder(root, &mut problems)?;
+    check_probes(root, &mut problems)?;
     if problems.is_empty() {
         Ok(())
     } else {
@@ -197,9 +205,33 @@ fn check_plugin(root: &Path, dir: &Path, problems: &mut Vec<String>) -> crate::R
         ));
     }
     for skill in subdirs(&dir.join("skills"))? {
-        check_skill(root, &skill, problems)?;
+        check_skill(root, &skill, problems);
+        check_links(root, &skill, problems);
     }
     Ok(())
+}
+
+/// The skill links the shared folder as `reference`, and the project skill
+/// of the same name links the skill.
+fn check_links(root: &Path, skill: &Path, problems: &mut Vec<String>) {
+    let same = |a: &Path, b: &Path| matches!((fs::canonicalize(a), fs::canonicalize(b)), (Ok(a), Ok(b)) if a == b);
+    let link = skill.join(REFERENCE);
+    let is_link = fs::symlink_metadata(&link).is_ok_and(|meta| meta.file_type().is_symlink());
+    if !is_link || !same(&link, &root.join(REFERENCE)) {
+        problems.push(format!(
+            "{} must be a relative link to the shared `reference/` folder, so the installed plugin carries it",
+            shown(root, &link)
+        ));
+    }
+    let name = skill.file_name().unwrap_or_default();
+    let project = root.join(".claude/skills").join(name);
+    if !same(&project, skill) {
+        problems.push(format!(
+            "{} must be a relative link to {}, the one copy of the skill",
+            shown(root, &project),
+            shown(root, skill)
+        ));
+    }
 }
 
 fn subdirs(dir: &Path) -> crate::Result<Vec<PathBuf>> {
@@ -225,8 +257,9 @@ fn files(dir: &Path, extension: &str) -> crate::Result<Vec<PathBuf>> {
             continue;
         };
         for entry in entries {
-            let path = entry?.path();
-            if path.is_dir() {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|ext| ext == extension) {
                 found.push(path);
@@ -251,13 +284,13 @@ fn frontmatter(text: &str) -> Option<Vec<(String, String)>> {
     )
 }
 
-fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
+fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
     let folder = dir.file_name().and_then(|name| name.to_str()).unwrap_or("");
     let path = dir.join("SKILL.md");
     let at = shown(root, &path);
     let Ok(text) = fs::read_to_string(&path) else {
         problems.push(format!("{at} is missing; every skill folder needs one"));
-        return Ok(());
+        return;
     };
     match frontmatter(&text) {
         None => problems.push(format!("{at} has no `---` frontmatter; add one")),
@@ -311,18 +344,23 @@ fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) -> crate::Re
     if !text.contains(NON_AFFILIATION) {
         problems.push(format!("{at} lacks the non-affiliation line; add it"));
     }
-    for file in files(&dir.join("reference"), "md")? {
-        check_reference(root, dir, &file, problems)?;
+}
+
+/// The size, contents and banned phrases of every file in `reference/`.
+fn check_reference_folder(root: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
+    let base = root.join(REFERENCE);
+    for file in files(&base, "md")? {
+        check_reference(root, &base, &file, problems)?;
     }
-    for file in files(&dir.join("examples"), "json")? {
-        check_banned(root, dir, &file, &fs::read_to_string(&file)?, problems);
+    for file in files(&base, "json")? {
+        check_banned(root, &base, &file, &fs::read_to_string(&file)?, problems);
     }
     Ok(())
 }
 
 fn check_reference(
     root: &Path,
-    skill: &Path,
+    base: &Path,
     file: &Path,
     problems: &mut Vec<String>,
 ) -> crate::Result<()> {
@@ -345,21 +383,20 @@ fn check_reference(
             ));
         }
     }
-    check_banned(root, skill, file, &text, problems);
+    check_banned(root, base, file, &text, problems);
     Ok(())
 }
 
-/// The synth folder of a file: the first part of its path below `reference`
-/// or `examples` of the skill.
-fn synth_of(skill: &Path, file: &Path) -> Option<String> {
-    let mut parts = file.strip_prefix(skill).ok()?.iter();
-    parts.next()?;
+/// The synth folder of a file: the first part of its path below
+/// `reference/`, when the file sits inside a folder.
+fn synth_of(base: &Path, file: &Path) -> Option<String> {
+    let mut parts = file.strip_prefix(base).ok()?.iter();
     let synth = parts.next()?.to_str()?;
     parts.next().map(|_| synth.to_owned())
 }
 
-fn check_banned(root: &Path, skill: &Path, file: &Path, text: &str, problems: &mut Vec<String>) {
-    let Some(synth) = synth_of(skill, file) else {
+fn check_banned(root: &Path, base: &Path, file: &Path, text: &str, problems: &mut Vec<String>) {
+    let Some(synth) = synth_of(base, file) else {
         return;
     };
     let lower = text.to_lowercase();
@@ -379,15 +416,11 @@ fn check_banned(root: &Path, skill: &Path, file: &Path, text: &str, problems: &m
 
 /// Each reference file has one probe whose answer appears in it and in no
 /// other reference file.
-fn check_probes(root: &Path, plugins: &[PathBuf], problems: &mut Vec<String>) -> crate::Result<()> {
+fn check_probes(root: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
     let mut texts = Vec::new();
-    for plugin in plugins {
-        for skill in subdirs(&plugin.join("skills"))? {
-            for file in files(&skill.join("reference"), "md")? {
-                let text = fs::read_to_string(&file)?;
-                texts.push((file.strip_prefix(root).unwrap_or(&file).to_owned(), text));
-            }
-        }
+    for file in files(&root.join(REFERENCE), "md")? {
+        let text = fs::read_to_string(&file)?;
+        texts.push((file.strip_prefix(root).unwrap_or(&file).to_owned(), text));
     }
     let path = root.join("dictionary/probes.json");
     if texts.is_empty() && !path.exists() {
@@ -445,8 +478,16 @@ mod tests {
         let skill = plugin.join("skills/synth-reference");
         fs::create_dir_all(root.join(".claude-plugin")).unwrap();
         fs::create_dir_all(plugin.join(".claude-plugin")).unwrap();
-        fs::create_dir_all(skill.join("reference/vital")).unwrap();
+        fs::create_dir_all(&skill).unwrap();
+        fs::create_dir_all(root.join("reference/vital")).unwrap();
+        fs::create_dir_all(root.join(".claude/skills")).unwrap();
         fs::create_dir_all(root.join("dictionary")).unwrap();
+        std::os::unix::fs::symlink("../../../../reference", skill.join("reference")).unwrap();
+        std::os::unix::fs::symlink(
+            "../../plugins/ref/skills/synth-reference",
+            root.join(".claude/skills/synth-reference"),
+        )
+        .unwrap();
         fs::write(
             root.join(".claude-plugin/marketplace.json"),
             r#"{"name":"m","owner":{"name":"o"},"plugins":[{"name":"ref","source":"./plugins/ref"}]}"#,
@@ -464,13 +505,13 @@ mod tests {
         .unwrap();
         fs::write(skill.join("SKILL.md"), SKILL).unwrap();
         fs::write(
-            skill.join("reference/vital/filter.md"),
+            root.join("reference/vital/filter.md"),
             "# Filter\n\n`filter_N_cutoff`\n",
         )
         .unwrap();
         fs::write(
             root.join("dictionary/probes.json"),
-            r#"[{"file":"plugins/ref/skills/synth-reference/reference/vital/filter.md","question":"Which key sets the cutoff?","answer":"filter_N_cutoff"}]"#,
+            r#"[{"file":"reference/vital/filter.md","question":"Which key sets the cutoff?","answer":"filter_N_cutoff"}]"#,
         )
         .unwrap();
         dir
@@ -543,9 +584,7 @@ mod tests {
     #[test]
     fn a_long_reference_file_needs_contents_and_a_cap() {
         let dir = repo();
-        let path = dir
-            .path()
-            .join("plugins/ref/skills/synth-reference/reference/vital/filter.md");
+        let path = dir.path().join("reference/vital/filter.md");
         fs::write(
             &path,
             format!("# F\n\n`filter_N_cutoff`\n\n## A\n{}", "x\n".repeat(120)),
@@ -563,9 +602,7 @@ mod tests {
     #[test]
     fn a_vital_file_names_no_other_synth() {
         let dir = repo();
-        let path = dir
-            .path()
-            .join("plugins/ref/skills/synth-reference/reference/vital/filter.md");
+        let path = dir.path().join("reference/vital/filter.md");
         fs::write(&path, "# F\n\n`filter_N_cutoff`, as in Serum.\n").unwrap();
         fails_with(&dir, "\"serum\"");
         fs::write(
@@ -579,19 +616,29 @@ mod tests {
     #[test]
     fn a_probe_answer_must_be_unique_and_every_file_needs_a_probe() {
         let dir = repo();
-        let other = dir
-            .path()
-            .join("plugins/ref/skills/synth-reference/reference/vital/space.md");
+        let other = dir.path().join("reference/vital/space.md");
         fs::write(&other, "# Space\n\n`filter_N_cutoff` again\n").unwrap();
         fails_with(&dir, "must appear in that file only");
         fails_with(&dir, "space.md has no probe");
         fs::remove_file(&other).unwrap();
-        fs::remove_file(
-            dir.path()
-                .join("plugins/ref/skills/synth-reference/reference/vital/filter.md"),
-        )
-        .unwrap();
+        fs::remove_file(dir.path().join("reference/vital/filter.md")).unwrap();
         fails_with(&dir, "must appear in that file only");
+    }
+
+    #[test]
+    fn both_entry_points_must_link_the_shared_folder() {
+        let dir = repo();
+        let link = dir
+            .path()
+            .join("plugins/ref/skills/synth-reference/reference");
+        fs::remove_file(&link).unwrap();
+        fs::create_dir_all(&link).unwrap();
+        fails_with(
+            &dir,
+            "must be a relative link to the shared `reference/` folder",
+        );
+        fs::remove_file(dir.path().join(".claude/skills/synth-reference")).unwrap();
+        fails_with(&dir, "the one copy of the skill");
     }
 
     #[test]

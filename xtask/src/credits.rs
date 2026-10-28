@@ -4,7 +4,8 @@
 //! external link under a `Sources` heading of a book page or of
 //! `ARCHITECTURE.md` must match a credit entry, or a prefix in
 //! `docs/cited-references.txt`, the reference documentation we only cite.
-//! The pages of the agent plugins under `plugins/` count as book pages, and
+//! The pages of the shared `reference/` folder and of the agent plugins
+//! under `plugins/` count as book pages, and
 //! every `url` in `dictionary/sources.json` counts as a cited source.
 
 use std::fs;
@@ -166,17 +167,21 @@ fn dictionary_links(text: &str) -> crate::Result<Vec<String>> {
         .collect())
 }
 
-/// Book pages, plugin pages and `ARCHITECTURE.md`.
+/// Book pages, reference and plugin pages, and `ARCHITECTURE.md`. Links
+/// are not followed, so a page linked from a plugin counts once.
 fn pages(root: &Path) -> crate::Result<Vec<PathBuf>> {
     let mut pages = vec![root.join("ARCHITECTURE.md")];
     let mut dirs = vec![root.join("docs/src")];
-    if root.join("plugins").is_dir() {
-        dirs.push(root.join("plugins"));
+    for extra in ["reference", "plugins"] {
+        if root.join(extra).is_dir() {
+            dirs.push(root.join(extra));
+        }
     }
     while let Some(dir) = dirs.pop() {
         for entry in fs::read_dir(&dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|ext| ext == "md") {
                 pages.push(path);
