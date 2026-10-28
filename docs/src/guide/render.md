@@ -29,7 +29,7 @@ sound-to-patch render bass.vital --midi notes.mid --bpm 120 -o bass.wav
 ```
 
 ```text
-plug-in: Vital 1.0.7 from /Library/Audio/Plug-Ins/VST3/Vital.vst3, in sound-to-patch-host 0.15.0 (vst3-host 0.10.0) as x86_64
+plug-in: Vital 1.0.7 from /Library/Audio/Plug-Ins/VST3/Vital.vst3, in sound-to-patch-host 0.18.0 (vst3-host 0.10.0) as x86_64
 preset: routes, 2x oversampling
 notes: 3, the last note-off at 3.000 s, 120 BPM
 init patch: 2 renders, 0.04 dB apart
@@ -72,8 +72,10 @@ So a render counts only when two checks pass:
 1. The clip sounds. A clip whose every sample stays below -96 dBFS is
    silent, and the error names what in the preset can explain it, such as
    no oscillator and no sample being on.
-2. The state the plug-in saves after the render holds the preset: its name
-   and every numeric control, each within one step of a 32-bit float. When
+2. The state the plug-in saves after the render holds the preset: its
+   name, its tuning and every numeric control, each number within one step
+   of a 32-bit float. A preset without a tuning plays in Vital's default
+   tuning, never in the tuning of the preset rendered before it. When
    the saved state is the init patch, the plug-in did not load the preset
    at all, as with a preset saved by a newer build of Vital.
 

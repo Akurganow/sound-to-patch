@@ -6,8 +6,8 @@
 //! 1. The clip must sound: a clip whose every sample stays below the tail
 //!    floor is silent.
 //! 2. The state the plug-in saves after the render must hold the sent
-//!    preset: the name and every control. When it holds the init patch
-//!    instead, the plug-in fell back to init.
+//!    preset: the name, the tuning and every control. When it holds the
+//!    init patch instead, the plug-in fell back to init.
 //! 3. The clip is compared with the plug-in's own init patch. Each clip is
 //!    reduced to its level in octave bands, and the distance is the
 //!    largest band difference in dB. A clip within three times the
