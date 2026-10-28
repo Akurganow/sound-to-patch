@@ -8,10 +8,13 @@
 //! a note of the lower key, is such a copy: it moves down, overlaps its
 //! true note and merges into it. The track alone moves nothing, because
 //! it can read a true note an octave low. A note that starts where an earlier
-//! one of the same key ends, on a weak onset, is the rest of that note.
+//! one of the same key ends, on a weak onset and with no attack of its own
+//! in the stem, is the rest of that note.
 
-use super::{ModelRun, Note, NoteList, PitchTrack};
-use crate::units::{MidiPitch, Seconds, Semitones};
+use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, StemLevels};
+use crate::cast;
+use crate::units::Hz;
+use crate::units::{Decibels, MidiPitch, Seconds, Semitones};
 
 /// How far a note may lie from the f0 track's median and still agree.
 pub const OCTAVE_AGREEMENT: Semitones = Semitones::from_const(1.0);
@@ -39,6 +42,77 @@ pub const OCTAVE_MIN_FRAMES: usize = 3;
 pub const SPLIT_ONSET: f64 = 0.68;
 /// The widest gap a split may leave: two model frames.
 pub const SPLIT_GAP: Seconds = Seconds::from_const(2.0 * 256.0 / 22_050.0);
+/// How far before a note's onset the quiet frames of its attack lie:
+/// frames centred from 75 ms before the onset to the onset, and not
+/// before the earlier note starts.
+///
+/// The decoder starts a 55 Hz note up to 37 ms after its attack, so the
+/// gap before the attack lies further back.
+pub const ATTACK_BEFORE: Seconds = Seconds::from_const(0.075);
+/// How far after a note's onset its loudest frame may lie: frames centred
+/// from the onset to 50 ms after it, and not past its end.
+pub const ATTACK_AFTER: Seconds = Seconds::from_const(0.05);
+/// How far the stem's level, with any DC offset removed, must dip below
+/// the loudest frame in the quiet frames of an attack.
+///
+/// On the generated set 17 to 19 dB give the same decisions: at 20 dB
+/// eighths on E1 and A1 with a 40 ms tail keep fewer repeats, and at
+/// 21 dB a 55 Hz repeat after a 30 ms gap with a 5 ms tail joins.
+pub const ATTACK_DIP: Decibels = Decibels::from_const(19.0);
+/// How far the level at the note's own harmonics must dip in the same
+/// frames.
+///
+/// The tail of a note under the attack of another key dips 18.1 dB or
+/// less. On the generated set 18, 19, 22, 24 and 25 dB differ only on
+/// eighths on A1 with a 40 ms tail: 18 and 19 dB keep 10 of their 16
+/// repeats, 22 dB 6, and 24 and 25 dB 5.
+pub const HARMONIC_DIP: Decibels = Decibels::from_const(22.0);
+/// The shortest envelope window of the rise test; it spans one period of
+/// the note when that is longer.
+///
+/// One period reads a periodic tone steady. Two periods smooth the dip of
+/// a tremolo at A1 away, and a window between the two ripples.
+pub const RISE_WINDOW: Seconds = Seconds::from_const(0.004);
+/// The step between envelope readings of the rise test.
+pub const RISE_STEP: Seconds = Seconds::from_const(0.001);
+/// The share of the loudest envelope reading a rise starts below, and the
+/// share it ends above.
+pub const RISE_SPAN: (f64, f64) = (0.1, 0.9);
+/// How far after the onset a rise may start: the decoder starts a note up
+/// to 15 ms before its attack.
+pub const RISE_LATEST: Seconds = Seconds::from_const(0.02);
+/// How many rise limits past [`RISE_LATEST`] the rise test reads.
+///
+/// A tremolo that rises from a tenth to nine tenths within the limit peaks
+/// about 1.7 limits after its trough, and the loudest reading must hold
+/// that peak: with readings that end before it, a slow rise to the level
+/// at their end reads fast. On the generated sets 2.5 to 4 limits give
+/// the same notes.
+pub const RISE_READ: f64 = 3.0;
+/// How much longer than a step read through the envelope window a rise
+/// may take: about the attack of a gate.
+///
+/// A full-depth tremolo to silence at `r` Hz rises in about 0.3 / `r` s.
+/// On the generated set 6 to 8 ms give the same held notes; at 9 ms a duck
+/// to -40 dB on E1 splits, and each ms less keeps fewer repeats with a
+/// slow attack.
+pub const RISE_SLACK: Seconds = Seconds::from_const(0.007);
+/// How long the stem must hold above the first share of [`HOLD_SPAN`]
+/// before it last fell below the second share ahead of a rise.
+///
+/// Below A1 the window of one period is as long as the rise of a tremolo
+/// of 14 to 20 Hz, so the rise alone cannot tell the two apart. A gated
+/// note holds its level until its gap, and a fast tremolo never holds. On
+/// the generated sets 50 to 70 ms keep every repeat and split no sine
+/// tremolo; at 45 ms a tremolo of 14 Hz on E1 splits, and at 80 ms
+/// sixteenths on E1 with attacks of 19 and 23 ms join.
+pub const HOLD_BEFORE: Seconds = Seconds::from_const(0.06);
+/// The share of the loudest reading the hold must stay above, and the
+/// share at which it ends.
+///
+/// The level ripples by a few hundredths at the fall of a gate, so a hold
+/// that ended at the share it must stay above could end on a ripple.
+pub const HOLD_SPAN: (f64, f64) = (0.5, 0.6);
 
 /// What the octave check did.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -168,16 +242,29 @@ pub fn merge_overlaps(notes: &NoteList) -> NoteList {
     NoteList::new(merged)
 }
 
-/// Joins every note that starts within [`SPLIT_GAP`] of the end of a note
-/// of the same key, on an onset activation below [`SPLIT_ONSET`], into
-/// that note, when its velocity is no higher than that note's.
-///
-/// A repeated note starts on a strong onset and stays apart. A split piece
-/// is the weaker rest of a held note; a weaker piece before a stronger note
-/// is an early fragment of the attack, and joining it would move the
-/// onset.
+/// Joins the pieces of a held note that the decoder split, on the onset
+/// rule alone: [`join_splits_with`] with a stem of silence, which never
+/// gives an attack.
 #[must_use]
 pub fn join_splits(notes: &NoteList, run: &ModelRun) -> NoteList {
+    join_splits_with(notes, run, &StemLevels::new(&[], MODEL_RATE))
+}
+
+/// Joins the pieces of a held note that the decoder split.
+///
+/// A note joins a note of the same key that ends within [`SPLIT_GAP`]
+/// before it, on an onset activation below [`SPLIT_ONSET`], when its
+/// velocity is no higher than that note's and `levels` show no attack of
+/// its own.
+///
+/// A repeated note starts on a strong onset or on an attack in the stem,
+/// and stays apart. The decoder can fill the gap before a low
+/// repeat and read its onset weak, so the onset alone misses it. A split
+/// piece is the weaker rest of a held note; a weaker piece before a
+/// stronger note is an early fragment of the attack, and joining it would
+/// move the onset.
+#[must_use]
+pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_>) -> NoteList {
     let mut joined_notes: Vec<Note> = Vec::with_capacity(notes.notes().len());
     for note in notes.notes() {
         let weak = run
@@ -190,11 +277,117 @@ pub fn join_splits(notes: &NoteList, run: &ModelRun) -> NoteList {
                 && note.velocity() <= kept.velocity()
         });
         match earlier {
-            Some(kept) if weak => *kept = joined(kept, note),
+            Some(kept) if weak && !attacks(levels, kept, note) => {
+                *kept = joined(kept, note);
+            }
             _ => joined_notes.push(note.clone()),
         }
     }
     NoteList::new(joined_notes)
+}
+
+/// Whether `note` starts on an attack of its own after `kept`.
+///
+/// The quiet frames are those centred from [`ATTACK_BEFORE`] the onset to
+/// the onset, and not before `kept` starts; the loud frames those centred
+/// from the onset to [`ATTACK_AFTER`] it, and not past the note's end. An
+/// attack needs the stem to dip by [`ATTACK_DIP`] and the note's harmonics
+/// by [`HARMONIC_DIP`] from the loudest frame to the quietest, and no slow
+/// rise. The stem's dip keeps the pieces of a held note under a line of
+/// other keys together, the harmonics' dip a tail under the attack of
+/// another key, and the rise test a tremolo.
+fn attacks(levels: &StemLevels<'_>, kept: &Note, note: &Note) -> bool {
+    let start =
+        Seconds::clamped((note.onset().get() - ATTACK_BEFORE.get()).max(kept.onset().get()));
+    let end = Seconds::clamped((note.onset().get() + ATTACK_AFTER.get()).min(note.offset().get()));
+    let quiet = levels.frames_between(start, note.onset());
+    let loud = levels.frames_between(note.onset(), end);
+    let dips = |level: &dyn Fn(usize) -> f64, dip: Decibels| {
+        let low = quiet.clone().map(level).fold(f64::INFINITY, f64::min);
+        let high = loud.clone().map(level).fold(0.0, f64::max);
+        // A dip from silence is endless; silence on both sides is none.
+        20.0 * (high / low).log10() >= dip.get()
+    };
+    let rms = levels.ac_rms();
+    dips(&|m| rms[m], ATTACK_DIP)
+        && dips(&|m| levels.harmonic_level(m, note.pitch()), HARMONIC_DIP)
+        && !rises_slowly(levels, note, start)
+}
+
+/// Whether the stem's envelope around `note`, read every [`RISE_STEP`]
+/// from `start` to [`RISE_READ`] limits past [`RISE_LATEST`] after the
+/// onset, rises slowly: from below the first share of [`RISE_SPAN`] of its
+/// loudest reading after the onset, at the latest [`RISE_LATEST`] after
+/// the onset, to above the second share, its fastest rise takes longer
+/// than the limit, a step read through the window plus [`RISE_SLACK`].
+///
+/// The window spans one period of the note, at least [`RISE_WINDOW`], so a
+/// periodic tone reads steady. The RMS of a step reads in the window as the
+/// square root of the share of the window past it, which climbs from the
+/// first share to the second over the difference of their squares, 0.8 of
+/// the window. An envelope that never falls below the first share rises
+/// from no silence, and counts as slow.
+fn rises_slowly(levels: &StemLevels<'_>, note: &Note, start: Seconds) -> bool {
+    let onset = note.onset().get();
+    let window = (1.0 / Hz::from(note.pitch()).get()).max(RISE_WINDOW.get());
+    let (from, to) = RISE_SPAN;
+    let limit = (to * to - from * from) * window + RISE_SLACK.get();
+    let end = onset + RISE_LATEST.get() + RISE_READ * limit;
+    let step = RISE_STEP.get();
+    let first = ((start.get() - onset) / step).ceil();
+    let readings: Vec<(f64, f64)> = cast::floor_to_usize((end - onset) / step - first)
+        .into_iter()
+        .flat_map(|last| 0..=last)
+        .map(|k| onset + (first + cast::usize_to_f64(k)) * step)
+        .map(|time| {
+            (
+                time,
+                levels.envelope(Seconds::clamped(time), Seconds::clamped(window)),
+            )
+        })
+        .collect();
+    let peak = readings
+        .iter()
+        .filter(|(time, _)| *time >= onset)
+        .map(|&(_, level)| level)
+        .fold(0.0, f64::max);
+    let mut low = None;
+    let mut fastest: Option<f64> = None;
+    for &(time, level) in &readings {
+        if level <= from * peak && time <= onset + RISE_LATEST.get() {
+            low = Some(time);
+        }
+        if let Some(since) = low
+            && level >= to * peak
+        {
+            if held(levels, since, peak, window) {
+                fastest = Some(fastest.map_or(time - since, |rise| rise.min(time - since)));
+            }
+            low = None;
+        }
+    }
+    fastest.is_none_or(|rise| rise > limit)
+}
+
+/// Whether the envelope, read every [`RISE_STEP`] back from `low`, held
+/// above the first share of [`HOLD_SPAN`] of `peak` for [`HOLD_BEFORE`]
+/// before it last fell below the second share. An envelope that never
+/// reached the second share since the stem began has no level to hold.
+fn held(levels: &StemLevels<'_>, low: f64, peak: f64, window: f64) -> bool {
+    let (stay, end) = HOLD_SPAN;
+    let step = RISE_STEP.get();
+    let level = |time: f64| levels.envelope(Seconds::clamped(time), Seconds::clamped(window));
+    let back = |from: f64| (0..).map(move |k| from - cast::usize_to_f64(k) * step);
+    let Some(fell) = back(low)
+        .take_while(|&time| time >= 0.0)
+        .find(|&time| level(time) >= end * peak)
+    else {
+        return true;
+    };
+    fell >= HOLD_BEFORE.get()
+        && back(fell)
+            .take_while(|&time| time > fell - HOLD_BEFORE.get())
+            .all(|time| level(time) >= stay * peak)
 }
 
 fn same_key(a: &Note, b: &Note) -> bool {
@@ -224,6 +417,7 @@ fn joined(first: &Note, second: &Note) -> Note {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::audio::SampleRate;
     use crate::notes::{TrackFrame, Velocity};
     use crate::units::{Decibels, Hz};
 
@@ -520,6 +714,300 @@ mod tests {
         // An early fragment of the attack before the true note: joining it
         // would move the onset.
         assert_eq!(joined(40, 90), 2);
+    }
+
+    fn rate() -> SampleRate {
+        SampleRate::new(22_050).unwrap()
+    }
+
+    /// A 1 s stem at 22,050 Hz: a sine at `f0` and a 1500 Hz sine with
+    /// amplitudes `level(t)`, `t` in seconds from the second note's onset.
+    fn stem_at(f0: f64, onset: f64, level: impl Fn(f64) -> (f64, f64)) -> Vec<f64> {
+        (0..22_050)
+            .map(|index| {
+                let t = f64::from(index) / 22_050.0;
+                let (note, high) = level(t - onset);
+                note * (std::f64::consts::TAU * f0 * t).sin()
+                    + high * (std::f64::consts::TAU * 1500.0 * t).sin()
+            })
+            .collect()
+    }
+
+    /// [`stem_at`] an A2, whose first eight harmonics lie far from 1500 Hz.
+    fn stem(onset: f64, level: impl Fn(f64) -> (f64, f64)) -> Vec<f64> {
+        stem_at(110.0, onset, level)
+    }
+
+    /// The notes of `pitch` after the join of two touching pieces that meet
+    /// at frame 30, on a weak onset, over `mono`.
+    fn joined_at(pitch: f64, mono: &[f64]) -> usize {
+        let (run, time) = run_with_onset(0.0);
+        let notes = NoteList::new(vec![
+            note(time(10), time(30), pitch),
+            note(time(30), time(45), pitch),
+        ]);
+        join_splits_with(&notes, &run, &StemLevels::new(mono, rate()))
+            .notes()
+            .len()
+    }
+
+    fn joined_a2(mono: &[f64]) -> usize {
+        joined_at(45.0, mono)
+    }
+
+    fn onset() -> f64 {
+        basic_pitch::notes::frame_to_time(30)
+    }
+
+    #[test]
+    fn a_repeat_after_a_gap_of_silence_stays_apart() {
+        let gap = stem(onset(), |t| {
+            (if (-0.05..0.0).contains(&t) { 0.0 } else { 0.5 }, 0.0)
+        });
+        assert_eq!(joined_a2(&gap), 2);
+        assert_eq!(joined_a2(&stem(onset(), |_| (0.5, 0.0))), 1);
+        // Silence on both sides is no attack.
+        assert_eq!(joined_a2(&vec![0.0; 22_050]), 1);
+    }
+
+    #[test]
+    fn the_stem_dips_by_attack_dip() {
+        // 10 ms of silence before the onset gives the rise its start. The
+        // 1500 Hz tone before them holds the stem's quietest frame 19.5 or
+        // 18.5 dB below its loudest, while the harmonics dip past 40 dB.
+        for (high, expected) in [(0.07, 2), (0.079, 1)] {
+            let mono = stem(onset(), |t| {
+                if t >= 0.0 {
+                    (0.5, high)
+                } else if t > -0.01 {
+                    (0.0, 0.0)
+                } else {
+                    (0.001, high)
+                }
+            });
+            assert_eq!(joined_a2(&mono), expected, "1500 Hz at {high}");
+        }
+    }
+
+    #[test]
+    fn the_harmonics_dip_by_harmonic_dip() {
+        // The A2 harmonics dip 23.5 or 20.5 dB; the 1500 Hz tone after the
+        // onset lifts the stem's dip past 30 dB.
+        for (low, expected) in [(0.0334, 2), (0.0472, 1)] {
+            let mono = stem(onset(), |t| if t < 0.0 { (low, 0.0) } else { (0.5, 0.5) });
+            assert_eq!(joined_a2(&mono), expected, "A2 at {low} before");
+        }
+    }
+
+    #[test]
+    fn a_dc_offset_counts_for_nothing() {
+        let gap = |offset: f64| {
+            stem(onset(), |t| {
+                (if (-0.05..0.0).contains(&t) { 0.0 } else { 0.5 }, 0.0)
+            })
+            .into_iter()
+            .map(|x| x + offset)
+            .collect::<Vec<_>>()
+        };
+        assert_eq!(joined_a2(&gap(0.2)), 2);
+    }
+
+    #[test]
+    fn a_slow_rise_is_no_attack() {
+        // At A2 the envelope window spans 9.1 ms, which a step climbs in
+        // 7.3 ms, so a rise may take 14.3 ms: a linear attack of 13 ms
+        // stays apart, one of 14 ms joins.
+        for (ramp, expected) in [(0.013, 2), (0.014, 1)] {
+            let mono = stem(onset(), |t| (0.5 * (t / ramp).clamp(0.0, 1.0), 0.0));
+            assert_eq!(joined_a2(&mono), expected, "ramp {ramp} s");
+        }
+    }
+
+    #[test]
+    fn a_high_note_reads_through_rise_window() {
+        // One period of A5 spans 1.1 ms; the 4 ms window lets a linear
+        // attack of 10 ms stay apart, and one of 11 ms joins.
+        for (ramp, expected) in [(0.01, 2), (0.011, 1)] {
+            let mono = stem_at(880.0, onset(), |t| (0.5 * (t / ramp).clamp(0.0, 1.0), 0.0));
+            assert_eq!(joined_at(81.0, &mono), expected, "ramp {ramp} s");
+        }
+    }
+
+    #[test]
+    fn a_rise_starts_by_rise_latest() {
+        // Silence from 50 ms before the onset to 30 ms after it: the rise
+        // from 20 ms after the onset is fast. To 35 ms after it, the rise
+        // from there is slow, and the rise from later silence is too late.
+        for (end, expected) in [(0.03, 2), (0.035, 1)] {
+            let mono = stem(onset(), |t| {
+                (if (-0.05..end).contains(&t) { 0.0 } else { 0.5 }, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "silence to {end} s");
+        }
+    }
+
+    #[test]
+    fn a_low_note_reads_past_attack_after() {
+        // At B0 the window spans 32.4 ms and a rise may take 32.9 ms. With
+        // silence to 46 ms after the onset, the rise from 20 ms is fast. To
+        // 54 ms, it is slow, but only readings past 50 ms reach its peak.
+        for (end, expected) in [(0.046, 2), (0.054, 1)] {
+            let mono = stem_at(30.868, onset(), |t| {
+                (if (-0.05..end).contains(&t) { 0.0 } else { 0.5 }, 0.0)
+            });
+            assert_eq!(joined_at(23.0, &mono), expected, "silence to {end} s");
+        }
+    }
+
+    #[test]
+    fn a_rise_needs_a_hold_before_its_gap() {
+        // A note before a 50 ms gap, from silence. Through the 9.1 ms
+        // window of A2 its level holds above half the peak about 4 ms
+        // longer than the note: a note of 56 ms holds for HOLD_BEFORE and
+        // the repeat stays apart; one of 55 ms joins.
+        for (hold, expected) in [(0.056, 2), (0.055, 1)] {
+            let mono = stem(onset(), |t| {
+                let on = (-0.05 - hold..-0.05).contains(&t) || t >= 0.0;
+                (if on { 0.5 } else { 0.0 }, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "held {hold} s");
+        }
+    }
+
+    #[test]
+    fn the_rise_reads_rise_read_limits_past_rise_latest() {
+        // After a 50 ms gap, a step to 0.4 and a second step to 1. At A2 a
+        // rise may take 14.3 ms, and the readings run to 62.9 ms. A second
+        // step at 65 ms reads inside them, so the climb from silence to
+        // its peak is slow and the note joins; at 66 ms the peak lies past
+        // them and the step to 0.4 reads fast.
+        for (late, expected) in [(0.065, 1), (0.066, 2)] {
+            let mono = stem(onset(), |t| {
+                let level = if t < -0.05 {
+                    0.5
+                } else if t < 0.0 {
+                    0.0
+                } else if t < late {
+                    0.4
+                } else {
+                    1.0
+                };
+                (level, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "step to 1 at {late} s");
+        }
+    }
+
+    #[test]
+    fn the_hold_stays_above_the_first_share_of_hold_span() {
+        // A note that ramps up over 40 ms and then holds, before a 50 ms
+        // gap. The ramp lies above half the peak for its last 20 ms, so a
+        // hold of 39 ms after it reaches HOLD_BEFORE and one of 38 ms does
+        // not. Above four tenths the ramp would add 4 ms.
+        for (hold, expected) in [(0.039, 2), (0.038, 1)] {
+            let mono = stem(onset(), |t| {
+                let start = -0.09 - hold;
+                let level = if t >= 0.0 {
+                    0.5
+                } else if t >= -0.05 {
+                    0.0
+                } else {
+                    0.5 * ((t - start) / 0.04).clamp(0.0, 1.0)
+                };
+                (level, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "held {hold} s");
+        }
+    }
+
+    #[test]
+    fn the_fastest_rise_counts() {
+        // A held note, a 25 ms gap and a step 35 ms before the onset, then
+        // 15 ms of silence and a slow climb over 45 ms from the onset.
+        let mono = stem(onset(), |t| {
+            let level = if t < -0.06 {
+                0.4
+            } else if t < -0.035 {
+                0.0
+            } else if t < -0.015 {
+                0.4
+            } else if t < 0.0 {
+                0.0
+            } else {
+                0.4 * (t / 0.045).min(1.0)
+            };
+            (level, 0.0)
+        });
+        assert_eq!(joined_a2(&mono), 2);
+    }
+
+    #[test]
+    fn the_loudest_frame_lies_within_attack_after() {
+        // A step to 0.4 at the onset climbs half the way to a step to 1 at
+        // 100 ms, but not to one at 40 ms.
+        for (late, expected) in [(0.04, 1), (0.1, 2)] {
+            let mono = stem(onset(), |t| {
+                let level = if t < 0.0 {
+                    0.0
+                } else if t < late {
+                    0.4
+                } else {
+                    1.0
+                };
+                (level, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "step to 1 at {late} s");
+        }
+    }
+
+    #[test]
+    fn the_quiet_frames_lie_within_attack_before() {
+        // 30 ms of silence ending 35 ms before the onset, or 80 ms before.
+        for (end, expected) in [(0.035, 2), (0.08, 1)] {
+            let mono = stem(onset(), |t| {
+                (
+                    if (-end - 0.03..-end).contains(&t) {
+                        0.0
+                    } else {
+                        0.5
+                    },
+                    0.0,
+                )
+            });
+            assert_eq!(joined_a2(&mono), expected, "gap ending {end} s before");
+        }
+    }
+
+    #[test]
+    fn a_note_at_either_end_of_the_stem_reads_only_frames_inside_it() {
+        let (run, _) = run_with_onset(0.0);
+        let mono = &stem(0.0, |_| (0.5, 0.0))[..11_025];
+        let levels = StemLevels::new(mono, rate());
+        for (first, second) in [((0.0, 0.01), (0.01, 0.2)), ((0.3, 0.497), (0.497, 0.6))] {
+            let notes = NoteList::new(vec![
+                note(first.0, first.1, 45.0),
+                note(second.0, second.1, 45.0),
+            ]);
+            assert_eq!(join_splits_with(&notes, &run, &levels).notes().len(), 1);
+        }
+    }
+
+    #[test]
+    fn the_quiet_before_the_held_note_never_counts() {
+        let (run, time) = run_with_onset(0.0);
+        // The held note starts from silence; its split piece 46 ms later
+        // sees only frames from that start.
+        let mono = stem(time(26), |t| (if t < 0.0 { 0.0 } else { 0.5 }, 0.0));
+        let notes = NoteList::new(vec![
+            note(time(26), time(30), 45.0),
+            note(time(30), time(45), 45.0),
+        ]);
+        assert_eq!(
+            join_splits_with(&notes, &run, &StemLevels::new(&mono, rate()))
+                .notes()
+                .len(),
+            1
+        );
     }
 
     #[test]

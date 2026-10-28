@@ -39,6 +39,26 @@ pub fn frame_rms(samples: &[f64], params: StftParams) -> Vec<f64> {
         .collect()
 }
 
+/// Returns the RMS of each centred frame about its own mean, so a DC
+/// offset adds nothing. Frames line up as in [`frame_rms`].
+#[must_use]
+pub fn frame_ac_rms(samples: &[f64], params: StftParams) -> Vec<f64> {
+    let len = cast::usize_to_f64(params.frame_len());
+    (0..params.frame_count(samples.len()))
+        .map(|frame| {
+            let start = params.frame_start(frame);
+            let (sum, energy) = (0..params.frame_len())
+                .map(|offset| {
+                    let index = start.saturating_add(isize::try_from(offset).unwrap_or(isize::MAX));
+                    padded_sample(samples, index, params.padding())
+                })
+                .fold((0.0, 0.0), |(sum, energy), x| (sum + x, energy + x * x));
+            let mean = sum / len;
+            (energy / len - mean * mean).max(0.0).sqrt()
+        })
+        .collect()
+}
+
 /// The frames that carry signal: frame RMS within a gate of the loudest
 /// frame. Digital silence has no active frame.
 #[derive(Clone, Debug, PartialEq, Eq)]
