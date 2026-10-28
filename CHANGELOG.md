@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.17.0](https://github.com/Akurganow/sound-to-patch/compare/62d498bd729e9cfeabddd9176e04ca2e342243b9..v0.17.0) - 2026-10-28
+#### Features
+- (**skill**) add the music dictionary (#282) - ([62d498b](https://github.com/Akurganow/sound-to-patch/commit/62d498bd729e9cfeabddd9176e04ca2e342243b9)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.16.0](https://github.com/Akurganow/sound-to-patch/compare/0ec48fe7b67fbd1433e571ed8ff8d969e5bb709b..v0.16.0) - 2026-10-28
 #### Features
 - (**analyze**) refine the tempo and run the notes step inside analyze (#277) - ([0ec48fe](https://github.com/Akurganow/sound-to-patch/commit/0ec48fe7b67fbd1433e571ed8ff8d969e5bb709b)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
