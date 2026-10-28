@@ -291,6 +291,21 @@ fn a_genre_guide_value_has_a_second_source_or_says_it_has_none() {
     assert_eq!(lone, Vec::<&str>::new());
 }
 
+/// The MIDI-corpus counts come from the lexicon with no committed script,
+/// so no entry that cites them claims its own derivation.
+#[test]
+fn a_midi_corpus_count_is_tagged_single_source() {
+    let derived: Vec<&str> = dictionary()
+        .unwrap()
+        .entries
+        .iter()
+        .filter(|entry| entry.source.iter().any(|source| source == "lmd"))
+        .filter(|entry| entry.tag != Tag::SingleSource)
+        .map(|entry| entry.id.as_str())
+        .collect();
+    assert_eq!(derived, Vec::<&str>::new());
+}
+
 /// The maqam entries of the scale group, beside the 57 scale rows.
 const MAQAM: [&str; 9] = [
     "hijaz", "nahawand", "ajam", "kurd", "nikriz", "rast", "bayati", "sikah", "saba",
