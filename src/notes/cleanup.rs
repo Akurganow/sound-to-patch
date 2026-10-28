@@ -146,8 +146,10 @@ fn moved_down(note: &Note, lower: &Note) -> Option<Note> {
 /// one note from the earlier onset to the later offset.
 ///
 /// A ghost moved down by [`check_octaves`] lands on its true note and
-/// disappears into it. The merged note keeps the fields of the note that
-/// starts first, and the higher velocity.
+/// disappears into it. The decoder itself never gives two notes of one
+/// key that overlap, so a repeat it decodes never merges. The merged note
+/// keeps the fields of the note that starts first, and the higher
+/// velocity.
 #[must_use]
 pub fn merge_overlaps(notes: &NoteList) -> NoteList {
     let mut merged: Vec<Note> = Vec::with_capacity(notes.notes().len());
@@ -419,6 +421,38 @@ mod tests {
             ModelRun::from_posteriorgrams(grams),
             basic_pitch::notes::frame_to_time,
         )
+    }
+
+    /// The ghost merge relies on this: a held key with a second onset
+    /// decodes as two notes that touch and do not overlap.
+    #[test]
+    fn the_decoder_gives_a_repeat_of_one_key_no_overlap() {
+        use basic_pitch::{Posteriorgram, Posteriorgrams};
+        let (frames, bin) = (80, 45 - 21);
+        let mut held = Posteriorgram::zeros(frames, 88);
+        let mut onsets = Posteriorgram::zeros(frames, 88);
+        for frame in 10..60 {
+            held.as_mut_slice()[frame * 88 + bin] = 0.8;
+        }
+        for frame in [10, 30] {
+            onsets.as_mut_slice()[frame * 88 + bin] = 0.9;
+        }
+        let run = ModelRun::from_posteriorgrams(
+            Posteriorgrams::new(held, onsets, Posteriorgram::zeros(frames, 264)).unwrap(),
+        );
+        let settings = crate::notes::Profile::Bass.settings(crate::units::Bpm::new(120.0).unwrap());
+        let decoded = run.decode(&settings).unwrap();
+        let a2: Vec<&Note> = decoded
+            .notes()
+            .iter()
+            .filter(|decoded| (decoded.pitch().get() - 45.0).abs() < 0.5)
+            .collect();
+        assert_eq!(a2.len(), 2);
+        assert!(a2[0].offset() <= a2[1].onset());
+        assert_eq!(
+            merge_overlaps(&decoded).notes().len(),
+            decoded.notes().len()
+        );
     }
 
     #[test]

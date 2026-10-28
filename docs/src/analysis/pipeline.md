@@ -176,7 +176,9 @@ The cleanup runs four steps and prints the note count after each [fact].
 - Ghost merge: notes of one key that overlap become one note, from the
   first onset to the last offset [fact]. A moved copy has its lower note's
   span, so it merges into that note alone and never bridges two repeats
-  [fact].
+  [fact]. The decoder gives no two notes of one key that overlap, so a
+  decoded repeat never merges [fact]: on every generated part the merge
+  removes exactly the moved copies [synthetic].
 - Split join: a note that starts within 2 model frames (23 ms) of the end
   of a note of the same key, on an onset activation below 0.68, with a
   velocity no higher than that note's, joins it [proposal]. On the
