@@ -2,7 +2,8 @@
 
 use midly::{Format, MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use sound_to_patch::notes::{
-    DEFAULT_VELOCITY, Note, NoteList, TICKS_PER_BEAT, Velocities, Velocity, read_midi, write_midi,
+    DEFAULT_VELOCITY, MidiWriteError, Note, NoteList, TICKS_PER_BEAT, Velocities, Velocity,
+    read_midi, write_midi,
 };
 use sound_to_patch::units::{Bpm, MidiPitch, Seconds};
 
@@ -229,6 +230,17 @@ fn a_fractional_pitch_rounds_to_the_nearest_key() {
 fn an_empty_list_is_an_error() {
     let error = write_midi(&NoteList::default(), bpm(120.0), constant()).unwrap_err();
     assert_eq!(error.to_string(), "cannot write a MIDI file without notes");
+}
+
+/// A delta past 2^28 - 1 ticks, 279,620 s at 120 BPM, names the time of
+/// the event that overflows.
+#[test]
+fn an_event_past_the_longest_delta_names_its_time() {
+    let notes = NoteList::new(vec![note(300_000.0, 300_001.0, 60.0)]);
+    match write_midi(&notes, bpm(120.0), constant()) {
+        Err(MidiWriteError::TooLong(at)) => assert!((at.get() - 300_000.0).abs() < 1e-6),
+        other => panic!("expected TooLong, got {other:?}"),
+    }
 }
 
 /// A named file carries its stem name as the first event, and our reader

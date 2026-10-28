@@ -409,6 +409,37 @@ mod tests {
     }
 
     #[test]
+    fn each_register_source_has_its_words() {
+        let sources = [
+            RegisterSource::F0Track,
+            RegisterSource::ProbeNotes,
+            RegisterSource::Both,
+            RegisterSource::None,
+        ];
+        assert_eq!(
+            sources.map(RegisterSource::name),
+            [
+                "f0 track",
+                "probe notes",
+                "f0 track and held probe notes",
+                "whole model range"
+            ]
+        );
+    }
+
+    #[test]
+    fn the_probe_register_spans_the_lowest_and_highest_notes() {
+        let notes = NoteList::new(vec![
+            note(0.0, 1.0, 57.0),
+            note(0.0, 1.0, 52.0),
+            note(1.0, 2.0, 64.0),
+        ]);
+        let (low, high) = probe_register(&notes).unwrap();
+        assert_eq!((low.get(), high.get()), (52.0, 64.0));
+        assert_eq!(probe_register(&NoteList::new(Vec::new())), None);
+    }
+
+    #[test]
     fn frames_outside_the_window_leave_the_register_alone() {
         // A bass at 40 and quiet bleed at 72, 30 dB down, in every third
         // frame.
@@ -639,6 +670,9 @@ mod tests {
         // under the stronger A3 is not.
         let probe = NoteList::new(vec![heard(0.2, 0.4, 57.0, 98), heard(0.19, 0.4, 45.0, 48)]);
         assert_eq!(hold_candidates(&probe, &track), vec![57.0]);
+        // An octave of equal strength is a double stop, not a twin.
+        let probe = NoteList::new(vec![heard(0.2, 0.4, 57.0, 90), heard(0.2, 0.4, 45.0, 90)]);
+        assert_eq!(hold_candidates(&probe, &track), Vec::<f64>::new());
     }
 
     #[test]

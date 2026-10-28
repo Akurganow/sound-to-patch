@@ -221,6 +221,23 @@ mod tests {
         .with_velocity(Velocity::new(velocity).unwrap())
     }
 
+    #[test]
+    fn errors_name_their_cause_and_keep_their_source() {
+        let model = TranscribeError::Model(basic_pitch::Error::NonFiniteAudio {
+            index: 3,
+            value: f32::NAN,
+        });
+        let message = "the transcription model failed: audio sample 3 is not finite (NaN)";
+        assert_eq!(model.to_string(), message);
+        assert!(model.source().is_some());
+        let error = NotesError::from(model);
+        assert_eq!(error.to_string(), message);
+        assert!(error.source().is_some());
+        let track = NotesError::Track(TrackError::NotFinite(7));
+        assert_eq!(track.to_string(), TrackError::NotFinite(7).to_string());
+        assert!(track.source().is_some());
+    }
+
     /// A chord part skips the octave check: its notes stay where the
     /// decoder put them, every one unchecked.
     #[test]

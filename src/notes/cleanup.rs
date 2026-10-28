@@ -382,18 +382,24 @@ mod tests {
 
     #[test]
     fn a_note_with_too_few_voiced_frames_stays_unchecked() {
-        let track = PitchTrack::from_frames(
-            (0..2)
-                .map(|i| TrackFrame {
-                    time: s(0.5 + f64::from(i) * 0.005),
-                    f0: Some(Hz::from(MidiPitch::new(45.0).unwrap())),
-                    level: Decibels::new(-3.0).unwrap(),
-                })
-                .collect(),
-        );
-        let (checked, check) = check_octaves(&NoteList::new(vec![note(0.5, 1.0, 57.0)]), &track);
-        assert_eq!(checked.notes()[0].octave_uncertain(), None);
-        assert_eq!(check.unchecked, 1);
+        for (frames, unchecked) in [(2, 1), (3, 0)] {
+            let track = PitchTrack::from_frames(
+                (0..frames)
+                    .map(|i| TrackFrame {
+                        time: s(0.5 + f64::from(i) * 0.005),
+                        f0: Some(Hz::from(MidiPitch::new(45.0).unwrap())),
+                        level: Decibels::new(-3.0).unwrap(),
+                    })
+                    .collect(),
+            );
+            let notes = NoteList::new(vec![note(0.5, 1.0, 57.0)]);
+            let (checked, check) = check_octaves(&notes, &track);
+            assert_eq!(check.unchecked, unchecked, "{frames} frames");
+            assert_eq!(
+                checked.notes()[0].octave_uncertain().is_none(),
+                unchecked == 1
+            );
+        }
     }
 
     /// A model run of 80 frames with an onset of `strength` at A2 on
@@ -413,6 +419,19 @@ mod tests {
             ModelRun::from_posteriorgrams(grams),
             basic_pitch::notes::frame_to_time,
         )
+    }
+
+    #[test]
+    fn the_onset_strength_reads_one_frame_either_side() {
+        let (run, time) = run_with_onset(0.9);
+        let a2 = MidiPitch::new(45.0).unwrap();
+        let at = |t| run.onset_strength(s(t), a2).unwrap();
+        assert!((at(time(30) + 0.01) - 0.9).abs() < 1e-6);
+        assert!(at(time(33)).abs() < 1e-6);
+        assert_eq!(
+            run.onset_strength(s(time(30)), MidiPitch::new(120.0).unwrap()),
+            None
+        );
     }
 
     #[test]
@@ -445,6 +464,9 @@ mod tests {
         let (start, end) = (time(30), time(40));
         assert_eq!(count((0.1, start - gap), (start, end)), 1);
         assert_eq!(count((0.1, start - gap - 1e-3), (start, end)), 2);
+        // Two model frames are 23.2 ms.
+        assert_eq!(count((0.1, start - 0.023), (start, end)), 1);
+        assert_eq!(count((0.1, start - 0.024), (start, end)), 2);
     }
 
     #[test]

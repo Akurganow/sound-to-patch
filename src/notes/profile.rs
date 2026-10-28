@@ -379,6 +379,11 @@ mod tests {
         assert_eq!(Profile::Pad.settings(bpm(200.0)).min_note_frames, 11);
         assert_eq!(Profile::Bass.settings(bpm(200.0)).min_note_frames, 5);
         assert_eq!(Profile::ALL.map(Profile::name), ["bass", "lead", "pad"]);
+        let plain = DecodeSettings {
+            melodia: false,
+            ..Profile::Lead.settings(bpm(120.0))
+        };
+        assert!(!plain.note_params().melodia_trick);
     }
 
     /// Posteriorgrams of 60 frames with one note at A3 from frame 10 for
