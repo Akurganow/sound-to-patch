@@ -162,11 +162,12 @@ impl Tally {
             let (kept, steps) = clean_up(&notes, &model, &track, voicing, &part.audio, rate);
             let clean = Scores::of(&part.notes, &eval_notes(&kept));
             println!(
-                "{:<28} {:<9} {} {:>4} {:>5.3} {:>3}",
+                "{:<28} {:<9} {} {:>4} {:>5.3} {:>5.3} {:>3}",
                 part.name,
                 name,
                 scores.row(),
                 kept.notes().len(),
+                clean.onset.recall(),
                 clean.onset.f1(),
                 clean.octave_up + clean.octave_down
             );
@@ -251,6 +252,16 @@ impl Tally {
                 manual_clean.onset.f1(),
                 detected_clean.onset.f1(),
             );
+            println!(
+                "{:<8} {:>8.3} {:>8.3} {:>8} {:>8} {:>8.3} {:>8.3}  recall",
+                "",
+                manual.onset.recall(),
+                detected.onset.recall(),
+                "",
+                "",
+                manual_clean.onset.recall(),
+                detected_clean.onset.recall(),
+            );
         }
         worse
     }
@@ -309,8 +320,20 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
     }
     println!("Scores per part (onset tolerance 50 ms, pitch 50 cents, offsets 20 % or 50 ms)\n");
     println!(
-        "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>4} {:>5} {:>3}",
-        "part", "settings", "est", "P", "R", "F1", "F1off", "F1pc", "oct", "kept", "F1c", "oct"
+        "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>4} {:>5} {:>5} {:>3}",
+        "part",
+        "settings",
+        "est",
+        "P",
+        "R",
+        "F1",
+        "F1off",
+        "F1pc",
+        "oct",
+        "kept",
+        "Rc",
+        "F1c",
+        "oct"
     );
     let mut tally = Tally::default();
     for part in &parts {

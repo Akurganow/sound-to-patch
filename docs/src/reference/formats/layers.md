@@ -34,7 +34,7 @@ two machines can be traced to its settings.
 | :-- | :-- |
 | `model_sha256` | The SHA-256 of the bundled model weights, 64 lowercase hex digits. |
 | `crate_version` | The version of the transcription crate, `"0.1.0"`. |
-| `profile` | `"bass"`, `"lead"` or `"pad"`, or `"detected"` when the stem chose the settings. |
+| `profile` | One of `"bass"`, `"lead"`, `"pad"` and `"detected"`, the last when the stem chose the settings. |
 | `note_params` | Every decoder parameter by the crate's own name: `onset_threshold`, `frame_threshold`, `minimum_note_length_ms`, `minimum_frequency`, `maximum_frequency` (both in Hz), `infer_onsets`, `melodia_trick`, `include_pitch_bends`, `energy_tolerance` and `bend_offset`. Numbers and booleans only. |
 
 ## Naming

@@ -18,24 +18,31 @@ sound-to-patch notes bass.wav --bpm 120
 
 ```text
 detected range: MIDI 30 to 48, from the f0 track
-detected voicing: monophonic, chord share 0.00
+detected voicing: monophonic, chord share 0.12
 register window: 20 dB
+cleanup voicing: monophonic, as detected
 settings: detected, MIDI 30 to 48, minimum note 5 frames (58.0 ms), melodia on
 decoded: 24 notes
 octave check: 24 notes, 4 moved down an octave, 4 flagged, 0 unchecked
-ghost merge: 18 notes
-split join: 18 notes
-quiet-note guard: 18 notes, 0 dropped below 40 dB
+ghost merge: 20 notes
+split join: 20 notes
+quiet-note guard: 20 notes, 0 dropped below 40 dB
 wrote bass/notes.mid
 ```
 
-This run read a generated bass line: 16 sawtooth notes from A1 to A2,
-0.2 s each on every eighth note at 120 BPM. The cleanup took it from 24
-decoded notes to 18; the two extra notes are left for the manual pass.
+This run read a generated bass line, a mono 16-bit WAV at 44.1 kHz, 4.5 s
+long. It holds 16 notes on the eighth notes of 120 BPM from 0.5 s, each
+0.2 s long with no fade: MIDI 33, 36, 40, 43, 45, 43, 40 and 36, twice.
+Each note is a band-limited sawtooth, the sum of $\sin(2 \pi h f_0 t) / h$
+for every harmonic $h$ below 22.05 kHz, at amplitude 0.3. The file holds all 16 notes at the right pitch, each
+within 21 ms of its onset. The 4 extra notes are short fragments of the
+attack, 70 to 106 ms before a true note of the same key.
 
 The file goes into a folder named after the stem, next to it, the same
 folder `analyze` writes into. `--out` picks another folder. Only
-`notes.mid` is replaced; nothing else in the folder changes.
+`notes.mid` is replaced; nothing else in the folder changes. The file
+names its stem in its track name, so a run of another stem into the same
+folder stops unless you pass `--out` or `--force`.
 
 Each line names one step:
 
@@ -44,6 +51,9 @@ Each line names one step:
 - `register window`: the f0 frames that set the range lie within this
   many decibels of the stem's loud passages, so quiet bleed does not widen
   it.
+- `cleanup voicing`: whether the cleanup treats the part as one note at a
+  time, which runs the octave check, or as chords, and whether that came
+  from detection or from `--profile`.
 - `settings`: what the decoder used, the detected settings or those of
   `--profile`, with the shortest note it keeps.
 - `decoded` to `quiet-note guard`: the note count after each cleanup step.
@@ -69,9 +79,10 @@ range and the minimum length for a kind of stem:
 | `pad` | C2 to B6 (MIDI 36 to 95), chords too | 127.7 ms | chords: no octave check |
 
 Detection still runs and prints its findings, so you can compare them
-with the profile. Two cases need a profile: bleed from another
-instrument louder than -20 dB in a passage where the part rests, and a
-line with held double stops (`--profile pad`).
+with the profile. Three cases need a profile: bleed from another
+instrument louder than -20 dB in a passage where the part rests, a line
+with held double stops (`--profile pad`), and a strummed part
+(`--profile lead`), where the pad settings lose notes.
 
 ## Check the file
 
@@ -81,9 +92,10 @@ velocity 100. Then check what the model cannot get right:
 
 - No note below A0 (27.5 Hz): the model's lowest key.
 - Note ends come late: a note often lasts until the next one starts.
-- Octave errors at 110 Hz and below. The cleanup moves an octave copy
-  that sounds over its true note, but a lone note an octave off stays and
-  is only flagged.
+- Octave errors at 110 Hz and below. The cleanup moves a weak octave copy
+  that sounds inside its true note, but a lone note an octave off stays
+  and is only flagged. A chord part keeps its octave copies: three
+  generated triads give 10 notes for 9.
 - A repeated note can merge into the one before it when the model misses
   its onset.
 
@@ -93,7 +105,10 @@ parts; real stems score lower.
 
 ## When it fails
 
-A stem that gives no note, such as silence, writes nothing and exits with
-code 1. The message names the stem and suggests a profile. A folder that
+A stem that gives no note writes nothing and exits with code 1. The
+message names the stem and suggests a profile. Only digital silence,
+every sample exactly 0, is sure to give no note: the guard gate is
+relative to the loudest passage, so a file of DC alone or of faint hiss
+gives notes. A folder that
 holds the report of another stem stops the run unless you pass `--out` or
 `--force`.

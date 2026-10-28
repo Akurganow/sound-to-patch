@@ -34,13 +34,13 @@ mod transcribe;
 mod write;
 
 pub use cleanup::{
-    COPY_SHARE, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES, OCTAVE_TOLERANCE,
+    COPY_SLACK, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES, OCTAVE_TOLERANCE,
     OctaveCheck, SPLIT_GAP, SPLIT_ONSET, check_octaves, join_splits, merge_overlaps,
 };
 pub use detect::{
-    CHORD_OFFSET_WINDOW, CHORD_ONSET_WINDOW, CHORD_SHARE, Detection, PROBE_HOLD_SHARE,
-    REFERENCE_PERCENTILE, REGISTER_MARGIN, REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource,
-    Voicing, detect, detect_with_window, probe_settings,
+    CHORD_OVERLAP, CHORD_SHARE, Detection, HOLD_WINDOW, REFERENCE_PERCENTILE, REGISTER_MARGIN,
+    REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource, Voicing, detect, detect_with_window,
+    probe_settings,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi};
@@ -58,7 +58,8 @@ pub use track::{
 };
 pub use transcribe::{Backend, MODEL_RATE, MODEL_SHA256, ModelRun, TranscribeError, Transcriber};
 pub use write::{
-    DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, write_midi,
+    DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, midi_track_name,
+    write_midi, write_named_midi,
 };
 
 /// A MIDI velocity from 1 to 127. Velocity 0 means a note-off in MIDI, so

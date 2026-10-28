@@ -59,6 +59,47 @@ pub fn write_midi(
     bpm: Bpm,
     velocities: Velocities,
 ) -> Result<Vec<u8>, MidiWriteError> {
+    encode(notes, bpm, velocities, None)
+}
+
+/// Encodes the notes as [`write_midi`] does, with a track name event at
+/// tick 0 before the tempo. `notes` names the stem this way, so a later
+/// run can tell a file of another stem; [`midi_track_name`] reads it back.
+///
+/// # Errors
+///
+/// The errors of [`write_midi`].
+pub fn write_named_midi(
+    notes: &NoteList,
+    bpm: Bpm,
+    velocities: Velocities,
+    name: &str,
+) -> Result<Vec<u8>, MidiWriteError> {
+    encode(notes, bpm, velocities, Some(name))
+}
+
+/// Returns the first track name of a Standard MIDI File, or `None` when the
+/// bytes do not parse or the file names no track.
+#[must_use]
+pub fn midi_track_name(bytes: &[u8]) -> Option<String> {
+    let smf = midly::Smf::parse(bytes).ok()?;
+    smf.tracks
+        .iter()
+        .flatten()
+        .find_map(|event| match event.kind {
+            TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
+                Some(String::from_utf8_lossy(name).into_owned())
+            }
+            _ => None,
+        })
+}
+
+fn encode(
+    notes: &NoteList,
+    bpm: Bpm,
+    velocities: Velocities,
+    name: Option<&str>,
+) -> Result<Vec<u8>, MidiWriteError> {
     if notes.is_empty() {
         return Err(MidiWriteError::NoNotes);
     }
@@ -101,10 +142,14 @@ pub fn write_midi(
     events.sort_by_key(|&(at, on, key, _)| (at, on, key));
 
     let channel = u4::new(0);
-    let mut track = vec![
+    let mut track: Vec<TrackEvent<'_>> = name
+        .map(|name| meta(MetaMessage::TrackName(name.as_bytes())))
+        .into_iter()
+        .collect();
+    track.extend([
         meta(MetaMessage::Tempo(u24::new(tempo_us(bpm)))),
         meta(MetaMessage::TimeSignature(4, 2, 24, 8)),
-    ];
+    ]);
     let mut now = 0_u64;
     for (at, on, key, velocity) in events {
         let message = if on {
@@ -146,7 +191,7 @@ fn tempo_us(bpm: Bpm) -> u32 {
         .unwrap_or(u32::MAX)
 }
 
-fn meta(message: MetaMessage<'static>) -> TrackEvent<'static> {
+fn meta(message: MetaMessage<'_>) -> TrackEvent<'_> {
     TrackEvent {
         delta: u28::new(0),
         kind: TrackEventKind::Meta(message),

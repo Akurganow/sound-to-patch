@@ -46,6 +46,9 @@ pub(crate) enum Voice {
     Pluck,
     /// A saw with a 30 ms attack and a 0.1 s release.
     Pad,
+    /// A saw under a 1 s exponential decay, cut by a 0.1 s release: a
+    /// piano or a plucked string left to ring.
+    Keys,
 }
 
 /// A note of the score: start and length in beats, a MIDI pitch, and the
@@ -155,7 +158,7 @@ fn render(
             Voice::Saw { release } | Voice::Sine { release } => release,
             Voice::Kick808 => 0.05,
             Voice::Pluck => 0.02,
-            Voice::Pad => 0.1,
+            Voice::Pad | Voice::Keys => 0.1,
         };
         let hold = note.glide_to.map_or(0.0, |(_, _, hold)| beats(bpm, hold));
         let end = offset + hold;
@@ -192,11 +195,12 @@ fn render(
             envelope *= match voice {
                 Voice::Kick808 => (-t / 0.6).exp(),
                 Voice::Pluck => (-t / 0.12).exp(),
+                Voice::Keys => (-t / 1.0).exp(),
                 _ => 1.0,
             };
             let value = match voice {
                 Voice::Sine { .. } | Voice::Kick808 => (TAU * phase).sin(),
-                Voice::Saw { .. } | Voice::Pluck | Voice::Pad => {
+                Voice::Saw { .. } | Voice::Pluck | Voice::Pad | Voice::Keys => {
                     2.0 * phase - 1.0 - blep(phase, dt)
                 }
             };
@@ -409,6 +413,68 @@ fn bass_parts() -> Vec<Part> {
     ]
 }
 
+/// Bass parts that test the octave cleanup and the split join: octave
+/// basses, a fast run with an octave jump, and repeats at 175 BPM.
+fn octave_and_fast_parts() -> Vec<Part> {
+    vec![
+        part(
+            "bass octaves 16ths",
+            Class::Bass,
+            120.0,
+            Voice::Saw { release: 0.01 },
+            &octaves(0.25, 0.22),
+        ),
+        part(
+            "bass octaves 8ths",
+            Class::Bass,
+            120.0,
+            Voice::Saw { release: 0.01 },
+            &octaves(0.5, 0.45),
+        ),
+        part(
+            "bass 175 16ths repeats",
+            Class::Bass,
+            175.0,
+            Voice::Saw { release: 0.01 },
+            &[
+                38.0, 38.0, 38.0, 45.0, 38.0, 38.0, 43.0, 45.0, 41.0, 41.0, 41.0, 48.0, 41.0, 41.0,
+                45.0, 48.0,
+            ]
+            .repeat(2)
+            .iter()
+            .enumerate()
+            .map(|(i, &pitch)| n(1.0 + count(i) * 0.25, 0.2, pitch))
+            .collect::<Vec<_>>(),
+        ),
+        part(
+            "bass run 140 octave jump",
+            Class::Bass,
+            140.0,
+            Voice::Saw { release: 0.01 },
+            &[
+                45.0, 45.0, 45.0, 45.0, 48.0, 48.0, 52.0, 52.0, 45.0, 45.0, 57.0, 57.0, 45.0, 45.0,
+                43.0, 43.0,
+            ]
+            .iter()
+            .enumerate()
+            .map(|(i, &pitch)| n(1.0 + count(i) * 0.25, 0.225, pitch))
+            .collect::<Vec<_>>(),
+        ),
+    ]
+}
+
+/// A disco octave bass: A2 and A3 in turn, then D2 and D3, 16 notes each,
+/// one every `step` beats for `length` beats.
+fn octaves(step: f64, length: f64) -> Vec<Score> {
+    [45.0, 57.0]
+        .repeat(8)
+        .into_iter()
+        .chain([38.0, 50.0].repeat(8))
+        .enumerate()
+        .map(|(i, pitch)| n(1.0 + count(i) * step, length, pitch))
+        .collect()
+}
+
 /// The lead parts.
 fn lead_parts() -> Vec<Part> {
     let saw = Voice::Saw { release: 0.05 };
@@ -512,7 +578,106 @@ fn pad_parts() -> Vec<Part> {
             Voice::Pad,
             &[n(1.0, 16.0, 57.0), n(1.0, 16.0, 60.0), n(1.0, 16.0, 64.0)],
         ),
+        part(
+            "pad staggered releases",
+            Class::Pad,
+            120.0,
+            Voice::Pad,
+            &staggered_releases(),
+        ),
+        part(
+            "pad moving inner voice",
+            Class::Pad,
+            120.0,
+            Voice::Pad,
+            &moving_inner_voice(),
+        ),
+        part("pad strummed", Class::Pad, 120.0, Voice::Keys, &strummed()),
+        part(
+            "pad arpeggio sustain",
+            Class::Pad,
+            120.0,
+            Voice::Keys,
+            &arpeggio_sustain(),
+        ),
     ]
+}
+
+/// The four triads of "pad chords", each note released up to 150 ms early
+/// or late (0.3 beats at 120 BPM), as hands lift one finger at a time.
+fn staggered_releases() -> Vec<Score> {
+    let shifts = [-0.3, 0.0, 0.3];
+    [
+        [57.0, 60.0, 64.0],
+        [53.0, 57.0, 60.0],
+        [55.0, 59.0, 62.0],
+        [52.0, 55.0, 59.0],
+    ]
+    .iter()
+    .enumerate()
+    .flat_map(|(i, chord)| {
+        chord
+            .iter()
+            .zip(shifts.iter().cycle().skip(i))
+            .map(move |(&pitch, &shift)| n(1.0 + count(i) * 4.0, 3.0 + shift, pitch))
+    })
+    .collect()
+}
+
+/// A held A3 and E4 over 16 beats while the inner voice moves C4, D4, C4,
+/// B3 every 4 beats.
+fn moving_inner_voice() -> Vec<Score> {
+    let mut notes = vec![n(1.0, 16.0, 57.0), n(1.0, 16.0, 64.0)];
+    notes.extend(
+        [60.0, 62.0, 60.0, 59.0]
+            .iter()
+            .enumerate()
+            .map(|(i, &pitch)| n(1.0 + count(i) * 4.0, 3.9, pitch)),
+    );
+    notes
+}
+
+/// Four-note chords strummed upward, 30 ms (0.06 beats) between strings,
+/// one every 2 beats for 8 chords.
+fn strummed() -> Vec<Score> {
+    let chords = [
+        [45.0, 52.0, 57.0, 61.0],
+        [50.0, 57.0, 62.0, 66.0],
+        [52.0, 59.0, 64.0, 68.0],
+        [45.0, 52.0, 57.0, 61.0],
+    ];
+    (0..8)
+        .flat_map(|i| {
+            chords[i % chords.len()]
+                .iter()
+                .enumerate()
+                .map(move |(j, &pitch)| {
+                    let start = 1.0 + count(i) * 2.0 + count(j) * 0.06;
+                    n(start, 1.8 - count(j) * 0.06, pitch)
+                })
+        })
+        .collect()
+}
+
+/// Broken chords on eighth notes with the sustain held: each of the four
+/// notes rings on to the end of its bar.
+fn arpeggio_sustain() -> Vec<Score> {
+    let chords = [
+        [48.0, 52.0, 55.0, 60.0],
+        [45.0, 52.0, 57.0, 60.0],
+        [50.0, 53.0, 57.0, 62.0],
+        [43.0, 50.0, 55.0, 59.0],
+    ];
+    chords
+        .iter()
+        .enumerate()
+        .flat_map(|(bar, chord)| {
+            chord.iter().enumerate().map(move |(j, &pitch)| {
+                let start = 1.0 + count(bar) * 4.0 + count(j) * 0.5;
+                n(start, 1.0 + count(bar) * 4.0 + 3.8 - start, pitch)
+            })
+        })
+        .collect()
 }
 
 /// A quiet bass line, MIDI 36 to 48 at 0.02, with one loud event at 3 s:
@@ -576,6 +741,7 @@ fn transient_parts() -> Vec<Part> {
 pub(crate) fn evaluation_set() -> Vec<Part> {
     let saw = Voice::Saw { release: 0.05 };
     let mut parts = bass_parts();
+    parts.extend(octave_and_fast_parts());
     parts.extend(lead_parts());
     parts.extend(pad_parts());
     let reverbs: Vec<Part> = parts

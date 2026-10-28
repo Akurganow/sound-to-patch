@@ -452,5 +452,8 @@ fn a_transcription_record_fits_the_schema() {
         );
         assert_eq!(record["note_params"]["include_pitch_bends"], false);
         assert_eq!(record["note_params"].as_object().unwrap().len(), 10);
+        let mut other = record.clone();
+        other["profile"] = json!("drum");
+        assert!(!definition("transcription").is_valid(&other));
     }
 }

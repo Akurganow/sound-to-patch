@@ -19,12 +19,12 @@ writes the preset file. The text path skips the analysis: the agent writes the
 edit list from the description.
 
 The library so far holds the command line with `analyze`, `notes`,
-`preset inspect` and `preset apply`, the unit types, the confidence type, the synth seam,
-the Vital read and write paths, stem intake, the note list with its masks
-and its MIDI reader, the signal core that the estimators share, and the
-report with the `stem` group and the spectrogram, the transcriber with its
-profiles and its register detection, the f0 track, the note cleanup, and
-the MIDI writer.
+`preset inspect` and `preset apply`, the unit types, the confidence type,
+the synth seam, the Vital read and write paths, stem intake, the note list
+with its masks and its MIDI reader, the signal core that the estimators
+share, and the report with the `stem` group and the spectrogram, the
+transcriber with its profiles and its register detection, the f0 track,
+the note cleanup, and the MIDI writer.
 
 ## Synth adapter seam
 

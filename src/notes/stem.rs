@@ -207,6 +207,55 @@ impl From<TrackError> for NotesError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::notes::{Note, TrackFrame, Velocity};
+    use crate::units::{Decibels, Hz, MidiPitch, Seconds};
+    use basic_pitch::{Posteriorgram, Posteriorgrams};
+
+    fn heard(onset: f64, offset: f64, pitch: f64, velocity: u8) -> Note {
+        Note::new(
+            Seconds::new(onset).unwrap(),
+            Seconds::new(offset).unwrap(),
+            MidiPitch::new(pitch).unwrap(),
+        )
+        .unwrap()
+        .with_velocity(Velocity::new(velocity).unwrap())
+    }
+
+    /// A chord part skips the octave check: its notes stay where the
+    /// decoder put them, every one unchecked.
+    #[test]
+    fn a_chord_part_keeps_its_octaves_unchecked() {
+        let run = ModelRun::from_posteriorgrams(
+            Posteriorgrams::new(
+                Posteriorgram::zeros(100, 88),
+                Posteriorgram::zeros(100, 88),
+                Posteriorgram::zeros(100, 264),
+            )
+            .unwrap(),
+        );
+        let track = PitchTrack::from_frames(
+            (0..200)
+                .map(|i| TrackFrame {
+                    time: Seconds::new(f64::from(i) * 0.005).unwrap(),
+                    f0: Some(Hz::from(MidiPitch::new(45.0).unwrap())),
+                    level: Decibels::new(-3.0).unwrap(),
+                })
+                .collect(),
+        );
+        let decoded = NoteList::new(vec![heard(0.2, 0.8, 45.0, 90), heard(0.2, 0.3, 57.0, 37)]);
+        let rate = SampleRate::new(22_050).unwrap();
+        let mono = vec![0.5; 22_050];
+        for (voicing, pitches, unchecked) in [
+            (Voicing::Polyphonic, vec![45.0, 57.0], 2),
+            (Voicing::Monophonic, vec![45.0], 0),
+        ] {
+            let (kept, steps) = clean_up(&decoded, &run, &track, voicing, &mono, rate);
+            let found: Vec<f64> = kept.notes().iter().map(|n| n.pitch().get()).collect();
+            assert_eq!(found, pitches, "{voicing:?}");
+            assert_eq!(steps.octaves.unchecked, unchecked);
+            assert_eq!((steps.decoded, steps.kept), (2, pitches.len()));
+        }
+    }
 
     #[test]
     fn the_transcriber_version_matches_the_pin() {

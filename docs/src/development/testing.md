@@ -40,22 +40,26 @@ needs from the matrix below and names them in its issue.
 
 ## Benchmarks
 
-`cargo bench --bench notes` runs the criterion groups of the notes step on
+`cargo bench --bench notes` runs the benchmark harness groups of the notes step on
 one generated 60 s stem: the model load, the model run at one thread and
 at all threads, the f0 track, the MIDI write and the whole step at both
-thread counts. A run takes about 40 minutes, most of it in the f0 track.
+thread counts. A run takes about 30 minutes, most of it in the f0 track.
 CI compiles the benches and never runs them.
 
-The notes budget is the first run's median plus 25 %, per minute of audio:
+The notes budget is the median plus 25 %, per minute of audio. The median
+is the benchmark's own `median` estimate, from a run with nothing else
+on the machine:
 
-| Threads | First median | Budget |
+| Threads | Median | Budget |
 | :-- | :-- | :-- |
-| 1 | 38.4 s | 48.0 s |
-| All | 32.5 s | 40.7 s |
+| 1 | 30.05 s | 37.6 s |
+| All | 29.17 s | 36.5 s |
 
-A run above the budget names its step: the f0 track takes 35.8 s of the
-38.4 s. The [pipeline page](../analysis/pipeline.md#time-budget) gives
-every group.
+A run above the budget names its step: the f0 track takes 29.31 s of the
+30.05 s. `cargo run --release --example notes_memory -- <stage>` runs one
+stage on the same stem, so a tool that reports a process's peak memory
+measures each stage. The [pipeline page](../analysis/pipeline.md#time-budget)
+gives every group.
 
 ## Running the tests
 

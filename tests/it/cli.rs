@@ -149,6 +149,7 @@ fn notes_writes_the_notes_of_a_generated_wav() {
         "detected range: ",
         "detected voicing: monophonic",
         "register window: 20 dB",
+        "cleanup voicing: monophonic, as detected",
         "settings: detected, ",
         "decoded: ",
         "octave check: ",
@@ -190,4 +191,108 @@ fn notes_on_a_silent_stem_fails_and_writes_nothing() {
         "error: `silence.wav` gave no note, so nothing was written: it is silent, or no note sounds within 40 dB of its loudest passage. Check the stem, or pass --profile bass|lead|pad\n"
     );
     assert!(!out.exists());
+}
+
+/// Runs `notes` on `stem` into `out` with extra flags.
+#[cfg(test)]
+fn notes_command(
+    stem: &std::path::Path,
+    out: &std::path::Path,
+    flags: &[&str],
+) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .arg("notes")
+        .arg(stem)
+        .args(["--bpm", "120", "--out"])
+        .arg(out)
+        .args(flags)
+        .output()
+        .unwrap()
+}
+
+/// `notes.mid` names its stem. A run of another stem into the folder
+/// stops before it decodes anything, and so does a report of another
+/// stem, each with its own fix.
+#[test]
+fn notes_refuses_the_files_of_another_stem() {
+    use sound_to_patch::notes::{DEFAULT_VELOCITY, Note, NoteList, Velocities, write_named_midi};
+    use sound_to_patch::units::{Bpm, MidiPitch, Seconds};
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("out");
+    std::fs::create_dir(&out).unwrap();
+    let other = NoteList::new(vec![
+        Note::new(
+            Seconds::new(0.0).unwrap(),
+            Seconds::new(0.5).unwrap(),
+            MidiPitch::new(45.0).unwrap(),
+        )
+        .unwrap(),
+    ]);
+    let bytes = write_named_midi(
+        &other,
+        Bpm::new(120.0).unwrap(),
+        Velocities::Constant(DEFAULT_VELOCITY),
+        "other.wav",
+    )
+    .unwrap();
+    std::fs::write(out.join("notes.mid"), &bytes).unwrap();
+    // No stem file exists: the guard answers first.
+    let stem = dir.path().join("lead.wav");
+    let output = notes_command(&stem, &out, &[]);
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        format!(
+            "error: {} holds the notes of `other.wav`, not of `lead.wav`. Pass --out <dir> for this stem, or --force to replace it\n",
+            out.join("notes.mid").display()
+        )
+    );
+    assert_eq!(std::fs::read(out.join("notes.mid")).unwrap(), bytes);
+    std::fs::write(out.join("layers.json"), r#"{"source": "other.wav"}"#).unwrap();
+    let output = notes_command(&stem, &out, &[]);
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        format!(
+            "error: {} is the report of `other.wav`, not of `lead.wav`. Pass --out <dir> for this stem, or --force to write notes.mid next to it\n",
+            out.join("layers.json").display()
+        )
+    );
+}
+
+/// `--force` replaces the notes of another stem, and `--profile` sets the
+/// settings and the cleanup voicing while detection still prints.
+#[test]
+fn notes_with_a_profile_and_force_replaces_the_notes_of_another_stem() {
+    let dir = tempfile::tempdir().unwrap();
+    let (path, truth) = saw_notes(dir.path());
+    let out = dir.path().join("out");
+    std::fs::create_dir(&out).unwrap();
+    std::fs::write(out.join("layers.json"), r#"{"source": "other.wav"}"#).unwrap();
+    std::fs::write(out.join("notes.mid"), b"not ours").unwrap();
+    let output = notes_command(&path, &out, &["--profile", "lead", "--force"]);
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for line in [
+        "detected voicing: monophonic",
+        "cleanup voicing: monophonic, from --profile lead",
+        "settings: profile lead, MIDI 36 to 95,",
+    ] {
+        assert!(stdout.contains(line), "no `{line}` in {stdout}");
+    }
+    let bytes = std::fs::read(out.join("notes.mid")).unwrap();
+    assert_eq!(
+        sound_to_patch::notes::midi_track_name(&bytes).as_deref(),
+        Some("lead.wav")
+    );
+    let notes = sound_to_patch::notes::read_midi(
+        &out.join("notes.mid"),
+        sound_to_patch::units::Bpm::new(120.0).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(notes.notes().len(), truth.len());
+    // The report of the other stem stays: `notes` writes no report.
+    assert_eq!(
+        std::fs::read_to_string(out.join("layers.json")).unwrap(),
+        r#"{"source": "other.wav"}"#
+    );
 }

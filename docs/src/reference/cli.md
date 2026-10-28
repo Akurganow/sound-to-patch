@@ -151,24 +151,29 @@ gives each step.
   minimum note length come from the stem. `--profile bass`, `lead` or
   `pad` sets them instead; detection still runs and prints its findings.
 - Output: standard output gets one line per step, in order: the detected
-  range, the detected voicing, the register window, the settings used,
+  range, the detected voicing, the register window, the voicing the
+  cleanup used and where it came from, the settings used,
   the decoded count, then the note count after the octave check, the
   ghost merge, the split join and the quiet-note guard with its drop
   count, and last `wrote <path>`. A warning line for each corrupt packet
   that became silence goes to standard error.
-- The file: a format 0 MIDI file with 480 ticks per beat, the tempo of
-  `--bpm` and 4/4 at tick 0, and every note on channel 1 at velocity 100.
+- The file: a format 0 MIDI file with 480 ticks per beat, the stem's file
+  name as the track name, the tempo of `--bpm` and 4/4 at tick 0, and
+  every note on channel 1 at velocity 100.
   It is written to a temporary sibling and renamed into place. Only
   `notes.mid` is replaced; nothing else in the folder changes.
 - The folder: as for `analyze`, `stems/bass.wav` writes into `stems/bass/`
-  without `--out`. When the folder holds a `layers.json` of another stem,
-  the command stops and names both; `--out` picks another folder, and
-  `--force` writes next to that report.
+  without `--out`. When the folder holds a `notes.mid` whose track name is
+  another stem, or none, the command stops before it decodes and names
+  both; `--force` replaces that file. When it holds a `layers.json` of
+  another stem, it stops the same way; `--force` writes `notes.mid` next
+  to that report and leaves it. `--out` picks another folder in both
+  cases.
 
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | `notes.mid` was written. |
-| 1 | The stem cannot be read, gives no note (silence, for one), or cannot be transcribed; the output folder is a file or holds the report of another stem; or the file cannot be written. Nothing is written. The message names the cause and the fix. |
+| 1 | The stem cannot be read, gives no note (digital silence, for one), or cannot be transcribed; the output folder is a file or holds the notes or the report of another stem; or the file cannot be written. Nothing is written. The message names the cause and the fix. |
 | 2 | A usage error: a missing `--bpm`, a tempo outside 4 to 1000 or not a number, or a profile other than `bass`, `lead` and `pad`. |
 
 ## preset

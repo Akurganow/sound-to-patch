@@ -1,7 +1,6 @@
 //! Builds a short saw line in code, runs the notes step on it and prints
-//! what each step found, as the notes guide shows. Run it with
-//! `cargo run --release --example notes`; a debug build takes about a
-//! minute, most of it in the f0 track.
+//! the notes it kept. Run it with `cargo run --release --example notes`;
+//! a debug build takes about a minute, most of it in the f0 track.
 
 use std::f64::consts::TAU;
 
@@ -10,7 +9,6 @@ use sound_to_patch::notes::{Transcriber, transcribe_stem};
 use sound_to_patch::units::Bpm;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // ANCHOR: stem
     // A3, C4 and E4 as band-limited saws, 0.2 s on each eighth note at
     // 120 BPM, at 22,050 Hz.
     let rate = 22_050_u32;
@@ -30,9 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .sum()
         })
         .collect();
-    // ANCHOR_END: stem
 
-    // ANCHOR: transcribe
     let found = transcribe_stem(
         &Transcriber::new()?,
         &mono,
@@ -40,7 +36,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Bpm::new(120.0)?,
         None,
     )?;
-    // ANCHOR_END: transcribe
     println!(
         "{} voicing, MIDI {} to {}",
         found.detection.voicing.name(),

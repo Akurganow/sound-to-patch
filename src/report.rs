@@ -17,7 +17,7 @@ use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
 use crate::notes::{
     DEFAULT_VELOCITY, MidiError, MidiWriteError, NotesError, Profile, QUIET_GATE, Transcriber,
-    Transcription, Velocities, read_midi, transcribe_stem, write_midi,
+    Transcription, Velocities, midi_track_name, read_midi, transcribe_stem, write_named_midi,
 };
 use crate::synth::Synth;
 use crate::units::{Bpm, Seconds};
@@ -113,7 +113,7 @@ pub struct Analysis {
 pub fn analyze(request: &AnalyzeRequest<'_>) -> Result<Analysis, AnalyzeError> {
     let dir = request.out_dir();
     let source = request.source();
-    check_out_dir(&dir, &source, request.force)?;
+    check_out_dir(&dir, &source, request.force, Guarded::Report)?;
     let notes = request
         .notes
         .map(|path| read_midi(path, request.bpm))
@@ -218,6 +218,14 @@ impl NotesReport {
             ),
             format!("register window: {} dB", detection.window.get()),
             format!(
+                "cleanup voicing: {}, {}",
+                t.voicing.name(),
+                t.profile.map_or_else(
+                    || "as detected".to_owned(),
+                    |p| format!("from --profile {p}")
+                )
+            ),
+            format!(
                 "settings: {}, {}, minimum note {} frames ({:.1} ms), melodia {}",
                 t.profile
                     .map_or_else(|| "detected".to_owned(), |p| format!("profile {p}")),
@@ -262,7 +270,8 @@ pub fn notes(
 ) -> Result<NotesReport, AnalyzeError> {
     let dir = out_dir(request.stem, request.out);
     let source = source_of(request.stem);
-    check_out_dir(&dir, &source, request.force)?;
+    check_out_dir(&dir, &source, request.force, Guarded::ReportBeside)?;
+    check_notes_file(&dir, &source, request.force)?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
@@ -277,10 +286,11 @@ pub fn notes(
     if transcription.notes.is_empty() {
         return Err(AnalyzeError::NoNotes { source });
     }
-    let bytes = write_midi(
+    let bytes = write_named_midi(
         &transcription.notes,
         request.bpm,
         Velocities::Constant(DEFAULT_VELOCITY),
+        &source,
     )
     .map_err(AnalyzeError::Midi)?;
     std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
@@ -289,10 +299,12 @@ pub fn notes(
     })?;
     let path = dir.join(NOTES_FILE);
     let staged = stage(&dir, NOTES_FILE, &bytes)?;
-    std::fs::rename(&staged, &path).map_err(|source| AnalyzeError::Write {
-        path: path.clone(),
-        source,
-    })?;
+    if let Err(source) = std::fs::rename(&staged, &path) {
+        // The staged copy is ours alone; a failed removal changes nothing
+        // the error does not already report.
+        let _ = std::fs::remove_file(&staged);
+        return Err(AnalyzeError::Write { path, source });
+    }
     Ok(NotesReport {
         path,
         transcription,
@@ -301,8 +313,14 @@ pub fn notes(
 }
 
 /// Fails when the output folder is a file, or holds a `layers.json` whose
-/// source is not `source` and `force` is off.
-fn check_out_dir(dir: &Path, source: &str, force: bool) -> Result<(), AnalyzeError> {
+/// source is not `source` and `force` is off. `guarded` says what `--force`
+/// does to that report.
+fn check_out_dir(
+    dir: &Path,
+    source: &str,
+    force: bool,
+    guarded: Guarded,
+) -> Result<(), AnalyzeError> {
     if dir.exists() && !dir.is_dir() {
         return Err(AnalyzeError::OutIsFile {
             path: dir.to_path_buf(),
@@ -323,8 +341,44 @@ fn check_out_dir(dir: &Path, source: &str, force: bool) -> Result<(), AnalyzeErr
             path: existing,
             recorded,
             source: source.to_owned(),
+            guarded,
         })
     }
+}
+
+/// Fails when the output folder holds a `notes.mid` whose track name is
+/// not `source` and `force` is off.
+fn check_notes_file(dir: &Path, source: &str, force: bool) -> Result<(), AnalyzeError> {
+    let existing = dir.join(NOTES_FILE);
+    if force || !existing.exists() {
+        return Ok(());
+    }
+    let recorded = std::fs::read(&existing)
+        .ok()
+        .and_then(|bytes| midi_track_name(&bytes));
+    if recorded.as_deref() == Some(source) {
+        Ok(())
+    } else {
+        Err(AnalyzeError::OtherSource {
+            path: existing,
+            recorded,
+            source: source.to_owned(),
+            guarded: Guarded::Notes,
+        })
+    }
+}
+
+/// The file of another stem that stopped a run, and what `--force` does
+/// to it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Guarded {
+    /// A `layers.json` that `analyze --force` replaces.
+    Report,
+    /// A `layers.json` that `notes --force` leaves, writing `notes.mid`
+    /// next to it.
+    ReportBeside,
+    /// A `notes.mid` that `notes --force` replaces.
+    Notes,
 }
 
 /// Writes `bytes` to a hidden temporary sibling of `name` in `dir` and
@@ -353,14 +407,16 @@ pub enum AnalyzeError {
         /// The path of the folder.
         path: PathBuf,
     },
-    /// The output folder holds the report of another stem.
+    /// The output folder holds the report or the notes of another stem.
     OtherSource {
-        /// The existing `layers.json`.
+        /// The existing `layers.json` or `notes.mid`.
         path: PathBuf,
         /// The stem it names, if it names one.
         recorded: Option<String>,
         /// The stem of this run.
         source: String,
+        /// What the file is, and what `--force` does to it.
+        guarded: Guarded,
     },
     /// The model run, a decode or the f0 track failed.
     Transcription(NotesError),
@@ -397,13 +453,19 @@ impl fmt::Display for AnalyzeError {
                 path,
                 recorded,
                 source,
+                guarded,
             } => {
                 let other = recorded
                     .as_deref()
                     .map_or_else(|| "no named stem".to_owned(), |name| format!("`{name}`"));
+                let (what, force) = match guarded {
+                    Guarded::Report => ("is the report", "replace it"),
+                    Guarded::ReportBeside => ("is the report", "write notes.mid next to it"),
+                    Guarded::Notes => ("holds the notes", "replace it"),
+                };
                 write!(
                     f,
-                    "{} is the report of {other}, not of `{source}`. Pass --out <dir> for this stem, or --force to replace it",
+                    "{} {what} of {other}, not of `{source}`. Pass --out <dir> for this stem, or --force to {force}",
                     path.display()
                 )
             }
