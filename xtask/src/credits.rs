@@ -4,6 +4,9 @@
 //! external link under a `Sources` heading of a book page or of
 //! `ARCHITECTURE.md` must match a credit entry, or a prefix in
 //! `docs/cited-references.txt`, the reference documentation we only cite.
+//! The pages of the shared `reference/` folder and of the agent plugins
+//! under `plugins/` count as book pages, and
+//! every `url` in `dictionary/sources.json` counts as a cited source.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -84,21 +87,35 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
         }
     }
 
+    let mut cited: Vec<(PathBuf, String)> = Vec::new();
     for page in pages(root)? {
         let text = fs::read_to_string(&page)?;
-        for url in source_links(&text) {
-            let url = normalize(&url);
-            let known = credited
-                .iter()
-                .chain(&allowed)
-                .any(|prefix| is_prefix(prefix, &url));
-            if !known {
-                problems.push(format!(
-                    "{} cites {url} with no credit entry: add one to the README credits, \
-                     or add reference documentation to docs/cited-references.txt",
-                    page.strip_prefix(root).unwrap_or(&page).display()
-                ));
-            }
+        cited.extend(
+            source_links(&text)
+                .into_iter()
+                .map(|url| (page.clone(), url)),
+        );
+    }
+    let sources = root.join("dictionary/sources.json");
+    if sources.is_file() {
+        cited.extend(
+            dictionary_links(&fs::read_to_string(&sources)?)?
+                .into_iter()
+                .map(|url| (sources.clone(), url)),
+        );
+    }
+    for (page, url) in cited {
+        let url = normalize(&url);
+        let known = credited
+            .iter()
+            .chain(&allowed)
+            .any(|prefix| is_prefix(prefix, &url));
+        if !known {
+            problems.push(format!(
+                "{} cites {url} with no credit entry: add one to the README credits, \
+                 or add reference documentation to docs/cited-references.txt",
+                page.strip_prefix(root).unwrap_or(&page).display()
+            ));
         }
     }
 
@@ -136,14 +153,35 @@ fn link_and_licence(entry: &str) -> Option<(&str, &str)> {
     (!licence.trim().is_empty()).then_some((&rest[..close], licence))
 }
 
-/// Book pages and `ARCHITECTURE.md`.
+/// The `url` of every entry of the dictionary source list.
+fn dictionary_links(text: &str) -> crate::Result<Vec<String>> {
+    let list: serde_json::Value =
+        serde_json::from_str(text).map_err(|error| format!("dictionary/sources.json: {error}"))?;
+    let entries = list
+        .as_array()
+        .ok_or("dictionary/sources.json must be a list of sources")?;
+    Ok(entries
+        .iter()
+        .filter_map(|entry| entry.get("url").and_then(serde_json::Value::as_str))
+        .map(str::to_owned)
+        .collect())
+}
+
+/// Book pages, reference and plugin pages, and `ARCHITECTURE.md`. Links
+/// are not followed, so a page linked from a plugin counts once.
 fn pages(root: &Path) -> crate::Result<Vec<PathBuf>> {
     let mut pages = vec![root.join("ARCHITECTURE.md")];
     let mut dirs = vec![root.join("docs/src")];
+    for extra in ["reference", "plugins"] {
+        if root.join(extra).is_dir() {
+            dirs.push(root.join(extra));
+        }
+    }
     while let Some(dir) = dirs.pop() {
         for entry in fs::read_dir(&dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
+            let entry = entry?;
+            let path = entry.path();
+            if entry.file_type()?.is_dir() {
                 dirs.push(path);
             } else if path.extension().is_some_and(|ext| ext == "md") {
                 pages.push(path);
@@ -234,6 +272,27 @@ mod tests {
             - [Paper](https://arxiv.org/abs/2401.00001)\n\
             - Book, https://doc.rust-lang.org/book/\n";
         check(repo(README, page).path()).unwrap();
+    }
+
+    #[test]
+    fn checks_plugin_pages_and_the_dictionary_sources() {
+        let dir = repo(README, "# Pitch\n");
+        fs::create_dir_all(dir.path().join("plugins/p/skills/s")).unwrap();
+        fs::write(
+            dir.path().join("plugins/p/skills/s/SKILL.md"),
+            "# S\n\n## Sources\n\n- https://github.com/other/page\n",
+        )
+        .unwrap();
+        fs::create_dir_all(dir.path().join("dictionary")).unwrap();
+        fs::write(
+            dir.path().join("dictionary/sources.json"),
+            r#"[{"id":"x","url":"https://github.com/other/data"},{"id":"y","url":"https://github.com/owner/tool"}]"#,
+        )
+        .unwrap();
+        let err = check(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("github.com/other/page"), "{err}");
+        assert!(err.contains("github.com/other/data"), "{err}");
+        assert!(!err.contains("owner/tool"), "{err}");
     }
 
     #[test]

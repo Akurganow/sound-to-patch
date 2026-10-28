@@ -18,12 +18,14 @@ use crate::synth::{
 };
 use crate::units::{Percent, Seconds, Semitones};
 
+mod catalogue;
 mod codec;
 pub mod laws;
 mod registry;
 mod template;
 mod writers;
 
+pub(crate) use catalogue::placement;
 pub use codec::{VitalFormat, VitalModel};
 pub use registry::{EngineScale, OPEN_ENGINE};
 pub use template::VitalTemplate;

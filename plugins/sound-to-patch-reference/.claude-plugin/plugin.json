@@ -1,0 +1,10 @@
+{
+  "name": "sound-to-patch-reference",
+  "description": "The synth reference of sound-to-patch: the controls of each target synth by layer, with units, ranges and tuning notes, for agents that write presets with the sound-to-patch tool. Vital and Serum 2 are trademarks of their owners. This project is not affiliated with or endorsed by them.",
+  "author": {
+    "name": "sound-to-patch contributors"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/Akurganow/sound-to-patch",
+  "repository": "https://github.com/Akurganow/sound-to-patch"
+}

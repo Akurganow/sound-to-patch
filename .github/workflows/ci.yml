@@ -63,6 +63,8 @@ jobs:
       # Reads the committed golden vectors against the pins; needs no Python.
       - run: cargo xtask golden-check
       - run: cargo xtask check-no-ort
+      # The plugin reference files are generated from the registry.
+      - run: cargo xtask reference --check
 
   # Catches platform assumptions. Not a required check: numeric code may
   # differ in the last bits between platforms, and only macOS ships.
@@ -154,6 +156,7 @@ jobs:
       - run: cargo install --locked mdbook-katex@0.10.0
       - run: cargo xtask check-architecture
       - run: cargo xtask check-credits
+      - run: cargo xtask check-plugins
       - run: cargo xtask check-rust-version
       - run: mdbook build docs
       - run: cargo doc --no-deps

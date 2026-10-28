@@ -9,7 +9,7 @@ pre_bump_hooks = ["cargo xtask set-version {{version}}"]
 # The scope is optional; a commit with a scope must use one of these.
 # `version` is the scope of cog's own version commit, `deps` the scope of
 # Dependabot's pull requests.
-scopes = ["analyze", "notes", "preset", "units", "docs", "ci", "deps", "version"]
+scopes = ["analyze", "notes", "preset", "skill", "units", "docs", "ci", "deps", "version"]
 
 # `cog install-hook commit-msg` installs this hook into a clone.
 [git_hooks.commit-msg]

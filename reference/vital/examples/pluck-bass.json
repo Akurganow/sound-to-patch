@@ -1,0 +1,17 @@
+{
+  "synth": "vital",
+  "edits": [
+    { "param": "filter_1_on", "value": true, "reason": "the cutoff is heard only with the filter on" },
+    { "menu": "filter_1_model", "choice": "Ladder", "reason": "a smooth low-pass for a bass" },
+    { "param": "filter_1_cutoff", "value": "300 Hz", "reason": "a dark start, so the envelope can open it" },
+    { "param": "env_1_attack", "value": "2 ms", "reason": "a fast start for a pluck" },
+    { "param": "env_1_decay", "value": "250 ms", "reason": "the level falls within a quarter second" },
+    { "param": "env_1_sustain", "value": 0, "reason": "a pluck holds no level after the decay" },
+    { "param": "env_2_decay", "value": "180 ms", "reason": "the filter closes a little before the level" },
+    { "param": "env_2_sustain", "value": 0, "reason": "the filter returns to the dark start" },
+    {
+      "route": { "source": "env_2", "dest": "filter_1_cutoff", "amount": "+36 st" },
+      "reason": "envelope 2 opens the filter on each note"
+    }
+  ]
+}

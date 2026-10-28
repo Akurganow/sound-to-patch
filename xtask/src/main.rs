@@ -11,7 +11,9 @@ mod fetch;
 mod fixtures;
 mod golden;
 mod lock;
+mod plugins;
 mod pr;
+mod reference;
 mod version;
 mod vital;
 
@@ -71,6 +73,9 @@ enum Task {
     CheckNoOrt,
     /// Check that every cited source has a credit with a licence.
     CheckCredits,
+    /// Check the agent plugins: manifests, the marketplace, skill sizes and
+    /// frontmatter, reference files, banned phrases and probes.
+    CheckPlugins,
     /// Check that the docs name the manifest's `rust-version`.
     CheckRustVersion,
     /// Check a pull request description and title, read from the `PR_BODY`
@@ -83,6 +88,13 @@ enum Task {
         #[arg(long)]
         source: PathBuf,
         /// Write nothing and fail when the committed file is stale.
+        #[arg(long)]
+        check: bool,
+    },
+    /// Write the generated files of the shared reference folder, or with
+    /// `--check` fail when one differs.
+    Reference {
+        /// Write nothing and fail when a committed file is stale.
         #[arg(long)]
         check: bool,
     },
@@ -112,6 +124,7 @@ fn main() -> ExitCode {
         Task::CheckArchitecture => architecture::check(root()),
         Task::CheckNoOrt => lock::check_no_ort(root()),
         Task::CheckCredits => credits::check(root()),
+        Task::CheckPlugins => plugins::check(root()),
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())
@@ -122,6 +135,7 @@ fn main() -> ExitCode {
             })
             .and_then(|title| pr::check_title(&title)),
         Task::VitalRegistry { source, check } => vital::run(root(), &source, check),
+        Task::Reference { check } => reference::run(root(), check),
         Task::SetVersion { version } => version::set(root(), &version),
         Task::VitalFixtures { check, coverage } => {
             if coverage {

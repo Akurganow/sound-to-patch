@@ -25,6 +25,7 @@
 
 - [Testing](development/testing.md)
 - [Release](development/release.md)
+- [Agent reference](development/agent-reference.md)
 
 ---
 

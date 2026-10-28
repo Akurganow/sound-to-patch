@@ -88,14 +88,23 @@ jobs:
           cp "$stage/THIRD-PARTY-LICENSES.html" target/assets/
 
       # Each plugin folder ships alone, so an agent harness installs a
-      # plugin without the rest of the repository.
+      # plugin without the rest of the repository. The harness installs
+      # plugin archives as zip.
       - name: Pack the plugins
         if: steps.existing.outputs.exists != 'true'
         run: |
           for dir in plugins/*/; do
             [ -d "$dir" ] || continue
             plugin="$(basename "$dir")"
-            tar -czf "target/assets/$plugin-$TAG.tar.gz" -C plugins "$plugin"
+            zip="target/assets/$plugin-$TAG.zip"
+            (cd plugins && zip -qr "../$zip" "$plugin")
+            # A skill that links the shared reference must carry its files.
+            for link in "$dir"skills/*/reference; do
+              [ -L "$link" ] || continue
+              skill="$(basename "$(dirname "$link")")"
+              unzip -l "$zip" | grep -q " $plugin/skills/$skill/reference/README\.md$" \
+                || { echo "::error::$zip lacks skills/$skill/reference/README.md"; exit 1; }
+            done
           done
 
       - name: Publish the release
