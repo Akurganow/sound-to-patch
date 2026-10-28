@@ -148,7 +148,11 @@ pub fn parse_note(text: &str, label: OctaveLabel) -> Result<u8, MusicError> {
     let unknown = || MusicError::UnknownNote(text.to_owned());
     let (class, rest) = read_class(text.trim()).ok_or_else(unknown)?;
     let octave: i16 = rest.trim().parse().map_err(|_| unknown())?;
-    let pitch = (octave + i16::from(label.shift())) * 12 + class;
+    let pitch = octave
+        .checked_add(i16::from(label.shift()))
+        .and_then(|octave| octave.checked_mul(12))
+        .and_then(|pitch| pitch.checked_add(class))
+        .ok_or_else(unknown)?;
     u8::try_from(pitch)
         .ok()
         .filter(|pitch| *pitch <= 127)
@@ -244,7 +248,9 @@ mod tests {
 
     #[test]
     fn rejects_names_outside_midi() {
-        for text in ["C-2", "H4", "C", "4", "C#x", "G#9"] {
+        for text in [
+            "C-2", "H4", "C", "4", "C#x", "G#9", "G#5461", "C-32768", "B32767",
+        ] {
             assert!(parse_note(text, OctaveLabel::C4).is_err(), "{text}");
         }
         assert_eq!(parse_note("Cb4", OctaveLabel::C4), Ok(59));

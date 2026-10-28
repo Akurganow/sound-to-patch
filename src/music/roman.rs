@@ -7,10 +7,12 @@
 //! the same chords. `X/Y` is a secondary chord: X read in the major key of
 //! the degree Y, so `V/V` lies 2 semitones above the tonic.
 //!
-//! Give the mode when the key is known. Without one, a line is minor when
-//! it starts with `i` or holds a bare `III`, `VI` or `VII`, the degrees
-//! that only minor makes major; any other line reads as major and comes
-//! back flagged.
+//! Give the mode when the key is known. Without one, a line that starts
+//! with `I` reads as major, since a major key also borrows `III`, `VI` and
+//! `VII` as secondary chords. Any other line is minor when it starts with
+//! `i` or holds a bare `III`, `VI` or `VII`, the degrees that only minor
+//! makes major. A line read as major without a minor sign comes back
+//! flagged. `I/Y` is refused: it could be a slash chord over the bass Y.
 //!
 //! ```
 //! use sound_to_patch::music::roman::parse_line;
@@ -100,23 +102,24 @@ pub fn parse_line(text: &str, mode: Option<Mode>) -> Result<Line, MusicError> {
     })
 }
 
-/// Whether a line names minor: it starts with `i`, or a part is a bare
-/// `III`, `VI` or `VII`.
+/// Whether a line names minor: it starts with `i`, or it does not start
+/// with `I` and a part is a bare `III`, `VI` or `VII`.
 fn names_minor(parts: &[&str]) -> bool {
     fn chord<'a>(part: &&'a str) -> Option<Parsed<'a>> {
         read(part.split('/').next().unwrap_or(part))
     }
-    let tonic = parts
-        .first()
-        .and_then(chord)
-        .is_some_and(|first| first.degree == 0 && first.lower && first.accidental == 0);
-    tonic
-        || parts.iter().filter_map(chord).any(|numeral| {
-            numeral.accidental == 0
-                && !numeral.lower
-                && numeral.sign.is_none()
-                && matches!(numeral.degree, 2 | 5 | 6)
-        })
+    let Some(first) = parts.first().and_then(chord) else {
+        return false;
+    };
+    if first.degree == 0 && first.accidental == 0 {
+        return first.lower;
+    }
+    parts.iter().filter_map(chord).any(|numeral| {
+        numeral.accidental == 0
+            && !numeral.lower
+            && numeral.sign.is_none()
+            && matches!(numeral.degree, 2 | 5 | 6)
+    })
 }
 
 /// Parses one numeral in a line of `mode`.
@@ -134,7 +137,7 @@ pub fn parse_numeral(text: &str, mode: Mode) -> Result<Numeral, MusicError> {
             return Err(unknown());
         }
         let chord = parse_numeral(chord, Mode::Major)?;
-        if chord.of.is_some() {
+        if chord.of.is_some() || chord.offset == 0 {
             return Err(unknown());
         }
         return Ok(Numeral {
@@ -260,6 +263,17 @@ mod tests {
         assert_eq!(offsets("VI-VII-i-i"), [8, 10, 0, 0]);
         assert_eq!(offsets("iv-VII-III-VI"), [5, 10, 3, 8]);
         assert!(parse_line("vi-IV-I-V", None).unwrap().assumed);
+        for (line, offsets_read) in [
+            ("I-VI-ii-V", [0, 9, 2, 7]),
+            ("I-VI7-ii7-V7", [0, 9, 2, 7]),
+            ("I-V-VI-IV", [0, 7, 9, 5]),
+        ] {
+            assert_eq!(offsets(line), offsets_read, "{line}");
+            let parsed = parse_line(line, None).unwrap();
+            assert_eq!((parsed.mode, parsed.assumed), (Mode::Major, true), "{line}");
+        }
+        assert_eq!(offsets("I-III7-vi"), [0, 4, 9]);
+        assert!(parse_line("I-III7-vi", None).unwrap().assumed);
         assert!(!parse_line("i-iv-v", None).unwrap().assumed);
         let given = parse_line("vi-IV-I-V", Some(Mode::Minor)).unwrap();
         assert_eq!((given.mode, given.assumed), (Mode::Minor, false));
@@ -288,7 +302,7 @@ mod tests {
             parse_line("I6/9", None).unwrap().numerals[0].extension,
             "6/9"
         );
-        for text in ["V7/X", "V/V/V", "I7/9", "V/"] {
+        for text in ["V7/X", "V/V/V", "I7/9", "V/", "I/V", "i/iv"] {
             assert!(parse_line(text, None).is_err(), "{text}");
         }
     }

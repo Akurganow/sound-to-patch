@@ -8,7 +8,7 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 
 | Word | Id | Rule | Meaning | Tier | Tag | Sources |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| sub bass | `role.sub-bass` | core 26 to 35, hard 24 to 40, mono | The sub band below about 60 Hz, played one note at a time. Many playback systems roll off below about 30 Hz, between notes 23 and 24, so the core stays at 26 to 35. | M1 | source states | guides, lexicon |
+| sub bass | `role.sub-bass` | core 26 to 35, hard 24 to 40, mono | The sub band below about 60 Hz, played one note at a time. Many playback systems roll off below about 30 Hz, between notes 22 and 23, so the core stays at 26 to 35. | M1 | source states | guides, lexicon |
 | 808 | `role.808` | core 24 to 36, hard 23 to 40, mono | A tuned bass drum played one note at a time. Trap roots sit at 28 to 33 and drill roots at 29 to 33, and a root under 23 moves up an octave. | M1 | source states | guides, lexicon |
 | bass (mid bass, synth bass, reese, rolling bass) | `role.bass` | core 28 to 48, hard 24 to 60, mono | Mid, synth, reese and rolling bass, played one note at a time. Most notes sit at 28 to 48, and notes outside 24 to 60 are rejected. | M1 | derived | lmd, lexicon |
 | lead | `role.lead` | core 60 to 84, hard 48 to 96, mono | A single-voice melody sound. Most notes sit at 60 to 84, and notes outside 48 to 96 are rejected. | M1 | derived | lmd, lexicon |
@@ -16,4 +16,4 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | keys | `role.keys` | core 40 to 84, hard 21 to 108, poly | Piano-like parts played with both hands: left hand 36 to 60, right hand 60 to 84, so the core spans 40 to 84. The hard limits cover the whole model range, so only the core can fail. | M1 | derived | lmd, lexicon |
 | pluck | `role.pluck` | core 55 to 88, hard 48 to 96, mono or poly | Short plucked notes in the lead range, played one at a time or several at once. No pluck data exists, so the range follows trance guides that put A, D and C minor lines there. | M2 | inferred | guides, lexicon |
 | arp (arpeggio) | `role.arp` | core 55 to 88, hard 36 to 96, mono | An arpeggio plays in the lead or pluck core, one note at a time, with a span of at most 24 semitones. No pitch data exists, so this range is an inference. | M2 | inferred | lexicon |
-| vocal-like (vocal) | `role.vocal` | core 40 to 84, hard 40 to 88, mono | A voice-like line played one note at a time. Core ranges by voice: bass 40 to 64, baritone 45 to 69, tenor 48 to 72, alto 53 to 77, soprano 60 to 84. | M3 | snippet | lexicon |
+| vocal-like (vocal) | `role.vocal` | core 40 to 84, hard 40 to 88, mono | A voice-like line played one note at a time. Core ranges by voice: bass 40 to 64, baritone 45 to 69, tenor 48 to 72, alto 53 to 77, soprano 60 to 84. It rests on search excerpts and is not checked against a full source. | M3 | snippet | lexicon |

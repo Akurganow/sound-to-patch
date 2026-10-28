@@ -2157,7 +2157,7 @@
     "group": "pad",
     "word": "piano house",
     "aliases": [],
-    "meaning": "Chords 0.75 beat apart: slots 0, 3, 6, 9 and 12.",
+    "meaning": "Chords 0.75 beat apart: slots 0, 3, 6, 9 and 12. It rests on search excerpts and is not checked against a full source.",
     "sense": null,
     "default": true,
     "conflicts": [],

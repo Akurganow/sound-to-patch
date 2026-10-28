@@ -57,9 +57,9 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 
 | Word | Id | Rule | Meaning | Tier | Tag | Sources |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
-| laid-back (laid back, behind the beat) | `feel.laid-back` | every onset 10 to 25 ms off the grid, late positive | Snare and other backbeat hits land 10 to 25 ms late. Kick and bass stay on the grid. | M2 | snippet | guides |
-| pushed (ahead of the beat) | `feel.pushed` | every onset -20 to -5 ms off the grid, late positive | Hits land 5 to 20 ms early, ahead of the grid. | M2 | snippet | guides |
-| humanize (humanise, humanized) | `feel.humanize` | onsets vary up to 20 ms, velocities up to 12 | Random drift in start times of 5 to 20 ms and in velocity of 5 to 12 per voice. Real drummers on a click vary by about 20 ms. Lengths do not change. | M2 | snippet | guides, groove |
+| laid-back (laid back, behind the beat) | `feel.laid-back` | every onset 10 to 25 ms off the grid, late positive | Snare and other backbeat hits land 10 to 25 ms late. Kick and bass stay on the grid. It rests on search excerpts and is not checked against a full source. | M2 | snippet | guides |
+| pushed (ahead of the beat) | `feel.pushed` | every onset -20 to -5 ms off the grid, late positive | Hits land 5 to 20 ms early, ahead of the grid. It rests on search excerpts and is not checked against a full source. | M2 | snippet | guides |
+| humanize (humanise, humanized) | `feel.humanize` | onsets vary up to 20 ms, velocities up to 12 | Random drift in start times of 5 to 20 ms and in velocity of 5 to 12 per voice. Real drummers on a click vary by about 20 ms. Lengths do not change. It rests on search excerpts and is not checked against a full source. | M2 | snippet | guides, groove |
 | quantized (tight) | `feel.quantized` | onsets vary up to 5 ms, velocities up to 5 | Tight dance timing: start times within 5 ms of the grid and velocity within 3 to 5. | M3 | inferred | lexicon |
 | ghost note (ghost) | `feel.ghost-note` | velocity 20 to 45 | A very quiet hit, velocity 20 to 45, usually on a snare at slot mod 4 of 1 or 3. Drum and bass puts ghost snares at 2, 7, 9 and 15. | M1 | source states | guides |
 | accent (accented) | `feel.accent` | velocity 100 to 127 | A hit at velocity 100 to 127 among notes at 70 to 90. The sound only follows velocity when the preset routes velocity to level or cutoff. | M1 | source states | guides |

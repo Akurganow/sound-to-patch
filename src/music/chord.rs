@@ -3,8 +3,9 @@
 //! A symbol is a root letter with an optional sharp or flat, a spelling
 //! from a chord entry of the dictionary, and an optional `/X` bass note.
 //! Parentheses list alterations (`C7(b9,#11)`), and `no3`, `omit3` and
-//! `no5` remove a tone. A spelling outside the dictionary is an error that
-//! names it. The tones of a symbol with several readings follow the
+//! `no5` remove a tone. A `5` straight after the root is the power chord,
+//! so `Cb5` is a power chord on Cb, not C with a flat fifth. A spelling
+//! outside the dictionary is an error that names it. The tones of a symbol with several readings follow the
 //! dictionary's policy, not any one program.
 //!
 //! ```
@@ -26,6 +27,10 @@ use crate::music::{MusicError, dictionary};
 /// The tones the parser gives `alt`: the dominant's root, third and
 /// seventh with a sharp ninth and a flat thirteenth.
 pub const ALT_TONES: [u8; 5] = [0, 4, 10, 15, 20];
+
+/// The one chord entry that chooses its tones; its spellings take
+/// [`ALT_TONES`].
+pub const ALTERED_DOMINANT: &str = "chord.altered-dominant";
 
 /// A parsed chord symbol.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,10 +70,10 @@ fn spellings() -> Result<&'static Spellings, MusicError> {
         let mut by_symbol = HashMap::new();
         let mut by_tones = HashMap::new();
         for entry in dictionary()?.group(Group::Chord) {
-            let Rule::ChordTones { offsets, choose } = &entry.rule else {
+            let Rule::ChordTones { offsets, .. } = &entry.rule else {
                 continue;
             };
-            let tones = if choose.is_some() {
+            let tones = if entry.id == ALTERED_DOMINANT {
                 ALT_TONES.to_vec()
             } else {
                 offsets.clone()
@@ -257,6 +262,8 @@ mod tests {
         );
         assert_eq!(parse_chord("C/Bbb").unwrap().bass, Some(9));
         assert_eq!(parse_chord("F##").unwrap().root, 7);
+        let chord = parse_chord("Cb5").unwrap();
+        assert_eq!((chord.root, chord.tones.as_slice()), (11, &[0, 7][..]));
     }
 
     #[test]
@@ -279,6 +286,8 @@ mod tests {
         for text in ["C7(no5)", "C7no5", "C7omit5", "C7(omit5)"] {
             assert_eq!(tones(text), [0, 4, 10], "{text}");
         }
+        assert_eq!(tones("C6no5"), [0, 4, 9]);
+        assert_eq!(tones("C13no5"), [0, 4, 10, 14, 21]);
     }
 
     #[test]

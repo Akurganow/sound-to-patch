@@ -9,7 +9,7 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | Word | Id | Rule | Meaning | Tier | Tag | Sources |
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | octave label, sense `c3` | `notation.octave-label.c3` | none | Some programs label note 60 C3, so the octave number is the note number divided by 12, rounded down, minus 2. Serum 2 labels it C3, and the Vital label is not checked yet. The Serum 2 guide also calls 440 Hz A4, which is the scientific name; in the C3 convention that note is A3, so the guide mixes the two and a probe of the app should settle it. | M1 | source states | serum2-guide, middle-c |
-| octave label (octave name), sense `c4`, default | `notation.octave-label.c4` | none | Scientific pitch notation labels note 60 C4: the octave number is the note number divided by 12, rounded down, minus 1. Note 21 is A0 and note 127 is G9. | M1 | snippet | middle-c |
+| octave label (octave name), sense `c4`, default | `notation.octave-label.c4` | none | Scientific pitch notation labels note 60 C4: the octave number is the note number divided by 12, rounded down, minus 1. Note 21 is A0 and note 127 is G9. It rests on search excerpts and is not checked against a full source. | M1 | snippet | middle-c |
 | octave label, sense `c5` | `notation.octave-label.c5` | none | Some programs label note 60 C5, so the octave number is the note number divided by 12, rounded down. Note 21 is A1 and note 127 is G10. | M1 | source states | middle-c |
 | middle C (note 60) | `notation.middle-c` | none | Note 60 is middle C, at 261.63 Hz with A above it tuned to 440 Hz. The MIDI standard fixes the number and names no octave. | M1 | source states | middle-c |
 | pitch class (pitch names) | `notation.pitch-class` | none | Pitch classes number C as 0, C# or Db as 1, and so on up to B as 11. The tool keeps integers and spells names only for display. | M1 | inferred | lexicon |
@@ -28,7 +28,7 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | Open Key (1m, 1d) | `key.open-key` | tonic: the first or last phrase note, or the held bass, is the root | A number from 1 to 12 and the letter m for minor or d for major. The number is the Camelot number plus 5, wrapped to 1 to 12, so 1m is A minor and 1d is C major. | M2 | derived | camelot |
 | relative key (relative minor, relative major) | `key.relative-key` | none | A relative key shares the notes of its partner and starts on a different tonic. The relative minor starts 9 semitones above the major tonic and the relative major starts 3 above the minor tonic. | M2 | inferred | lexicon |
 | parallel key (parallel minor, parallel major) | `key.parallel-key` | none | A parallel key has the same tonic and the other mode, such as C major and C minor. | M2 | inferred | lexicon |
-| Roman numeral (Roman numerals, numeral) | `key.roman-numeral` | none | Upper case names a major chord and lower case a minor chord, with ° for diminished, ø for half-diminished and + for augmented. Read the degrees in the key's mode; with no key, a line is minor only when it starts with i or holds a bare III, VI or VII, and any other line reads as major with the assumption recorded. | M1 | derived | lexicon, tonal |
+| Roman numeral (Roman numerals, numeral) | `key.roman-numeral` | none | Upper case names a major chord and lower case a minor chord, with ° for diminished, ø for half-diminished and + for augmented. Read the degrees in the key's mode. With no key, a line that starts with I reads as major, because a major key borrows III, VI and VII as secondary chords. Any other line is minor when it starts with i or holds a bare III, VI or VII. A line read as major without a minor sign records the assumption. | M1 | derived | lexicon, tonal |
 | Roman numerals in major (scale degrees in major, scale degree) | `key.roman-major` | none | In major the numerals sit at these semitones: I 0, ii 2, iii 4, IV 5, V 7, vi 9 and vii° 11. bII 1 comes from Phrygian, and bIII 3, bVI 8 and bVII 10 are borrowed from the parallel minor. X/Y is a secondary chord, X read in the key of Y: V/V sits at 2. | M1 | derived | lexicon, tonal |
 | Roman numerals in minor (scale degrees in minor) | `key.roman-minor` | none | In natural minor the numerals sit at these semitones: i 0, ii° 2, III 3, iv 5, v 7, VI 8 and VII 10. In harmonic minor V is major and vii° sits at 11. | M1 | derived | lexicon, tonal |
 | numeral spelling (i-VI-III-VII, i-bVI-bIII-bVII) | `key.roman-equivalence` | none | The loops i-VI-III-VII in natural-minor degrees and i-bVI-bIII-bVII against major name the same chords. Store semitones and accept both spellings. | M2 | inferred | lexicon |
@@ -67,7 +67,7 @@ The same number with the other letter is the relative key; one number up or down
 
 | Camelot | Minor (A) | Major (B) | Open Key |
 | --: | :-- | :-- | :-- |
-| 1 | Ab minor | B major | 6m and 6d |
+| 1 | G# minor | B major | 6m and 6d |
 | 2 | Eb minor | F# major | 7m and 7d |
 | 3 | Bb minor | Db major | 8m and 8d |
 | 4 | F minor | Ab major | 9m and 9d |

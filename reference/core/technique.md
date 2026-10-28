@@ -76,6 +76,6 @@ Pitches are MIDI numbers, 60 = middle C. Onsets are slots 0 to 15 of a sixteenth
 | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
 | held chords | `pad.held-chords` | chord at 0 | The chord starts on slot 0 of its first bar and lasts the whole chord span. | M1 | source states | guides |
 | stab | `pad.stab` | sounding length 0.25 to 0.5 beats | A short chord hit of 0.25 to 0.5 beat. Offbeat house places it on slots 2, 6, 10 and 14. The role entry decides the sound. | M1 | source states | guides |
-| piano house | `pad.piano-house` | chord at 0 3 6 9 12 | Chords 0.75 beat apart: slots 0, 3, 6, 9 and 12. | M2 | snippet | guides |
+| piano house | `pad.piano-house` | chord at 0 3 6 9 12 | Chords 0.75 beat apart: slots 0, 3, 6, 9 and 12. It rests on search excerpts and is not checked against a full source. | M2 | snippet | guides |
 | pumping | `pad.pumping` | bass at 1 2 3 5 6 7 9 10 11 13 14 15 | The chords breathe with the kick, which compression makes. In MIDI, sustain full-bar chords and leave slot mod 4 of 0 empty in the bass. The first bass note after the kick may be 30 percent quieter or 5 to 15 ms later. | M2 | source states | guides |
 | trance gate (gate) | `pad.trance-gate` | sounding length at least 4 beats | A chopped pad. In MIDI it is one held chord. An LFO or step pattern on volume makes the chop, 16 steps per bar at 136 to 140 BPM. | M2 | source states | guides |

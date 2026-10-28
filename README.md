@@ -63,6 +63,7 @@ and ideas, from which we copy no code, text or data.
 - [A DAW vendor's FAQ on keys and scales](https://help.ableton.com/hc/en-us/articles/11425083250972-Keys-and-Scales-in-Live-12-FAQ) (no license found): the snap rule of out-of-scale notes. Inspiration only.
 - [A home-studio table of middle-C labels](https://homestudio.app/resources/midi-middle-c) (no license found): the three octave labels of MIDI note 60. Inspiration only.
 - [An electronic genre guide](https://beatkitchen.io/guides/electronic-music/01-genre-landscape) (CC BY-NC-SA 4.0): tempo ranges and drum skeletons of the genre templates. Inspiration only.
+- [A producer guide to trap beats](https://www.audeobox.com/learn/ableton/how-to-make-trap-beats-in-ableton) (no license found): the trap tempo range, drum skeleton and hat velocities. Inspiration only.
 - [Camelot and Open Key tables of a key-detection vendor](https://mixedinkey.com/camelot-wheel) (no license found): the key codes the dictionary computes by formula. Inspiration only.
 - Tuomas Eerola, Anders Friberg and Roberto Bresin, [Emotional expression in music: contribution, linearity, and additivity of primary musical cues](https://doi.org/10.3389/fpsyg.2013.00487) (CC BY 3.0), Frontiers in Psychology 2013: mode as the strongest of six cues, with additive cues, behind the mood defaults of the music dictionary.
 - [English Wikipedia pages on scales, chords, progressions and rhythms](https://en.wikipedia.org/wiki/List_of_musical_scales_and_modes) (CC BY-SA 4.0): scale sets, chord names and rhythm names, facts only. Inspiration only.

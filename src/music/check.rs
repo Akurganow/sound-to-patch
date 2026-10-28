@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use serde::Deserialize;
 
 use crate::music::Dictionary;
+use crate::music::chord::ALTERED_DOMINANT;
 use crate::music::entry::{Entry, Fragment, Group, Rule, Tier};
 use crate::notes::{HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH};
 use crate::preset::registry::registry_for;
@@ -179,6 +180,13 @@ fn entry_problems(
                 picked.id
             ));
         }
+    }
+    if let Rule::ChordTones {
+        choose: Some(_), ..
+    } = &entry.rule
+        && entry.id != ALTERED_DOMINANT
+    {
+        found.push(format!("only `{ALTERED_DOMINANT}` may choose its tones"));
     }
     found.extend(control_problems(entry, sources));
     found.extend(rule_problems(&entry.rule, dictionary));
@@ -592,6 +600,27 @@ mod tests {
         assert!(recompute(34.3, 57_543, 168_242).is_some());
         assert!(recompute(97.0, 29, 30).is_some());
         assert!(recompute(50.0, 3, 2).is_some());
+    }
+
+    #[test]
+    fn only_the_altered_dominant_chooses_its_tones() {
+        let dictionary = crate::music::dictionary().unwrap();
+        let Some(Rule::ChordTones { choose, .. }) =
+            dictionary.entry(ALTERED_DOMINANT).map(|entry| &entry.rule)
+        else {
+            panic!("{ALTERED_DOMINANT} has no chord tones");
+        };
+        let mut entry = dictionary.entry("chord.major-triad").unwrap().clone();
+        if let Rule::ChordTones { choose: other, .. } = &mut entry.rule {
+            other.clone_from(choose);
+        }
+        let problems = entry_problems(&entry, dictionary, &BTreeSet::new());
+        assert!(
+            problems
+                .iter()
+                .any(|problem| problem.contains("may choose its tones")),
+            "{problems:?}"
+        );
     }
 
     #[test]

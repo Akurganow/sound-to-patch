@@ -368,7 +368,7 @@
     "group": "chord",
     "word": "add9",
     "aliases": ["add 9", "added ninth"],
-    "meaning": "A major triad plus the ninth, with no seventh. The spelling 2 after the root reads as add9.",
+    "meaning": "A major triad plus the ninth, with no seventh.",
     "sense": null,
     "default": true,
     "conflicts": [],

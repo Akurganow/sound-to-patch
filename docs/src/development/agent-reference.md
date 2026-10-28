@@ -111,9 +111,12 @@ Each entry is one sense of a word:
   it.
 
 Roman numerals take the mode of the key when it is given. Without one, a
-line is minor only when it starts with `i` or holds a bare `III`, `VI` or
-`VII`; any other line reads as major and is flagged as an assumption.
-`X/Y` is a secondary chord read in the key of Y.
+line that starts with `I` reads as major, because a major key borrows
+`III`, `VI` and `VII` as secondary chords. Any other line is minor when it
+starts with `i` or holds a bare `III`, `VI` or `VII`. A line read as major
+without a minor sign is flagged as an assumption. `X/Y` is a secondary
+chord read in the key of Y; `I/Y` is refused, since it could be a slash
+chord.
 
 The middle-C convention is named by the label a program gives note 60:
 `C3`, `C4` (scientific) or `C5`. Notes are stored as MIDI numbers, and a

@@ -2,6 +2,7 @@
   { "id": "lexicon", "name": "Published music lexicon and ranked list (comment on issue 101)", "url": "https://github.com/Akurganow/sound-to-patch/issues/101#issuecomment-6393746249", "licence": "MIT, as this repository", "use": "copy" },
   { "id": "guides", "name": "Producer guides and tutorials on scales, chords, voicing, rhythm and technique, about 70 pages, listed by kind in the lexicon", "url": "https://github.com/Akurganow/sound-to-patch/issues/101#issuecomment-6393746249", "licence": "no licence stated", "use": "facts only" },
   { "id": "genre-guide", "name": "An electronic genre guide", "url": "https://beatkitchen.io/guides/electronic-music/01-genre-landscape", "licence": "CC BY-NC-SA 4.0", "use": "facts only" },
+  { "id": "trap-guide", "name": "A producer guide to trap beats", "url": "https://www.audeobox.com/learn/ableton/how-to-make-trap-beats-in-ableton", "licence": "no licence stated", "use": "facts only" },
   { "id": "tonal", "name": "tonal: chord, scale and Roman-numeral tables", "url": "https://github.com/tonaljs/tonal", "licence": "MIT", "revision": "e555422", "use": "facts only" },
   { "id": "pychord", "name": "pychord: chord-quality table", "url": "https://github.com/yuma-m/pychord", "licence": "MIT", "revision": "91d3afc", "use": "facts only" },
   { "id": "music21", "name": "music21: music library", "url": "https://github.com/cuthbertLab/music21", "licence": "BSD-3-Clause", "use": "facts only" },

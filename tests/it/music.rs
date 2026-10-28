@@ -592,27 +592,49 @@ fn the_python_oracles_cover_every_spelling_and_differ_only_where_pinned() {
 
 #[test]
 fn every_roman_alias_parses_to_its_progression_roots() {
+    let mut words = Vec::new();
     let mut checked = 0;
     for entry in dictionary().unwrap().group(Group::Progression) {
-        let Rule::Cycle { roots, .. } = &entry.rule else {
-            panic!("{} has no cycle", entry.id)
+        let roots = match &entry.rule {
+            Rule::Cycle { roots, .. } => roots,
+            Rule::None {} => continue,
+            _ => panic!("{} has no cycle", entry.id),
         };
         for alias in &entry.aliases {
             let Ok(line) = parse_line(alias, None) else {
+                words.push(alias.as_str());
                 continue;
             };
-            if line.numerals.len() == roots.len() {
-                let parsed: Vec<u8> = line.numerals.iter().map(|numeral| numeral.offset).collect();
-                assert!(
-                    &parsed == roots || relative_rotation(&parsed, roots),
-                    "{}: {alias} gives {parsed:?}, not {roots:?}",
-                    entry.id
-                );
-                checked += 1;
-            }
+            let parsed: Vec<u8> = line.numerals.iter().map(|numeral| numeral.offset).collect();
+            let same = if parsed.len() == roots.len() {
+                &parsed == roots || relative_rotation(&parsed, roots)
+            } else {
+                parsed.iter().collect::<BTreeSet<_>>() == roots.iter().collect()
+            };
+            assert!(
+                same,
+                "{}: {alias} gives {parsed:?}, not {roots:?}",
+                entry.id
+            );
+            checked += 1;
         }
     }
-    assert!(checked >= 15, "only {checked} aliases checked");
+    words.sort_unstable();
+    assert_eq!(
+        words,
+        [
+            "backdoor ii-V",
+            "blues form",
+            "circle progression",
+            "doo-wop",
+            "epic",
+            "four chords",
+            "three chords",
+            "twelve-bar blues",
+            "two-five-one",
+        ]
+    );
+    assert!(checked >= 20, "only {checked} aliases checked");
 }
 
 /// Whether `parsed` is the loop `roots` read from the relative key: the

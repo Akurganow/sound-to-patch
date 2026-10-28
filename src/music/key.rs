@@ -69,12 +69,12 @@ impl Key {
     }
 
     /// Sharps or flats for display: flats for F, Bb, Eb, Ab and Db major
-    /// and for D, G, C, F, Bb, Eb and Ab minor; sharps otherwise.
+    /// and for D, G, C, F, Bb and Eb minor; sharps otherwise.
     #[must_use]
     pub fn spelling(self) -> Spelling {
         let flats: &[u8] = match self.mode {
             Mode::Major => &[5, 10, 3, 8, 1],
-            Mode::Minor => &[2, 7, 0, 5, 10, 3, 8],
+            Mode::Minor => &[2, 7, 0, 5, 10, 3],
         };
         if flats.contains(&self.tonic) {
             Spelling::Flats
@@ -518,7 +518,7 @@ mod tests {
         assert_eq!(Key::new(10, Mode::Major).to_string(), "Bb major");
         assert_eq!(Key::new(6, Mode::Minor).to_string(), "F# minor");
         assert_eq!(Key::new(10, Mode::Minor).to_string(), "Bb minor");
-        assert_eq!(Key::new(8, Mode::Minor).to_string(), "Ab minor");
+        assert_eq!(Key::new(8, Mode::Minor).to_string(), "G# minor");
         assert_eq!(Key::new(3, Mode::Minor).to_string(), "Eb minor");
         assert_eq!(Key::new(1, Mode::Minor).to_string(), "C# minor");
     }
