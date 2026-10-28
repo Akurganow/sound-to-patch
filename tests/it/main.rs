@@ -27,6 +27,8 @@ mod midi;
 mod midi_write;
 #[cfg(test)]
 mod modulation;
+#[cfg(test)]
+mod music;
 mod preset;
 #[cfg(test)]
 mod reference;

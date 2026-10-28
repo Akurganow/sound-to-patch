@@ -1,0 +1,76 @@
+---
+source: tests/it/music.rs
+expression: pins(tempos.chain(roots))
+---
+rhythm.two-step 132 None 172
+rhythm.dembow 88 None 100
+rhythm.amen-style-break 136 None 140
+rhythm.largo 41 Some(58.0) 60
+rhythm.adagio 61 Some(67.0) 70
+rhythm.andante 71 Some(82.0) 90
+rhythm.moderato 91 Some(100.0) 110
+rhythm.allegro 111 Some(120.0) 140
+rhythm.vivace 141 Some(150.0) 160
+rhythm.presto 161 Some(180.0) 210
+rhythm.moderate-tempo 81 None 120
+rhythm.fast-tempo 121 None 160
+rhythm.jungle-tempo 170 None 180
+genre.house 115 Some(124.0) 132
+genre.techno 120 Some(130.0) 150
+genre.trance 125 Some(138.0) 150
+genre.psytrance 125 None 150
+genre.drum-and-bass 160 Some(174.0) 180
+genre.dubstep 132 Some(140.0) 142
+genre.trap 130 Some(140.0) 160
+genre.boom-bap 85 None 100
+genre.deep-house 110 Some(125.0) 128
+genre.tech-house 120 None 132
+genre.neurofunk 172 None 175
+genre.lo-fi 70 Some(80.0) 90
+genre.synthwave 80 None 118
+genre.future-bass 130 Some(150.0) 175
+genre.uk-garage 125 None 140
+genre.reggaeton 88 None 100
+genre.afrobeats 90 None 115
+genre.riddim 140 None 150
+genre.amapiano 110 None 115
+genre.hardstyle 140 None 160
+progression.one-four-five [0, 5, 7] ["chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.axis [0, 7, 9, 5] ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"]
+progression.fifties [0, 9, 5, 7] ["chord.major-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+progression.mixolydian-loop [0, 10, 5] ["chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.aeolian-shuttle [0, 10, 8, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.ii-v-i [2, 7, 0] ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"]
+progression.one-four-six-five [0, 5, 9, 7] ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"]
+progression.minor-loop-with-iv [0, 5, 10, 3] ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+progression.minor-three-seven-six [0, 3, 10, 8] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.one-three-four-five [0, 4, 5, 7] ["chord.major-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+progression.minor-five-six-seven [0, 7, 8, 10] ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+progression.royal-road [5, 7, 4, 9] ["chord.major-seventh", "chord.dominant-seventh", "chord.minor-seventh", "chord.minor-seventh"]
+progression.andalusian-cadence [0, 10, 8, 7] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.flat-six-flat-seven-one [8, 10, 0, 5] ["chord.major-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.twelve-bar-blues [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7] ["chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh", "chord.dominant-seventh"]
+progression.turnaround [0, 9, 2, 7] ["chord.major-seventh", "chord.minor-seventh", "chord.minor-seventh", "chord.dominant-seventh"]
+progression.pachelbel [0, 7, 9, 4, 5, 0, 5, 7] ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.phrygian-menace [1, 0] ["chord.major-triad", "chord.minor-triad"]
+progression.minor-plagal [5, 5, 0] ["chord.major-triad", "chord.minor-triad", "chord.major-triad"]
+progression.minor-trance-circle [5, 10, 3, 8] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+progression.backdoor [5, 10, 0] ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"]
+progression.circle-vi-ii-v-i [9, 2, 7, 0] ["chord.minor-seventh", "chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"]
+harmony.trance-chords [0, 8, 3, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+harmony.deep-house-chords [2, 7, 0] ["chord.minor-seventh", "chord.dominant-seventh", "chord.major-seventh"]
+harmony.house-stab-chords [0, 5, 7] ["chord.major-triad", "chord.major-triad", "chord.major-triad"]
+harmony.lo-fi-chords [2, 7, 0] ["chord.minor-9", "chord.dominant-9", "chord.major-9"]
+harmony.techno-chords [0] ["chord.minor-seventh"]
+harmony.trap-chords [0, 8, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+harmony.progressive-house-chords [0, 5, 8, 10] ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+harmony.future-bass-chords [9, 5, 0, 7] ["chord.minor-seventh", "chord.major-seventh", "chord.major-seventh", "chord.dominant-seventh"]
+harmony.neo-soul-chords [2, 7, 0] ["chord.minor-9", "chord.dominant-13", "chord.major-9"]
+harmony.drum-and-bass-chords [0, 8, 3, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+harmony.pop-chords [0, 7, 9, 5] ["chord.major-triad", "chord.major-triad", "chord.minor-triad", "chord.major-triad"]
+harmony.film-chords [0, 8, 3, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad", "chord.major-triad"]
+harmony.big-room-chords [0, 0, 8, 8] ["chord.minor-triad", "chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+harmony.synthwave-chords [0, 10, 5] ["chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+harmony.dubstep-chords [0, 8, 10] ["chord.minor-triad", "chord.major-triad", "chord.major-triad"]
+harmony.chromatic-mediant [0, 4] ["chord.major-triad", "chord.major-triad"]
+harmony.double-chromatic-mediant [0, 3] ["chord.major-triad", "chord.minor-triad"]

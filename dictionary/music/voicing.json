@@ -1,0 +1,1610 @@
+[
+  {
+    "id": "voicing.close",
+    "group": "voicing",
+    "word": "close",
+    "aliases": [],
+    "meaning": "All tones sit within one octave, and no two neighbouring tones are more than four semitones apart.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.open.voicing", "voicing.wide"],
+    "rule": {"kind": "voicing", "shape": "close", "max_span": 12, "max_gap": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.open.voicing",
+    "group": "voicing",
+    "word": "open",
+    "aliases": [],
+    "meaning": "Tones spread out: some neighbours are five or more semitones apart, or the whole chord spans more than an octave. Either condition counts.",
+    "sense": "voicing",
+    "default": true,
+    "conflicts": [
+      "voicing.open.fifths",
+      "voicing.open.guitar-chord",
+      "position.open.hat",
+      "voicing.close"
+    ],
+    "rule": {"kind": "voicing", "shape": "open", "min_gap": 5, "min_span": 13},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides", "lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": {
+      "question": "Which open do you mean: an open voicing, open fifths, an open guitar chord or an open hi-hat?",
+      "options": [
+        "voicing.open.voicing",
+        "voicing.open.fifths",
+        "voicing.open.guitar-chord",
+        "position.open.hat"
+      ],
+      "default": "voicing.open.voicing",
+      "when": "The text names no voicing. A batch run takes the open voicing."
+    },
+    "default_pick": null
+  },
+  {
+    "id": "voicing.open.fifths",
+    "group": "voicing",
+    "word": "open",
+    "aliases": [],
+    "meaning": "Tones stacked in fifths with no third, so the chord sounds hollow and wide. It is common in film writing.",
+    "sense": "fifths",
+    "default": false,
+    "conflicts": ["voicing.open.voicing", "voicing.open.guitar-chord", "position.open.hat"],
+    "rule": {"kind": "voicing", "shape": "quintal", "step": 7, "min_notes": 2, "max_notes": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.open.guitar-chord",
+    "group": "voicing",
+    "word": "open",
+    "aliases": [],
+    "meaning": "A chord shaped like a guitar open-string chord: four to six tones, none below the low open string at 40.",
+    "sense": "guitar-chord",
+    "default": false,
+    "conflicts": ["voicing.open.voicing", "voicing.open.fifths", "position.open.hat"],
+    "rule": {"kind": "voicing", "shape": "open", "lowest": 40, "min_notes": 4, "max_notes": 6},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 40, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 47, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 47, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 56, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.inversion",
+    "group": "voicing",
+    "word": "inversion",
+    "aliases": ["slash"],
+    "meaning": "The bass is a chord tone: the root in root position, the third in first inversion, the fifth in second, the seventh in third.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "inversion"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.drop-2",
+    "group": "voicing",
+    "word": "drop-2",
+    "aliases": [],
+    "meaning": "Take a close voicing and lower its second voice from the top by an octave. Four notes then span 13 to 17 semitones, and a triad lowers its middle voice.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.drop-3"],
+    "rule": {"kind": "voicing", "shape": "drop-2", "drop": [2], "min_span": 13, "max_span": 17},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.shell.root-3rd-7th",
+    "group": "voicing",
+    "word": "shell",
+    "aliases": ["shell voicing"],
+    "meaning": "Only the root, third and seventh of a seventh chord. The fifth is left out.",
+    "sense": "root-3rd-7th",
+    "default": true,
+    "conflicts": ["voicing.shell.root-and-named"],
+    "rule": {
+      "kind": "voicing",
+      "shape": "shell",
+      "bass": "root",
+      "degrees": [1, 3, 7],
+      "min_notes": 3,
+      "max_notes": 3
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.shell.root-and-named",
+    "group": "voicing",
+    "word": "shell",
+    "aliases": [],
+    "meaning": "For a triad, the root plus one named note such as the third or fifth. This is the second reading of the word.",
+    "sense": "root-and-named",
+    "default": false,
+    "conflicts": ["voicing.shell.root-3rd-7th"],
+    "rule": {
+      "kind": "voicing",
+      "shape": "shell",
+      "bass": "root",
+      "degrees": [1],
+      "min_notes": 2,
+      "max_notes": 2
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.rootless.type-a",
+    "group": "voicing",
+    "word": "rootless",
+    "aliases": [],
+    "meaning": "Leave the root to the bass and play the third, fifth, seventh and ninth from the bottom up, near middle C. Cmaj9 becomes 64 67 71 74.",
+    "sense": "type-a",
+    "default": true,
+    "conflicts": ["voicing.rootless.type-b"],
+    "rule": {"kind": "voicing", "shape": "rootless-a", "degrees": [3, 5, 7, 9]},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.rootless.type-b",
+    "group": "voicing",
+    "word": "rootless",
+    "aliases": [],
+    "meaning": "Leave the root to the bass and play the seventh, ninth, third and fifth from the bottom up, near middle C. Cmaj9 becomes 59 62 64 67.",
+    "sense": "type-b",
+    "default": false,
+    "conflicts": ["voicing.rootless.type-a"],
+    "rule": {"kind": "voicing", "shape": "rootless-b", "degrees": [7, 9, 3, 5]},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 59, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.power",
+    "group": "voicing",
+    "word": "power",
+    "aliases": [],
+    "meaning": "Root and fifth only, with an optional octave on top.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "power", "degrees": [1, 5], "bass": "root", "max_notes": 3},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.pad-floor",
+    "group": "voicing",
+    "word": "pad floor",
+    "aliases": [],
+    "meaning": "Pads and wide chords stay above a high-pass near 150 Hz, which is MIDI note 50.37, so the lowest tone is 51 or higher.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "muddy", "below": 51, "max_below": 0},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 51, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 43, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["pad", "chords"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.drop-3",
+    "group": "voicing",
+    "word": "drop-3",
+    "aliases": [],
+    "meaning": "Take a close voicing and lower its third voice from the top by an octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.drop-2"],
+    "rule": {"kind": "voicing", "shape": "drop-3", "drop": [3], "min_notes": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.quartal",
+    "group": "voicing",
+    "word": "quartal",
+    "aliases": [],
+    "meaning": "Tones stacked about five semitones apart, with four or six allowed. D minor can be 50 55 60 65.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.quintal"],
+    "rule": {"kind": "voicing", "shape": "quartal", "step": 5, "step_tolerance": 1, "min_notes": 3},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 50, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.quintal",
+    "group": "voicing",
+    "word": "quintal",
+    "aliases": [],
+    "meaning": "Three or four tones stacked exactly seven semitones apart.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.quartal"],
+    "rule": {"kind": "voicing", "shape": "quintal", "step": 7, "min_notes": 3, "max_notes": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 53, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.neo-soul",
+    "group": "voicing",
+    "word": "neo-soul",
+    "aliases": [],
+    "meaning": "A seventh chord thickened with extra tones: a major seventh adds the ninth and thirteenth, a minor seventh adds the eleventh and ninth. The root plays alone low, neighbouring voices move at most three semitones, and each chord lasts a bar or more.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "voicing",
+      "shape": "neo-soul",
+      "min_pitch_classes": 6,
+      "bass": "root",
+      "max_leap": 3
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.lush",
+    "group": "voicing",
+    "word": "lush",
+    "aliases": [],
+    "meaning": "A full chord of at least five pitch classes spanning 16 semitones or more, sustained into the next chord.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "lush", "min_pitch_classes": 5, "min_span": 16},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 74, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.wide",
+    "group": "voicing",
+    "word": "wide",
+    "aliases": [],
+    "meaning": "A span of 19 semitones or more, with the root alone in the bass and upper voices five or more semitones apart. Stereo width is a preset matter.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.close"],
+    "rule": {"kind": "voicing", "shape": "wide", "min_span": 19, "min_gap": 5, "bass": "root"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.muddy",
+    "group": "voicing",
+    "word": "muddy",
+    "aliases": [],
+    "meaning": "A voicing is muddy when a pair of tones lies below its floor in the low-interval table, or when three tones sit below 48. The rule holds the clean side: at most two tones below 48.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.airy"],
+    "rule": {"kind": "voicing", "shape": "muddy", "below": 48, "max_below": 2},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 40, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 40, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 43, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.stab-voicing",
+    "group": "voicing",
+    "word": "stab voicing",
+    "aliases": [],
+    "meaning": "A stab stays within about one octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "close", "max_span": 12},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["stab"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.airy",
+    "group": "voicing",
+    "word": "airy",
+    "aliases": [],
+    "meaning": "Three or four tones, none below 55, built from sus2, sus4, add9 or open fifths.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["voicing.muddy"],
+    "rule": {"kind": "voicing", "shape": "airy", "min_notes": 3, "max_notes": 4, "lowest": 55},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.thick",
+    "group": "voicing",
+    "word": "thick",
+    "aliases": [],
+    "meaning": "At least five notes, or the root and fifth both doubled at the octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "thick", "min_notes": 5},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.drop-2-and-4",
+    "group": "voicing",
+    "word": "drop-2-and-4",
+    "aliases": [],
+    "meaning": "Take a close voicing and lower its second and fourth voices from the top by an octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "drop-2-and-4", "drop": [2, 4], "min_notes": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.low-interval-limit",
+    "group": "voicing",
+    "word": "low interval limit",
+    "aliases": [],
+    "meaning": "The lowest allowed note for the lower tone of a pair up to 16 semitones wide; the octave has no floor. Six floors match course flashcards and the rest come from a chart image, so a breach is a soft warning.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {
+      "kind": "voicing",
+      "shape": "interval-floor",
+      "floors": [
+        {"interval": 1, "lowest": 52},
+        {"interval": 2, "lowest": 51},
+        {"interval": 3, "lowest": 48},
+        {"interval": 4, "lowest": 46},
+        {"interval": 5, "lowest": 46},
+        {"interval": 6, "lowest": 46},
+        {"interval": 7, "lowest": 34},
+        {"interval": 8, "lowest": 43},
+        {"interval": 9, "lowest": 41},
+        {"interval": 10, "lowest": 41},
+        {"interval": 11, "lowest": 41},
+        {"interval": 12, "lowest": null},
+        {"interval": 13, "lowest": 40},
+        {"interval": 14, "lowest": 39},
+        {"interval": 15, "lowest": 36},
+        {"interval": 16, "lowest": 34}
+      ]
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 59, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 40, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 44, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.low-root",
+    "group": "voicing",
+    "word": "low root",
+    "aliases": [],
+    "meaning": "Put the root low, at 45, 41, 48 or 43 for Am, F, C or G. Keep the other chord tones inside 60 to 71.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "wide", "bass": "root", "lowest": 41, "max_span": 30},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 45, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 45, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voicing.spaced-trap-voicing",
+    "group": "voicing",
+    "word": "spaced trap voicing",
+    "aliases": [],
+    "meaning": "The root is left to the 808. The upper tones sit high, roughly the top two octaves of the chord range, with a total span of about 40 semitones.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "wide", "lowest": 72, "max_span": 40},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 72, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 79, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 83, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "keys", "arp"],
+    "genres": ["genre.trap"],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.common-tone",
+    "group": "voice-leading",
+    "word": "common tone",
+    "aliases": [],
+    "meaning": "A tone shared by two neighbouring chords keeps the same MIDI note instead of jumping an octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "common-tone"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.nearest-tone",
+    "group": "voice-leading",
+    "word": "nearest tone",
+    "aliases": [],
+    "meaning": "Each upper voice moves to the nearest tone of the next chord, by one or two semitones where possible. A leap over four is flagged, and the bass may leap.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "nearest-tone", "max_leap": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 77, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 81, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.smallest-motion",
+    "group": "voice-leading",
+    "word": "smallest motion",
+    "aliases": [],
+    "meaning": "Choose the octave placement of the next chord so the voices travel the least in total. For three sorted voices in MIDI 48 to 84, a cyclic C-G-Am-F loop totals 12.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "smallest-motion"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 76, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "derived",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.no-parallels",
+    "group": "voice-leading",
+    "word": "no parallels",
+    "aliases": [],
+    "meaning": "No two voices move in parallel fifths or octaves. Rock, power chords, planing and trap allow them.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "no-parallels"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 50, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.top-hold",
+    "group": "voice-leading",
+    "word": "top hold",
+    "aliases": [],
+    "meaning": "The top note stays put while the inner voices change underneath it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "top-hold"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 52, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 52, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.planing",
+    "group": "voice-leading",
+    "word": "planing",
+    "aliases": [],
+    "meaning": "Every voice moves by the same interval, so the chord shape slides in parallel.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "planing"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 69, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 71, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 58, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 62, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 65, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 70, "start": 16, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "voice-leading.loop-return",
+    "group": "voice-leading",
+    "word": "loop return",
+    "aliases": [],
+    "meaning": "The last chord of a loop leaves its lowest note within four semitones of the first chord's lowest note, so the loop turns over smoothly.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "voicing", "shape": "loop-return", "max_leap": 4},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 45, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 41, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 47, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 45, "start": 16, "len": 4, "vel": 90},
+        {"pitch": 41, "start": 32, "len": 4, "vel": 90},
+        {"pitch": 43, "start": 48, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["chords", "pad", "keys", "pluck", "stab", "arp"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

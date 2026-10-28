@@ -1,0 +1,2297 @@
+[
+  {
+    "id": "articulation.staccato",
+    "group": "articulation",
+    "word": "staccato",
+    "aliases": [],
+    "meaning": "Short and detached: about 50 percent of the grid step (0.125 beat on sixteenths). Staccatissimo goes down to 33 or 25 percent. In the note list the share is the gate.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.tenuto", "articulation.legato", "articulation.sustained"],
+    "rule": {"kind": "length", "unit": "step", "min": 0.25, "max": 0.5},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 50},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 40}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 50},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.tenuto",
+    "group": "articulation",
+    "word": "tenuto",
+    "aliases": [],
+    "meaning": "Held for the whole grid step, 100 percent of the step.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.staccato"],
+    "rule": {"kind": "length", "unit": "step", "min": 1.0, "max": 1.0},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 100},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 100},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 60}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.portato",
+    "group": "articulation",
+    "word": "portato",
+    "aliases": [],
+    "meaning": "Between staccato and tenuto: 67 or 75 percent of the step. Sources disagree on the figure.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "step", "min": 0.67, "max": 0.75},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 70},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 75}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 70},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 100, "gate": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.marcato",
+    "group": "articulation",
+    "word": "marcato",
+    "aliases": [],
+    "meaning": "A pushed, accented note at about 67 percent of the step.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "step", "min": 0.6, "max": 0.7},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 115, "gate": 67},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 115, "gate": 67}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 115, "gate": 67},
+        {"pitch": 62, "start": 4, "len": 0.25, "vel": 115, "gate": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.legato",
+    "group": "articulation",
+    "word": "legato",
+    "aliases": [],
+    "meaning": "Smooth and joined: each note starts before the one before it ends. A mono synth needs this overlap to glide or hold its envelopes.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.staccato"],
+    "rule": {"kind": "overlap", "min_ms": 5},
+    "example_pass": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1.1, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 1.1, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.9, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 0.9, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Legato",
+        "direction": "on",
+        "step": "turn on so the held note keeps its envelopes",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "from facts"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.tied",
+    "group": "articulation",
+    "word": "tied",
+    "aliases": [],
+    "meaning": "Two notes of the same pitch merged into one longer note. No single note rule carries this.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.sustained",
+    "group": "articulation",
+    "word": "sustained",
+    "aliases": [],
+    "meaning": "Notes held long: pads hold the chord span, and a sustained bass changes every 4 or 8 beats.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.staccato"],
+    "rule": {"kind": "length", "unit": "beat", "min": 4, "max": null},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 41, "start": 16, "len": 4, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 41, "start": 16, "len": 1, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["pad", "bass"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.plucky",
+    "group": "articulation",
+    "word": "plucky",
+    "aliases": [],
+    "meaning": "Short notes of 0.25 to 0.5 beat.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 0.25, "max": 0.5},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 0.5, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 2, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.short",
+    "group": "articulation",
+    "word": "short",
+    "aliases": [],
+    "meaning": "A note of at most 0.5 beat.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.long"],
+    "rule": {"kind": "length", "unit": "beat", "min": null, "max": 0.5},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 0.5, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.long",
+    "group": "articulation",
+    "word": "long",
+    "aliases": [],
+    "meaning": "A note of at least 2 beats.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["articulation.short"],
+    "rule": {"kind": "length", "unit": "beat", "min": 2, "max": null},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 2, "vel": 100},
+        {"pitch": 62, "start": 8, "len": 4, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 2, "vel": 100},
+        {"pitch": 62, "start": 8, "len": 1, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.choppy",
+    "group": "articulation",
+    "word": "choppy",
+    "aliases": [],
+    "meaning": "Notes of at most half a step, separated by uneven rests.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "step", "min": null, "max": 0.5},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 40},
+        {"pitch": 62, "start": 3, "len": 0.25, "vel": 100, "gate": 50}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 100},
+        {"pitch": 62, "start": 3, "len": 0.25, "vel": 100, "gate": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.glide",
+    "group": "articulation",
+    "word": "glide",
+    "aliases": ["slide"],
+    "meaning": "Slide from one pitch to the next by overlapping the two notes. The preset needs mono mode, legato on and a portamento time above zero.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "overlap", "min_ms": 5},
+    "example_pass": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 1.2, "vel": 100},
+        {"pitch": 43, "start": 4, "len": 1, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.9, "vel": 100},
+        {"pitch": 43, "start": 4, "len": 1, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Legato",
+        "direction": "on",
+        "step": "turn on",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "from facts"
+      },
+      {
+        "synth": "vital",
+        "label": "Portamento Time",
+        "direction": "set",
+        "step": "about 80 to 150 ms, longer for a swoop",
+        "order": 2,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.303-slide",
+    "group": "articulation",
+    "word": "303 slide",
+    "aliases": [],
+    "meaning": "A flagged acid step glides into the next, and the slide gate starts one step later. Slide only 15 to 35 percent of the notes. Glide time is 60 to 120 ms.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "overlap", "min_ms": 5},
+    "example_pass": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.3, "vel": 100},
+        {"pitch": 39, "start": 1, "len": 0.25, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.2, "vel": 100},
+        {"pitch": 39, "start": 1, "len": 0.25, "vel": 100}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Legato",
+        "direction": "on",
+        "step": "turn on",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "from facts"
+      },
+      {
+        "synth": "vital",
+        "label": "Portamento Time",
+        "direction": "set",
+        "step": "60 to 120 ms",
+        "order": 2,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.303-accent",
+    "group": "articulation",
+    "word": "303 accent",
+    "aliases": [],
+    "meaning": "An accented acid step: velocity 100 to 127 against 70 to 90 for the rest. The preset must send velocity to level and cutoff, or the accent is silent.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 100, "max": 127},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 1, "len": 0.25, "vel": 115},
+        {"pitch": 36, "start": 5, "len": 0.25, "vel": 105}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 1, "len": 0.25, "vel": 115},
+        {"pitch": 36, "start": 5, "len": 0.25, "vel": 85}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Velocity Track",
+        "direction": "up",
+        "step": "set above 0 percent so velocity opens level and tone",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.808-slide",
+    "group": "articulation",
+    "word": "808 slide",
+    "aliases": [],
+    "meaning": "A mono 808 glide: the end of one note overlaps the next and the notes run long. Glide time is 80 to 150 ms, fast 30 to 50 ms, slow 200 ms and more.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "overlap", "min_ms": 5},
+    "example_pass": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 1.2, "vel": 100},
+        {"pitch": 43, "start": 4, "len": 1, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.9, "vel": 100},
+        {"pitch": 43, "start": 4, "len": 1, "vel": 100}
+      ]
+    },
+    "roles": ["808"],
+    "genres": ["genre.trap"],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Legato",
+        "direction": "on",
+        "step": "turn on",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "from facts"
+      },
+      {
+        "synth": "vital",
+        "label": "Portamento Time",
+        "direction": "set",
+        "step": "80 to 150 ms; fast 30 to 50 ms; slow 200 ms and more",
+        "order": 2,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.ppp",
+    "group": "articulation",
+    "word": "ppp",
+    "aliases": [],
+    "meaning": "The dynamic mark ppp (extremely quiet) as velocity 1 to 31. The bands are contiguous and cover 1 to 127. No published table gives ppp.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 1, "max": 31},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 1},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 31}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 1},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 32}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.pp",
+    "group": "articulation",
+    "word": "pp",
+    "aliases": [],
+    "meaning": "The dynamic mark pp (very quiet) as velocity 32 to 47. The bands are contiguous and cover 1 to 127. One published table puts pp at 32 to 39.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 32, "max": 47},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 32},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 47}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 32},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 48}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.p",
+    "group": "articulation",
+    "word": "p",
+    "aliases": [],
+    "meaning": "The dynamic mark p (quiet) as velocity 48 to 63. The bands are contiguous and cover 1 to 127. One published table puts p at 48 to 61.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 48, "max": 63},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 48},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 63}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 48},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 64}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.mp",
+    "group": "articulation",
+    "word": "mp",
+    "aliases": [],
+    "meaning": "The dynamic mark mp (moderately quiet) as velocity 64 to 79. The bands are contiguous and cover 1 to 127. One published table puts mp at 64 to 71.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 64, "max": 79},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 64},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 79}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 64},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 80}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.mf",
+    "group": "articulation",
+    "word": "mf",
+    "aliases": [],
+    "meaning": "The dynamic mark mf (moderately loud) as velocity 80 to 95. The bands are contiguous and cover 1 to 127. One published table puts mf at 80 to 84.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 80, "max": 95},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 80},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 95}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 80},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 96}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.f",
+    "group": "articulation",
+    "word": "f",
+    "aliases": [],
+    "meaning": "The dynamic mark f (loud) as velocity 96 to 111. The bands are contiguous and cover 1 to 127. One published table puts f at 96 to 98.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 96, "max": 111},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 96},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 111}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 96},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 112}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.ff",
+    "group": "articulation",
+    "word": "ff",
+    "aliases": [],
+    "meaning": "The dynamic mark ff (very loud) as velocity 112 to 125. The bands are contiguous and cover 1 to 127. One published table puts ff at 112 to 113.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 112, "max": 125},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 112},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 125}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 112},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 126}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.fff",
+    "group": "articulation",
+    "word": "fff",
+    "aliases": [],
+    "meaning": "The dynamic mark fff (extremely loud) as velocity 126 to 127. The bands are contiguous and cover 1 to 127. One published table puts fff at 126 to 127.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "velocity", "min": 126, "max": 127},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 126},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 127}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 126},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 125}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["guides", "lexicon"],
+    "tag": "proposal",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "articulation.polyphony",
+    "group": "articulation",
+    "word": "polyphony",
+    "aliases": [],
+    "meaning": "The number of notes that can sound at once. In Serum 2 the POLY limit may count unison voices as voices. It is a preset matter.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": [],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Polyphony",
+        "direction": "set",
+        "step": "voice count; allow for unison voices",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.root-notes",
+    "group": "bass",
+    "word": "root notes",
+    "aliases": [],
+    "meaning": "The bass plays the chord root. Psytrance sits at pitches 29 to 33 and rolling techno at 43.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "tonic"},
+    "example_pass": {
+      "root": 5,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 29, "start": 0, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 29, "start": 16, "len": 4, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": 5,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 29, "start": 0, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 34, "start": 16, "len": 4, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass", "sub-bass"],
+    "genres": ["genre.psytrance", "genre.techno"],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.offbeat-bass",
+    "group": "bass",
+    "word": "offbeat bass",
+    "aliases": [],
+    "meaning": "Bass on the eighth offbeats, slots 2, 6, 10 and 14, with notes of 0.25 to 0.5 beat. Melodic techno alternates velocity 100 and 85, with a ghost at slot 15 at 60 to 70.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["bass.sub-following-the-kick"],
+    "rule": {"kind": "onset_set", "parts": [{"part": "bass", "slots": [2, 6, 10, 14]}]},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 2, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 6, "len": 0.5, "vel": 85, "part": "bass"},
+        {"pitch": 33, "start": 10, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 14, "len": 0.5, "vel": 85, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 2, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 4, "len": 0.5, "vel": 85, "part": "bass"},
+        {"pitch": 33, "start": 10, "len": 0.5, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": ["genre.house", "genre.techno", "genre.trance", "genre.tech-house"],
+    "tier": "M1",
+    "n_sources": 4,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.rolling.grid",
+    "group": "bass",
+    "word": "rolling",
+    "aliases": [],
+    "meaning": "The psytrance and techno bass grid: kick on every beat and a bass note on each other sixteenth, 12 per bar on one pitch. Notes are equal in velocity, 0.125 to 0.19 beat long (gate 60) and never legato.",
+    "sense": "grid",
+    "default": true,
+    "conflicts": ["bass.rolling.dnb", "bass.rolling.hat-roll"],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [
+        {"part": "kick", "slots": [0, 4, 8, 12]},
+        {"part": "bass", "slots": [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15]}
+      ]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 29, "start": 1, "len": 0.25, "vel": 100, "gate": 60, "part": "bass"},
+        {"pitch": 29, "start": 2, "len": 0.25, "vel": 100, "gate": 60, "part": "bass"},
+        {"pitch": 29, "start": 3, "len": 0.25, "vel": 100, "gate": 60, "part": "bass"},
+        {"pitch": 36, "start": 4, "len": 0.25, "vel": 100, "part": "kick"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 0.25, "vel": 100, "part": "kick"},
+        {"pitch": 29, "start": 1, "len": 0.25, "vel": 100, "gate": 60, "part": "bass"},
+        {"pitch": 29, "start": 4, "len": 0.25, "vel": 100, "gate": 60, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": ["genre.psytrance", "genre.techno"],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": {
+      "question": "Is the rolling line a bass grid, a drum and bass bass line, or a hat roll?",
+      "options": ["bass.rolling.grid", "bass.rolling.dnb", "bass.rolling.hat-roll"],
+      "default": "bass.rolling.grid",
+      "when": "The request asks for a drum and bass bass line. Every other request takes the bass grid."
+    },
+    "default_pick": null
+  },
+  {
+    "id": "bass.rolling.dnb",
+    "group": "bass",
+    "word": "rolling",
+    "aliases": [],
+    "meaning": "In drum and bass, either a busy top loop under simple drums or a busy mid bass over a steady sub. It has no note grid.",
+    "sense": "dnb",
+    "default": false,
+    "conflicts": ["bass.rolling.grid", "bass.rolling.hat-roll"],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": ["bass"],
+    "genres": ["genre.drum-and-bass", "genre.neurofunk"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.rolling.hat-roll",
+    "group": "bass",
+    "word": "rolling",
+    "aliases": [],
+    "meaning": "A trap hat roll: repeated hi-hat hits that rise in velocity into the snare. See the named rhythm hat roll.",
+    "sense": "hat-roll",
+    "default": false,
+    "conflicts": ["rhythm.hat-roll", "bass.rolling.grid", "bass.rolling.dnb"],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": ["drum"],
+    "genres": ["genre.trap"],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.root-fifth",
+    "group": "bass",
+    "word": "root-fifth",
+    "aliases": ["root and fifth"],
+    "meaning": "The bass plays the root, then the note seven semitones above it.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "chord_tones", "offsets": [0, 7], "choose": null},
+    "example_pass": {
+      "root": 9,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 40, "start": 4, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 8, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 40, "start": 12, "len": 1, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": 9,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 37, "start": 4, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 8, "len": 1, "vel": 100, "part": "bass"},
+        {"pitch": 40, "start": 12, "len": 1, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.walking-bass",
+    "group": "bass",
+    "word": "walking bass",
+    "aliases": [],
+    "meaning": "One note per beat, slots 0, 4, 8 and 12, each 0.9 to 1.0 beat. Beat 1 is the root, beat 3 a chord tone, and beat 4 an approach note a semitone from the next root. A pitch is not repeated twice in a row.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "onset_set", "parts": [{"part": "bass", "slots": [0, 4, 8, 12]}]},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 4, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 40, "start": 8, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 37, "start": 12, "len": 0.9, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 4, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 40, "start": 6, "len": 0.9, "vel": 100, "part": "bass"},
+        {"pitch": 37, "start": 12, "len": 0.9, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.pedal-bass",
+    "group": "bass",
+    "word": "pedal bass",
+    "aliases": ["pedal"],
+    "meaning": "One bass pitch held or repeated for 4 or more bars while the chords above change.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "repeat", "min_share": 1.0, "max_share": null, "min_bars": 4},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 16, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 32, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 48, "len": 4, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 16, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 43, "start": 32, "len": 4, "vel": 100, "part": "bass"},
+        {"pitch": 36, "start": 48, "len": 4, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.sub-following-the-kick",
+    "group": "bass",
+    "word": "sub following the kick",
+    "aliases": [],
+    "meaning": "The bass onsets equal the kick onsets, as in 808, trap and dubstep. House and techno do the opposite and play in the gaps. No single note rule relates two parts.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["bass.offbeat-bass", "pad.pumping"],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": ["sub-bass", "808"],
+    "genres": ["genre.trap", "genre.dubstep"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.reese",
+    "group": "bass",
+    "word": "reese",
+    "aliases": [],
+    "meaning": "A detuned, growling bass whose notes last 1 beat or more.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 1, "max": null},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 2, "vel": 100, "part": "bass"},
+        {"pitch": 31, "start": 8, "len": 2, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 0, "len": 0.25, "vel": 100, "part": "bass"},
+        {"pitch": 31, "start": 8, "len": 0.25, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": ["genre.drum-and-bass", "genre.neurofunk"],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "bass.wobble",
+    "group": "bass",
+    "word": "wobble",
+    "aliases": [],
+    "meaning": "A bass whose filter is moved by a fast LFO. The rate is a preset matter. In MIDI it is one sustained note per phrase, 1 to 4 beats long.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 1, "max": 4},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [{"pitch": 33, "start": 0, "len": 4, "vel": 100, "part": "bass"}]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [{"pitch": 33, "start": 0, "len": 0.25, "vel": 100, "part": "bass"}]
+    },
+    "roles": ["bass"],
+    "genres": ["genre.dubstep"],
+    "tier": "M2",
+    "n_sources": 3,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.hook",
+    "group": "lead",
+    "word": "hook",
+    "aliases": [],
+    "meaning": "The catchy short melody, a lead of 2 to 6 distinct pitches over 1 to 2 bars, repeated. An uplifting trance motif has 4 to 6 notes over 8 bars.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "count_per_bar", "min": 2, "max": 6},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 67, "start": 0, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 4, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 72, "start": 8, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 12, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 61, "start": 2, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 62, "start": 4, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 63, "start": 6, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 8, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 65, "start": 10, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 66, "start": 12, "len": 0.5, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 14, "len": 0.5, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["lead"],
+    "genres": ["genre.trance"],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.riff",
+    "group": "lead",
+    "word": "riff",
+    "aliases": [],
+    "meaning": "A short repeating figure of 1 to 2 bars.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "phrase_length", "every": [2]},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 67, "start": 0, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 8, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 32, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 40, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 67, "start": 0, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 8, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 48, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 69, "start": 56, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["lead", "bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.ostinato",
+    "group": "lead",
+    "word": "ostinato",
+    "aliases": [],
+    "meaning": "The same pitches and rhythm repeated for 4 or more bars.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "repeat", "min_share": 1.0, "max_share": null, "min_bars": 4},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 100},
+        {"pitch": 60, "start": 16, "len": 1, "vel": 100},
+        {"pitch": 60, "start": 32, "len": 1, "vel": 100},
+        {"pitch": 60, "start": 48, "len": 1, "vel": 100}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 100},
+        {"pitch": 60, "start": 16, "len": 1, "vel": 100},
+        {"pitch": 62, "start": 32, "len": 1, "vel": 100},
+        {"pitch": 60, "start": 48, "len": 1, "vel": 100}
+      ]
+    },
+    "roles": [],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.call-and-response",
+    "group": "lead",
+    "word": "call and response",
+    "aliases": ["call-and-response"],
+    "meaning": "Two phrases of equal length. The first ends off the tonic, on the 2nd, 5th or flat 7th, and the second ends on the root.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "tonic"},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 8, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 16, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 60, "start": 24, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 8, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 16, "len": 1, "vel": 100, "part": "lead"},
+        {"pitch": 62, "start": 24, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["lead"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 2,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.fill",
+    "group": "lead",
+    "word": "fill",
+    "aliases": [],
+    "meaning": "The last beat or bar of a 4 or 8 bar phrase gets denser, such as a snare roll that speeds up and rises in velocity.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "none"},
+    "example_pass": null,
+    "example_fail": null,
+    "roles": ["drum"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "lead.swoop",
+    "group": "lead",
+    "word": "lead swoop",
+    "aliases": [],
+    "meaning": "A long, slow glide into a lead note, 150 to 300 ms, by overlapping the notes.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "overlap", "min_ms": 5},
+    "example_pass": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1.2, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 4, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": 120,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.9, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 4, "len": 1, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["lead"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [
+      {
+        "synth": "vital",
+        "label": "Legato",
+        "direction": "on",
+        "step": "turn on",
+        "order": 1,
+        "source": ["lexicon"],
+        "tag": "from facts"
+      },
+      {
+        "synth": "vital",
+        "label": "Portamento Time",
+        "direction": "set",
+        "step": "150 to 300 ms",
+        "order": 2,
+        "source": ["lexicon"],
+        "tag": "uncalibrated"
+      }
+    ],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "arp.arpeggio",
+    "group": "arp",
+    "word": "arpeggio",
+    "aliases": ["arpeggiated"],
+    "meaning": "The notes of a chord played one at a time, sorted by pitch, one per step. A step of 1/8 is 0.5 beat, 1/16 is 0.25 and 1/16T is 0.1667. Gate is a share of the step.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["arp.arp-down"],
+    "rule": {"kind": "arp", "order": "up", "rate": 0.25, "gate": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 72, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 60, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["arp", "chords"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "arp.arp-up",
+    "group": "arp",
+    "word": "arp up",
+    "aliases": ["up arp"],
+    "meaning": "The chord notes climb from low to high, then start again.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["arp.arp-down", "arp.arp-up-down", "arp.trance-arp"],
+    "rule": {"kind": "arp", "order": "up", "rate": 0.25, "gate": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 72, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 60, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "arp.arp-down",
+    "group": "arp",
+    "word": "arp down",
+    "aliases": ["down arp"],
+    "meaning": "The chord notes fall from high to low, then start again.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["arp.arp-up", "arp.arpeggio", "arp.arp-up-down", "arp.trance-arp"],
+    "rule": {"kind": "arp", "order": "down", "rate": 0.25, "gate": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 72, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 60, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["arp"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "arp.arp-up-down",
+    "group": "arp",
+    "word": "arp up-down",
+    "aliases": ["arp up and down", "up-down arp"],
+    "meaning": "Up, then down. The period is 2N-2 steps for N chord notes without repeated end notes, and 2N with them. Manuals differ.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["arp.arp-up", "arp.arp-down", "arp.trance-arp"],
+    "rule": {"kind": "arp", "order": "up-down", "rate": 0.25, "gate": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 3, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 60, "start": 4, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "part": "lead"}
+      ]
+    },
+    "roles": ["arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "arp.trance-arp",
+    "group": "arp",
+    "word": "trance arp",
+    "aliases": [],
+    "meaning": "The trance pattern: root, 3rd, 5th, octave, 5th, 3rd. Six notes realign with the bar every 3 bars. Gate is 60 to 70 percent of the step.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["arp.arp-up", "arp.arp-down", "arp.arp-up-down"],
+    "rule": {
+      "kind": "arp",
+      "order": "sequence",
+      "rate": 0.25,
+      "gate": [60, 70],
+      "degrees": [1, 3, 5, 8, 5, 3]
+    },
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 67, "start": 4, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 64, "start": 5, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 64, "start": 1, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 67, "start": 2, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 72, "start": 3, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 76, "start": 4, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"},
+        {"pitch": 79, "start": 5, "len": 0.25, "vel": 100, "gate": 65, "part": "lead"}
+      ]
+    },
+    "roles": ["arp"],
+    "genres": ["genre.trance"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "pad.held-chords",
+    "group": "pad",
+    "word": "held chords",
+    "aliases": [],
+    "meaning": "The chord starts on slot 0 of its first bar and lasts the whole chord span.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "onset_set", "parts": [{"part": "chord", "slots": [0]}]},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 100, "part": "chord"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 4, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 4, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 4, "len": 4, "vel": 100, "part": "chord"}
+      ]
+    },
+    "roles": ["pad", "chords"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "pad.stab",
+    "group": "pad",
+    "word": "stab",
+    "aliases": [],
+    "meaning": "A short chord hit of 0.25 to 0.5 beat. Offbeat house places it on slots 2, 6, 10 and 14. The role entry decides the sound.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 0.25, "max": 0.5},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 2, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 2, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 2, "len": 0.5, "vel": 100, "part": "chord"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 2, "len": 2, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 2, "len": 2, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 2, "len": 2, "vel": 100, "part": "chord"}
+      ]
+    },
+    "roles": ["stab", "chords"],
+    "genres": ["genre.house", "genre.tech-house"],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "pad.piano-house",
+    "group": "pad",
+    "word": "piano house",
+    "aliases": [],
+    "meaning": "Chords 0.75 beat apart: slots 0, 3, 6, 9 and 12. It rests on search excerpts and is not checked against a full source.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "onset_set", "parts": [{"part": "chord", "slots": [0, 3, 6, 9, 12]}]},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 60, "start": 3, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 3, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 3, "len": 0.5, "vel": 100, "part": "chord"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 0, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 60, "start": 4, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 4, "len": 0.5, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 4, "len": 0.5, "vel": 100, "part": "chord"}
+      ]
+    },
+    "roles": ["keys", "chords"],
+    "genres": ["genre.house"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "pad.pumping",
+    "group": "pad",
+    "word": "pumping",
+    "aliases": [],
+    "meaning": "The chords breathe with the kick, which compression makes. In MIDI, sustain full-bar chords and leave slot mod 4 of 0 empty in the bass. The first bass note after the kick may be 30 percent quieter or 5 to 15 ms later.",
+    "sense": null,
+    "default": true,
+    "conflicts": ["bass.sub-following-the-kick"],
+    "rule": {
+      "kind": "onset_set",
+      "parts": [{"part": "bass", "slots": [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15]}]
+    },
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 2, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 6, "len": 0.5, "vel": 100, "part": "bass"}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 33, "start": 2, "len": 0.5, "vel": 100, "part": "bass"},
+        {"pitch": 33, "start": 4, "len": 0.5, "vel": 100, "part": "bass"}
+      ]
+    },
+    "roles": ["pad", "bass"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "pad.trance-gate",
+    "group": "pad",
+    "word": "trance gate",
+    "aliases": ["gate"],
+    "meaning": "A chopped pad. In MIDI it is one held chord. An LFO or step pattern on volume makes the chop, 16 steps per bar at 136 to 140 BPM.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "length", "unit": "beat", "min": 4, "max": null},
+    "example_pass": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 100, "part": "chord"}
+      ]
+    },
+    "example_fail": {
+      "root": 0,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 100, "part": "chord"},
+        {"pitch": 64, "start": 0, "len": 1, "vel": 100, "part": "chord"},
+        {"pitch": 67, "start": 0, "len": 1, "vel": 100, "part": "chord"}
+      ]
+    },
+    "roles": ["pad", "chords"],
+    "genres": ["genre.trance"],
+    "tier": "M2",
+    "n_sources": 1,
+    "source": ["guides"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

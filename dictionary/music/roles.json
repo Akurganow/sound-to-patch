@@ -1,0 +1,425 @@
+[
+  {
+    "id": "role.sub-bass",
+    "group": "role",
+    "word": "sub bass",
+    "aliases": [],
+    "meaning": "The sub band below about 60 Hz, played one note at a time. Many playback systems roll off below about 30 Hz, between notes 22 and 23, so the core stays at 26 to 35.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [26, 35], "hard": [24, 40], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 31, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 31, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 33, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 29, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 31, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 31, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 22, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 29, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "roles": ["sub-bass"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 5,
+    "source": ["guides", "lexicon"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.808",
+    "group": "role",
+    "word": "808",
+    "aliases": [],
+    "meaning": "A tuned bass drum played one note at a time. Trap roots sit at 28 to 33 and drill roots at 29 to 33, and a root under 23 moves up an octave.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [24, 36], "hard": [23, 40], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 28, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 28, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 33, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 31, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 28, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 28, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 22, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 31, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "roles": ["808"],
+    "genres": ["genre.trap"],
+    "tier": "M1",
+    "n_sources": 3,
+    "source": ["guides", "lexicon"],
+    "tag": "source states",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.bass",
+    "group": "role",
+    "word": "bass",
+    "aliases": ["mid bass", "synth bass", "reese", "rolling bass"],
+    "meaning": "Mid, synth, reese and rolling bass, played one note at a time. Most notes sit at 28 to 48, and notes outside 24 to 60 are rejected. The lexicon gives synth-bass tracks of a rock and pop MIDI corpus 27 to 66 from the 5th to the 95th percentile and a median of 39 over 2,227 tracks. The count is not re-run here.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [28, 48], "hard": [24, 60], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 36, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 43, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 38, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 36, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 36, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 70, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 38, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "roles": ["bass"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["lmd", "lexicon"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.lead",
+    "group": "role",
+    "word": "lead",
+    "aliases": [],
+    "meaning": "A single-voice melody sound. Most notes sit at 60 to 84, and notes outside 48 to 96 are rejected. The lexicon gives synth-lead tracks of a rock and pop MIDI corpus 37 to 81 from the 5th to the 95th percentile and a median of 65 over 5,117 tracks. The count is not re-run here.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [60, 84], "hard": [48, 96], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 67, "start": 0, "len": 0.5, "vel": 90},
+        {"pitch": 69, "start": 2, "len": 0.5, "vel": 90},
+        {"pitch": 72, "start": 4, "len": 0.5, "vel": 90},
+        {"pitch": 74, "start": 6, "len": 0.5, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 67, "start": 0, "len": 0.5, "vel": 90},
+        {"pitch": 69, "start": 2, "len": 0.5, "vel": 90},
+        {"pitch": 40, "start": 4, "len": 0.5, "vel": 90},
+        {"pitch": 74, "start": 6, "len": 0.5, "vel": 90}
+      ]
+    },
+    "roles": ["lead"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["lmd", "lexicon"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.pad",
+    "group": "role",
+    "word": "pad",
+    "aliases": ["chords"],
+    "meaning": "A sustained chord sound played with several notes at once. A chord root may go down to 36 only when no bass layer plays. The lexicon gives synth-pad tracks of a rock and pop MIDI corpus 47 to 82 from the 5th to the 95th percentile and a median of 65 over 4,724 tracks. The count is not re-run here.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [48, 79], "hard": [36, 96], "voice": "poly"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 30, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 57, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 60, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["pad", "chords"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["lmd", "lexicon"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.keys",
+    "group": "role",
+    "word": "keys",
+    "aliases": [],
+    "meaning": "Piano-like parts played with both hands. The core of 40 to 84 is the lexicon's role table. The lexicon gives piano tracks of a rock and pop MIDI corpus 40 to 80 and a median of 62 over 18,183 tracks. It does not name the percentiles, and the count is not re-run here. The hard limits cover the whole model range, so only the core can fail.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [40, 84], "hard": [21, 108], "voice": "poly"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 48, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 55, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 64, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 67, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 72, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 100, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 103, "start": 0, "len": 4, "vel": 90},
+        {"pitch": 106, "start": 0, "len": 4, "vel": 90}
+      ]
+    },
+    "roles": ["keys"],
+    "genres": [],
+    "tier": "M1",
+    "n_sources": 1,
+    "source": ["lmd", "lexicon"],
+    "tag": "single source",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.pluck",
+    "group": "role",
+    "word": "pluck",
+    "aliases": [],
+    "meaning": "Short plucked notes in the lead range, played one at a time or several at once. No pluck data exists, so the range follows trance guides that put A, D and C minor lines there.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [55, 88], "hard": [48, 96], "voice": "either"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 69, "start": 0, "len": 0.25, "vel": 90},
+        {"pitch": 72, "start": 2, "len": 0.25, "vel": 90},
+        {"pitch": 76, "start": 4, "len": 0.25, "vel": 90},
+        {"pitch": 74, "start": 6, "len": 0.25, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 69, "start": 0, "len": 0.25, "vel": 90},
+        {"pitch": 72, "start": 2, "len": 0.25, "vel": 90},
+        {"pitch": 40, "start": 4, "len": 0.25, "vel": 90},
+        {"pitch": 74, "start": 6, "len": 0.25, "vel": 90}
+      ]
+    },
+    "roles": ["pluck"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["guides", "lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.arp",
+    "group": "role",
+    "word": "arp",
+    "aliases": ["arpeggio"],
+    "meaning": "An arpeggio plays in the lead or pluck core, one note at a time, with a span of at most 24 semitones. No pitch data exists, so this range is an inference.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [55, 88], "hard": [36, 96], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 90},
+        {"pitch": 64, "start": 2, "len": 0.25, "vel": 90},
+        {"pitch": 67, "start": 4, "len": 0.25, "vel": 90},
+        {"pitch": 72, "start": 6, "len": 0.25, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 0.25, "vel": 90},
+        {"pitch": 64, "start": 2, "len": 0.25, "vel": 90},
+        {"pitch": 30, "start": 4, "len": 0.25, "vel": 90},
+        {"pitch": 72, "start": 6, "len": 0.25, "vel": 90}
+      ]
+    },
+    "roles": ["arp"],
+    "genres": [],
+    "tier": "M2",
+    "n_sources": 0,
+    "source": ["lexicon"],
+    "tag": "inferred",
+    "verified": "2026-10-25",
+    "notes_trigger": false,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  },
+  {
+    "id": "role.vocal",
+    "group": "role",
+    "word": "vocal-like",
+    "aliases": ["vocal"],
+    "meaning": "A voice-like line played one note at a time. Core ranges by voice: bass 40 to 64, baritone 45 to 69, tenor 48 to 72, alto 53 to 77, soprano 60 to 84. It rests on search excerpts and is not checked against a full source.",
+    "sense": null,
+    "default": true,
+    "conflicts": [],
+    "rule": {"kind": "register", "core": [40, 84], "hard": [40, 88], "voice": "mono"},
+    "example_pass": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 64, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 62, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "example_fail": {
+      "root": null,
+      "bpm": null,
+      "grid": 16,
+      "notes": [
+        {"pitch": 60, "start": 0, "len": 1, "vel": 90},
+        {"pitch": 62, "start": 4, "len": 1, "vel": 90},
+        {"pitch": 95, "start": 8, "len": 1, "vel": 90},
+        {"pitch": 62, "start": 12, "len": 1, "vel": 90}
+      ]
+    },
+    "roles": ["vocal"],
+    "genres": [],
+    "tier": "M3",
+    "n_sources": 1,
+    "source": ["lexicon"],
+    "tag": "snippet",
+    "verified": "2026-10-25",
+    "notes_trigger": true,
+    "controls": [],
+    "symbols": [],
+    "bpm": null,
+    "scale": null,
+    "ask": null,
+    "default_pick": null
+  }
+]

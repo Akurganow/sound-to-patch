@@ -24,6 +24,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
+use crate::music::pitch::OctaveLabel;
 use crate::preset::registry::Provenance;
 use crate::units::{Bipolar, Percent, Seconds, Semitones};
 
@@ -302,6 +303,9 @@ pub struct SynthCapabilities {
     pub velocity: VelocityRule,
     /// The pitch-bend range of a new patch.
     pub bend_range_default: Semitones,
+    /// The octave label the synth's own note display gives MIDI note 60;
+    /// none until its source or a probe settles it.
+    pub middle_c: Option<OctaveLabel>,
 }
 
 impl SynthCapabilities {
@@ -553,6 +557,7 @@ mod tests {
                 provenance: Provenance::Interim,
             },
             bend_range_default: Semitones::new(2.0).unwrap(),
+            middle_c: Some(OctaveLabel::C3),
         }
     }
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/stats.schema.json",
+  "title": "dictionary/music/stats.json",
+  "description": "The shares the music dictionary states. A share with integer counts is recomputed from them; the shares of one exclusive set sum to at most 100.5.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "set", "claim", "share", "count", "total", "source", "tag"],
+    "additionalProperties": false,
+    "properties": {
+      "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)+$" },
+      "set": { "type": ["string", "null"], "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$", "description": "Shares of one set exclude each other; null when the share stands alone or the set overlaps." },
+      "claim": { "type": "string", "minLength": 1, "description": "What the share counts, in our own words." },
+      "share": { "type": "number", "minimum": 0, "maximum": 100, "description": "Percent, with the decimals the source gives." },
+      "count": { "type": ["integer", "null"], "minimum": 0 },
+      "total": { "type": ["integer", "null"], "minimum": 1 },
+      "source": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" }, "minItems": 1, "uniqueItems": true },
+      "tag": { "enum": ["source states", "measured", "derived", "inferred", "snippet", "single source", "proposal"] }
+    }
+  }
+}

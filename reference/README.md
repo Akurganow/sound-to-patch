@@ -4,11 +4,27 @@ The controls of each synth that sound-to-patch writes presets for, by synth laye
 
 Vital and Serum 2 are trademarks of their owners. This project is not affiliated with or endorsed by them.
 
-The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row.
+The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row. The files under `core/` are generated from the music dictionary of sound-to-patch, the data its note checks read.
 
 ## Which file answers what
 
-The files shared by every synth will sit under `core/`: the music dictionary and the word entries. It holds no file yet.
+The music files under `core/` serve every synth. Each entry has a checkable note rule, a tier and a tag; pitches are MIDI numbers and onsets are slots of a sixteenth grid.
+
+| Question | Core file |
+| :-- | :-- |
+| Note names, middle C, keys, Camelot and Open Key, Roman numerals | [core/notation.md](core/notation.md) |
+| The pitch range and default voice of a role | [core/roles.md](core/roles.md) |
+| Scales, modes, mood words and allowed outside notes | [core/scales.md](core/scales.md) |
+| Chord qualities and the symbols that spell them | [core/chords.md](core/chords.md) |
+| Voicings, voice leading and low-interval limits | [core/voicing.md](core/voicing.md) |
+| Named progressions and genre chord habits | [core/progressions.md](core/progressions.md) |
+| Positions, swing, feel, named rhythms and Euclidean patterns | [core/rhythm.md](core/rhythm.md) |
+| Note length, articulation and bass, lead, arp and pad techniques | [core/technique.md](core/technique.md) |
+| Phrase length, repetition and section words | [core/phrase.md](core/phrase.md) |
+| Genre tempos and drum skeletons | [core/genres.md](core/genres.md) |
+| Words with several senses and the one question that picks a sense | [core/senses.md](core/senses.md) |
+| Corpus shares of chords and progressions | [core/statistics-harmony.md](core/statistics-harmony.md) |
+| Corpus shares of keys, modes, melody and rhythm | [core/statistics-keys.md](core/statistics-keys.md) |
 
 | Question | Vital |
 | :-- | :-- |

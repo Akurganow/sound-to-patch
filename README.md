@@ -60,6 +60,14 @@ and ideas, from which we copy no code, text or data.
 
 ### Research
 
+- [A DAW vendor's FAQ on keys and scales](https://help.ableton.com/hc/en-us/articles/11425083250972-Keys-and-Scales-in-Live-12-FAQ) (no license found): the snap rule of out-of-scale notes. Inspiration only.
+- [A home-studio table of middle-C labels](https://homestudio.app/resources/midi-middle-c) (no license found): the three octave labels of MIDI note 60. Inspiration only.
+- [An electronic genre guide](https://beatkitchen.io/guides/electronic-music/01-genre-landscape) (CC BY-NC-SA 4.0): tempo ranges and drum skeletons of the genre templates. Inspiration only.
+- [A producer guide to trap beats](https://www.audeobox.com/learn/ableton/how-to-make-trap-beats-in-ableton) (no license found): the trap tempo range, drum skeleton and hat velocities. Inspiration only.
+- [Camelot and Open Key tables of a key-detection vendor](https://mixedinkey.com/camelot-wheel) (no license found): the key codes the dictionary computes by formula. Inspiration only.
+- Tuomas Eerola, Anders Friberg and Roberto Bresin, [Emotional expression in music: contribution, linearity, and additivity of primary musical cues](https://doi.org/10.3389/fpsyg.2013.00487) (CC BY 3.0), Frontiers in Psychology 2013: mode as the strongest of six cues, with additive cues, behind the mood defaults of the music dictionary.
+- [English Wikipedia pages on scales, chords, progressions and rhythms](https://en.wikipedia.org/wiki/List_of_musical_scales_and_modes) (CC BY-SA 4.0): scale sets, chord names and rhythm names, facts only. Inspiration only.
+- Producer guides and tutorials on scales, chords, voicing, rhythm and technique, about 70 pages listed by kind in the [published music lexicon](https://github.com/Akurganow/sound-to-patch/issues/101#issuecomment-6393746249) (no license found): source counts, tiers and idiom rules of the music dictionary. Inspiration only.
 - Kevin Thor Hansen, [Sound2Serum: Neural Sound Matching System for Serum 2](https://projekter.aau.dk/projekter/files/835339029/Master_Thesis_Kevin_Thor_Hansen.pdf) (no license found), master thesis, Aalborg University Copenhagen, 2026, supervisor Cumhur Erkut: fixed-template presets, bank-toggle reload and per-category parameter priors. Inspiration only.
 - Joakim Andén and Stéphane Mallat, [Deep Scattering Spectrum](https://doi.org/10.1109/TSP.2014.2326991) (in copyright), IEEE TSP 2014: wavelet scattering coefficients as timbre descriptors. Inspiration only.
 - Joakim Andén et al., [Joint Time-Frequency Scattering](https://doi.org/10.1109/TSP.2019.2918992) (in copyright), IEEE TSP 2019: joint time-frequency scattering for modulation structure. Inspiration only.
@@ -128,6 +136,7 @@ and ideas, from which we copy no code, text or data.
 - Ying-Shuo Lee et al., [Distortion Recovery: A Two-Stage Method for Guitar Effect Removal](https://arxiv.org/abs/2407.16639) (CC BY 4.0), DAFx 2024: two-stage restoration of overdrive and amp effects.
 - Yizhi Li et al., [MERT: Acoustic Music Understanding Model with Large-Scale Self-supervised Training](https://arxiv.org/abs/2306.00107) (CC BY-SA 4.0), ICLR 2024: music embedding architecture read for the model survey. Inspiration only.
 - N. R. Lomb, [Least-squares frequency analysis of unequally spaced data](https://doi.org/10.1007/BF00648343) (in copyright), Astrophysics and Space Science 1976: the periodogram for the gappy envelope track of note frames. Inspiration only.
+- [Low-interval-limit charts](https://www.robin-hoffmann.com/dfsb/low-interval-limits) (no license found): the lowest pitch of each interval before it turns muddy, kept as soft warnings. Inspiration only.
 - John Makhoul, [Linear prediction: A tutorial review](https://doi.org/10.1109/PROC.1975.9792) (in copyright), Proceedings of the IEEE 1975: linear prediction for all-pole filter envelopes. Inspiration only.
 - Héctor Martel et al., [Probing Low-Level Acoustic Attribute Encoding in CLAP Audio Embeddings](https://arxiv.org/abs/2607.03806) (CC BY 4.0), DAFx 2026: centroid is not linearly decodable from CLAP.
 - Naotake Masuda and Daisuke Saito, [Quality Diversity for Synthesizer Sound Matching](https://dafx2020.mdw.ac.at/proceedings/papers/DAFx20in21_paper_46.pdf) (CC BY 3.0), DAFx 2021: log-spectral fitness and novelty-based diversity.
@@ -164,6 +173,7 @@ and ideas, from which we copy no code, text or data.
 - Ralph O. Schmidt, [Multiple emitter location and signal parameter estimation](https://doi.org/10.1109/TAP.1986.1143830) (in copyright), IEEE TAP 1986: MUSIC subspace method for line spectra. Inspiration only.
 - Manfred R. Schroeder, [New Method of Measuring Reverberation Time](https://doi.org/10.1121/1.1909343) (in copyright), JASA 1965: backward integration of decay curves. Inspiration only.
 - Xavier Serra and Julius O. Smith, [Spectral Modeling Synthesis: A Sound Analysis/Synthesis System Based on a Deterministic Plus Stochastic Decomposition](https://doi.org/10.2307/3680788) (in copyright), Computer Music Journal 1990: sines-plus-noise decomposition. Inspiration only.
+- [Serum 2 User Guide](https://xferrecords.com/manual/serum-2) (all rights reserved), manual 1.0.3: the C3 label of note 60 and the glide controls, cited only.
 - Siyuan Shan et al., [Differentiable Wavetable Synthesis](https://arxiv.org/abs/2111.10003) (CC BY 4.0), ICASSP 2022: learned dictionary of wavetables for neural synthesis.
 - Di Sheng and George Fazekas, [Feature Selection for Dynamic Range Compressor Parameter Estimation](https://qmro.qmul.ac.uk/xmlui/handle/123456789/40945) (in copyright), AES 2018: standard features give threshold and ratio, not attack and release. Inspiration only.
 - Christian J. Steinmetz et al., [Filtered Noise Shaping for Time Domain Room Impulse Response Estimation From Reverberant Speech](https://arxiv.org/abs/2107.07503) (arXiv non-exclusive license), WASPAA 2021: room impulse response from filtered noise. Inspiration only.
@@ -171,6 +181,8 @@ and ideas, from which we copy no code, text or data.
 - Haoran Sun et al., [Neural-Enhanced Dynamic Range Compression Inversion: A Hybrid Approach for Restoring Audio Dynamics](https://arxiv.org/abs/2411.04337) (CC BY 4.0), arXiv 2024: compressor parameter and dry-signal recovery.
 - Haoran Sun et al., [Black-Box Optimization for Identifying and Inverting Audio Dynamic Range Control Effects](https://arxiv.org/abs/2607.19645) (arXiv non-exclusive license), arXiv 2026: search over compressor settings with dynamics descriptors. Inspiration only.
 - Yirong Sun et al., [SonicBench: Dissecting the Physical Perception Bottleneck in Large Audio Language Models](https://arxiv.org/abs/2601.11039) (arXiv non-exclusive license), arXiv 2026: audio language models are weak on physical attributes. Inspiration only.
+- David Temperley and Daphne Tan, [Emotional connotations of diatonic modes](https://doi.org/10.1525/mp.2012.30.3.237) (in copyright), Music Perception 2013: listener happiness ranks of six modes, behind the mood defaults of the music dictionary. Inspiration only.
+- Godfried Toussaint, [The Euclidean Algorithm Generates Traditional Musical Rhythms](http://cgm.cs.mcgill.ca/~godfried/publications/banff.pdf) (no license found), Bridges 2005: the grouping algorithm and its printed patterns, the test vectors of the Euclidean function. Inspiration only.
 - Michal Švento et al., [Estimation and Restoration of Unknown Nonlinear Distortion using Diffusion](https://arxiv.org/abs/2501.05959) (CC BY 4.0), arXiv 2025: spline waveshaper fitted blindly to distorted audio.
 - Adam Szabo, [How to Emulate the Super Saw](https://www.adamszabo.com/internet/adam_szabo_how_to_emulate_the_super_saw.pdf) (in copyright, free access), KTH degree project 2010: measured supersaw detune and mix. Inspiration only.
 - Ryoya Tabata et al., [FM Parameter Estimation with Low-Order Rational Constraints on Wasserstein Loss Landscape](https://www.dafx.de/paper-archive/2026/papers/DAFx26_paper_37.pdf) (CC BY 4.0), DAFx 2026: low-order rational ratio constraint for FM parameter search.
@@ -207,6 +219,7 @@ and ideas, from which we copy no code, text or data.
 - [blind_rt60](https://github.com/nuniz/blind_rt60) (MIT): blind reverb-time formulas, reimplemented in Rust.
 - [burn](https://github.com/tracel-ai/burn) (MIT OR Apache-2.0): Rust inference runtime facts for the fallback plan.
 - [candle](https://github.com/huggingface/candle) (MIT OR Apache-2.0): Rust inference runtime facts for the fallback plan.
+- [chordparser](https://github.com/PauSala/chordparser) (MIT): a chord-symbol parser crate, a test-only oracle of the chord parser of the music dictionary.
 - [CLAP (microsoft/CLAP)](https://github.com/microsoft/CLAP) (MIT): audio tower used for the style-embedding study.
 - [claude-collider](https://github.com/jeremyruppel/claude-collider) (MIT): server paired with theory skills, and a short pitfall list.
 - [cochlea](https://github.com/richer-richard/cochlea) (MIT OR Apache-2.0): spectrogram PNG for agents, and stereo probe formulas.
@@ -263,6 +276,7 @@ and ideas, from which we copy no code, text or data.
 - [MU-LLaMA](https://github.com/shansongliu/MU-LLaMA) (GPL-3.0): music language model judged weak on synth attributes. Inspiration only.
 - [MuQ](https://github.com/tencent-ailab/MuQ) (MIT code, CC BY-NC 4.0 weights): music embedding model, surveyed for instrument and reverb probes. Inspiration only.
 - [MuScriptor](https://github.com/muscriptor/muscriptor) (MIT code, CC BY-NC 4.0 weights): hard instrument mask, gap filling, onset-lag calibration ideas. Inspiration only.
+- [music21](https://github.com/cuthbertLab/music21) (BSD-3-Clause): chord symbols in the pinned golden tools, a local oracle of the chord tones of the music dictionary.
 - [nara_wpe](https://github.com/fgnt/nara_wpe) (MIT): weighted prediction error dereverberation, read for reverb handling.
 - [node-serum2-preset-packager](https://github.com/CharlesBT/node-serum2-preset-packager) (MIT): container layout, zstd level 3, and the Init preset shape.
 - [objc2-core-ml](https://github.com/madsmtm/objc2) (Zlib OR Apache-2.0 OR MIT): platform ML binding facts for the deferred runtime option.
@@ -274,12 +288,14 @@ and ideas, from which we copy no code, text or data.
 - [pitch-estimate](https://github.com/hey-jj/pitch-estimate) (MIT): per-frame 55 Hz regression test layout.
 - [Plugalyzer](https://github.com/CrushedPixel/Plugalyzer) (GPL-3.0): CLI shape for rendering a VST3 instrument from MIDI to WAV. Inspiration only.
 - [producer-pal](https://github.com/adamjmurray/producer-pal) (GPL-3.0-or-later): how an agent server assembles its skill text from fragments. Inspiration only.
+- [pychord](https://github.com/yuma-m/pychord) (MIT): a chord-quality table in the pinned golden tools, a local oracle of the chord tones of the music dictionary.
 - [pYIN and Tony](https://github.com/c4dm/pyin) (GPL-2.0-or-later): pYIN note-tracking HMM on the pitch track. Inspiration only.
 - [Qwen2-Audio](https://github.com/QwenLM/Qwen2-Audio) (no license, Apache-2.0 weights): audio language model tested on timbre attributes. Inspiration only.
 - [rack](https://github.com/sinkingsugar/rack) (MIT OR Apache-2.0): reference for plug-in state and MIDI mapping across formats.
 - [RecklessSerum2Bank](https://github.com/RecklessBoise/RecklessSerum2Bank) (MIT code, presets free to use per its README): 250 generated Serum 2 presets, the one open bank of parser fixtures.
 - [RemFx](https://github.com/mhrice/RemFx) (Apache-2.0 code, non-commercial weights): effect detection and removal chain, surveyed for the effects layer. Inspiration only.
 - [RMVPE](https://github.com/Dream-High/RMVPE) (Apache-2.0): local weighted-average decode over 9 bins.
+- [rust-music-theory](https://github.com/ozankasikci/rust-music-theory) (MIT): scales and chords, a test-only oracle of the music dictionary.
 - [SALMONN](https://github.com/bytedance/SALMONN) (Apache-2.0): audio language model judged weak on synth attributes.
 - [SciPy](https://github.com/scipy/scipy) (BSD-3-Clause): reference signal-processing routines, such as Hilbert and Butterworth filters.
 - [serum (rich6feet)](https://github.com/rich6feet/serum) (no license found): an index of Serum 2 factory table names and content paths. Inspiration only.
@@ -305,6 +321,7 @@ and ideas, from which we copy no code, text or data.
 - [synth-rl](https://github.com/luwux/synth-rl) (GPL-3.0-or-later): edit, repair and match tasks, and the mute and blind controls. Inspiration only.
 - [synth-setter](https://github.com/tinaudio/synth-setter) (GPL-3.0): render loop and noise-floor tests. Inspiration only.
 - [Syntheon](https://github.com/gudgud96/syntheon) (Apache-2.0): Init-preset-plus-minimal-subset approach and single-cycle wavetable extraction.
+- [tonal](https://github.com/tonaljs/tonal) (MIT): the chord, scale and Roman-numeral tables the music lexicon was compared with; the dictionary commits no row of them. Inspiration only.
 - [torchlpc](https://github.com/DiffAPF/torchlpc) (MIT): differentiable linear-prediction filter, read for time-varying filters.
 - [torchsynth](https://github.com/torchsynth/torchsynth) (Apache-2.0): seeded random-parameter synthesizer idea for optimizer tests.
 - [u-he Preset Randomizer](https://github.com/Fannon/u-he-preset-randomizer) (MIT): per-synth statistical guides and clamp-and-blend variation.
@@ -321,13 +338,22 @@ and ideas, from which we copy no code, text or data.
 
 - [AKWF-FREE](https://github.com/KristofferKarlAxelEkstrand/AKWF-FREE) (CC0-1.0): single-cycle waveforms as bench data for wavetable matching.
 - [AudioSet ontology](https://github.com/audioset/ontology) (CC BY-SA 4.0): class names for effect tags. Inspiration only.
+- [Chordonomicon](https://huggingface.co/datasets/ailsntua/Chordonomicon) (CC BY-NC 4.0): progression shares and chord frequencies of the music dictionary, counts only. Inspiration only.
 - [DX7 timbre dataset](https://zenodo.org/records/4677102) (CC BY 4.0): fixed-pitch timbre-order test for compare.
 - [dx7-patches-and-prompts](https://huggingface.co/datasets/ccerati/dx7-patches-and-prompts) (Apache-2.0 per its card, patch origin and caption terms unclear): the vocabulary of generated patch captions. Inspiration only.
 - [Faronbi et al. preset dataset](https://zenodo.org/records/7686668) (CC BY 4.0): Serum parameter-vector layout as a reference, not used as data.
 - [Freesound metadata scrape](https://huggingface.co/datasets/Chr0my/freesound.org) (CC BY-SA 3.0 per its card, each sound under its own license): tag, title and description word counts only. Inspiration only.
+- [GiantSteps drum-pattern datasets](https://github.com/GiantSteps/drum-pattern-datasets) (no license found): shares of house, techno and breakbeat grids with a given kick or snare, counts only. Inspiration only.
+- [GiantSteps key dataset](https://github.com/GiantSteps/giantsteps-key-dataset) (no license found): key and mode shares of annotated EDM tracks, counts only. Inspiration only.
+- [GiantSteps MTG key dataset](https://github.com/GiantSteps/giantsteps-mtg-key-dataset) (no license found): key and mode shares by store genre, counts only. Inspiration only.
+- [Groove MIDI Dataset](https://magenta.tensorflow.org/datasets/groove) (CC BY 4.0), Gillick, Roberts, Engel, Eck and Bamman: onset spread, offsets and velocities of real drum performances, computed by filtering and aggregation.
 - [IDMT-SMT-Audio-Effects](https://zenodo.org/records/7544032) (CC BY-NC-ND 4.0): labelled guitar and bass effect recordings, surveyed for modulation and distortion. Inspiration only.
+- [Lakh MIDI Dataset, clean subset](https://colinraffel.com/projects/lmd/) (CC BY 4.0 for the collection, the songs keep their copyright): pitch ranges, note counts and repetition of instrument groups, counts only.
+- [McGill Billboard annotations, through mirdata](https://github.com/mir-dataset-loaders/mirdata) (CC0 per its loader): progression shares and harmonic rhythm of chart songs, counts only.
+- [MidiCaps](https://huggingface.co/datasets/amaai-lab/MidiCaps) (CC BY-SA 4.0): mode and tempo shares by caption tag, counts only. Inspiration only.
 - [MusicCaps](https://huggingface.co/datasets/google/MusicCaps) (CC BY-SA 4.0): how listeners describe synth parts, from caption word counts. Inspiration only.
 - [NSynth](https://magenta.tensorflow.org/datasets/nsynth) (CC BY 4.0): bright/dark and pitch labels as a feature sanity check.
+- [POP909](https://github.com/music-x-lab/POP909-Dataset) (MIT, the songs keep their copyright): the share of melody notes outside the key, counts only.
 - [ReverbFX](https://arxiv.org/abs/2505.20533) (CC BY-NC 4.0): room impulse responses derived from reverb plugins, as an effect-estimation reference. Inspiration only.
 - [SocialFX listener data, re-upload](https://huggingface.co/datasets/seungheondoh/socialfx-original) (no license found): band means of the listener EQ curves behind each sound word. Inspiration only.
 - [Surge pitch dataset](https://zenodo.org/records/4677097) (CC BY 4.0): pitch-labelled test audio and rank-based compare tests.

@@ -2,3 +2,5 @@ numpy==2.5.4
 scipy==1.18.1
 librosa==1.0.0
 mir_eval==0.8.2
+pychord==1.4.1
+music21==10.5.2
