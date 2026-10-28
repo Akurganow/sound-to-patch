@@ -8,10 +8,14 @@ use std::sync::atomic::Ordering;
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 use serde_json::{Value, json};
-use sound_to_patch::audio::SampleRate;
-use sound_to_patch::notes::Transcriber;
+use sound_to_patch::audio::{SampleRate, Tempo};
+use sound_to_patch::notes::{
+    DEFAULT_VELOCITY, Profile, Transcriber, Velocities, min_note_frames, write_named_midi,
+};
 use sound_to_patch::report::spectrogram::{PLOT_HEIGHT, PLOT_WIDTH, Spectrogram};
-use sound_to_patch::report::{AnalyzeRequest, LAYERS_FILE, SPECTROGRAM_FILE, analyze};
+use sound_to_patch::report::{
+    AnalyzeRequest, LAYERS_FILE, NotesRequest, SPECTROGRAM_FILE, analyze, notes,
+};
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::Bpm;
 
@@ -518,6 +522,11 @@ fn a_note_file_at_the_refined_tempo_is_accepted() {
         message.contains("--bpm is 120 and the tempo refined from the stem is 121"),
         "{message}"
     );
+    // A refined tempo equal to --bpm adds nothing to the message.
+    let message = read_midi_near(&refined, given, Some(given))
+        .unwrap_err()
+        .to_string();
+    assert!(!message.contains("refined"), "{message}");
 }
 
 /// The record of a transcription fits the `transcription` group of the
@@ -542,4 +551,139 @@ fn a_transcription_record_fits_the_schema() {
         other["profile"] = json!("drum");
         assert!(!definition("transcription").is_valid(&other));
     }
+}
+
+/// A generated bass line in eighths at `bpm`, `beats` long, as a mono WAV.
+fn bass_line(dir: &Path, bpm: f64, beats: usize) -> PathBuf {
+    let (rate, samples) = crate::tempo::bass_line(bpm, beats);
+    let path = dir.join("line.wav");
+    write_wav16(&path, rate, &[samples]);
+    path
+}
+
+/// The tempo of the first tempo event of a MIDI file, in BPM.
+fn file_bpm(bytes: &[u8]) -> f64 {
+    let smf = Smf::parse(bytes).unwrap();
+    let us = smf.tracks[0]
+        .iter()
+        .find_map(|event| match event.kind {
+            TrackEventKind::Meta(MetaMessage::Tempo(us)) => Some(us.as_int()),
+            _ => None,
+        })
+        .unwrap();
+    60e6 / f64::from(us)
+}
+
+fn notes_request<'a>(stem: &'a Path, out: &'a Path, bpm: f64, exact: bool) -> NotesRequest<'a> {
+    NotesRequest {
+        stem,
+        bpm: Bpm::new(bpm).unwrap(),
+        bpm_exact: exact,
+        profile: Some(Profile::Bass),
+        out: Some(out),
+        force: false,
+    }
+}
+
+/// `notes` decodes and writes at the refined tempo. 117 BPM keeps notes of
+/// 6 frames or more and 120 BPM of 5, so the minimum note length shows
+/// which tempo reached the decoder.
+#[test]
+fn the_refined_tempo_reaches_the_decoder_and_the_midi_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 117.0, 9);
+    let out = dir.path().join("out");
+    let report = notes(&notes_request(&stem, &out, 120.0, false), &transcriber()).unwrap();
+    assert_eq!(report.tempo.trusted(), Some(Bpm::new(117.0).unwrap()));
+    let bpm = file_bpm(&fs::read(&report.path).unwrap());
+    assert!((bpm - 117.0).abs() <= 0.01, "{bpm}");
+    let frames = report.transcription.settings.min_note_frames;
+    assert_eq!(frames, min_note_frames(Bpm::new(117.0).unwrap()));
+    assert_ne!(frames, min_note_frames(Bpm::new(120.0).unwrap()));
+}
+
+/// `--bpm-exact` writes the file at `--bpm`, byte for byte as the writer
+/// gives it, on a stem whose tempo would otherwise refine.
+#[test]
+fn bpm_exact_writes_the_given_tempo_byte_for_byte() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 234.0, 10);
+    let mono = sound_to_patch::audio::decode(&stem)
+        .unwrap()
+        .into_audio()
+        .mono();
+    let refined = Tempo::refine(
+        &mono,
+        SampleRate::new(22_050).unwrap(),
+        Bpm::new(240.0).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(refined.trusted(), Some(Bpm::new(234.0).unwrap()));
+
+    let out = dir.path().join("out");
+    let report = notes(&notes_request(&stem, &out, 240.0, true), &transcriber()).unwrap();
+    assert_eq!(report.tempo.used(), Bpm::new(240.0).unwrap());
+    assert_eq!(
+        report.tempo.summary(),
+        "tempo: 240 BPM as given (--bpm-exact)"
+    );
+    let expected = write_named_midi(
+        &report.transcription.notes,
+        Bpm::new(240.0).unwrap(),
+        Velocities::Constant(DEFAULT_VELOCITY),
+        "line.wav",
+    )
+    .unwrap();
+    assert_eq!(fs::read(&report.path).unwrap(), expected);
+    assert!((file_bpm(&expected) - 240.0).abs() < 1e-9);
+}
+
+/// `analyze --notes` on a stem of 40 beats records the given, refined and
+/// used tempo, and reads a note file at the refined tempo.
+#[test]
+fn the_report_records_the_given_refined_and_used_tempo() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 119.62, 40);
+    let notes = midi(dir.path(), 119.62);
+    let out = dir.path().join("out");
+    let report = run(&stem, Some(&notes), &out);
+    let group = &report["stem"];
+    assert_eq!(group["bpm"], 119.62);
+    assert_eq!(group["bpm_given"], 120.0);
+    assert_eq!(group["bpm_refined"]["value"], 119.62);
+    assert_eq!(group["bpm_refined"]["confidence"]["level"], "high");
+    assert!(validator().is_valid(&report));
+}
+
+/// `analyze --bpm-exact` keeps `--bpm` and records why no tempo was
+/// refined.
+#[test]
+fn bpm_exact_leaves_the_refined_tempo_empty() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 119.62, 40);
+    let notes = midi(dir.path(), 120.0);
+    let out = dir.path().join("out");
+    let exact = AnalyzeRequest {
+        bpm_exact: true,
+        ..request(&stem, Some(&notes), &out)
+    };
+    let analysis = analyze(&exact, &transcriber()).unwrap();
+    assert_eq!(analysis.tempo.used(), Bpm::new(120.0).unwrap());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
+    let group = &report["stem"];
+    assert_eq!(group["bpm"], 120.0);
+    assert_eq!(group["bpm_refined"]["value"], Value::Null);
+    assert_eq!(
+        group["bpm_refined"]["confidence"]["reasons"],
+        json!([{"code": "bpm_exact", "value": true}])
+    );
+    // Nothing was refined, so a note file at another tempo names --bpm only.
+    let refined = midi(dir.path(), 119.62);
+    let exact = AnalyzeRequest {
+        bpm_exact: true,
+        ..request(&stem, Some(&refined), &out)
+    };
+    let message = analyze(&exact, &transcriber()).unwrap_err().to_string();
+    assert!(message.contains("but --bpm is 120. Export"), "{message}");
 }

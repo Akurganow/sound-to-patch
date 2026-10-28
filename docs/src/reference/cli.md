@@ -42,7 +42,7 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem within 3 % unless --bpm-exact is given
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
 
       --bpm-exact
           Use --bpm as it is, without refining it from the stem
@@ -104,11 +104,11 @@ extension, stops the command with a request for `--out`.
 Without `--out`, the folder is named after the stem file and sits next to
 it: `stems/bass.wav` writes `stems/bass/`.
 
-- Tempo: `--bpm` is refined from the stem's onsets within 3 %, as the
-  [tempo section](../analysis/pipeline.md#tempo) describes, and the first
-  line of standard output says which tempo every later step uses and why.
-  `--bpm-exact` uses `--bpm` as it is. The report records the given and
-  the refined tempo.
+- Tempo: `--bpm` is refined from the stem's onsets, from 2.91 % below to
+  3.09 % above it, as the [tempo section](../analysis/pipeline.md#tempo)
+  describes, and the first line of standard output says which tempo every
+  later step uses and why. `--bpm-exact` uses `--bpm` as it is. The report
+  records the given and the refined tempo.
 - Notes: without `--notes`, the stem runs through the notes step of
   [`notes`](#notes) once, and the next lines of standard output are its
   steps; `--profile` overrides the detected settings as there. The
@@ -147,7 +147,7 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem within 3 % unless --bpm-exact is given
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
 
       --bpm-exact
           Use --bpm as it is, without refining it from the stem

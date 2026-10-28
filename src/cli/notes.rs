@@ -14,7 +14,8 @@ pub struct NotesArgs {
     /// The audio stem: WAV, AIFF, FLAC, MP3, AAC or M4A.
     pub stem: PathBuf,
     /// The tempo of the stem in beats per minute, 4 to 1000. It is refined
-    /// from the stem within 3 % unless --bpm-exact is given
+    /// from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact
+    /// is given
     #[arg(long, value_name = "BPM", value_parser = parse_bpm, allow_negative_numbers = true)]
     pub bpm: Bpm,
     /// Use --bpm as it is, without refining it from the stem

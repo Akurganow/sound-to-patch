@@ -17,9 +17,10 @@ Every statement carries a tag:
 
 `analyze` runs decoding, the tempo, the notes step (unless `--notes` gives
 the notes), the stem, the stereo screen, the descriptors and the report
-today [fact]. `notes` runs decoding, the tempo and the notes step [fact]. The analytic signal, the masks, the modulation
-spectrum, the periodogram and the decay fits are library stages that the
-layer estimators of later releases call [fact].
+today [fact]. `notes` runs decoding, the tempo and the notes step [fact].
+The analytic signal, the masks, the modulation spectrum, the periodogram and
+the decay fits are library stages that the layer estimators of later
+releases call [fact].
 
 ## Decoding
 
@@ -65,12 +66,18 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   $|t_{given} / t - 1| \le 0.03$ [fact]. Each scores the unbiased
   autocorrelation of the strength, read by linear interpolation at
   $k \cdot 60 / t$ seconds and summed over $k = 1$ to $K$ beats, with
-  $K = \min(32, \lfloor \text{beats} \rfloor - 4)$ [fact]. The window is so
-  narrow that half and double the tempo lie outside it [fact].
+  $K = \min(32, \lfloor \text{beats} \rfloor - 4)$ [fact]. The search
+  spans 2.91 % below to 3.09 % above `--bpm`, so a `--bpm` 3 % off either
+  way still holds the truth [fact]. The window is so narrow that half and
+  double the tempo lie outside it [fact].
 - Trust: the best tempo replaces `--bpm` when its score is at least 1.5
-  times the median score of the search (`tempo_peak`) and the best score is
-  at least 0.4 of $K$ times the zero-lag autocorrelation
-  (`beat_periodicity`) [proposal]. Otherwise it is reported at low
+  times the median score of the search (`tempo_peak`) and one of two shares
+  is high enough [proposal]. The beat share is the best score over $K$
+  times the zero-lag autocorrelation, and needs 0.4 (`beat_periodicity`)
+  [proposal]. The sparse share reads the same sum on every second or every
+  fourth beat lag alone, the better of the two, and needs 0.75
+  (`sparse_periodicity`) [proposal]. It counts only when the stem holds 4
+  such lags, 12 or 20 beats [fact]. Otherwise the tempo is reported at low
   confidence and `--bpm` stays [fact]. A stem of fewer than 8 beats, or one
   without onsets, keeps `--bpm` and reports no refined tempo [fact].
 - Generated drum, bass and lead parts at 70.3, 97.55, 123.4, 147.81 and
@@ -79,6 +86,20 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
   [synthetic]. Their `beat_periodicity` reads 0.78 to 0.99; pad chords that
   change once a bar read 0.04 at most and keep `--bpm` [synthetic]. The
   0.4 threshold sits between the two [proposal].
+- One kick a bar repeats on a quarter of the beat lags, so its
+  `beat_periodicity` reads 0.22 to 0.24 and its `sparse_periodicity` 0.95
+  to 0.97 [synthetic]. Kicks a bar and kicks on every other beat, on the
+  same grid, refine to the exact tempo [synthetic]. The sparse share needs
+  more than the beat share, because its fewer lags line up by chance more
+  often [fact]. A drum part with `--bpm` 3.5 % off reads 0.46 at a tempo
+  16/15 of the truth, where every eighth beat meets an eighth note
+  [synthetic]. Across the parts, the cases that keep `--bpm` read at most
+  0.47, and a tempo ramp of 1 % at most 0.62; sparse parts read 0.875 or
+  more [synthetic]. The 0.75 threshold sits between them [proposal].
+- Swing at two thirds of the beat refines within 0.05 BPM, and onsets moved
+  by up to 8 ms at random within 0.1 BPM [synthetic]. A `--bpm` 3.5 % or
+  4 % off, and a tempo ramp of 2 % or 3 % either way, keep `--bpm`
+  [synthetic].
 - A steady tone whose period divides the beat, such as 110 Hz at 120 BPM,
   finds no onset and keeps `--bpm` [synthetic].
 - The beat offset stays 0: only the period is refined [fact]. A stem whose

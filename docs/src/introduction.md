@@ -14,10 +14,10 @@ paths:
 
 The project is at an early release. `sound-to-patch analyze` reads a stem
 and writes a report of its tempo, notes, level, spectrum, band edge and
-stereo image with a spectrogram, as the [analysis guide](guide/analyze.md) shows.
-`sound-to-patch preset inspect` prints the header and the decoded settings
-of a Vital preset, and `sound-to-patch preset apply` writes one from an
-edit list, as the [preset guide](guide/preset.md) shows. The layer
+stereo image with a spectrogram, as the [analysis guide](guide/analyze.md)
+shows. `sound-to-patch preset inspect` prints the header and the decoded
+settings of a Vital preset, and `sound-to-patch preset apply` writes one
+from an edit list, as the [preset guide](guide/preset.md) shows. The layer
 estimators and the text path arrive in later releases.
 
 The [API documentation](api/sound_to_patch/index.html) covers the library.

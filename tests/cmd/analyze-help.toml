@@ -15,7 +15,7 @@ Arguments:
 
 Options:
       --bpm <BPM>
-          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem within 3 % unless --bpm-exact is given
+          The tempo of the stem in beats per minute, 4 to 1000. It is refined from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact is given
 
       --bpm-exact
           Use --bpm as it is, without refining it from the stem

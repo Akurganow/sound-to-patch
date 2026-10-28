@@ -45,7 +45,7 @@ pub use stereo::{
 };
 pub use tempo::{
     BPM_STEP, MAX_BEAT_LAGS, MIN_BEAT_LAGS, OVERLAP_BEATS, PEAK_RATIO_MIN, PERIODICITY_MIN,
-    SEARCH_SHARE, TEMPO_CONVENTION, Tempo,
+    SEARCH_SHARE, SPARSE_PERIODICITY_MIN, TEMPO_CONVENTION, Tempo,
 };
 
 /// A sample rate in samples per second: a whole number above zero.

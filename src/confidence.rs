@@ -112,6 +112,12 @@ reason_codes! {
     /// zero-lag autocorrelation. Below the trust threshold the given tempo
     /// stays.
     BeatPeriodicity,
+    /// The share of the onset strength that repeats every 2 or every 4
+    /// refined beats, the better of the two, as [`Self::BeatPeriodicity`]
+    /// reads it on those lags alone. Onsets on every other beat or once a
+    /// bar read near 1. It trusts a sparse part when the beat periodicity
+    /// does not; 0 when the stem holds too few beats for it.
+    SparsePeriodicity,
     /// `--bpm-exact` was given, so the tempo was not refined.
     BpmExact,
 }

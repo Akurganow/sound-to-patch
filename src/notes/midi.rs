@@ -46,8 +46,8 @@ pub fn read_midi(path: &Path, bpm: Bpm) -> Result<NoteList, MidiError> {
 }
 
 /// Reads the notes of a MIDI file at `path` as [`read_midi`] does, and
-/// also accepts a file whose every tempo matches `refined`, the tempo
-/// refined from the stem.
+/// also accepts a file whose every tempo matches `refined`, the trusted
+/// tempo refined from the stem. A `refined` equal to `bpm` counts as none.
 ///
 /// # Errors
 ///
@@ -61,8 +61,8 @@ pub fn read_midi_near(path: &Path, bpm: Bpm, refined: Option<Bpm>) -> Result<Not
     let bytes = std::fs::read(path).map_err(|source| fail(Kind::Open(source)))?;
     let smf = Smf::parse(&bytes).map_err(|source| fail(Kind::Parse(source.to_string())))?;
     match (notes_of(&smf, bpm), refined) {
-        (Err(Kind::Tempo { .. }), Some(refined)) => {
-            notes_of(&smf, refined).map_err(|kind| match kind {
+        (Err(Kind::Tempo { .. }), Some(refined)) if refined != bpm => notes_of(&smf, refined)
+            .map_err(|kind| match kind {
                 Kind::Tempo {
                     file_bpm, default, ..
                 } => Kind::Tempo {
@@ -72,8 +72,7 @@ pub fn read_midi_near(path: &Path, bpm: Bpm, refined: Option<Bpm>) -> Result<Not
                     default,
                 },
                 other => other,
-            })
-        }
+            }),
         (result, _) => result,
     }
     .map_err(fail)

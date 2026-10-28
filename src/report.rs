@@ -13,7 +13,7 @@ use std::fmt;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-use crate::audio::{self, Audio, BeatGrid, DecodeError, SkippedPacket, Stem, Tempo};
+use crate::audio::{self, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
 use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
 use crate::notes::{
@@ -68,7 +68,9 @@ pub struct AnalyzeRequest<'a> {
     pub synth: Synth,
     /// A MIDI file with the stem's notes. Without it the notes step runs.
     pub notes: Option<&'a Path>,
-    /// The profile that overrides detection in the notes step, if any.
+    /// The profile that overrides detection in the notes step, if any. The
+    /// notes step does not run when `notes` gives the notes, so the profile
+    /// then has no effect; the command line rejects the two together.
     pub profile: Option<Profile>,
     /// The output folder; by default `<stem folder>/<stem file stem>/`.
     pub out: Option<&'a Path>,
@@ -145,15 +147,21 @@ pub fn analyze(
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
-    let tempo = tempo_of(&stem_audio, request.bpm, request.bpm_exact)?;
+    let mono = stem_audio.mono();
+    let tempo = tempo_of(
+        &mono,
+        stem_audio.sample_rate(),
+        request.bpm,
+        request.bpm_exact,
+    )?;
     let (notes, transcription) = if let Some(path) = request.notes {
         let notes =
-            read_midi_near(path, tempo.given(), Some(tempo.used())).map_err(AnalyzeError::Notes)?;
+            read_midi_near(path, tempo.given(), tempo.trusted()).map_err(AnalyzeError::Notes)?;
         (Some(notes), None)
     } else {
         let transcription = transcribe_stem(
             transcriber,
-            &stem_audio.mono(),
+            &mono,
             stem_audio.sample_rate(),
             tempo.used(),
             request.profile,
@@ -211,11 +219,11 @@ pub fn analyze(
 
 /// The tempo of a stem: `bpm` as given when `exact`, else refined from
 /// the mono mix.
-fn tempo_of(audio: &Audio, bpm: Bpm, exact: bool) -> Result<Tempo, AnalyzeError> {
+fn tempo_of(mono: &[f64], rate: SampleRate, bpm: Bpm, exact: bool) -> Result<Tempo, AnalyzeError> {
     Ok(if exact {
         Tempo::exact(bpm)?
     } else {
-        Tempo::refine(&audio.mono(), audio.sample_rate(), bpm)?
+        Tempo::refine(mono, rate, bpm)?
     })
 }
 
@@ -341,10 +349,16 @@ pub fn notes(
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
-    let tempo = tempo_of(&stem_audio, request.bpm, request.bpm_exact)?;
+    let mono = stem_audio.mono();
+    let tempo = tempo_of(
+        &mono,
+        stem_audio.sample_rate(),
+        request.bpm,
+        request.bpm_exact,
+    )?;
     let transcription = transcribe_stem(
         transcriber,
-        &stem_audio.mono(),
+        &mono,
         stem_audio.sample_rate(),
         tempo.used(),
         request.profile,

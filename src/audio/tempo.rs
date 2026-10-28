@@ -3,11 +3,11 @@
 //! A tempo taken from a file or folder name is close to the true tempo but
 //! rarely exact, and an error of 1 % drifts the notes off the grid within
 //! a few bars. [`Tempo::refine`] searches the tempos that the given value
-//! lies within [`SEARCH_SHARE`] of, in steps of [`BPM_STEP`]. Each
-//! candidate scores the autocorrelation of the onset strength summed at
-//! 1 to [`MAX_BEAT_LAGS`] beats. The beat offset stays 0: only the period
-//! is refined. A window this narrow never reaches half or double the
-//! tempo.
+//! lies within [`SEARCH_SHARE`] of, 2.91 % below to 3.09 % above it, in
+//! steps of [`BPM_STEP`]. Each candidate scores the autocorrelation of the
+//! onset strength summed at 1 to [`MAX_BEAT_LAGS`] beats. The beat offset
+//! stays 0: only the period is refined. A window this narrow never reaches
+//! half or double the tempo.
 
 use realfft::RealFftPlanner;
 use realfft::num_complex::Complex64;
@@ -43,15 +43,30 @@ pub const PEAK_RATIO_MIN: f64 = 1.5;
 /// 0.99 and pad chords that change once a bar 0.04 at most; the threshold
 /// sits between them.
 pub const PERIODICITY_MIN: f64 = 0.4;
+/// The lowest share of the onset strength that repeats every 2 or every 4
+/// refined beats, for a part whose beat periodicity is too low.
+///
+/// One onset a bar repeats on a quarter of the beat lags, so its beat
+/// periodicity reads near 0.25. Read on every second or fourth lag alone,
+/// it reads near 1. Those lags are fewer and line up by chance more
+/// often: a drum part whose `--bpm` is 3.5 % off reads 0.47 at a tempo
+/// 16/15 of the truth, where every eighth beat meets an eighth note. A
+/// tempo ramp of 1 % reads 0.62 at most, and generated parts with one kick
+/// a bar or every other beat read 0.875 or more; the threshold sits
+/// between them.
+pub const SPARSE_PERIODICITY_MIN: f64 = 0.75;
+/// The beat spacings of the sparse periodicity.
+const SPARSE_BEATS: [usize; 2] = [2, 4];
 /// The convention of the refined tempo in `layers.json`.
 pub const TEMPO_CONVENTION: &str = "onset strength: the rise of each third-octave band power \
 from 30 Hz, compressed as ln(1 + P / knee) with the knee 60 dB below full scale, against the \
 frame 10 ms earlier, in 46.4 ms Hann frames on a 1 ms hop, low-passed at 20 Hz, less its \
-100 ms mean, below 10 % of its largest rise set to 0; each tempo within 3 % of the given one, \
-in 0.01 BPM steps, scores the unbiased autocorrelation summed at 1 to 32 beats; the refined \
-tempo is used when its score is at least 1.5 times the median score (tempo_peak) and 0.4 of \
-the lag count times the zero-lag autocorrelation (beat_periodicity); cycles_in_span counts \
-the whole beats of the stem";
+100 ms mean, below 10 % of its largest rise set to 0; each tempo t with |given / t - 1| at \
+most 3 % (2.91 % below to 3.09 % above the given one), in 0.01 BPM steps, scores the unbiased \
+autocorrelation summed at 1 to 32 beats; the refined tempo is used when its score is at least \
+1.5 times the median score (tempo_peak) and either 0.4 of the lag count times the zero-lag \
+autocorrelation (beat_periodicity) or 0.75 of that on every second or fourth beat lag alone \
+(sparse_periodicity); cycles_in_span counts the whole beats of the stem";
 
 /// The hop of the onset strength.
 const ONSET_HOP_S: f64 = 0.001;
@@ -107,13 +122,13 @@ impl Tempo {
     /// Refines `given` from the onsets of `mono`.
     ///
     /// The refined tempo replaces the given one when its score is at least
-    /// [`PEAK_RATIO_MIN`] times the median of the search and at least
-    /// [`PERIODICITY_MIN`] of the score that onsets on every beat give.
-    /// Otherwise it is reported at low confidence and the given tempo
-    /// stays. A
-    /// stem shorter than [`MIN_BEAT_LAGS`] plus [`OVERLAP_BEATS`] beats,
-    /// or one without onsets, keeps the given tempo and reports no
-    /// refined one.
+    /// [`PEAK_RATIO_MIN`] times the median of the search, and either at
+    /// least [`PERIODICITY_MIN`] of the score that onsets on every beat
+    /// give or at least [`SPARSE_PERIODICITY_MIN`] of it on every second
+    /// or fourth beat lag. Otherwise it is reported at low confidence and
+    /// the given tempo stays. A stem shorter than [`MIN_BEAT_LAGS`] plus
+    /// [`OVERLAP_BEATS`] beats, or one without onsets, keeps the given
+    /// tempo and reports no refined one.
     ///
     /// # Errors
     ///
@@ -165,11 +180,25 @@ impl Tempo {
         }
         let ratio = best / median;
         let periodicity = best / (cast::usize_to_f64(lags) * acf[0]);
+        let period = 60.0 / candidates[best_at] * fps;
+        let sparse = SPARSE_BEATS
+            .iter()
+            .filter(|&&every| lags / every >= MIN_BEAT_LAGS)
+            .map(|&every| {
+                let count = lags / every;
+                let sum: f64 = (1..=count)
+                    .map(|j| interpolate(&acf, cast::usize_to_f64(j * every) * period))
+                    .sum();
+                sum / (cast::usize_to_f64(count) * acf[0])
+            })
+            .fold(0.0, f64::max);
         let refined_bpm = Bpm::clamped(candidates[best_at]);
-        let trusted = ratio >= PEAK_RATIO_MIN && periodicity >= PERIODICITY_MIN;
+        let trusted = ratio >= PEAK_RATIO_MIN
+            && (periodicity >= PERIODICITY_MIN || sparse >= SPARSE_PERIODICITY_MIN);
         let reasons = vec![
             Reason::new(ReasonCode::TempoPeak, Signal::Number(ratio))?,
             Reason::new(ReasonCode::BeatPeriodicity, Signal::Number(periodicity))?,
+            Reason::new(ReasonCode::SparsePeriodicity, Signal::Number(sparse))?,
             Reason::new(
                 ReasonCode::CyclesInSpan,
                 Signal::Count(u64::try_from(whole_beats).unwrap_or(u64::MAX)),
@@ -206,6 +235,15 @@ impl Tempo {
         self.used
     }
 
+    /// Returns the refined tempo when it is trusted, so it replaced the
+    /// given one.
+    #[must_use]
+    pub fn trusted(&self) -> Option<Bpm> {
+        (self.refined.confidence().level() == Some(Level::High))
+            .then(|| self.refined.value().copied())
+            .flatten()
+    }
+
     /// Returns one line that says which tempo is used and why.
     #[must_use]
     pub fn summary(&self) -> String {
@@ -218,26 +256,32 @@ impl Tempo {
                 .map(|reason| reason.value())
         };
         match (self.refined.value(), signal(ReasonCode::TempoPeak)) {
-            (Some(refined), Some(Signal::Number(ratio))) if self.used == *refined => format!(
+            (Some(refined), Some(Signal::Number(ratio))) if self.trusted().is_some() => format!(
                 "tempo: {} BPM, refined from --bpm {given} (peak ratio {ratio:.2})",
                 refined.get()
             ),
             (Some(refined), Some(Signal::Number(ratio))) => {
-                let periodicity = match signal(ReasonCode::BeatPeriodicity) {
+                let share = |code| match signal(code) {
                     Some(Signal::Number(share)) => share,
                     _ => 0.0,
                 };
                 format!(
-                    "tempo: {given} BPM as given; the refined {} BPM is not trusted (peak ratio {ratio:.2}, beat periodicity {periodicity:.2}; needs {PEAK_RATIO_MIN} and {PERIODICITY_MIN})",
-                    refined.get()
+                    "tempo: {given} BPM as given; the refined {} BPM is not trusted (peak ratio {ratio:.2}, needs {PEAK_RATIO_MIN}; beat periodicity {:.2}, needs {PERIODICITY_MIN}, or {:.2} at 2 or 4 beats, needs {SPARSE_PERIODICITY_MIN})",
+                    refined.get(),
+                    share(ReasonCode::BeatPeriodicity),
+                    share(ReasonCode::SparsePeriodicity),
                 )
             }
             _ if signal(ReasonCode::BpmExact).is_some() => {
                 format!("tempo: {given} BPM as given (--bpm-exact)")
             }
             _ => match signal(ReasonCode::CyclesInSpan) {
+                Some(Signal::Count(0)) => {
+                    format!("tempo: {given} BPM as given; the stem is shorter than one beat")
+                }
                 Some(Signal::Count(beats)) => format!(
-                    "tempo: {given} BPM as given; the stem holds {beats} beats, too few to refine it"
+                    "tempo: {given} BPM as given; the stem holds {beats} beat{}, too few to refine it",
+                    if beats == 1 { "" } else { "s" }
                 ),
                 _ => format!("tempo: {given} BPM as given; the stem has no onsets to refine it"),
             },
@@ -501,6 +545,36 @@ mod tests {
             tempo.summary().contains("too few to refine it"),
             "{}",
             tempo.summary()
+        );
+    }
+
+    #[test]
+    fn a_stem_under_one_beat_says_so() {
+        let rate = SampleRate::new(8000).unwrap();
+        let tempo = Tempo::refine(&[0.5; 1600], rate, bpm(120.0)).unwrap();
+        assert_eq!(
+            tempo.summary(),
+            "tempo: 120 BPM as given; the stem is shorter than one beat"
+        );
+    }
+
+    #[test]
+    fn an_untrusted_tempo_equal_to_the_given_one_is_not_called_refined() {
+        let reasons = vec![
+            Reason::new(ReasonCode::TempoPeak, Signal::Number(322.03)).unwrap(),
+            Reason::new(ReasonCode::BeatPeriodicity, Signal::Number(0.24)).unwrap(),
+            Reason::new(ReasonCode::SparsePeriodicity, Signal::Number(0.5)).unwrap(),
+        ];
+        let tempo = Tempo {
+            given: bpm(120.0),
+            refined: Estimate::new(bpm(120.0), Level::Low, None, reasons).unwrap(),
+            used: bpm(120.0),
+        };
+        assert_eq!(tempo.trusted(), None);
+        assert_eq!(
+            tempo.summary(),
+            "tempo: 120 BPM as given; the refined 120 BPM is not trusted (peak ratio 322.03, \
+needs 1.5; beat periodicity 0.24, needs 0.4, or 0.50 at 2 or 4 beats, needs 0.75)"
         );
     }
 }

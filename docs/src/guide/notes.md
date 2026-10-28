@@ -66,7 +66,8 @@ Each line names one step:
 `--bpm` sets the tempo of the file and the shortest note the decoder
 keeps: half a sixteenth note, between 58 ms and 127.7 ms. A tempo from a
 file name is often close but not exact, so the command refines it from the
-stem's onsets within 3 % and prints the result first:
+stem's onsets, from 2.91 % below to 3.09 % above it, and prints the result
+first:
 
 ```text
 tempo: 119.62 BPM, refined from --bpm 120 (peak ratio 8.05)
@@ -74,10 +75,10 @@ tempo: 119.62 BPM, refined from --bpm 120 (peak ratio 8.05)
 
 This line comes from a generated 16 s bass line at 119.62 BPM, eighth
 notes of A1, C2, E2 and G1, passed as `--bpm 120`. The file then plays at
-119.62 BPM. Set your DAW project to the printed
-tempo, or the notes drift off the grid over the song. When the onsets do
-not settle the tempo, as in a pad that changes chord once a bar, the line
-says why and the file keeps `--bpm`. `--bpm-exact` uses `--bpm` as it is.
+119.62 BPM. Set your DAW project to the printed tempo, or the notes drift
+off the grid over the song. When the onsets do not settle the tempo, as in
+a pad that changes chord once a bar, the line says why and the file keeps
+`--bpm`. `--bpm-exact` uses `--bpm` as it is.
 The [tempo section](../analysis/pipeline.md#tempo) gives the method.
 
 ## Profiles

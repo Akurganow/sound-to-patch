@@ -21,14 +21,13 @@ edit list from the description.
 The library so far holds the command line with `analyze`, `notes`,
 `preset inspect` and `preset apply`, the unit types, the confidence type,
 the synth seam, the Vital read and write paths, stem intake with the tempo
-refinement, the note list
-with its masks and its MIDI reader, the signal core that the estimators
-share, and the report with the `stem` group and the spectrogram, the
-transcriber with its profiles and its register detection, the f0 track,
-the note cleanup, the MIDI writer, the layer map of the agent reference,
-and the render core: the recipe, the renderer trait and a fake renderer.
-The reference itself is the folder `reference/`, which an agent plugin and
-a project skill both read.
+refinement, the note list with its masks and its MIDI reader, the signal
+core that the estimators share, and the report with the `stem` group and the
+spectrogram, the transcriber with its profiles and its register detection,
+the f0 track, the note cleanup, the MIDI writer, the layer map of the agent
+reference, and the render core: the recipe, the renderer trait and a fake
+renderer. The reference itself is the folder `reference/`, which an agent
+plugin and a project skill both read.
 
 ## Synth adapter seam
 
