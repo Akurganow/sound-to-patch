@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.19.0](https://github.com/Akurganow/sound-to-patch/compare/334d9aa6654d1fe705801c0432c261c6d163d7fb..v0.19.0) - 2026-10-29
+#### Features
+- (**render**) add the render command with the load check (#284) - ([ee51a83](https://github.com/Akurganow/sound-to-patch/commit/ee51a83b5cdc38a7d44aaf6c7bf6ced69ae5b198)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.18.0](https://github.com/Akurganow/sound-to-patch/compare/c411d3fc51781df026908695301287298b4d19cb..v0.18.0) - 2026-10-28
 #### Features
 - (**render**) render Vital presets through a plug-in host process (#283) - ([084fd4f](https://github.com/Akurganow/sound-to-patch/commit/084fd4fe382617bf6835cdf89c0bf5b994644b56)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
