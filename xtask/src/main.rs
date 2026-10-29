@@ -13,10 +13,12 @@ mod fixtures;
 mod golden;
 mod lock;
 mod music;
+mod plugin;
 mod plugins;
 mod pr;
 mod ranks;
 mod reference;
+mod spread;
 mod timing;
 mod version;
 mod vital;
@@ -27,6 +29,10 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
+
+use sound_to_patch::render::session::RESTART_AFTER;
+use sound_to_patch::render::spread::{MIN_RUNS, SPREAD_RUNS};
+use sound_to_patch::units::Bpm;
 
 use crate::fetch::Sha256Digest;
 
@@ -139,15 +145,55 @@ enum Task {
         /// The preset to render [default: `tests/fixtures/vital/routes.vital`].
         #[arg(long)]
         preset: Option<PathBuf>,
-        /// The Vital .vst3 bundle [default: the standard VST3 folders].
-        #[arg(long)]
-        plugin: Option<PathBuf>,
-        /// The sound-to-patch-host binary [default: `SOUND_TO_PATCH_HOST`].
-        #[arg(long)]
-        host: Option<PathBuf>,
+        #[command(flatten)]
+        plugin: PluginArgs,
         /// How many measurements each row takes.
         #[arg(long, default_value_t = NonZeroUsize::new(20).unwrap_or(NonZeroUsize::MIN))]
         runs: NonZeroUsize,
+        /// The JSON file to write.
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Render a preset 20 times on the Vital plug-in and write the
+    /// repeat-render spread of each output; local only.
+    RenderSpread {
+        /// The preset to render [default: `tests/fixtures/vital/routes.vital`].
+        #[arg(long)]
+        preset: Option<PathBuf>,
+        /// The MIDI file [default: `tests/cmd/data/three-notes.mid`].
+        #[arg(long)]
+        midi: Option<PathBuf>,
+        /// The tempo of the MIDI file in beats per minute.
+        #[arg(long, default_value_t = 120.0)]
+        bpm: f64,
+        /// How many renders, drawn in sequence on one plug-in instance.
+        #[arg(long, default_value_t = SPREAD_RUNS, value_parser = runs_parser())]
+        runs: usize,
+        #[command(flatten)]
+        plugin: PluginArgs,
+        /// The JSON file to write.
+        #[arg(long)]
+        out: PathBuf,
+    },
+    /// Compare reference recordings with renders of the same presets, MIDI
+    /// files and tempos on the Vital plug-in, within the repeat-render
+    /// spread; local only.
+    RenderReference {
+        /// The folder the manifest's paths start from.
+        #[arg(long)]
+        root: PathBuf,
+        /// The manifest, one JSON object per recording.
+        #[arg(long)]
+        manifest: PathBuf,
+        /// How many renders per recording.
+        #[arg(long, default_value_t = SPREAD_RUNS, value_parser = runs_parser())]
+        runs: usize,
+        /// How many recordings render at once, each on its own plug-in
+        /// instance.
+        #[arg(long, default_value_t = WORKERS)]
+        workers: NonZeroUsize,
+        #[command(flatten)]
+        plugin: PluginArgs,
         /// The JSON file to write.
         #[arg(long)]
         out: PathBuf,
@@ -188,13 +234,46 @@ fn main() -> ExitCode {
         Task::RenderTiming {
             preset,
             plugin,
-            host,
             runs,
             out,
-        } => {
+        } => plugin.find().and_then(|found| {
             let preset = preset.unwrap_or_else(timing::default_preset);
-            timing::run(&preset, plugin.as_deref(), host.as_deref(), runs, &out)
-        }
+            timing::run(&preset, &found, runs, &out)
+        }),
+        Task::RenderSpread {
+            preset,
+            midi,
+            bpm,
+            runs,
+            plugin,
+            out,
+        } => plugin.find().and_then(|found| {
+            let preset = preset.unwrap_or_else(timing::default_preset);
+            let midi = midi.unwrap_or_else(spread::default_midi);
+            let run = spread::SpreadRun {
+                preset: &preset,
+                midi: &midi,
+                bpm: Bpm::new(bpm)?,
+                runs,
+            };
+            spread::run_spread(&run, &found, &out)
+        }),
+        Task::RenderReference {
+            root,
+            manifest,
+            runs,
+            workers,
+            plugin,
+            out,
+        } => plugin.find().and_then(|found| {
+            let run = spread::ReferenceRun {
+                root: &root,
+                manifest: &manifest,
+                runs,
+                workers,
+            };
+            spread::run_reference(&run, &found, &out)
+        }),
         Task::VitalFixtures { check, coverage } => {
             if coverage {
                 fixtures::coverage()
@@ -212,10 +291,74 @@ fn main() -> ExitCode {
     }
 }
 
+/// The plug-in of a render task.
+#[derive(Debug, clap::Args)]
+struct PluginArgs {
+    /// The Vital .vst3 bundle [default: the standard VST3 folders].
+    #[arg(long)]
+    plugin: Option<PathBuf>,
+    /// The sound-to-patch-host binary [default: `SOUND_TO_PATCH_HOST`].
+    #[arg(long)]
+    host: Option<PathBuf>,
+}
+
+impl PluginArgs {
+    fn find(&self) -> Result<plugin::Plugin> {
+        plugin::Plugin::find(self.plugin.as_deref(), self.host.as_deref())
+    }
+}
+
+/// The renders a spread may take: at least three for a leave-one-out
+/// median of two distances, and no more than one plug-in instance renders
+/// before the session restarts it.
+fn runs_parser() -> clap::builder::RangedU64ValueParser<usize> {
+    clap::builder::RangedU64ValueParser::new().range(MIN_RUNS_U64..=RESTART_AFTER)
+}
+
+/// [`MIN_RUNS`] for the range of [`runs_parser`].
+#[allow(clippy::as_conversions, reason = "a const cast of a small constant")]
+const MIN_RUNS_U64: u64 = MIN_RUNS as u64;
+/// The recordings a reference run renders at once.
+const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
+
 /// The workspace root, whatever directory `cargo xtask` runs from.
 fn root() -> &'static Path {
     Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
 }
 
+/// Writes `value` to `out` as pretty JSON with a final newline.
+fn write_json(out: &Path, value: &serde_json::Value) -> Result<()> {
+    let text = serde_json::to_string_pretty(value)? + "\n";
+    std::fs::write(out, text)
+        .map_err(|error| format!("cannot write {}: {error}", out.display()).into())
+}
+
 /// The error of any task: a message that says what failed and how to fix it.
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_spread_takes_three_renders_up_to_the_restart() {
+        for (runs, valid) in [("2", false), ("3", true), ("256", true), ("257", false)] {
+            for args in [
+                &["render-spread", "--out", "s.json"][..],
+                &[
+                    "render-reference",
+                    "--root",
+                    ".",
+                    "--manifest",
+                    "m",
+                    "--out",
+                    "r.json",
+                ],
+            ] {
+                let parsed =
+                    Xtask::try_parse_from(["xtask"].iter().chain(args).chain(&["--runs", runs]));
+                assert_eq!(parsed.is_ok(), valid, "{args:?} --runs {runs}");
+            }
+        }
+    }
+}

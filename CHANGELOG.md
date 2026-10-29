@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.23.0](https://github.com/Akurganow/sound-to-patch/compare/aa8c2306e603fcf590b8501fd8ec035d8b4ee486..v0.23.0) - 2026-10-29
+#### Features
+- (**render**) render single notes in the open Vital engine (#298) - ([aa8c230](https://github.com/Akurganow/sound-to-patch/commit/aa8c2306e603fcf590b8501fd8ec035d8b4ee486)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
+## [v0.22.0](https://github.com/Akurganow/sound-to-patch/compare/9eed99f8bce40dff8ddae02be042f96db340ff9d..v0.22.0) - 2026-10-29
+#### Features
+- (**render**) measure the repeat-render spread and compare reference recordings (#297) - ([9eed99f](https://github.com/Akurganow/sound-to-patch/commit/9eed99f8bce40dff8ddae02be042f96db340ff9d)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.21.1](https://github.com/Akurganow/sound-to-patch/compare/a3a2cc2a5413a31c671ebd39707a00fcdd0c1853..v0.21.1) - 2026-10-29
 #### Bug Fixes
 - (**deps**) write the pYIN f0 tracker in the repo and drop zip and atty (#294) - ([9079bbb](https://github.com/Akurganow/sound-to-patch/commit/9079bbb2453c19425f3185977ae64f7d1c356a7b)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5

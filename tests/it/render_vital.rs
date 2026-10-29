@@ -3,23 +3,24 @@
 //! Ignored in CI. Each test needs Vital in a standard VST3 folder and
 //! `SOUND_TO_PATCH_HOST` set to a host binary that loads it: for an
 //! `x86_64`-only Vital on Apple silicon, a universal or `x86_64` build of
-//! `sound-to-patch-host`. Run them with `cargo nextest run --run-ignored
-//! only render_vital`. The presets are generated from the minimal fixture.
+//! `sound-to-patch-host`. The cross-engine check also needs `VITA_PYTHON`,
+//! a Python with `tools/vita/requirements.txt`. Run them with `cargo
+//! nextest run --run-ignored only render_vital`. The presets are generated
+//! from the minimal fixture.
 
 use std::path::PathBuf;
 
 use serde_json::Value;
 use sound_to_patch::render::check::{LoadFault, render_checked};
 use sound_to_patch::render::plugin::{HOST_ENV, PluginRenderer, find_plugin};
-use sound_to_patch::render::state::{preset_state, readback_mismatches, saved_preset};
+use sound_to_patch::render::state::{readback_mismatches, saved_preset};
 use sound_to_patch::render::{
-    Control, ControlKind, Material, Oversampling, PresetState, Recipe, RenderError, RenderJob,
-    Renderer,
+    Control, ControlKind, Material, Oversampling, PresetState, RenderError, RenderJob, Renderer,
 };
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::{Bpm, Seconds};
 
-use crate::support::render::check_renderer;
+use crate::support::render::{check_renderer, probe};
 
 fn host() -> PathBuf {
     PathBuf::from(std::env::var_os(HOST_ENV).unwrap_or_else(|| {
@@ -38,23 +39,7 @@ fn renderer() -> PluginRenderer {
 
 /// The minimal fixture named `Probe`, with `edit` applied to its controls.
 fn state(edit: impl FnOnce(&mut serde_json::Map<String, Value>)) -> PresetState {
-    preset(|preset| edit(preset["settings"].as_object_mut().unwrap()))
-}
-
-/// The minimal fixture named `Probe`, with `edit` applied to the whole
-/// preset.
-fn preset(edit: impl FnOnce(&mut Value)) -> PresetState {
-    let mut preset: Value =
-        serde_json::from_slice(&std::fs::read("tests/fixtures/vital/minimal.vital").unwrap())
-            .unwrap();
-    preset["preset_name"] = "Probe".into();
-    edit(&mut preset);
-    preset_state(
-        Synth::Vital,
-        &serde_json::to_vec(&preset).unwrap(),
-        &Recipe::current(),
-    )
-    .unwrap()
+    probe(|preset| edit(preset["settings"].as_object_mut().unwrap()))
 }
 
 fn lead(state: PresetState) -> RenderJob {
@@ -121,7 +106,7 @@ fn the_record_names_the_build_and_the_host() {
 }
 
 /// The probe preset: a slow attack and a closed filter, unlike init.
-fn probe() -> PresetState {
+fn unlike_init() -> PresetState {
     state(|settings| {
         settings.insert("filter_1_on".into(), 1.0.into());
         settings.insert("filter_1_cutoff".into(), 50.0.into());
@@ -132,7 +117,7 @@ fn probe() -> PresetState {
 #[test]
 #[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
 fn a_loaded_preset_passes_the_load_check() {
-    let (_, check) = render_checked(&mut renderer(), &lead(probe())).unwrap();
+    let (_, check) = render_checked(&mut renderer(), &lead(unlike_init())).unwrap();
     assert!(check.init_distance_db > check.margin_db, "{check:?}");
 }
 
@@ -163,7 +148,7 @@ fn an_envelope_change_passes_the_load_check() {
 #[test]
 #[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
 fn a_newer_stamp_falls_back_to_init() {
-    let sent = probe();
+    let sent = unlike_init();
     let mut root = saved_preset(sent.bytes()).unwrap();
     root.insert("synth_version".into(), "1.7.0".into());
     let mut bytes = serde_json::to_vec(&root).unwrap();
@@ -247,7 +232,7 @@ fn magnitude(audio: &sound_to_patch::audio::Audio, hz: f64) -> f64 {
 #[test]
 #[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
 fn a_tuning_does_not_carry_over_to_the_next_preset() {
-    let up_two = preset(|preset| {
+    let up_two = probe(|preset| {
         preset["tuning"] = serde_json::json!({
             "scale_start_midi_note": 60,
             "reference_midi_note": 2,
@@ -489,4 +474,88 @@ fn the_saved_tempo_follows_the_model_over_a_sweep() {
     });
     println!("{} tempos, {} failures", tempos.len(), failures.len());
     assert!(failures.is_empty(), "{failures:?}");
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_draws_of_a_spread_on_vital_are_distinct() {
+    use sound_to_patch::render::session::BoxedRenderer;
+    use sound_to_patch::render::spread::{SPREAD_RUNS, draw};
+
+    let renders = draw(
+        |_| Ok(Box::new(renderer()) as BoxedRenderer),
+        &lead(state(|_| {})),
+        SPREAD_RUNS,
+    )
+    .unwrap();
+    assert_eq!(renders.len(), SPREAD_RUNS);
+}
+
+#[test]
+#[ignore = "needs Vital, SOUND_TO_PATCH_HOST and VITA_PYTHON"]
+fn retail_and_vita_renders_compare_on_one_note() {
+    use sound_to_patch::render::spread::{
+        ClipMetrics, ClipOutput, SPREAD_RUNS, clip_rows, compare,
+    };
+
+    // Fail at once without VITA_PYTHON, before 20 retail renders.
+    crate::support::vita::python();
+    // One preset, one note: the probe's lead note, MIDI 60 held 3 s. The
+    // engines differ in build. The levels must agree within coarse bounds,
+    // so a broken render fails; the duration against the retail limit is a
+    // finding, printed here.
+    let job = lead(state(|settings| {
+        settings.insert("filter_1_on".into(), 1.0.into());
+        settings.insert("filter_1_cutoff".into(), 60.0.into());
+    }));
+    let mut retail_renderer = renderer();
+    let retail: Vec<ClipMetrics> = (0..SPREAD_RUNS)
+        .map(|_| {
+            ClipMetrics::of(
+                &retail_renderer.render(&job).unwrap().audio,
+                "a retail render",
+            )
+            .unwrap()
+        })
+        .collect();
+    // The open engine renders a job identically every time, so one render
+    // stands for all.
+    let open = ClipMetrics::of(
+        &crate::support::vita::renderer().render(&job).unwrap().audio,
+        "the open render",
+    )
+    .unwrap();
+    let spread = clip_rows(&retail).unwrap();
+    println!("retail spread: {spread:?}");
+    let comparisons = compare(&open, &retail, &spread).unwrap();
+    assert_eq!(comparisons.len(), ClipOutput::ALL.len());
+    for comparison in &comparisons {
+        println!(
+            "open render: {} differs by {:.4} {} against a limit of {:.4}, ratio {:.2}: {}",
+            comparison.output,
+            comparison.difference,
+            comparison.unit,
+            comparison.limit,
+            comparison.ratio,
+            if comparison.within {
+                "within"
+            } else {
+                "beyond"
+            }
+        );
+        // Measured: 0.0018 dB, 0.0003 dB and 0.19 dB.
+        let bound = match comparison.output.as_str() {
+            "rms_db" | "peak_db" => 0.1,
+            "envelope_distance_db" => 1.0,
+            // Printed findings, not bounds.
+            "peak_to_rms_db" | "duration_s" => f64::INFINITY,
+            other => panic!("the comparison has an output with no bound: {other}"),
+        };
+        assert!(
+            comparison.difference <= bound,
+            "the engines differ by {:.4} dB on {}, beyond the bound of {bound} dB",
+            comparison.difference,
+            comparison.output
+        );
+    }
 }

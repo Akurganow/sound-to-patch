@@ -43,6 +43,8 @@ mod render_file;
 #[cfg(test)]
 mod render_session;
 #[cfg(test)]
+mod render_spread;
+#[cfg(test)]
 mod render_timing;
 #[cfg(test)]
 mod render_vital;
@@ -63,6 +65,7 @@ mod tempo;
 mod track;
 #[cfg(test)]
 mod transcribe;
+#[cfg(test)]
 mod vita;
 #[cfg(test)]
 mod words;

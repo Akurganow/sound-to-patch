@@ -1,5 +1,6 @@
-//! Helpers for the checks that load written presets in the open Vital
-//! engine through `tools/vita/load_check.py`.
+//! Helpers for the open Vital engine: the Python that `VITA_PYTHON` names,
+//! the renderer of `tools/vita/render.py`, and the checks that load
+//! written presets through `tools/vita/load_check.py`.
 
 use std::f32::consts::TAU;
 use std::fs;
@@ -11,16 +12,69 @@ use sound_to_patch::preset::format::{PresetFormat, PresetModel};
 use sound_to_patch::preset::vital::{
     FORMAT, FRAME_SAMPLES, Keyframe, LfoShape, MAX_LFO_POINTS, ROUTE_SOURCES, VitalModel, Wavetable,
 };
+use sound_to_patch::render::vita::VITA_PYTHON_ENV;
 use sound_to_patch::synth::Synth;
 
 use crate::support::apply::{THREE_EDITS, run, template, write};
 
 /// The Python that has the `vita` package, from `VITA_PYTHON`.
 pub(crate) fn python() -> String {
-    std::env::var("VITA_PYTHON").unwrap_or_else(|_| {
+    std::env::var(VITA_PYTHON_ENV).unwrap_or_else(|_| {
         panic!(
-            "set VITA_PYTHON to a Python with the vita package, such as a virtual \
-             environment made with `pip install vita numpy` outside the repository"
+            "set {VITA_PYTHON_ENV} to a Python with the packages of \
+             tools/vita/requirements.txt, such as a virtual environment made \
+             outside the repository with `uv pip install --require-hashes -r \
+             tools/vita/requirements.txt`"
+        )
+    })
+}
+
+/// The open-engine renderer, with the Python of [`python`].
+pub(crate) fn renderer() -> sound_to_patch::render::vita::VitaRenderer {
+    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/vita/render.py");
+    sound_to_patch::render::vita::VitaRenderer::start(Path::new(&python()), &script).unwrap()
+}
+
+/// Runs `tools/vita/<name>` with the Python of [`python`] on one JSON
+/// request and returns its JSON reply.
+pub(crate) fn script(name: &str, request: &Value) -> Value {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tools/vita")
+        .join(name);
+    run_python(&[path.as_os_str()], name, request)
+}
+
+/// Runs Python `code` on one JSON request and returns its JSON reply.
+pub(crate) fn script_code(code: &str, request: &Value) -> Value {
+    run_python(&["-c".as_ref(), code.as_ref()], "the script", request)
+}
+
+fn run_python(args: &[&std::ffi::OsStr], name: &str, request: &Value) -> Value {
+    use std::io::Write as _;
+    let mut child = Command::new(python())
+        .arg("-I")
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(request.to_string().as_bytes())
+        .unwrap();
+    let output = child.wait_with_output().unwrap();
+    assert!(
+        output.status.success(),
+        "{name} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+        panic!(
+            "{name} gave a reply that is not JSON ({error}): {}",
+            String::from_utf8_lossy(&output.stdout)
         )
     })
 }

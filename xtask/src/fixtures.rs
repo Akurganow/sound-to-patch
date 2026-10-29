@@ -7,9 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use sha2::{Digest, Sha256};
-
-use crate::fetch::Sha256Digest;
+use crate::fetch::sha256_hex;
 use sound_to_patch::preset::format::{PresetFormat, PresetModel, Stored};
 use sound_to_patch::preset::template::TemplateSource;
 use sound_to_patch::preset::vital::{
@@ -132,11 +130,6 @@ fn square(phase: f32) -> f32 {
     if phase < 0.5 { 1.0 } else { -1.0 }
 }
 
-/// The SHA-256 of a file as 64 hex digits.
-fn sha256(bytes: &[u8]) -> String {
-    Sha256Digest(Sha256::digest(bytes).into()).to_string()
-}
-
 /// Writes the fixtures, or with `check` compares the committed ones and
 /// refuses a committed file the generator does not produce.
 pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
@@ -165,7 +158,11 @@ pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
                 fs::create_dir_all(parent)?;
             }
             fs::write(&path, &bytes)?;
-            println!("{}  {DIR}/{name}  {} bytes", sha256(&bytes), bytes.len());
+            println!(
+                "{}  {DIR}/{name}  {} bytes",
+                sha256_hex(&bytes),
+                bytes.len()
+            );
         }
     }
     if !stale.is_empty() {
@@ -205,7 +202,7 @@ pub(crate) fn check_folder(folder: &Path) -> crate::Result<()> {
             .find(|line| line.starts_with(&format!("| `{name}` |")));
         match row {
             None => problems.push(format!("{name} has no row")),
-            Some(row) if !row.contains(&format!("`{}`", sha256(&bytes))) => {
+            Some(row) if !row.contains(&format!("`{}`", sha256_hex(&bytes))) => {
                 problems.push(format!(
                     "{name}: the SHA-256 of its row does not match the file"
                 ));
@@ -410,7 +407,7 @@ mod tests {
                 row(sha).trim_end()
             )
         };
-        fs::write(&path, with_row(&sha256(MINIMAL.as_bytes()))).unwrap();
+        fs::write(&path, with_row(&sha256_hex(MINIMAL.as_bytes()))).unwrap();
         let provenance = fs::read_to_string(&path).unwrap();
         assert_eq!(
             orphans(&dir.path().join("vital"), &generate().unwrap(), &provenance).unwrap(),
@@ -421,7 +418,7 @@ mod tests {
         fs::write(&path, with_row(&"0".repeat(64))).unwrap();
         assert!(folder_error(&dir).contains("vital/saved.vital: the SHA-256 of its row"));
         // A row that does not mark the file as app-saved leaves it an orphan.
-        let plain = with_row(&sha256(MINIMAL.as_bytes())).replace(APP_SAVED, "copied");
+        let plain = with_row(&sha256_hex(MINIMAL.as_bytes())).replace(APP_SAVED, "copied");
         assert_eq!(
             orphans(&dir.path().join("vital"), &generate().unwrap(), &plain).unwrap(),
             ["saved.vital"]

@@ -28,9 +28,9 @@ profiles and its register detection, the f0 track, the note cleanup, the
 MIDI writer, the layer map of the agent reference, and the render core:
 the recipe, the renderer trait, a fake renderer, the Vital plug-in state,
 the renderer that drives the plug-in host, the load check, the render
-session, the timing table and the `render` command. The reference itself
-is the folder `reference/`, which an agent plugin and a project skill
-both read.
+session, the timing table, the repeat-render spread and the `render`
+command. The reference itself is the folder `reference/`, which an agent
+plugin and a project skill both read.
 
 ## Synth adapter seam
 
@@ -126,9 +126,11 @@ joins `READY` when its adapter lands.
   `render` command's run from files to a WAV file and a record,
   `wire` the protocol of the host process, `plugin` the renderer that
   starts that process and picks its architecture from the plug-in bundle,
-  `session` the worker pool that every consumer renders through, `timing`
-  the table of load and render times, and the module root the render job,
-  the record and the `Renderer` trait.
+  `vita` the open engine for single notes, `session` the worker pool that
+  every consumer renders through, `timing`
+  the table of load and render times, `spread` the repeat-render spread,
+  its sequential draws and the comparison against it, and the module
+  root the render job, the record and the `Renderer` trait.
   The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
@@ -179,7 +181,9 @@ joins `READY` when its adapter lands.
   `schemas/`.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
-  engine. It runs only as a separate Python process with `vita`.
+  engine, and the script that renders one note in it for
+  `render::vita`. Both run only as a separate Python process with `vita`,
+  from the hash-pinned `requirements.txt`.
 
 ## Invariants
 
