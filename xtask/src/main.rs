@@ -116,9 +116,9 @@ enum Task {
     /// 4 and 8 workers on the Vital plug-in, and write the table; local
     /// only.
     RenderTiming {
-        /// The preset to render.
-        #[arg(long, default_value = "tests/fixtures/vital/routes.vital")]
-        preset: PathBuf,
+        /// The preset to render [default: `tests/fixtures/vital/routes.vital`].
+        #[arg(long)]
+        preset: Option<PathBuf>,
         /// The Vital .vst3 bundle [default: the standard VST3 folders].
         #[arg(long)]
         plugin: Option<PathBuf>,
@@ -169,7 +169,10 @@ fn main() -> ExitCode {
             host,
             runs,
             out,
-        } => timing::run(&preset, plugin.as_deref(), host.as_deref(), runs, &out),
+        } => {
+            let preset = preset.unwrap_or_else(timing::default_preset);
+            timing::run(&preset, plugin.as_deref(), host.as_deref(), runs, &out)
+        }
         Task::VitalFixtures { check, coverage } => {
             if coverage {
                 fixtures::coverage()

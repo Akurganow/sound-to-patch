@@ -374,7 +374,10 @@ fn the_timing_table_holds_every_row_on_vital() {
         NonZeroUsize::new(2).unwrap(),
     )
     .unwrap();
-    assert_eq!(table.identity.build, "1.0.7");
+    assert_eq!(
+        table.identity.build,
+        sound_to_patch::preset::vital::RETAIL_BUILD
+    );
     assert_eq!(table.rows.len(), 8);
     let state_load = table
         .rows

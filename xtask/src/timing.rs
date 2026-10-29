@@ -56,3 +56,9 @@ pub(crate) fn run(
     println!("wrote {}", out.display());
     Ok(())
 }
+
+/// The default preset: the `routes.vital` fixture, from the workspace
+/// root, so the task runs from any folder.
+pub(crate) fn default_preset() -> PathBuf {
+    crate::root().join("tests/fixtures/vital/routes.vital")
+}

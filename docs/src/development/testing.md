@@ -174,10 +174,13 @@ What runs in CI, with no plug-in:
   place of an output, a read-only WAV file that `--force` replaces, and a
   read-only folder or a failed second write, which leave the existing
   files as they were.
-- The render session on the fake: a crashed render tried once more on a
-  new renderer, a render that fails twice giving the sentinel while the
-  session goes on, a renderer that does not start, a restart after 256
-  renders, the flush before every render and the order of the outcomes.
+- The render session on the fake: a crash, a hang or a panic tried once
+  more on a new renderer with the same job, a render that fails twice
+  giving the sentinel while the session goes on, a panic named with its
+  job, a renderer that does not start, a wrong synth failing at once on
+  the same renderer, a restart after 256 renders, one live renderer per
+  worker, the flush before every render and the order of the outcomes. A
+  stub host that exits on its first render is retried on a new host.
 - The timing table on the fake: every row with a median and a 95th
   percentile, the build and the architecture, and the clip length of a
   long tail.
@@ -226,10 +229,11 @@ does not decode. A unit test cuts plug-in output without line ends at
 
 ### Render timing
 
-`cargo xtask render-timing --out timing.json` times the Vital plug-in on
-this machine and writes the table to a local file. Refine sets its render
-budget from it. The table stays local: it describes the machine, so the
-repository holds the method and no numbers. It takes the same
+`cargo xtask render-timing --out "$TMPDIR/timing.json"` times the Vital
+plug-in on this machine and writes the table to a local file, outside
+the repository. Refine sets its render budget from it. The table stays
+local: it describes the machine, so the repository holds the method and
+no numbers. It takes the same
 `SOUND_TO_PATCH_HOST` as the Vital tests, or `--host`. `--preset` names
 the preset, by default the `routes.vital` fixture, and `--runs` the
 measurements per row, by default 20.
