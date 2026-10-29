@@ -166,8 +166,9 @@ joins `READY` when its adapter lands.
 - `plugins`: the agent plugins, each folder shipped as its own release
   archive and listed in `.claude-plugin/marketplace.json`.
   `sound-to-patch-reference` holds the skill `synth-reference`, which
-  links `reference/`. `.claude/skills/synth-reference` links that skill, so
-  a session on a clone of the repository finds it too.
+  links `reference/`, and its eval cases under `evals/`.
+  `.claude/skills/synth-reference` links that skill, so a session on a
+  clone of the repository finds it too.
 - `dictionary`: the data of the agent reference: the music entries per
   topic with their stated shares and planned counts, the word entries per
   axis with the derived listener numbers, the intensity ladder, the style

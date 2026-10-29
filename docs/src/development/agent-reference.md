@@ -325,6 +325,37 @@ set `git config --global core.symlinks true` so the clone the agent
 harness makes gets it too. `cargo xtask check-plugins` reports such a file
 as "symlink not checked out".
 
+## Evaluation
+
+Three eval cases under `plugins/sound-to-patch-reference/evals/` measure
+how far the reference helps an agent: a control lookup in the Vital
+catalogue, a sound-word lookup and a note-rule lookup in the music
+dictionary. Each case asks for facts that only the reference states, and
+regex graders check them in the last message. The note-rule case also has
+a judge grader for the slot list. A `tool_used: Skill` grader shows
+whether the skill fired. It counts toward no score.
+
+Each run starts in an empty folder. The run without the plugin therefore
+sees no reference file, and the run with it reads the skill's `reference`
+link. The plugin loads in place, so the run needs read access to the
+plugin folder and to `reference/`, which the link points at. Run the
+cases from the repository root:
+
+```sh
+P=plugins/sound-to-patch-reference
+A=(); for t in Read Glob Grep; do A+=("$t(/$PWD/$P/**)" "$t(/$PWD/reference/**)"); done
+claude plugin eval $P --tag baseline --runs 3 --model <model> \
+  --no-publish --threshold 0 --allow-tools "${A[@]}"
+```
+
+`--ablation with-without` is the default for a plugin path: every case
+runs three times without the plugin and three times with it, and the
+report gives both scores and their difference. The results go to
+`evals/results/`, which git ignores. A pull request that reruns the cases
+records the score of each run, the model and the date, and nothing about
+the machine or the account. A later change to the skill must beat the
+baseline on at least two of the three cases.
+
 ## Sources
 
 - Plugin dependencies: https://code.claude.com/docs/en/plugins/dependencies
@@ -333,3 +364,4 @@ as "symlink not checked out".
 - Skills: https://code.claude.com/docs/en/skills
 - Sharing files within a marketplace with symlinks: https://code.claude.com/docs/en/plugins/host-marketplace#share-files-within-a-marketplace-with-symlinks
 - Agent Skills specification: https://agentskills.io/specification
+- Plugin evals: https://code.claude.com/docs/en/plugin-evals
