@@ -31,6 +31,8 @@ mod modulation;
 mod music;
 mod preset;
 #[cfg(test)]
+mod profile;
+#[cfg(test)]
 mod reference;
 #[cfg(test)]
 mod render;
