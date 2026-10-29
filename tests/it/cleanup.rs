@@ -202,6 +202,15 @@ fn a_gated_55_hz_saw_keeps_its_16_repeats() {
     }
 }
 
+/// The onset and the pitch of each note in `notes`.
+fn starts(notes: &NoteList) -> Vec<(f64, f64)> {
+    notes
+        .notes()
+        .iter()
+        .map(|note| (note.onset().get(), note.pitch().get()))
+        .collect()
+}
+
 /// The gates of 0.25 s that a note of `key` in `notes` starts on, within
 /// the eval's 50 ms.
 fn gates_hit(notes: &NoteList, key: f64) -> usize {
@@ -218,39 +227,44 @@ fn gates_hit(notes: &NoteList, key: f64) -> usize {
 /// Repeats that fall into the gap with a tail, over a noise floor, in two
 /// voices or with a DC offset keep more gates than the onset rule alone:
 /// the gates hit by each key, decoded, after the onset rule alone and
-/// kept.
+/// kept, and the count of each list, so an extra note fails.
 #[test]
 fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
-    for (name, stem, keys, hits) in [
+    for (name, stem, keys, hits, counts) in [
         (
             "10 ms tail over -60 dB",
             gated(&[55.0], 0.005, 0.2, 0.01, -60.0),
             vec![33.0],
             vec![(13, 6, 13)],
+            (13, 6, 13),
         ),
         (
             "30 ms gaps, 5 ms tail",
             gated(&[55.0], 0.005, 0.22, 0.005, -400.0),
             vec![33.0],
             vec![(8, 2, 8)],
+            (8, 2, 8),
         ),
         (
             "A1 and E2",
             gated(&[55.0, 82.407], 0.005, 0.2, 0.0, -400.0),
             vec![33.0, 40.0],
             vec![(14, 5, 9), (16, 16, 16)],
+            (39, 30, 34),
         ),
         (
             "A1 and A2",
             gated(&[55.0, 110.0], 0.005, 0.2, 0.0, -400.0),
             vec![33.0, 45.0],
             vec![(16, 12, 16), (16, 16, 16)],
+            (42, 28, 32),
         ),
         (
             "8ths, 10 ms attack, 100 ms gaps, 20 ms tail over -40 dB",
             gated(&[55.0], 0.01, 0.15, 0.02, -40.0),
             vec![33.0],
             vec![(16, 12, 14)],
+            (16, 12, 14),
         ),
         (
             "a DC offset 20 dB below the saw",
@@ -260,6 +274,7 @@ fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
                 .collect(),
             vec![33.0],
             vec![(16, 6, 16)],
+            (16, 6, 16),
         ),
     ] {
         let found = cleaned(&stem);
@@ -274,6 +289,15 @@ fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
             })
             .collect();
         assert_eq!(found_hits, hits, "{name}");
+        assert_eq!(
+            (
+                found.decoded.notes().len(),
+                found.onset_only.notes().len(),
+                found.kept.notes().len(),
+            ),
+            counts,
+            "{name}"
+        );
     }
 }
 
@@ -393,9 +417,11 @@ fn a_tremolo_or_a_duck_never_splits_a_held_note() {
         ("A3, depth 1 at 14 Hz", held(220.0, tremolo(1.0, 14.0))),
     ] {
         let found = cleaned(&stem);
-        let onset_only = found.onset_only.notes().len();
-        assert!(onset_only < found.merged, "{name}: nothing to join");
-        assert_eq!(found.kept.notes().len(), onset_only, "{name}");
+        assert!(
+            found.onset_only.notes().len() < found.merged,
+            "{name}: nothing to join"
+        );
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
     }
 }
 

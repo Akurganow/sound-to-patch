@@ -320,8 +320,9 @@ The cleanup runs four steps and prints the note count after each [fact].
     fails, so a steady floor must lie 20 dB down. A climb counts only
     after a hold: before the envelope last fell below six tenths of its
     loudest reading ahead of the climb, it stayed above half of it for
-    60 ms. An envelope that never reached six tenths since the stem began
-    holds.
+    60 ms. An envelope that stays below six tenths for 150 ms before the
+    climb dipped too long for a tremolo, and holds: the tremolos the rise
+    test passes run faster than 8 Hz.
 - Why the stem's dip: under a line that moves to other keys, a split
   piece of the old key sees the new note's attack in the stem, but the
   stem never falls far between them [synthetic]. On the generated set

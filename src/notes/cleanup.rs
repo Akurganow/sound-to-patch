@@ -113,6 +113,13 @@ pub const HOLD_BEFORE: Seconds = Seconds::from_const(0.06);
 /// The level ripples by a few hundredths at the fall of a gate, so a hold
 /// that ended at the share it must stay above could end on a ripple.
 pub const HOLD_SPAN: (f64, f64) = (0.5, 0.6);
+/// How far back from the start of a rise the hold may end.
+///
+/// The tremolos the rise test passes run faster than 8 Hz, so they stay
+/// below six tenths of their peak for less than 125 ms. A longer dip is
+/// no tremolo's trough, and the bound keeps the search from reading a
+/// whole quiet passage before a weak repeat.
+pub const HOLD_SEARCH: Seconds = Seconds::from_const(0.15);
 
 /// What the octave check did.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -371,15 +378,16 @@ fn rises_slowly(levels: &StemLevels<'_>, note: &Note, start: Seconds) -> bool {
 
 /// Whether the envelope, read every [`RISE_STEP`] back from `low`, held
 /// above the first share of [`HOLD_SPAN`] of `peak` for [`HOLD_BEFORE`]
-/// before it last fell below the second share. An envelope that never
-/// reached the second share since the stem began has no level to hold.
+/// before it last fell below the second share, at most [`HOLD_SEARCH`]
+/// before `low`. An envelope that stays below the second share for that
+/// long dipped too long for a tremolo, and holds.
 fn held(levels: &StemLevels<'_>, low: f64, peak: f64, window: f64) -> bool {
     let (stay, end) = HOLD_SPAN;
     let step = RISE_STEP.get();
     let level = |time: f64| levels.envelope(Seconds::clamped(time), Seconds::clamped(window));
     let back = |from: f64| (0..).map(move |k| from - cast::usize_to_f64(k) * step);
     let Some(fell) = back(low)
-        .take_while(|&time| time >= 0.0)
+        .take_while(|&time| time >= 0.0 && time >= low - HOLD_SEARCH.get())
         .find(|&time| level(time) >= end * peak)
     else {
         return true;
@@ -917,6 +925,31 @@ mod tests {
                 (level, 0.0)
             });
             assert_eq!(joined_a2(&mono), expected, "held {hold} s");
+        }
+    }
+
+    #[test]
+    fn the_hold_ends_within_hold_search() {
+        // A 20 ms burst over a floor below six tenths of the peak, before a
+        // 50 ms gap. Ending 106 ms before the gap, the burst's fall lies
+        // within HOLD_SEARCH of the rise, whose low lies a few ms before
+        // the onset: the burst holds too briefly and the note joins.
+        // Ending 107 ms before it, the fall lies past the search, and the
+        // long dip holds.
+        for (before, expected) in [(0.106, 1), (0.107, 2)] {
+            let mono = stem(onset(), |t| {
+                let level = if t >= 0.0 {
+                    0.5
+                } else if t >= -0.05 {
+                    0.0
+                } else if (-0.07 - before..-0.05 - before).contains(&t) {
+                    0.5
+                } else {
+                    0.2
+                };
+                (level, 0.0)
+            });
+            assert_eq!(joined_a2(&mono), expected, "burst {before} s before");
         }
     }
 
