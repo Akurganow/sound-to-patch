@@ -63,6 +63,11 @@ impl<'a> StemLevels<'a> {
         self.ac_level(frame * self.params.hop(), self.params.frame_len())
     }
 
+    /// Returns the time at which frame `frame` is centred.
+    pub(crate) fn frame_time(&self, frame: usize) -> Seconds {
+        Seconds::clamped(cast::usize_to_f64(frame * self.params.hop()) / f64::from(self.rate.get()))
+    }
+
     fn hops(&self, time: Seconds) -> f64 {
         time.get() * f64::from(self.rate.get()) / cast::usize_to_f64(self.params.hop())
     }

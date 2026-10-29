@@ -1,6 +1,6 @@
 //! The cleanup of decoded notes: the octave check against the f0 track,
-//! the merge of octave ghosts into their notes, and the join of split
-//! notes.
+//! the merge of octave ghosts into their notes, the split of notes at
+//! attacks inside them, and the join of split notes.
 //!
 //! The decoder adds a short copy an octave above a low note, and starts a
 //! second note at the same key when the onset activation peaks again
@@ -9,9 +9,10 @@
 //! true note and merges into it. The track alone moves nothing, because
 //! it can read a true note an octave low. A note that starts where an earlier
 //! one of the same key ends, on a weak onset and with no attack of its own
-//! in the stem, is the rest of that note.
+//! in the stem, is the rest of that note. A note that holds an attack of
+//! its own in the stem holds a repeat the decoder missed, and splits there.
 
-use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, StemLevels};
+use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, QUIET_FRAME, StemLevels};
 use crate::cast;
 use crate::units::Hz;
 use crate::units::{Decibels, MidiPitch, Seconds, Semitones};
@@ -74,6 +75,16 @@ pub const HARMONIC_DIP: Decibels = Decibels::from_const(22.0);
 /// One period reads a periodic tone steady. Two periods smooth the dip of
 /// a tremolo at A1 away, and a window between the two ripples.
 pub const RISE_WINDOW: Seconds = Seconds::from_const(0.004);
+/// The lowest key whose notes [`split_at_attacks`] splits: A1, 55 Hz.
+///
+/// Below A1 the envelope window of one period lasts 19 ms or more, as long
+/// as the recovery of a fast sidechain duck. On the generated sets ducks to
+/// -40 dB that recover in 30 to 45 ms split on every key from D1 to G#1,
+/// and a duck at E1 reads the same envelope and onset activation as a gate
+/// with a 30 ms gap and a 5 ms tail. Full-depth sine tremolos of 10 Hz
+/// split at A0 and B0. From A1 up no duck to -40 or -48 dB that recovers
+/// in 25 to 45 ms splits.
+pub const SPLIT_LOWEST: MidiPitch = MidiPitch::from_const(33.0);
 /// The step between envelope readings of the rise test.
 pub const RISE_STEP: Seconds = Seconds::from_const(0.001);
 /// The share of the loudest envelope reading a rise starts below, and the
@@ -310,6 +321,130 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
         }
     }
     NoteList::new(joined_notes)
+}
+
+/// Splits each note where the stem has an attack of its own inside it.
+///
+/// The decoder can read a low repeat with a short gap as part of one long
+/// note, so no later step sees two notes. A frame inside a note marks a
+/// dip when it is quieter than the frames on either side of it and lies
+/// [`ATTACK_DIP`] or more below the loudest frame in the [`ATTACK_AFTER`]
+/// after it. The split falls on the last envelope reading at or below the
+/// first share of [`RISE_SPAN`] of the loudest reading in that span,
+/// before the first reading at the second share. It holds when the piece
+/// from there has an attack of its own after the piece before it, by the
+/// rule of the split join, which then keeps the two apart. Each piece
+/// keeps the note's key, octave flag and velocity.
+#[must_use]
+pub fn split_at_attacks(notes: &NoteList, levels: &StemLevels<'_>) -> NoteList {
+    let mut pieces: Vec<Note> = Vec::with_capacity(notes.notes().len());
+    for note in notes.notes() {
+        if note.pitch() < SPLIT_LOWEST {
+            pieces.push(note.clone());
+            continue;
+        }
+        let window = (1.0 / Hz::from(note.pitch()).get()).max(RISE_WINDOW.get());
+        let frames = levels.frames_between(note.onset(), note.offset());
+        let reach = levels.frames_between(
+            note.onset(),
+            Seconds::clamped(note.offset().get() + ATTACK_AFTER.get()),
+        );
+        // Each frame's level once: the loudest earlier frame is kept as the
+        // frames advance, which keeps a long note linear in its frames.
+        let first = frames.start.saturating_sub(1);
+        let cached: Vec<f64> = (first..=reach.end).map(|m| levels.ac_rms(m)).collect();
+        let level = |m: usize| cached[m - first];
+        let mut rest = note.clone();
+        let (mut seen, mut before) = (frames.start, 0.0_f64);
+        for frame in frames {
+            let hold_end = Seconds::clamped(levels.frame_time(frame).get() - HOLD_BEFORE.get());
+            while seen < levels.frames_between(rest.onset(), hold_end).end {
+                before = before.max(level(seen));
+                seen += 1;
+            }
+            let Some(onset) = split_point(levels, frame, window, &level, before)
+                .filter(|onset| rest.offset().get() - onset.get() >= ATTACK_AFTER.get())
+            else {
+                continue;
+            };
+            if let (Some(earlier), Some(after)) = (
+                piece(&rest, rest.onset(), onset),
+                piece(&rest, onset, rest.offset()),
+            ) && attacks(levels, &earlier, &after)
+            {
+                pieces.push(earlier);
+                rest = after;
+                seen = levels.frames_between(rest.onset(), rest.offset()).start;
+                before = 0.0;
+            }
+        }
+        pieces.push(rest);
+    }
+    NoteList::new(pieces)
+}
+
+/// Where a dip at `frame` ends, by the rule of
+/// [`split_at_attacks`], or `None` when the frame marks no dip. `level`
+/// reads a frame's level, and `before` is the loudest frame of the note
+/// centred [`HOLD_BEFORE`] or more before this one.
+fn split_point(
+    levels: &StemLevels<'_>,
+    frame: usize,
+    window: f64,
+    level: &dyn Fn(usize) -> f64,
+    before: f64,
+) -> Option<Seconds> {
+    let centre = levels.frame_time(frame);
+    let after = Seconds::clamped(centre.get() + ATTACK_AFTER.get());
+    let loud = levels
+        .frames_between(centre, after)
+        .map(level)
+        .fold(0.0, f64::max);
+    // The dip test repeats the attack rule's, and keeps the readings to
+    // frames that can split.
+    if frame == 0
+        || level(frame - 1) < level(frame)
+        || level(frame + 1) <= level(frame)
+        || 20.0 * (loud / level(frame)).log10() < ATTACK_DIP.get()
+        || before < HOLD_SPAN.1 * loud
+    {
+        return None;
+    }
+    let (from, to) = RISE_SPAN;
+    let step = RISE_STEP.get();
+    let start = centre.get() - QUIET_FRAME.get() / 2.0;
+    let last = cast::floor_to_usize((after.get() - start) / step)?;
+    let readings: Vec<(f64, f64)> = (0..=last)
+        .map(|k| start + cast::usize_to_f64(k) * step)
+        .map(|time| {
+            let level = levels.envelope(Seconds::clamped(time), Seconds::clamped(window));
+            (time, level)
+        })
+        .collect();
+    let peak = readings
+        .iter()
+        .filter(|(time, _)| *time >= centre.get())
+        .map(|&(_, level)| level)
+        .fold(0.0, f64::max);
+    let rise = readings.iter().position(|&(_, level)| level >= to * peak)?;
+    readings[..rise]
+        .iter()
+        .rev()
+        .find(|&&(_, level)| level <= from * peak)
+        .map(|&(time, _)| Seconds::clamped(time))
+}
+
+/// `note` cut to the span from `onset` to `offset`, with its key, octave
+/// flag and velocity, or `None` when the span is empty.
+fn piece(note: &Note, onset: Seconds, offset: Seconds) -> Option<Note> {
+    let mut piece = Note::new(onset, offset, note.pitch()).ok()?;
+    if let Some(flag) = note.octave_uncertain() {
+        piece = piece.with_octave_uncertain(flag);
+    }
+    if let Some(velocity) = note.velocity() {
+        piece = piece.with_velocity(velocity);
+    }
+    Some(piece)
 }
 
 /// Whether `note` starts on an attack of its own after `kept`.
@@ -1165,6 +1300,121 @@ mod tests {
                 .len(),
             1
         );
+    }
+
+    /// The onsets, in s from [`onset`], of the pieces of one note of
+    /// `pitch` from `from` s to `to` s around it, split over `mono` from
+    /// [`stem_at`].
+    fn split_at(pitch: f64, mono: &[f64], from: f64, to: f64) -> Vec<f64> {
+        let start = f64::from(LEAD_SAMPLES) / 22_050.0 + onset();
+        let notes = NoteList::new(vec![note(start + from, start + to, pitch)]);
+        split_at_attacks(&notes, &StemLevels::new(mono, rate()))
+            .notes()
+            .iter()
+            .map(|piece| piece.onset().get() - start)
+            .collect()
+    }
+
+    /// [`stem_at`] `f0` at `before` until 50 ms before [`onset`], silent
+    /// to it, and at 0.5 from it.
+    fn gap_at(f0: f64, before: f64) -> Vec<f64> {
+        stem_at(f0, onset(), |t| {
+            let level = if t < -0.05 {
+                before
+            } else if t < 0.0 {
+                0.0
+            } else {
+                0.5
+            };
+            (level, 0.0)
+        })
+    }
+
+    #[test]
+    fn a_note_splits_at_the_last_tenth_before_the_climb() {
+        // At A2 the window spans 9.1 ms, and its reading falls to a tenth
+        // of the peak 0.49 of it, 4.5 ms, before a step from silence; the
+        // readings start 12.5 ms before the dip frame, a few ms off that.
+        let pieces = split_at(45.0, &gap_at(110.0, 0.5), -0.3, 0.3);
+        assert_eq!(pieces.len(), 2);
+        assert!(
+            (pieces[1] + 0.0053).abs() < 0.0005,
+            "split at {}",
+            pieces[1]
+        );
+        assert_eq!(
+            split_at(45.0, &stem(onset(), |_| (0.5, 0.0)), -0.3, 0.3).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn the_piece_after_a_split_lasts_attack_after() {
+        // The split falls 5.3 ms before the onset.
+        for (end, expected) in [(0.0452, 2), (0.0442, 1)] {
+            assert_eq!(
+                split_at(45.0, &gap_at(110.0, 0.5), -0.3, end).len(),
+                expected,
+                "note to {end} s"
+            );
+        }
+    }
+
+    #[test]
+    fn the_piece_before_a_split_reaches_the_second_share_of_hold_span() {
+        // Before the gap the stem lies at 0.61 or 0.59 of its level after
+        // it. Below six tenths the hold search finds no fall and the long
+        // dip holds, so only the piece before keeps it whole.
+        for (before, expected) in [(0.305, 2), (0.295, 1)] {
+            assert_eq!(
+                split_at(45.0, &gap_at(110.0, before), -0.3, 0.3).len(),
+                expected,
+                "{before} before the gap"
+            );
+        }
+    }
+
+    #[test]
+    fn the_piece_before_a_split_is_loud_hold_before_ahead_of_the_dip() {
+        // The dip frame, the last silent one, centres 12.5 ms before the
+        // onset. From 75 ms before it, the note holds a frame centred
+        // HOLD_BEFORE before that; from 70 ms, it holds none.
+        for (from, expected) in [(-0.075, 2), (-0.07, 1)] {
+            assert_eq!(
+                split_at(45.0, &gap_at(110.0, 0.5), from, 0.3).len(),
+                expected,
+                "note from {from} s"
+            );
+        }
+    }
+
+    #[test]
+    fn a_split_needs_an_attack() {
+        // At A2 a rise may take 14.3 ms. After a 50 ms gap a linear attack
+        // of 12 ms splits and one of 13 ms rises too slowly.
+        for (ramp, expected) in [(0.012, 2), (0.013, 1)] {
+            let mono = stem(onset(), |t| {
+                let level = if t < -0.05 {
+                    0.5
+                } else {
+                    0.5 * (t / ramp).clamp(0.0, 1.0)
+                };
+                (level, 0.0)
+            });
+            assert_eq!(
+                split_at(45.0, &mono, -0.3, 0.3).len(),
+                expected,
+                "ramp {ramp} s"
+            );
+        }
+    }
+
+    #[test]
+    fn notes_split_from_split_lowest() {
+        assert_eq!(split_at(33.0, &gap_at(55.0, 0.5), -0.3, 0.3).len(), 2);
+        assert_eq!(split_at(32.0, &gap_at(51.913, 0.5), -0.3, 0.3).len(), 1);
+        // The same stem read as A1 splits.
+        assert_eq!(split_at(33.0, &gap_at(51.913, 0.5), -0.3, 0.3).len(), 2);
     }
 
     #[test]

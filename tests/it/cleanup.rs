@@ -202,6 +202,61 @@ fn a_gated_55_hz_saw_keeps_its_16_repeats() {
     }
 }
 
+/// The decoder reads a gated A1 with 30 ms gaps as 9 notes for 16, and no
+/// later step could find the rest (#280). The split at attacks gives each
+/// gate its note, within the eval's 50 ms.
+#[test]
+fn a_gated_55_hz_saw_with_30_ms_gaps_gets_its_16_notes() {
+    let found = cleaned(&gated(&[55.0], 0.005, 0.22, 0.0, -400.0));
+    assert_eq!(
+        (
+            found.decoded.notes().len(),
+            found.kept.notes().len(),
+            gates_hit(&found.kept, 33.0)
+        ),
+        (9, 16, 16)
+    );
+}
+
+/// A held saw under an amplitude LFO of 6 dB, one cycle per quarter or
+/// per eighth note at 120 BPM, stays one note.
+#[test]
+fn a_6_db_lfo_never_splits_a_held_note() {
+    for (name, f0, rate) in [
+        ("A1 at 1/4", 55.0, 2.0),
+        ("A1 at 1/8", 55.0, 4.0),
+        ("E1 at 1/4", 41.203, 2.0),
+        ("E1 at 1/8", 41.203, 4.0),
+    ] {
+        let found = cleaned(&held(f0, |time| {
+            10_f64.powf(-6.0 / 20.0 * (0.5 - 0.5 * (std::f64::consts::TAU * rate * time).cos()))
+        }));
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
+    }
+}
+
+/// A held saw through a low-pass filter swept from 200 Hz to 4 kHz and back
+/// once a second keeps the onset rule's notes.
+#[test]
+fn a_filter_sweep_never_splits_a_held_note() {
+    for (name, f0) in [("A1", 55.0), ("E1", 41.203)] {
+        let mut state = 0.0;
+        let stem: Vec<f64> = held(f0, |_| 1.0)
+            .into_iter()
+            .zip(four_seconds())
+            .map(|(value, time)| {
+                let sweep = 0.5 - 0.5 * (std::f64::consts::TAU * time).cos();
+                let cutoff = 200.0 * 20_f64.powf(sweep);
+                let share = 1.0 - (-std::f64::consts::TAU * cutoff / RATE).exp();
+                state += share * (value - state);
+                state
+            })
+            .collect();
+        let found = cleaned(&stem);
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
+    }
+}
+
 /// The onset and the pitch of each note in `notes`.
 fn starts(notes: &NoteList) -> Vec<(f64, f64)> {
     notes
@@ -235,22 +290,22 @@ fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
             "10 ms tail over -60 dB",
             gated(&[55.0], 0.005, 0.2, 0.01, -60.0),
             vec![33.0],
-            vec![(13, 6, 13)],
-            (13, 6, 13),
+            vec![(13, 6, 16)],
+            (13, 6, 16),
         ),
         (
             "30 ms gaps, 5 ms tail",
             gated(&[55.0], 0.005, 0.22, 0.005, -400.0),
             vec![33.0],
-            vec![(8, 2, 8)],
-            (8, 2, 8),
+            vec![(8, 2, 16)],
+            (8, 2, 16),
         ),
         (
             "A1 and E2",
             gated(&[55.0, 82.407], 0.005, 0.2, 0.0, -400.0),
             vec![33.0, 40.0],
-            vec![(14, 5, 9), (16, 16, 16)],
-            (39, 30, 34),
+            vec![(14, 5, 11), (16, 16, 16)],
+            (39, 30, 36),
         ),
         (
             "A1 and A2",
@@ -536,8 +591,8 @@ fn a_square_tremolo_at_half_duty_never_splits_a_held_note() {
 }
 
 /// A square tremolo off for 30 % of each cycle reads by level as a gated
-/// repeat with short gaps, and splits a held note at A1 into every piece
-/// the decoder gives.
+/// repeat with short gaps, and splits a held note at A1 into a note per
+/// pulse, two more than the decoder gives.
 #[test]
 fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
     let found = cleaned(&held(55.0, square(6.0, 0.7)));
@@ -547,6 +602,6 @@ fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
             found.onset_only.notes().len(),
             found.kept.notes().len()
         ),
-        (22, 6, 22)
+        (22, 6, 24)
     );
 }

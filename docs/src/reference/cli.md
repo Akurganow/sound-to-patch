@@ -186,8 +186,8 @@ gives each step.
   the detected range, the detected voicing, the register window, the voicing the
   cleanup used and where it came from, the settings used,
   the decoded count, then the note count after the octave check, the
-  ghost merge, the split join and the quiet-note guard with its drop
-  count, and last `wrote <path>`. A warning line for each corrupt packet
+  ghost merge, the attack split, the split join and the quiet-note guard
+  with its drop count, and last `wrote <path>`. A warning line for each corrupt packet
   that became silence goes to standard error.
 - The file: a format 0 MIDI file with 480 ticks per beat, the stem's file
   name as the track name, the printed tempo and 4/4 at tick 0, and

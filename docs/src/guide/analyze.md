@@ -26,8 +26,9 @@ settings: detected, MIDI 30 to 36, minimum note 5 frames (58.0 ms), melodia on
 decoded: 16 notes
 octave check: 16 notes, 0 moved down an octave, 0 flagged, 0 unchecked
 ghost merge: 16 notes
-split join: 6 notes
-quiet-note guard: 6 notes, 0 dropped below 40 dB
+attack split: 16 notes
+split join: 16 notes
+quiet-note guard: 16 notes, 0 dropped below 40 dB
 wrote bass/layers.json
 wrote bass/spectrogram.png
 ```

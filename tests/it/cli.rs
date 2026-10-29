@@ -165,6 +165,7 @@ fn notes_writes_the_notes_of_a_generated_wav() {
         "decoded: ",
         "octave check: ",
         "ghost merge: ",
+        "attack split: ",
         "split join: ",
         "quiet-note guard: 3 notes, 0 dropped below 40 dB",
     ] {
