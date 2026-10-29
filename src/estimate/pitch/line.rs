@@ -69,7 +69,24 @@ impl SubBandLine {
         start: Seconds,
         lo: Hz,
     ) -> Result<Self, FilterError> {
-        let band = band_pass_zero_phase(segment, rate, lo, LINE_HI)?;
+        Self::with_edges(segment, rate, start, lo, LINE_HI)
+    }
+
+    /// Builds the line as [`Self::of`] does, with the high-pass at `lo` and
+    /// the low-pass at `hi`.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`FilterError`] when an edge is not above 0 Hz or the rate
+    /// puts `hi` at or above the Nyquist frequency.
+    pub fn with_edges(
+        segment: &[f64],
+        rate: SampleRate,
+        start: Seconds,
+        lo: Hz,
+        hi: Hz,
+    ) -> Result<Self, FilterError> {
+        let band = band_pass_zero_phase(segment, rate, lo, hi)?;
         // Padding as long as the segment keeps the circular wrap of the FFT
         // off the segment.
         let analytic = AnalyticSignal::new(&band, rate, band.len());

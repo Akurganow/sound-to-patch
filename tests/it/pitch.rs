@@ -879,13 +879,14 @@ fn steps_between_808_notes_report_no_glide_or_drop() {
 fn a_semitone_step_on_one_808_oscillator_is_no_glide_but_a_semitone_slide_is() {
     // One sine keeps its phase through every step, and each note strikes
     // its envelope again. The track smears the step from 43 to 44 into a
-    // fast curve that fits the upper bound of p within 5 cents; the level
-    // jumps at the strike.
+    // fast curve that fits the upper bound of p within 5 cents, and its
+    // slope stays up 3.3 times as long as the fitted motion.
     let name = "steps-808-continuous-semitone";
     let read = layer(name, case(name));
     assert_eq!(read.glides, []);
     assert_eq!(read.drops, []);
-    // An RC slide of 1.2 semitones fits the same bound at a steady level.
+    // An RC slide of 1.2 semitones fits the same bound, its slope up about
+    // as long as the fitted motion.
     let name = "rc-glide-110hz-1.2st-tau30ms";
     let read = layer(name, case(name));
     assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
@@ -1507,7 +1508,14 @@ fn a_fast_fall_inside_a_slow_attack_is_not_read() {
 /// A sweep from 0.2 s of silence, `f_end + df exp(-t / tau)`, with a
 /// second harmonic of `h2`, a 3 ms attack and a 1 s decay, `length_s`
 /// long and followed by 0.3 s of silence.
-fn sweep(f_end: f64, df: f64, tau: f64, h2: f64, length_s: f64) -> Vec<f64> {
+fn sweep(
+    f_end: f64,
+    df: f64,
+    tau: f64,
+    harmonics: &[f64],
+    attack_s: f64,
+    length_s: f64,
+) -> Vec<f64> {
     let rate = f64::from(RATE);
     (0..round_to_usize((0.5 + length_s) * rate))
         .map(|n| {
@@ -1516,7 +1524,11 @@ fn sweep(f_end: f64, df: f64, tau: f64, h2: f64, length_s: f64) -> Vec<f64> {
                 return 0.0;
             }
             let phase = std::f64::consts::TAU * (f_end * t + df * tau * (1.0 - (-t / tau).exp()));
-            0.5 * (t / 0.003).min(1.0) * (phase.sin() + h2 * (2.0 * phase + 1.0).sin()) * (-t).exp()
+            let overtones: f64 = (2_u32..)
+                .zip(harmonics)
+                .map(|(k, a)| a * (f64::from(k) * phase + 1.0).sin())
+                .sum();
+            0.5 * (t / attack_s).min(1.0) * (phase.sin() + overtones) * (-t).exp()
         })
         .collect()
 }
@@ -1530,7 +1542,7 @@ fn a_slow_sweep_from_silence_into_a_short_low_note_reads_as_a_drop() {
     // from silence.
     for h2 in [0.0, 0.5] {
         let read = drop_layer(
-            &sweep(32.7, 48.0, 0.09, h2, 0.6),
+            &sweep(32.7, 48.0, 0.09, &[h2], 0.003, 0.6),
             &note_list(&[(0.2, 0.55, 24.0)]),
         );
         assert_eq!(read.drops.len(), 1, "{h2}: {:?}", read.counts);
@@ -1590,4 +1602,25 @@ fn a_step_and_settle_across_a_gap_is_no_glide() {
         "{:?}",
         read.glides
     );
+}
+
+#[test]
+fn a_low_sweep_with_strong_overtones_reads_on_the_note_line() {
+    // From 68.7 Hz into C1 with a slow attack, and the second to fourth
+    // harmonics 14, 12 and 7 dB under the fundamental, all inside the band.
+    // They swing the 20 to 200 Hz line by more than the note's pitch, and
+    // the fit there misses on its residual; a real sweep of this shape read
+    // as a glide from silence.
+    for tau in [0.06, 0.09] {
+        let read = drop_layer(
+            &sweep(32.7, 36.0, tau, &[0.2, 0.25, 0.45], 0.08, 0.6),
+            &note_list(&[(0.25, 0.75, 24.0)]),
+        );
+        assert_eq!(read.drops.len(), 1, "{tau}: {:?}", read.counts);
+        let fit = &read.drops[0].value;
+        assert!((fit.f_end.get() - 32.7).abs() < 1.0, "{tau}: {fit:?}");
+        // At 90 ms the fit on the 20 to 200 Hz line passes, and its tau
+        // reads 40 % long; at 60 ms it misses, and the note line reads it.
+        assert!((fit.tau.get() / tau - 1.0).abs() < 0.45, "{tau}: {fit:?}");
+    }
 }

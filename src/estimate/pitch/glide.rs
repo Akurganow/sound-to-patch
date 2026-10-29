@@ -43,13 +43,16 @@ pub(crate) const CURVE_EDGE: f64 = 1.05;
 /// of [`CURVE_RANGE`]. Exponential portamento, `1 - exp(-t / tau)`, fits
 /// the bound within 20 cents; a smeared step on that bound fits worse.
 pub(crate) const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
-/// A glide whose `p` sits on the upper bound of [`CURVE_RANGE`] and whose
-/// interval is under this needs a steady level across its motion.
+/// The longest detected span of a glide whose `p` sits on the upper bound
+/// of [`CURVE_RANGE`], as a multiple of its fitted time.
 ///
-/// The track smears a 1 semitone step between two 808 notes struck again
-/// into a fast curve that fits the bound within 5 cents. Real small slides
-/// of 1 to 1.8 semitones fit the same bound.
-pub(crate) const BOUND_MIN_INTERVAL: Semitones = Semitones::from_const(2.0);
+/// The track smears a step into a fast curve on that bound and keeps
+/// drifting after it, so the slope stays up long after the fitted motion
+/// ends: 3.3 times its fitted time at a semitone step on one 808
+/// oscillator, 5.2 at a step between legato 808 notes, 2.9 and 9.1 at
+/// steps on real stems. RC slides and power curves of the generated set
+/// read 0.6 to 1.9, small slides on real stems 0.4 to 2.3.
+pub(crate) const BOUND_SPAN_MAX: f64 = 2.5;
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
 pub(crate) const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
@@ -124,10 +127,8 @@ slower; two stable pitches with a bridged gap between them whose jump goes again
 by 20 cents or more, or carries more than 60 % of it, join no glide; motion of 35 to 90 ms, over \
 the detected span or the fitted time, counts as too short; a fit of 90 ms or more with p within \
 5 % of 0.2, with p within 5 % of 5 and an RMS residual above 20 cents, a detected span under 90 \
-ms, a start from silence, or an interval under 2 semitones where the full-band RMS of two \
-adjacent windows of one period of the lower pitch, or 10 ms if longer, differs by 3 dB or more \
-anywhere from 30 ms before the fitted start to the end of the motion or 150 ms into it, or with \
-an RMS residual above 40 cents, is no glide; a glide with p within 5 % of 5 reads at low \
+ms or over 2.5 times the fitted time, or a start from silence, or with an RMS residual above 40 \
+cents, is no glide; a glide with p within 5 % of 5 reads at low \
 confidence with the reason curve_bound";
 
 /// A fitted glide.
@@ -185,9 +186,8 @@ struct Plateau {
 ///
 /// `breaks` tells whether the sound breaks inside a span of the audio, as
 /// a strike or a dip of the level does, `from_silence` whether a glide
-/// from silence may start a voiced run whose sound starts inside a span,
-/// and `jumps` whether the level jumps inside a span, read over a period
-/// of a pitch. A voiced run that starts within [`GAP_BRIDGE_MAX`] of the
+/// from silence may start a voiced run whose sound starts inside a span.
+/// A voiced run that starts within [`GAP_BRIDGE_MAX`] of the
 /// previous one joins it when the sound does not break in the gap and the
 /// pitch keeps moving after the gap in the direction of its jump across
 /// it: the track can go unvoiced inside a glide, and at a step between two
@@ -198,7 +198,6 @@ pub(crate) fn find_glides(
     notes: &NoteList,
     breaks: impl Fn(Seconds, Seconds) -> bool,
     from_silence: impl Fn(Seconds, Seconds) -> bool,
-    jumps: impl Fn(Seconds, Seconds, Hz) -> bool,
 ) -> GlideRead {
     let mut read = GlideRead::default();
     let audio = |frame: &Frame| frame.time - lag_at(frame.cents);
@@ -255,7 +254,7 @@ pub(crate) fn find_glides(
                     &mut read,
                     span,
                     || fit_from_silence(&run, *first, span),
-                    |_| false,
+                    false,
                 );
             }
         }
@@ -275,22 +274,7 @@ pub(crate) fn find_glides(
             let mid = |p: Plateau| p.first + (p.last - p.first) / 2;
             let signed: Vec<f64> = slope.iter().map(|s| s * interval.signum()).collect();
             if let Some(span) = detected(&run, &signed, mid(a), mid(b)) {
-                let low = hz(a.median.min(b.median));
-                classify(
-                    &mut read,
-                    span,
-                    || fit_between(&run, a, b, span),
-                    |glide| {
-                        stepped
-                            || glide.on_bound
-                                && glide.interval.get().abs() < BOUND_MIN_INTERVAL.get()
-                                && jumps(
-                                    glide.start,
-                                    Seconds::clamped(glide.start.get() + glide.time.get()),
-                                    low,
-                                )
-                    },
-                );
+                classify(&mut read, span, || fit_between(&run, a, b, span), stepped);
             }
         }
     }
@@ -352,17 +336,17 @@ pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(
 /// [`CURVE_RANGE`], or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does
 /// not follow the curve, so the motion is no glide. On the upper bound the
 /// residual must stay within [`BOUND_MAX_RESIDUAL`], the detected span
-/// must last [`GLIDE_TIME_MIN`] or more, the glide must not come from
-/// silence, and it is marked: a melody step on a sine and a driven drop
-/// read as glides on that bound otherwise. A glide that `vetoed` rejects,
-/// marked, is no glide either: the search vetoes a step across a gap, and
-/// a glide on the bound under [`BOUND_MIN_INTERVAL`] whose level jumps. A
-/// motion whose fit fails is too short when its detected span is.
+/// must last [`GLIDE_TIME_MIN`] or more and at most [`BOUND_SPAN_MAX`]
+/// times the fitted time, the glide must not come from silence, and it is
+/// marked: a melody step on a sine, a driven drop and a smeared step read
+/// as glides on that bound otherwise. A `stepped` motion, a step across a
+/// gap, is no glide either. A motion whose fit fails is too short when its
+/// detected span is.
 fn classify(
     read: &mut GlideRead,
     span: (f64, f64),
     fit: impl FnOnce() -> Option<GlideFit>,
-    vetoed: impl FnOnce(&GlideFit) -> bool,
+    stepped: bool,
 ) {
     let length = span.1 - span.0;
     if length < GLIDE_STEP_MAX.get() {
@@ -387,11 +371,12 @@ fn classify(
         glide.residual <= BOUND_MAX_RESIDUAL
             && !glide.from_silence
             && length >= GLIDE_TIME_MIN.get()
+            && length <= BOUND_SPAN_MAX * glide.time.get()
     } else {
         glide.residual <= GLIDE_MAX_RESIDUAL
     };
     let glide = GlideFit { on_bound, ..glide };
-    if glide.curve > CURVE_EDGE * lo && follows && !vetoed(&glide) {
+    if glide.curve > CURVE_EDGE * lo && follows && !stepped {
         read.glides.push(glide);
     }
 }
@@ -722,8 +707,7 @@ mod tests {
     #[test]
     fn the_convention_states_the_constants() {
         use super::super::{
-            DIP_SIDE, DIP_WINDOW, GAP_DIP_DB, JUMP_LEAD, JUMP_SPAN, LEVEL_JUMP_DB, RUN_START_RISE,
-            STRIKE_RISE, num, ratio_db, says,
+            DIP_SIDE, DIP_WINDOW, GAP_DIP_DB, RUN_START_RISE, STRIKE_RISE, num, ratio_db, says,
         };
         use crate::dsp::ACTIVE_GATE_DB;
         let ms = |s: f64| num(1000.0 * s);
@@ -787,22 +771,12 @@ mod tests {
                 ),
                 format!(
                     "with p within {} % of {} and an RMS residual above {} cents, a detected \
-                     span under {} ms",
+                     span under {} ms or over {} times the fitted time",
                     num(100.0 * (CURVE_EDGE - 1.0)),
                     num(CURVE_RANGE.1),
                     num(BOUND_MAX_RESIDUAL.get()),
-                    ms(GLIDE_TIME_MIN.get())
-                ),
-                format!(
-                    "an interval under {} semitones where the full-band RMS of two adjacent \
-                     windows of one period of the lower pitch, or {} ms if longer, differs by {} \
-                     dB or more anywhere from {} ms before the fitted start to the end of the \
-                     motion or {} ms into it",
-                    num(BOUND_MIN_INTERVAL.get()),
-                    ms(DIP_WINDOW),
-                    num(LEVEL_JUMP_DB.get()),
-                    ms(JUMP_LEAD),
-                    ms(JUMP_SPAN)
+                    ms(GLIDE_TIME_MIN.get()),
+                    num(BOUND_SPAN_MAX)
                 ),
                 format!(
                     "an RMS residual above {} cents, is no glide",
@@ -901,13 +875,7 @@ mod tests {
     fn a_curve_on_the_tracker_grid_reads_its_time_and_power() {
         let line = notes(&[(0.0, 0.55, 45.0), (0.55, 1.6, 52.0)]);
         for (full, p) in [(0.15, 1.0), (0.15, 2.5), (0.4, 1.0), (0.4, 2.5), (0.3, 0.5)] {
-            let read = find_glides(
-                &glide_track(full, p),
-                &line,
-                |_, _| false,
-                |_, _| true,
-                |_, _, _| false,
-            );
+            let read = find_glides(&glide_track(full, p), &line, |_, _| false, |_, _| true);
             assert_eq!(read.glides.len(), 1, "{full} {p}: {read:?}");
             let glide = read.glides[0];
             assert!(
@@ -927,21 +895,9 @@ mod tests {
     #[test]
     fn a_step_reports_nothing_and_a_short_glide_is_too_short() {
         let line = notes(&[(0.0, 0.5, 45.0), (0.5, 1.6, 52.0)]);
-        let step = find_glides(
-            &glide_track(0.001, 1.0),
-            &line,
-            |_, _| false,
-            |_, _| true,
-            |_, _, _| false,
-        );
+        let step = find_glides(&glide_track(0.001, 1.0), &line, |_, _| false, |_, _| true);
         assert_eq!(step, GlideRead::default());
-        let short = find_glides(
-            &glide_track(0.05, 1.0),
-            &line,
-            |_, _| false,
-            |_, _| true,
-            |_, _, _| false,
-        );
+        let short = find_glides(&glide_track(0.05, 1.0), &line, |_, _| false, |_, _| true);
         assert!(short.glides.is_empty(), "{short:?}");
         assert_eq!(short.too_short, 1);
     }
@@ -956,7 +912,6 @@ mod tests {
             &notes(&[(0.0, 1.6, 57.0)]),
             |_, _| false,
             |_, _| true,
-            |_, _, _| false,
         );
         assert_eq!(read, GlideRead::default());
     }
@@ -970,12 +925,12 @@ mod tests {
             })
         });
         let line = notes(&[(0.2, 1.0, 50.0)]);
-        let read = find_glides(&rising, &line, |_, _| false, |_, _| true, |_, _, _| false);
+        let read = find_glides(&rising, &line, |_, _| false, |_, _| true);
         assert_eq!(read.glides.len(), 1, "{read:?}");
         let glide = read.glides[0];
         assert!(glide.from_silence);
         assert!((glide.interval.get() - 5.0).abs() < 0.3, "{glide:?}");
-        let skipped = find_glides(&rising, &line, |_, _| false, |_, _| false, |_, _, _| false);
+        let skipped = find_glides(&rising, &line, |_, _| false, |_, _| false);
         assert_eq!(skipped.glides, []);
     }
 }

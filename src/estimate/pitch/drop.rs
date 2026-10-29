@@ -69,9 +69,11 @@ more above the 20 ms that end 25 ms before it; residual is the RMS of the fit's 
 over half a period of f_end when tau is 10 ms or more and over a full period when tau spans 1.5 \
 periods or more, over the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when \
 df_st is above 2 and at most 36, that fall is above 2 semitones too, tau is above the bound of \
-the search, residual is below 0.15, and f_end lies within 100 cents of a note that sounds from \
-5 tau after the onset, or from the end of the fit span if that comes first, to the end of the \
-fit span";
+the search, residual is below 0.15, and f_end lies within 100 cents of a note that starts 150 \
+ms or less before the onset and sounds from 5 tau after the onset, or from the end of the fit \
+span if that comes first, to the end of the fit span; a fit after a 6 dB strike that misses on \
+its residual is fitted again on a line whose low-pass sits at 1.5 times the note's pitch, when \
+that lies under 200 Hz";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -354,8 +356,8 @@ mod tests {
     fn the_convention_states_the_constants() {
         use super::super::line::{LINE_HI, LINE_LO, LINE_LO_FAST};
         use super::super::{
-            DROP_BAND_GATE, DROP_NOTE_MATCH, RUN_START_RISE, STRIKE_ATTACK, STRIKE_RISE,
-            STRIKE_SPANS, num, ratio_db, says,
+            DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, NOTE_LINE_EDGE, RUN_START_RISE,
+            STRIKE_ATTACK, STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
         };
         use crate::dsp::ACTIVE_GATE_DB;
         use crate::notes::QUIET_FRAME;
@@ -431,8 +433,17 @@ mod tests {
                 ),
                 format!("residual is below {}", num(DROP_MAX_RESIDUAL)),
                 format!(
-                    "within {} cents of a note that sounds",
-                    num(DROP_NOTE_MATCH.get())
+                    "within {} cents of a note that starts {} ms or less before the onset",
+                    num(DROP_NOTE_MATCH.get()),
+                    num(1000.0 * DROP_NOTE_LEAD.get())
+                ),
+                format!(
+                    "a fit after a {} strike that misses on its residual is fitted again on a \
+                     line whose low-pass sits at {} times the note's pitch, when that lies under \
+                     {} Hz",
+                    ratio_db(STRIKE_RISE),
+                    num(NOTE_LINE_EDGE),
+                    num(LINE_HI.get())
                 ),
             ],
         );

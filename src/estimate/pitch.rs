@@ -50,6 +50,14 @@ pub const DROP_GLIDE_DISTANCE: Seconds = Seconds::from_const(0.2);
 /// A drop settles on a note whose pitch lies within this many cents of
 /// `f_end`.
 pub const DROP_NOTE_MATCH: Cents = Cents::from_const(100.0);
+/// The note a drop settles on starts at most this long before the onset.
+///
+/// A note that started earlier belongs to a sound before the strike. On
+/// real stems a fit on the lead-in to a step settled on the note that
+/// had sounded for 790 ms, and a fit inside a chord on a note an octave
+/// below that had started 210 ms before. The latest note a generated drop
+/// settles on starts 95 ms before its onset.
+pub const DROP_NOTE_LEAD: Seconds = Seconds::from_const(0.15);
 /// The harmonic check of a strike reads the bands from this long after the
 /// onset.
 pub const WEAK_FROM: Seconds = Seconds::from_const(0.05);
@@ -68,6 +76,19 @@ pub const STRIKE_RISE: f64 = 2.0;
 /// of the line where a ringing tone restarts its phase fits a fast fall:
 /// a plain retriggered 808 read 32 semitones with a `tau` of 4 ms.
 pub const FAST_TAU: Seconds = Seconds::from_const(0.01);
+/// The low-pass of the note line, as a multiple of the note's pitch.
+///
+/// A fit after a strike of [`STRIKE_RISE`] that misses on its residual is
+/// fitted again on a line that keeps the band below this edge, when the
+/// edge lies under 200 Hz, the top of the band. Below 66 Hz the second and
+/// third harmonics of a note lie inside the band, and at -5 to -14 dB they
+/// swing the line by more than the note's pitch: a real sweep into C1
+/// fitted a residual of 2.5. At 1.5 times the note the
+/// second harmonic falls 10 dB more, and a fall that starts higher stays
+/// the strongest component on its way down. Without a strike, the note
+/// line smooths the swing where a retriggered tone restarts its phase into
+/// a fall: three generated retriggers that rose 0.6 to 1.6 dB read one.
+pub const NOTE_LINE_EDGE: f64 = 1.5;
 /// The spans, in seconds from a band onset, of the RMS before and after
 /// it that a strike compares. A pitch falling into the band from above
 /// raises the band envelope with no strike. The span before ends 25 ms
@@ -93,20 +114,6 @@ pub const GAP_DIP_DB: Decibels = Decibels::from_const(20.0);
 const DIP_WINDOW: f64 = 0.01;
 /// The span before and after a gap that the dip check compares with.
 const DIP_SIDE: f64 = 0.02;
-/// A small glide on the curve bound whose full-band RMS, over two
-/// adjacent windows of one period of its lower pitch or 10 ms, whichever
-/// is longer, changes by this much or more is a step struck again.
-///
-/// Steps between generated 808 notes struck again changed by 3.4 to
-/// 5.0 dB, RC slides of 1 and 2 semitones on sines and saws by 2.2 dB at
-/// most.
-pub const LEVEL_JUMP_DB: Decibels = Decibels::from_const(3.0);
-/// The level-jump check starts this long before a glide.
-const JUMP_LEAD: f64 = 0.03;
-/// The level-jump check reads at most this much of a glide.
-const JUMP_SPAN: f64 = 0.15;
-/// The step of the level-jump check.
-const JUMP_STEP: f64 = 0.001;
 /// The line keeps this much signal after the fit span, so the cut end of
 /// the analytic signal stays far from it.
 const LINE_TAIL: f64 = 0.5;
@@ -520,23 +527,11 @@ fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead 
             .fold(rms(f64::midpoint(from.get(), to.get()), window), f64::min);
         low < side * gain_below(GAP_DIP_DB) || low < floor
     };
-    let jumps = |from: Seconds, to: Seconds, pitch: Hz| {
-        let window = (1.0 / pitch.get()).max(DIP_WINDOW);
-        let gate = Decibels::clamped(LEVEL_JUMP_DB.get())
-            .to_amplitude_gain()
-            .unwrap_or(f64::INFINITY);
-        let end = to.get().min(from.get() + JUMP_SPAN);
-        scan(from.get() - JUMP_LEAD, end, JUMP_STEP).any(|at| {
-            let (before, after) = (rms(at, (-window, 0.0)), rms(at, (0.0, window)));
-            before > 0.0 && after > 0.0 && (after / before).max(before / after) >= gate
-        })
-    };
     find_glides(
         input.track,
         input.notes,
         |from, to| starts(from, to, STRIKE_SPANS, STRIKE_RISE) || dips(from, to),
         |from, to| starts(from, to, RUN_START_SPANS, RUN_START_RISE) && !near_drop(to),
-        jumps,
     )
 }
 
@@ -657,9 +652,23 @@ fn strikes(
         counts.drop_candidates += 1;
         let span_end = Seconds::clamped(note_off.max(onset.get()));
         let mut fit = fit_drop(&line, onset, span_end);
+        let mut lo = LINE_LO;
         if fit.is_some_and(|fit| fit.tau < FAST_TAU) || rise >= RUN_START_RISE {
-            let low = SubBandLine::with_low_edge(segment, input.rate, start, LINE_LO_FAST)?;
+            lo = LINE_LO_FAST;
+            let low = SubBandLine::with_low_edge(segment, input.rate, start, lo)?;
             fit = fit_drop(&low, onset, span_end);
+        }
+        let note_hi = Hz::clamped(NOTE_LINE_EDGE * settled.get());
+        if fit.is_some_and(|fit| fit.miss() == Some(DropMiss::Residual))
+            && note_hi < LINE_HI
+            && rise >= STRIKE_RISE
+        {
+            let note_line = SubBandLine::with_edges(segment, input.rate, start, lo, note_hi)?;
+            if let Some(note_fit) =
+                fit_drop(&note_line, onset, span_end).filter(|note_fit| note_fit.miss().is_none())
+            {
+                fit = Some(note_fit);
+            }
         }
         let Some(fit) = fit else {
             skips.no_fall += 1;
@@ -713,15 +722,16 @@ fn struck_enough(fit: &DropFit, rise: f64, attack: Seconds) -> bool {
 /// Whether a drop settles on a note: a note sounds while the drop is
 /// settled, from five time constants after the onset to the end of the fit
 /// span at `span_end` or [`DROP_FIT_END`], with its pitch within
-/// [`DROP_NOTE_MATCH`] of `f_end`. A slow fall that is not settled by then
-/// needs the note at the end of the span. Several partials inside the band
-/// make the line swing at a saw's onset into a fall that settles off the
-/// note.
+/// [`DROP_NOTE_MATCH`] of `f_end`, that starts [`DROP_NOTE_LEAD`] or less
+/// before the onset. A slow fall that is not settled by then needs the
+/// note at the end of the span. Several partials inside the band make the
+/// line swing at a saw's onset into a fall that settles off the note.
 fn settles_on_a_note(notes: &NoteList, fit: &DropFit, span_end: Seconds) -> bool {
     let to = (fit.onset.get() + DROP_FIT_END.get()).min(span_end.get());
     let from = (fit.onset.get() + 5.0 * fit.tau.get()).min(to);
     notes.notes().iter().any(|note| {
         note.onset().get() <= to
+            && note.onset().get() >= fit.onset.get() - DROP_NOTE_LEAD.get()
             && note.offset().get() >= from
             && (100.0 * note.pitch().get()
                 - 100.0 * MidiPitch::try_from(fit.f_end).map_or(f64::NAN, MidiPitch::get))
@@ -1024,6 +1034,32 @@ fn ratio_db(ratio: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::notes::Note;
+
+    #[test]
+    fn a_drop_settles_on_a_note_of_its_own_strike() {
+        let fit = DropFit {
+            onset: Seconds::clamped(1.0),
+            f_end: Hz::clamped(69.3),
+            df_hz: 100.0,
+            tau: Seconds::clamped(0.03),
+            residual: 0.05,
+            points: 1000,
+        };
+        let settles = |on: f64| {
+            let note = Note::new(
+                Seconds::clamped(on),
+                Seconds::clamped(1.6),
+                MidiPitch::new(37.0).unwrap(),
+            )
+            .unwrap();
+            settles_on_a_note(&NoteList::new(vec![note]), &fit, Seconds::clamped(1.5))
+        };
+        assert!(settles(1.05));
+        assert!(settles(0.86));
+        assert!(!settles(0.84));
+        assert!(!settles(0.2));
+    }
 
     #[test]
     fn the_least_jitter_of_a_unison_reads_low() {
