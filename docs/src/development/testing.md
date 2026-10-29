@@ -78,7 +78,8 @@ Test builds optimise our own crates at `opt-level = 1` (`[profile.test]` in
 run FFTs and trackers over whole stems, so unoptimised code made the suite
 take about 15 CPU-minutes. With the optimised build it takes about one,
 and the doc tests reuse the same build. Debug assertions and overflow
-checks stay on; `tests/it/profile.rs` fails if a change drops either. Plain
+checks stay on; `tests/it/profile.rs` fails if a change drops either from
+the test profile of the root package. Plain
 `cargo build` and `cargo run` keep the unoptimised dev profile.
 
 ## Continuous integration
@@ -101,7 +102,15 @@ it moves between workflows.
 Each workflow cancels the run of an older push to the same pull request. A
 push to `main` never cancels another run, because every merged commit
 needs its checks and may need a release. The `release` and `pages` jobs
-keep their own groups, which queue and never cancel.
+keep their own groups. They never cancel a running job, but a newer run
+replaces an older job that still waits in the same group. A release run
+covers every commit since the last tag, and `pages` deploys the newest
+documentation, so a replaced job loses nothing.
+
+A change of the base branch (`edited` with a new base) starts only
+`commits.yml`. After retargeting a pull request, reopen it or push a commit
+to run the other checks against the new base. A job-level `if:` that reacted
+to the retarget would report skipped jobs, which hide earlier failures.
 
 The build cache of the dependencies comes from `Swatinem/rust-cache`,
 through `.github/actions/setup-rust`. A key holds the job, the lockfiles
