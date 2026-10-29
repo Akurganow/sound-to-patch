@@ -3,6 +3,8 @@
 
 use std::error::Error;
 use std::fmt;
+use std::fs;
+use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use super::check::{LoadCheck, LoadFault, render_checked};
@@ -10,7 +12,7 @@ use super::fake::{FakePatch, FakeRenderer};
 use super::plugin::{HOST_ENV, PluginRenderer, find_plugin, host_binary};
 use super::state::{preset_state, saved_preset};
 use super::{HostIdentity, RenderError, RenderJob, RenderRecord, Renderer};
-use crate::audio::write_wav;
+use crate::audio::write_wav_to;
 use crate::synth::Synth;
 use crate::units::{Bpm, Seconds};
 
@@ -192,6 +194,80 @@ impl From<RenderError> for RenderFileError {
     }
 }
 
+fn exists(path: &Path) -> RenderFileError {
+    RenderFileError::Output {
+        path: path.to_owned(),
+        cause: "the file exists".to_owned(),
+        fix: "Pass --force to replace it, or write to a new file".to_owned(),
+    }
+}
+
+/// Writes one output file.
+type WriteOutput<'a> = &'a dyn Fn(&mut dyn Write) -> io::Result<()>;
+
+/// Writes each output to a new temporary file in `folder`, and renames the
+/// temporary files over the outputs only once every write succeeded. A
+/// failed write removes the temporary files and leaves the outputs as they
+/// were.
+fn write_outputs(
+    folder: &Path,
+    outputs: &[(&Path, WriteOutput<'_>)],
+    force: bool,
+) -> Result<(), RenderFileError> {
+    let failed = |path: &Path, cause: io::Error| RenderFileError::Output {
+        path: path.to_owned(),
+        cause: cause.to_string(),
+        fix: "Check that the folder is writable and the disk has room".to_owned(),
+    };
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(".sound-to-patch-").suffix(".partial");
+    // The umask applies, as it does to a file that File::create makes.
+    #[cfg(unix)]
+    builder.permissions(std::os::unix::fs::PermissionsExt::from_mode(0o666));
+    let mut written = Vec::with_capacity(outputs.len());
+    for &(path, write) in outputs {
+        let temporary = builder
+            .tempfile_in(folder)
+            .and_then(|mut temporary| {
+                let mut file = BufWriter::new(&mut temporary);
+                write(&mut file)?;
+                file.flush()?;
+                drop(file);
+                temporary.as_file().sync_all()?;
+                Ok(temporary)
+            })
+            .map_err(|cause| failed(path, cause))?;
+        written.push((path, temporary));
+    }
+    let mut placed = Vec::with_capacity(written.len());
+    for (path, temporary) in written {
+        let persisted = if force {
+            temporary.persist(path)
+        } else {
+            temporary.persist_noclobber(path)
+        };
+        let Err(error) = persisted else {
+            placed.push(path);
+            continue;
+        };
+        // Without force every placed output is new, so removing it restores
+        // the folder. shortcut: with force, an output already renamed stays
+        // replaced; a rename within one folder fails only when another
+        // program changes the folder during the write, because render_file
+        // refuses an output that is a folder.
+        if !force {
+            for path in placed {
+                let _ = fs::remove_file(path);
+            }
+            if error.error.kind() == io::ErrorKind::AlreadyExists {
+                return Err(exists(path));
+            }
+        }
+        return Err(failed(path, error.error));
+    }
+    Ok(())
+}
+
 /// The patch the fake backend plays: a dark tone, unlike the fake's init
 /// patch.
 fn fake_patch() -> FakePatch {
@@ -236,12 +312,15 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
         });
     }
     for path in [out, record_path.as_path()] {
-        if !request.force && path.exists() {
+        if path.is_dir() {
             return Err(RenderFileError::Output {
                 path: path.to_owned(),
-                cause: "the file exists".to_owned(),
-                fix: "Pass --force to replace it, or write to a new file".to_owned(),
+                cause: "it is a folder".to_owned(),
+                fix: "Write to a file name that no folder has".to_owned(),
             });
+        }
+        if !request.force && path.exists() {
+            return Err(exists(path));
         }
     }
     let preset = std::fs::read(request.preset).map_err(|source| RenderFileError::Read {
@@ -285,24 +364,15 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
             cause: source.to_string(),
             fix: "Report it; a record always encodes".to_owned(),
         })?;
-    // A partial WAV file, or one without its record, would block the next
-    // run, so a failed write removes it.
-    if let Err(source) = write_wav(out, &output.audio) {
-        let _ = std::fs::remove_file(out);
-        return Err(RenderFileError::Output {
-            path: out.to_owned(),
-            cause: source.to_string(),
-            fix: "Check that the folder is writable and the disk has room".to_owned(),
-        });
-    }
-    if let Err(source) = std::fs::write(&record_path, json + "\n") {
-        let _ = std::fs::remove_file(out);
-        return Err(RenderFileError::Output {
-            path: record_path,
-            cause: source.to_string(),
-            fix: "Check that the folder is writable and the disk has room".to_owned(),
-        });
-    }
+    let json = json + "\n";
+    write_outputs(
+        folder,
+        &[
+            (out, &|file| write_wav_to(file, &output.audio)),
+            (&record_path, &|file| file.write_all(json.as_bytes())),
+        ],
+        request.force,
+    )?;
     Ok(RenderReport {
         plugin,
         name,
@@ -313,4 +383,45 @@ pub fn render_file(request: &RenderRequest<'_>) -> Result<RenderReport, RenderFi
         record_path,
         tail_cap: job.recipe().tail_cap(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_both(folder: &Path, force: bool) -> Result<(), RenderFileError> {
+        write_outputs(
+            folder,
+            &[
+                (&folder.join("clip.wav"), &|file| {
+                    file.write_all(b"new clip")
+                }),
+                (&folder.join("clip.json"), &|_| {
+                    Err(io::Error::other("the disk is full"))
+                }),
+            ],
+            force,
+        )
+    }
+
+    #[test]
+    fn a_failed_record_write_leaves_no_new_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let error = write_both(dir.path(), false).unwrap_err().to_string();
+        assert!(error.contains("clip.json: the disk is full"), "{error}");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn a_failed_record_write_keeps_the_old_outputs() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("clip.wav");
+        let record = dir.path().join("clip.json");
+        fs::write(&out, "old clip").unwrap();
+        fs::write(&record, "old record").unwrap();
+        write_both(dir.path(), true).unwrap_err();
+        assert_eq!(fs::read(&out).unwrap(), b"old clip");
+        assert_eq!(fs::read(&record).unwrap(), b"old record");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
 }

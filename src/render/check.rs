@@ -225,9 +225,10 @@ impl From<RenderError> for LoadFault {
     }
 }
 
-/// Renders `job` and checks that the plug-in loaded its preset. The
-/// renderer must not have loaded a state yet: the check renders the init
-/// patch twice first.
+/// Renders `job` and checks that the plug-in loaded its preset.
+///
+/// The renderer must not have loaded a state yet: the check renders the
+/// init patch twice first, and keeps only the band levels of each clip.
 ///
 /// # Errors
 ///
@@ -236,8 +237,8 @@ pub fn render_checked(
     renderer: &mut dyn Renderer,
     job: &RenderJob,
 ) -> Result<(Rendered, LoadCheck), LoadFault> {
-    let first = renderer.render_init(job)?;
-    let second = renderer.render_init(job)?;
+    let init = BandLevels::of(&renderer.render_init(job)?.audio);
+    let spread = init.distance(&BandLevels::of(&renderer.render_init(job)?.audio));
     let init_state = renderer.save_state()?;
     let output = renderer.render(job)?;
     let saved = renderer.save_state()?;
@@ -264,8 +265,6 @@ pub fn render_checked(
             LoadFault::Readback(mismatches)
         });
     }
-    let init = BandLevels::of(&first.audio);
-    let spread = init.distance(&BandLevels::of(&second.audio));
     let distance = BandLevels::of(&output.audio).distance(&init);
     let margin = (SPREAD_FACTOR * spread).max(MIN_MARGIN_DB);
     Ok((

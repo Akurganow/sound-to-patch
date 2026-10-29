@@ -395,6 +395,9 @@ Options:
 stereo at 44.1 kHz, and the render record next to it, with `.json` in
 place of `.wav`. The record follows `schemas/render-record.schema.json`;
 the [render record page](formats/render-record.md) lists its fields.
+Both go to temporary files in the same folder first, and replace the
+outputs only once both writes succeeded. A failed write leaves the
+existing files as they were.
 
 The plug-in loads in `sound-to-patch-host`, a second program that ships
 next to `sound-to-patch`. `SOUND_TO_PATCH_HOST` names another copy. The

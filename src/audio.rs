@@ -49,7 +49,7 @@ pub use tempo::{
     SEARCH_SHARE, SHARPNESS_MIN, SPARSE_ONSETS_MAX, SPARSE_PERIODICITY_MIN, TEMPO_CONVENTION,
     Tempo,
 };
-pub use wav::write_wav;
+pub use wav::{write_wav, write_wav_to};
 
 /// A sample rate in samples per second: a whole number above zero.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]

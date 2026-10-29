@@ -1,6 +1,6 @@
 //! The `render` command's file handling (#252) on the fake backend: the
-//! output name, an existing output, a missing folder and a record that
-//! cannot be written.
+//! output name, an existing output, a missing folder, a folder in place of
+//! an output, and writes that fail.
 
 use std::path::{Path, PathBuf};
 
@@ -58,22 +58,50 @@ fn a_missing_folder_is_refused_before_the_render() {
 }
 
 #[test]
-fn a_record_that_cannot_be_written_removes_the_clip() {
-    let dir = tempfile::tempdir().unwrap();
-    let out = dir.path().join("clip.wav");
-    std::fs::create_dir(dir.path().join("clip.json")).unwrap();
-    let error = message(render(&out, true));
-    assert!(error.contains("clip.json"), "{error}");
-    assert!(!out.exists());
-}
-
-#[test]
-fn a_wav_file_that_cannot_be_written_leaves_no_record() {
+fn a_folder_in_place_of_an_output_is_refused_before_the_render() {
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("clip.wav");
     std::fs::create_dir(&out).unwrap();
     let error = message(render(&out, true));
+    assert!(error.contains("clip.wav: it is a folder"), "{error}");
+    assert!(!dir.path().join("clip.json").exists());
+    std::fs::remove_dir(&out).unwrap();
+    std::fs::create_dir(dir.path().join("clip.json")).unwrap();
+    let error = message(render(&out, true));
+    assert!(error.contains("clip.json: it is a folder"), "{error}");
+    assert!(!out.exists());
+}
+
+#[test]
+fn force_replaces_a_read_only_wav_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("clip.wav");
+    std::fs::write(&out, "old").unwrap();
+    let mut permissions = std::fs::metadata(&out).unwrap().permissions();
+    permissions.set_readonly(true);
+    std::fs::set_permissions(&out, permissions).unwrap();
+    render(&out, true).unwrap();
+    assert!(std::fs::read(&out).unwrap().starts_with(b"RIFF"));
+    assert!(dir.path().join("clip.json").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_failed_write_keeps_the_old_outputs() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("clip.wav");
+    let record = dir.path().join("clip.json");
+    std::fs::write(&out, "old clip").unwrap();
+    std::fs::write(&record, "old record").unwrap();
+    let mode = |mode| std::fs::Permissions::from_mode(mode);
+    std::fs::set_permissions(dir.path(), mode(0o555)).unwrap();
+    let result = render(&out, true);
+    std::fs::set_permissions(dir.path(), mode(0o755)).unwrap();
+    let error = message(result);
     assert!(error.contains("clip.wav"), "{error}");
     assert!(error.contains("the disk has room"), "{error}");
-    assert!(!dir.path().join("clip.json").exists());
+    assert_eq!(std::fs::read(&out).unwrap(), b"old clip");
+    assert_eq!(std::fs::read(&record).unwrap(), b"old record");
+    assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
 }

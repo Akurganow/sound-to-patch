@@ -22,11 +22,16 @@ const SAMPLE_BYTES: u16 = 4;
 /// for audio too long for the 4 GB size field of a WAV file.
 pub fn write_wav(path: &Path, audio: &Audio) -> io::Result<()> {
     let mut out = BufWriter::new(File::create(path)?);
-    write_to(&mut out, audio)?;
+    write_wav_to(&mut out, audio)?;
     out.flush()
 }
 
-fn write_to(out: &mut impl Write, audio: &Audio) -> io::Result<()> {
+/// Writes `audio` to `out` as [`write_wav`] writes it to a file.
+///
+/// # Errors
+///
+/// As [`write_wav`].
+pub fn write_wav_to(mut out: impl Write, audio: &Audio) -> io::Result<()> {
     let too_long = || io::Error::new(io::ErrorKind::InvalidInput, "the audio is too long for WAV");
     let channels = u16::try_from(audio.channels().len()).map_err(|_| too_long())?;
     let block = channels.checked_mul(SAMPLE_BYTES).ok_or_else(too_long)?;
@@ -79,7 +84,7 @@ mod tests {
     fn the_header_names_float_samples() {
         let audio = Audio::new(SampleRate::new(48_000).unwrap(), vec![vec![0.5; 3]]).unwrap();
         let mut bytes = Vec::new();
-        write_to(&mut bytes, &audio).unwrap();
+        write_wav_to(&mut bytes, &audio).unwrap();
         assert_eq!(bytes.len(), 44 + 12);
         assert_eq!(&bytes[20..22], &3_u16.to_le_bytes());
         assert_eq!(&bytes[24..28], &48_000_u32.to_le_bytes());

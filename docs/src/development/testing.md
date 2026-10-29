@@ -167,8 +167,10 @@ What runs in CI, with no plug-in:
   and the warning of an init-like render. A scripted host that crashes
   inside the load check gives the plug-in fault too.
 - The `render` command's files on the fake: the `.wav` name in any case,
-  an existing output without `--force`, a missing folder, and a record
-  that cannot be written, which removes the clip.
+  an existing output without `--force`, a missing folder, a folder in
+  place of an output, a read-only WAV file that `--force` replaces, and a
+  read-only folder or a failed second write, which leave the existing
+  files as they were.
 - The recipe, its snapshot and its hash, the note events, the tail watch,
   the MIDI reading with its hash, and the record against its schema.
 - The wire protocol, the host's request loop, the architecture pick from
