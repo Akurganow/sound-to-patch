@@ -115,7 +115,7 @@ jobs:
           stage="target/stage/$name"
           mkdir -p "$stage"
           cargo xtask dist --out-dir "$stage"
-          cargo about generate --locked --fail -m host/Cargo.toml -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
+          cargo about generate --locked --fail --workspace -c about.toml about.hbs -o "$stage/THIRD-PARTY-LICENSES.html"
           grep -q '>vst3-host ' "$stage/THIRD-PARTY-LICENSES.html"
           cp target/aarch64-apple-darwin/release/sound-to-patch target/universal/sound-to-patch-host LICENSE "$stage/"
           mkdir -p target/assets

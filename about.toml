@@ -1,5 +1,6 @@
 # cargo-about configuration: https://embarkstudios.github.io/cargo-about/
-# Only what ships in the binary needs a notice.
+# Only what ships in the binaries needs a notice. The scan covers the
+# workspace, so the few crates that only xtask uses get one too.
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
 ignore-build-dependencies = true
 ignore-dev-dependencies = true

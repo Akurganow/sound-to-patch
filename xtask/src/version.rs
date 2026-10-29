@@ -9,7 +9,7 @@ use std::process::Command;
 
 /// Sets `version` in `[workspace.package]` of `root/Cargo.toml`, then
 /// refreshes the workspace entries of `Cargo.lock` and, when the fuzz crate
-/// exists, the crate's entry in `fuzz/Cargo.lock`.
+/// exists, the entries of the library and its core in `fuzz/Cargo.lock`.
 pub(crate) fn set(root: &Path, version: &str) -> crate::Result<()> {
     let manifest = root.join("Cargo.toml");
     let text = fs::read_to_string(&manifest)?;
@@ -22,7 +22,14 @@ pub(crate) fn set(root: &Path, version: &str) -> crate::Result<()> {
         // fuzz/rust-toolchain.toml pins.
         cargo_update(
             root,
-            &["--manifest-path", "fuzz/Cargo.toml", "-p", "sound-to-patch"],
+            &[
+                "--manifest-path",
+                "fuzz/Cargo.toml",
+                "-p",
+                "sound-to-patch",
+                "-p",
+                "sound-to-patch-core",
+            ],
         )?;
     }
     Ok(())
@@ -195,9 +202,16 @@ mod tests {
         write(
             "Cargo.toml",
             "[package]\nname = \"sound-to-patch\"\nversion.workspace = true\n\
-             edition = \"2024\"\n\n[workspace]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
+             edition = \"2024\"\n\n[dependencies]\nsound-to-patch-core = { path = \"core\" }\n\n\
+             [workspace]\nmembers = [\"core\"]\n\n[workspace.package]\nversion = \"0.0.0\"\n",
         );
         write("src/lib.rs", "");
+        write(
+            "core/Cargo.toml",
+            "[package]\nname = \"sound-to-patch-core\"\nversion.workspace = true\n\
+             edition = \"2024\"\n",
+        );
+        write("core/src/lib.rs", "");
         write(
             "fuzz/Cargo.toml",
             "[package]\nname = \"probe-fuzz\"\nversion = \"0.0.0\"\nedition = \"2024\"\n\n\
@@ -233,10 +247,12 @@ mod tests {
         vendor("0.1.1");
         set(root, "0.2.0").unwrap();
         let lock = fs::read_to_string(root.join("fuzz/Cargo.lock")).unwrap();
-        assert!(
-            lock.contains("name = \"sound-to-patch\"\nversion = \"0.2.0\""),
-            "{lock}"
-        );
+        for name in ["sound-to-patch", "sound-to-patch-core"] {
+            assert!(
+                lock.contains(&format!("name = \"{name}\"\nversion = \"0.2.0\"")),
+                "{lock}"
+            );
+        }
         assert!(
             lock.contains("name = \"probe-dep\"\nversion = \"0.1.0\""),
             "{lock}"

@@ -1,5 +1,5 @@
-//! The protocol between [`super::plugin::PluginRenderer`] and the plug-in
-//! host process, `sound-to-patch-host`.
+//! The protocol between the library's `render::plugin::PluginRenderer`
+//! and the plug-in host process, `sound-to-patch-host`.
 //!
 //! The renderer writes one [`Request`] per line to the host's standard
 //! input. The host answers each with one [`Reply`] line on standard output,

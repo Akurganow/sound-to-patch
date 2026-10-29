@@ -6,23 +6,49 @@
 use std::fs;
 use std::path::Path;
 
-/// Fails when a top-level module of `src/` is not named in `ARCHITECTURE.md`
-/// as `` `name` ``.
+/// Fails when a top-level module of `src/` or a member crate of the
+/// workspace is not named in `ARCHITECTURE.md` as `` `name` ``.
 pub(crate) fn check(root: &Path) -> crate::Result<()> {
     let map = fs::read_to_string(root.join("ARCHITECTURE.md"))?;
-    let missing: Vec<_> = modules(&root.join("src"))?
-        .into_iter()
-        .filter(|name| !map.contains(&format!("`{name}`")))
-        .collect();
+    let unnamed = |names: Vec<String>| -> Vec<String> {
+        names
+            .into_iter()
+            .filter(|name| !map.contains(&format!("`{name}`")))
+            .collect()
+    };
+    let modules = unnamed(modules(&root.join("src"))?);
+    let members = unnamed(members(&fs::read_to_string(root.join("Cargo.toml"))?)?);
+    let mut missing = Vec::new();
+    if !modules.is_empty() {
+        missing.push(format!("these modules of src/: {}", modules.join(", ")));
+    }
+    if !members.is_empty() {
+        missing.push(format!("these workspace crates: {}", members.join(", ")));
+    }
     if missing.is_empty() {
         Ok(())
     } else {
         Err(format!(
-            "ARCHITECTURE.md does not name these modules of src/: {}. Add each to the code map",
-            missing.join(", ")
+            "ARCHITECTURE.md does not name {}. Add each to the code map",
+            missing.join(", nor ")
         )
         .into())
     }
+}
+
+/// The member folders of the workspace, from the one-line `members` list
+/// of the root manifest.
+fn members(manifest: &str) -> crate::Result<Vec<String>> {
+    let list = manifest
+        .lines()
+        .find_map(|line| line.strip_prefix("members = ["))
+        .and_then(|rest| rest.strip_suffix(']'))
+        .ok_or("Cargo.toml has no one-line `members = [...]` list in [workspace]")?;
+    Ok(list
+        .split(',')
+        .map(|item| item.trim().trim_matches('"').to_owned())
+        .filter(|item| !item.is_empty())
+        .collect())
 }
 
 /// Top-level modules: `src/<name>.rs` and `src/<name>/mod.rs`, without the
@@ -68,20 +94,33 @@ mod tests {
         fs::create_dir_all(dir.path().join("src/bin")).unwrap();
         fs::write(dir.path().join("src/notes.txt"), "").unwrap();
         fs::write(dir.path().join("ARCHITECTURE.md"), map).unwrap();
+        fs::write(
+            dir.path().join("Cargo.toml"),
+            "[workspace]\nmembers = [\"core\", \"host\"]\n",
+        )
+        .unwrap();
         dir
     }
 
     #[test]
     fn passes_when_every_module_is_named() {
-        let dir = tree("`cli` parses, `preset` writes.");
+        let dir = tree("`cli` parses, `preset` writes, `core` and `host` are crates.");
         check(dir.path()).unwrap();
     }
 
     #[test]
     fn names_the_missing_module() {
-        let dir = tree("`cli` parses.");
+        let dir = tree("`cli` parses, `core` and `host` are crates.");
         let err = check(dir.path()).unwrap_err().to_string();
         assert!(err.contains("preset"), "{err}");
         assert!(!err.contains("cli"), "{err}");
+    }
+
+    #[test]
+    fn names_the_missing_workspace_crate() {
+        let dir = tree("`cli` parses, `preset` writes, `host` is a crate.");
+        let err = check(dir.path()).unwrap_err().to_string();
+        assert!(err.contains("these workspace crates: core"), "{err}");
+        assert!(!err.contains("modules"), "{err}");
     }
 }

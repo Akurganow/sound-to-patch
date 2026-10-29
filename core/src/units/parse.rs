@@ -84,7 +84,9 @@ impl ParseUnitError {
 
     /// The error for a unit type that has no unit string, such as
     /// `Normalized`.
-    pub(crate) fn no_unit_string(input: &str, unit: &'static str) -> Self {
+    #[doc(hidden)]
+    #[must_use]
+    pub fn no_unit_string(input: &str, unit: &'static str) -> Self {
         Self {
             input: input.to_owned(),
             unit,

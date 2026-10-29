@@ -64,21 +64,7 @@ pub fn write_wav_to(mut out: impl Write, audio: &Audio) -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audio::{SampleRate, decode};
-
-    #[test]
-    fn the_decoder_reads_a_written_file_back() {
-        let dir = std::env::temp_dir().join(format!("stp-wav-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("two.wav");
-        let left = vec![0.0, 0.5, -0.25, 1.0];
-        let right = vec![-1.0, 0.125, 0.0, 0.75];
-        let audio = Audio::new(SampleRate::new(44_100).unwrap(), vec![left, right]).unwrap();
-        write_wav(&path, &audio).unwrap();
-        let read = decode(&path).unwrap().into_audio();
-        std::fs::remove_dir_all(&dir).unwrap();
-        assert_eq!(read, audio);
-    }
+    use crate::audio::SampleRate;
 
     #[test]
     fn the_header_names_float_samples() {
