@@ -76,10 +76,11 @@ fn vital_saves_the_state_it_loaded() {
         settings.insert("filter_1_cutoff".into(), 50.0.into());
         settings.insert("env_1_attack".into(), 0.3.into());
     });
-    renderer.render(&lead(sent.clone())).unwrap();
+    let job = lead(sent.clone());
+    renderer.render(&job).unwrap();
     let saved = renderer.save_state().unwrap();
     assert_eq!(saved_preset(&saved).unwrap()["preset_name"], "Probe");
-    let mismatches = readback_mismatches(&sent, &saved).unwrap();
+    let mismatches = readback_mismatches(&sent, &saved, job.bpm()).unwrap();
     assert!(
         mismatches.is_empty(),
         "{}",
@@ -257,10 +258,11 @@ fn a_tuning_does_not_carry_over_to_the_next_preset() {
         });
     });
     let mut renderer = renderer();
-    let tuned = renderer.render(&lead(up_two.clone())).unwrap();
+    let job = lead(up_two.clone());
+    let tuned = renderer.render(&job).unwrap();
     assert!(magnitude(&tuned.audio, 293.66) > 10.0 * magnitude(&tuned.audio, 261.63));
     let saved = renderer.save_state().unwrap();
-    assert_eq!(readback_mismatches(&up_two, &saved).unwrap(), []);
+    assert_eq!(readback_mismatches(&up_two, &saved, job.bpm()).unwrap(), []);
     // A preset without a tuning plays in the default tuning, not the last one.
     let plain = renderer.render(&lead(state(|_| {}))).unwrap();
     assert!(
@@ -327,4 +329,164 @@ fn the_mod_wheel_reaches_a_route() {
         rms(&moved.audio),
         rms(&still.audio)
     );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_session_of_two_vital_workers_keeps_each_job_and_its_order() {
+    use std::num::NonZeroUsize;
+
+    use sound_to_patch::render::session::{BoxedRenderer, RenderSession};
+
+    let session = RenderSession::new(NonZeroUsize::new(2).unwrap(), |_| {
+        Ok(Box::new(renderer()) as BoxedRenderer)
+    });
+    let levels = [0.2, 0.4, 0.6, 0.8];
+    let jobs: Vec<RenderJob> = levels
+        .iter()
+        .map(|level| {
+            lead(state(|settings| {
+                settings.insert("osc_1_level".into(), (*level).into());
+            }))
+        })
+        .collect();
+    let outcomes = session.render_all(&jobs);
+    let loudness: Vec<f64> = outcomes
+        .iter()
+        .map(|outcome| rms(&outcome.rendered().unwrap().audio))
+        .collect();
+    assert!(
+        loudness.windows(2).all(|pair| pair[0] < pair[1]),
+        "{loudness:?}"
+    );
+    assert_eq!(session.starts(), [1, 1]);
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_timing_table_holds_every_row_on_vital() {
+    use std::num::NonZeroUsize;
+
+    use sound_to_patch::render::session::BoxedRenderer;
+    use sound_to_patch::render::timing::{TimingKind, measure};
+
+    let table = measure(
+        |_| Ok(Box::new(renderer()) as BoxedRenderer),
+        &state(|_| {}),
+        NonZeroUsize::new(2).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        table.identity.build,
+        sound_to_patch::preset::vital::RETAIL_BUILD
+    );
+    assert_eq!(table.rows.len(), 8);
+    let state_load = table
+        .rows
+        .iter()
+        .find(|row| row.kind == TimingKind::StateLoad);
+    assert!(state_load.unwrap().median > 0.0);
+    for row in &table.rows {
+        assert!(row.median.is_finite() && row.p95.is_finite(), "{row:?}");
+    }
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_fresh_instance_renders_bit_identically_and_later_renders_differ() {
+    let job = lead(state(|_| {}));
+    let mut first = renderer();
+    let mut second = renderer();
+    let a = first.render(&job).unwrap().audio;
+    let b = second.render(&job).unwrap().audio;
+    assert_eq!(a, b, "two fresh instances rendered different first clips");
+    let later = first.render(&job).unwrap().audio;
+    assert_ne!(
+        a, later,
+        "an instance rendered its second clip like its first"
+    );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_render_at_another_tempo_passes_the_load_check() {
+    // The preset holds 120 BPM; the renders play at 140 and 100.3 BPM.
+    for (bpm, expected) in [(140.0, 2.333_333_492_279_052_7), (100.3, vital_bps(100.3))] {
+        let sent = state(|settings| {
+            settings.insert("beats_per_minute".into(), 2.0.into());
+        });
+        let mut renderer = renderer();
+        let job = RenderJob::for_material(sent, Material::Lead, Bpm::new(bpm).unwrap());
+        render_checked(&mut renderer, &job).unwrap();
+        let saved = saved_preset(&renderer.save_state().unwrap()).unwrap();
+        let tempo = saved["settings"]["beats_per_minute"].as_f64().unwrap();
+        assert_eq!(tempo, expected, "{bpm} BPM");
+    }
+}
+
+/// Vital's tempo for `bpm`, as `f32(bpm) * f32(1 / 60)`.
+fn vital_bps(bpm: f64) -> f64 {
+    sound_to_patch::render::state::vital_beats_per_second(Bpm::new(bpm).unwrap())
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST; renders 5,558 clips"]
+fn the_saved_tempo_follows_the_model_over_a_sweep() {
+    // Whole tempos 4 to 1000, tenths 4.0 to 400.0, and 300 values each on
+    // 0.01 and 0.001 steps from a fixed seed.
+    let mut tempos: Vec<f64> = (4..=1000).map(f64::from).collect();
+    tempos.extend((40..=4000).map(|tenths| f64::from(tenths) / 10.0));
+    let mut seed: u64 = 0x5eed;
+    let mut next = || {
+        seed = seed
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        seed >> 11
+    };
+    for step in [100_u32, 1000] {
+        let span = u64::from(996 * step);
+        for _ in 0..300 {
+            let units = u32::try_from(next() % span).unwrap() + 4 * step;
+            tempos.push(f64::from(units) / f64::from(step));
+        }
+    }
+    let note = |bpm: f64| {
+        let note = sound_to_patch::render::RenderNote::new(
+            60,
+            Seconds::new(0.0).unwrap(),
+            Seconds::new(0.05).unwrap(),
+            sound_to_patch::notes::Velocity::new(100).unwrap(),
+        )
+        .unwrap();
+        RenderJob::new(state(|_| {}), vec![note], Bpm::new(bpm).unwrap()).unwrap()
+    };
+    let chunks: Vec<&[f64]> = tempos.chunks(tempos.len().div_ceil(8)).collect();
+    let failures: Vec<String> = std::thread::scope(|scope| {
+        let handles: Vec<_> = chunks
+            .iter()
+            .map(|chunk| {
+                scope.spawn(move || {
+                    let mut renderer = renderer();
+                    let mut failures = Vec::new();
+                    for bpm in chunk.iter().copied() {
+                        let job = note(bpm);
+                        renderer.render(&job).unwrap();
+                        let saved = renderer.save_state().unwrap();
+                        let mismatches =
+                            readback_mismatches(job.state(), &saved, job.bpm()).unwrap();
+                        if !mismatches.is_empty() {
+                            failures.push(format!("{bpm}: {}", mismatches[0]));
+                        }
+                    }
+                    failures
+                })
+            })
+            .collect();
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap())
+            .collect()
+    });
+    println!("{} tempos, {} failures", tempos.len(), failures.len());
+    assert!(failures.is_empty(), "{failures:?}");
 }

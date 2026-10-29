@@ -2511,7 +2511,7 @@ dependencies = [
 
 [[package]]
 name = "sound-to-patch"
-version = "0.20.0"
+version = "0.20.1"
 dependencies = [
  "approx",
  "base64",
@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "sound-to-patch-host"
-version = "0.20.0"
+version = "0.20.1"
 dependencies = [
  "base64",
  "rustix",
@@ -3474,7 +3474,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.20.0"
+version = "0.20.1"
 dependencies = [
  "clap 4.6.7",
  "clap_complete",

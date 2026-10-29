@@ -7,6 +7,7 @@
 //! renders silence.
 
 use std::path::Path;
+use std::time::Instant;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
@@ -203,11 +204,15 @@ impl Session {
         if notes.is_empty() {
             return Err(bad("the request holds no notes".to_owned()));
         }
-        if let Some(state) = state {
-            self.plugin
-                .load_state(&state)
-                .map_err(step("loading the state"))?;
-        }
+        let state_load_s = state
+            .map(|state| {
+                let start = Instant::now();
+                self.plugin
+                    .load_state(&state)
+                    .map_err(step("loading the state"))?;
+                Ok(start.elapsed().as_secs_f64())
+            })
+            .transpose()?;
         let rate = self.recipe.sample_rate();
         let controls = controls
             .iter()
@@ -243,7 +248,11 @@ impl Session {
                 "Check that the folder exists and is writable",
             )
         })?;
-        Ok(Reply::Rendered { frames, capped })
+        Ok(Reply::Rendered {
+            frames,
+            capped,
+            state_load_s,
+        })
     }
 
     /// Plays the recipe's pre-roll and throws its audio away. Each step
