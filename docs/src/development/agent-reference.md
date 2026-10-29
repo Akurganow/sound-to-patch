@@ -149,7 +149,7 @@ of the dictionary:
 
 | Oracle | Where it runs | What it compares |
 | :-- | :-- | :-- |
-| `rust-music-theory` | CI, dev-dependency | 13 of the 57 scale rows; 23 chord qualities |
+| `rust-music-theory` | CI, offsets pinned in the test | 13 of the 57 scale rows; 23 chord qualities |
 | `chordparser` | CI, dev-dependency | every chord spelling; 14 of 137 do not parse |
 | `pychord` | golden tools, local | every chord spelling; 87 of 137 do not parse |
 | `music21` | golden tools, local | every chord spelling; 65 of 137 do not parse |
@@ -318,12 +318,55 @@ Which install paths carry `reference/`:
 
 Windows: with symbolic links off in git (`core.symlinks=false`), both links
 check out as small text files. The plugin then installs with no reference,
-and the project skill does not load. Before you clone or install from
-GitHub, let git create symbolic links: enable Developer Mode (or run the
-shell elevated), then clone with `git clone -c core.symlinks=true …`, or
-set `git config --global core.symlinks true` so the clone the agent
-harness makes gets it too. `cargo xtask check-plugins` reports such a file
-as "symlink not checked out".
+and the project skill does not load. The
+[guide](../guide/synth-reference.md#install-it) gives the git settings
+that avoid it. `cargo xtask check-plugins` reports such a file as
+"symlink not checked out".
+
+## Evaluation
+
+Three eval cases under `plugins/sound-to-patch-reference/evals/` measure
+how far the reference helps an agent. Each is a single-fact lookup:
+
+- `control-lookup` asks for the key, unit and default of a Vital control;
+- `word-lookup` asks for the bass sense of "warm", the report key that
+  checks it and how far listeners agree on it;
+- `rhythm-lookup` asks for the slots and note length of a bass grid in
+  the music dictionary.
+
+The cases check that the agent reaches the reference and uses it. They do
+not check every rule of `SKILL.md`. Most of the answers appear only in the
+reference; the control key is general knowledge of the open Vital source.
+Regex graders check each value next to its label or unit in the last
+message. A `tool_used: Skill` grader shows whether the skill fired, and it
+counts toward no score.
+
+Each run starts in an empty folder, so the run without the plugin sees no
+reference file. The plugin loads in place from the repository. The run
+with it therefore needs read access to the skill folder and to
+`reference/`, the target of the skill's `reference` link. The grant leaves
+out the plugin's `evals/` folder, which holds the expected answers. In a
+permission rule, a path that starts with `//` is absolute, so `/$PWD`
+gives `//` plus the repository path. Run the cases from the repository
+root:
+
+```bash
+P=plugins/sound-to-patch-reference
+A=(); for t in Read Glob Grep; do A+=("$t(/$PWD/$P/skills/**)" "$t(/$PWD/reference/**)"); done
+claude plugin eval $P --tag baseline --runs 3 --model <model> \
+  --no-publish --threshold 0 --allow-tools "${A[@]}"
+```
+
+`--ablation with-without` is the default for a plugin path. Every case
+runs three times without the plugin and three times with it, in the same
+eval run. The verdict of each grader in each run is in
+`aggregate-result.json` and `report.html` under `evals/results/`, which
+git ignores. `--threshold 0` lets the command pass whatever the scores, so
+the comparison is read by hand. A change to the skill passes when, in one
+eval run, its with-plugin score beats the no-plugin score of the same run
+on at least two of the three cases. A pull request that reruns the cases
+records the score of each run, the model and the date, and nothing about
+the machine or the account.
 
 ## Sources
 
@@ -333,3 +376,4 @@ as "symlink not checked out".
 - Skills: https://code.claude.com/docs/en/skills
 - Sharing files within a marketplace with symlinks: https://code.claude.com/docs/en/plugins/host-marketplace#share-files-within-a-marketplace-with-symlinks
 - Agent Skills specification: https://agentskills.io/specification
+- Plugin evals: https://code.claude.com/docs/en/plugin-evals

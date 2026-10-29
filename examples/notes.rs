@@ -1,6 +1,6 @@
 //! Builds a short saw line in code, runs the notes step on it and prints
 //! the notes it kept. Run it with `cargo run --release --example notes`;
-//! a debug build takes about a minute, most of it in the f0 track.
+//! a debug build takes about a second of CPU time.
 
 use std::f64::consts::TAU;
 

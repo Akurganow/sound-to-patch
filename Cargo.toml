@@ -21,7 +21,6 @@ colorous = "1.0.16"
 font8x8 = "0.3.1"
 midly = { version = "0.5.3", default-features = false, features = ["std"] }
 png = "0.18.1"
-pyin = "=1.2.0"
 realfft = "3.5.0"
 rubato = "=5.0.1"
 rustfft = "6.4.1"
@@ -39,7 +38,6 @@ hound = "3.5.1"
 insta = "1.49.0"
 jsonschema = { version = "0.60.2", default-features = false }
 proptest = "1.12.0"
-rust-music-theory = "0.4.0"
 trycmd = "1.2.1"
 
 [[bench]]
@@ -51,7 +49,7 @@ members = ["host", "xtask"]
 
 [workspace.package]
 # `cargo xtask set-version` rewrites this line in the version commit.
-version = "0.20.1"
+version = "0.21.1"
 edition = "2024"
 # Set for the transcription crates of a later release, which need 1.91.
 # Never below the highest MSRV among the dependencies, dev-dependencies

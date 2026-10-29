@@ -76,6 +76,28 @@ PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-b
   residual.
 - An epic closes with its docs and the checklist in its issue.
 
+## Plugin files
+
+The agent plugins live under `plugins/<name>/`. The development page
+`docs/src/development/agent-reference.md` describes their layout and
+checks.
+
+- List each plugin in `.claude-plugin/marketplace.json` with a source that
+  starts with `./`. Set no `version`: the release names the archive.
+- Edit reference text in `reference/` and dictionary data in
+  `dictionary/`, never through a plugin's `reference` link. Run
+  `cargo xtask reference` after a change; CI fails on a stale generated
+  file.
+- Keep `SKILL.md` frontmatter to the six fields of the skill
+  specification. Put every rule the agent must not lose in `SKILL.md`.
+- The manifest description, the plugin README and `SKILL.md` carry the
+  non-affiliation line for every vendor name in the plugin.
+- Commit the `reference` links as symbolic links, never as copies.
+- Eval cases live in `plugins/<name>/evals/`. Their results stay local and
+  are not committed.
+- Run `cargo xtask check-plugins` and `claude plugin validate` on the
+  marketplace root and on the plugin folder before a pull request.
+
 ## Commits and pull requests
 
 - Commit messages follow Conventional Commits: `type(scope): subject`. The

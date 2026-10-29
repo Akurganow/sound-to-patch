@@ -516,44 +516,33 @@ right profile and for detection [synthetic]:
 - These are generated signals, a best case. Real stems add bleed, effects
   and noise, and score lower [proposal].
 
-### Time budget
+### Time cost
 
-`cargo bench --bench notes` times each step on one generated 60 s stem at
-22050 Hz, saw and sine notes from A2 to G4, with 10 samples per heavy
-step [fact]. Medians, from the benchmark's own `median` estimate, with
-nothing else running [synthetic]:
+`cargo run --release --example notes_memory -- <stage>` runs one stage of
+the notes step on one generated 60 s stem at 22050 Hz, saw and sine notes
+from A2 to G4 [fact]. CPU time (user) and peak resident size of one
+process per stage, the median of five runs of a release build
+[synthetic]:
 
-| Step | 1 thread | All threads |
+| Stage | CPU time | Peak memory |
 | :-- | :-- | :-- |
-| Model load | 17.6 ms | |
-| Model run | 0.816 s | 0.101 s |
-| f0 track | 29.31 s | |
-| MIDI write | 3.9 µs | |
-| End to end, without decoding the file | 30.05 s | 29.17 s |
+| The stem alone | 0.08 s | 14 MB |
+| Model run | 1.20 s | 175 MB |
+| f0 track | 1.08 s | 65 MB |
+| Model run, decode and cleanup | 1.22 s | 190 MB |
+| End to end | 2.26 s | 230 MB |
 
-- The budget is the median plus 25 %: 37.6 s per minute of audio at one
-  thread and 36.5 s at all threads [proposal]. The cost grows linearly
-  with the stem [fact].
-- The f0 track runs on one thread and takes 98 % of the step at one
-  thread; at all threads the step costs the track plus the model run of
-  0.1 s, and the two medians lie within their run-to-run spread
-  [synthetic].
-- Peak memory, measured as the peak resident size of one process per
-  stage with `cargo run --release --example notes_memory -- <stage>`
-  [synthetic]:
-
-| Stage | Peak memory |
-| :-- | :-- |
-| The stem alone | 14 MB |
-| Model run | 165 MB |
-| f0 track | 1.17 GB |
-| Model run, decode and cleanup | 183 MB |
-| End to end | 1.28 GB |
-
-- The f0 track holds the peak; the decode and the cleanup add 18 MB to the
-  model run [synthetic]. On a 4-minute stem the track alone peaked at
-  4.1 GB and took 120 s [synthetic]. This release measures the cost and
-  does not reduce it [fact].
+- The f0 track costs about the same CPU time as the model run, on one
+  thread. Its time and its memory grow linearly with the stem [fact].
+- The decode and the cleanup add 15 MB to the model run [synthetic].
+- On a real stem of 221 s, `sound-to-patch notes` took 11.8 s and peaked at
+  0.73 GB. The dense Viterbi search that the track used before took 290 s
+  and 4.2 GB on the same stem, with the same notes [fact].
+- A debug build runs the f0 track at about half a second of CPU time per
+  second of audio, 25 times slower than a release build [synthetic].
+- `cargo bench --bench notes` times the same steps by wall clock. Its
+  medians depend on a quiet machine and were not taken for the current
+  tracker [fact].
 
 ## The stem
 
