@@ -24,6 +24,7 @@ mod detect;
 mod mask;
 mod midi;
 mod profile;
+mod pyin;
 mod quiet;
 mod stem;
 mod track;

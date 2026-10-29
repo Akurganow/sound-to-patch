@@ -149,7 +149,7 @@ of the dictionary:
 
 | Oracle | Where it runs | What it compares |
 | :-- | :-- | :-- |
-| `rust-music-theory` | CI, dev-dependency | 13 of the 57 scale rows; 23 chord qualities |
+| `rust-music-theory` | CI, offsets pinned in the test | 13 of the 57 scale rows; 23 chord qualities |
 | `chordparser` | CI, dev-dependency | every chord spelling; 14 of 137 do not parse |
 | `pychord` | golden tools, local | every chord spelling; 87 of 137 do not parse |
 | `music21` | golden tools, local | every chord spelling; 65 of 137 do not parse |

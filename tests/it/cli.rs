@@ -51,8 +51,8 @@ fn a_closed_pipe_is_not_an_error() {
 
 /// The success case of `analyze`, on a generated WAV in a temporary
 /// folder, which a trycmd case cannot name: the tempo line, then both
-/// written files. The notes come from a file, so the f0 track, slow in a
-/// debug build, does not run; the report tests check the notes-step lines.
+/// written files. The notes come from a file, so the f0 track does not
+/// run; the report tests check the notes-step lines.
 #[test]
 fn analyze_writes_both_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
