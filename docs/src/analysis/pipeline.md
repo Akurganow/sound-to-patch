@@ -303,7 +303,9 @@ The cleanup runs five steps and prints the note count after each [fact].
   must hold a frame at six tenths of that loudest frame or more, centred
   60 ms or more before the dip. The split falls on the last envelope
   reading at a tenth of the loudest reading after the dip, before the
-  first reading at nine tenths, read as in the rise test below. The
+  first reading at nine tenths after the quietest one, read as in the
+  rise test below. The note before the dip can read louder than the one
+  after it, so the climb starts at the quietest reading [fact]. The
   piece after the split must last 50 ms, and the attack rule below must
   hold between the two pieces. Each piece keeps the note's key, octave
   flag and velocity [fact].
@@ -337,7 +339,7 @@ The cleanup runs five steps and prints the note count after each [fact].
   for the squares the limits below give [synthetic]. On the first set
   8 of the 716 runs come closer to the true notes, and gated runs hit
   1245 gates where they hit 1205. On the second set 12 of the 130 gated
-  runs and 10 of the 24 two-voice runs keep more repeats, 1662 gates hit
+  runs and 10 of the 24 two-voice runs keep more repeats, 1666 gates hit
   where 1558 were. The fourth set keeps the same notes. Every A1
   sixteenths run keeps more: 872 of 1024 gates hit where 214 were
   [synthetic]. On the eval the dry 110 Hz saw with a 0.3 s release keeps
@@ -510,7 +512,7 @@ The cleanup runs five steps and prints the note count after each [fact].
     18 of the 96 runs, all loud for 60 or 70 % [synthetic]. The attack
     split cuts such a note at its pulses as well: squares loud for 60, 70
     and 80 % split further than without the split in 21, 30 and 9 of
-    their 240 runs, and a vibrato under one in 14 of 96. An A1 under an
+    their 240 runs, and a vibrato under one in 16 of 96. An A1 under an
     8 Hz square loud for 70 % gives 32 notes, one a pulse, where it gave
     8 [synthetic]. The model's onset activation at those pulses, 0.25 to
     0.67, matches that of gated repeats [synthetic]. Only a cue such as a
@@ -521,6 +523,14 @@ The cleanup runs five steps and prints the note count after each [fact].
     and fourth sets and the A1 sixteenths, and in 8 of the 24 two-voice
     runs, 238 more gates hit; it would also split the ducks above
     [synthetic].
+  - Below about A2 the harmonics' window cannot tell a note from a key
+    nearby, so a held note under a louder gated voice of another key
+    dips at its harmonics too [fact]. A held A1 20 dB under an A2 gated
+    for 0.2 s in every 0.25 s splits at the A2's gates: the split join
+    keeps 12 of the decoder's 14 pieces, and the attack split cuts it
+    into 16 [synthetic]. Under a gated E2 it gives 13 notes with or
+    without the split [synthetic]. A dip read at the note's own pitch
+    alone could tell the two apart [proposal].
   - A repeat after a note that holds above half its level for less than
     60 ms joins the note before it when the decoder reads its onset weak
     [synthetic]. At A2 a note of 59 ms before a 30 ms gap holds long

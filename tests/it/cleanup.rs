@@ -219,24 +219,26 @@ fn a_gated_55_hz_saw_with_30_ms_gaps_gets_its_16_notes() {
 }
 
 /// A held saw under an amplitude LFO of 6 dB, one cycle per quarter or
-/// per eighth note at 120 BPM, stays one note.
+/// per eighth note at 120 BPM, keeps the onset rule's notes: one, but two
+/// for A1 at 1/8, where the decoder reads a strong onset at 0.19 s.
 #[test]
 fn a_6_db_lfo_never_splits_a_held_note() {
-    for (name, f0, rate) in [
-        ("A1 at 1/4", 55.0, 2.0),
-        ("A1 at 1/8", 55.0, 4.0),
-        ("E1 at 1/4", 41.203, 2.0),
-        ("E1 at 1/8", 41.203, 4.0),
+    for (name, f0, rate, count) in [
+        ("A1 at 1/4", 55.0, 2.0, 1),
+        ("A1 at 1/8", 55.0, 4.0, 2),
+        ("E1 at 1/4", 41.203, 2.0, 1),
+        ("E1 at 1/8", 41.203, 4.0, 1),
     ] {
         let found = cleaned(&held(f0, |time| {
             10_f64.powf(-6.0 / 20.0 * (0.5 - 0.5 * (std::f64::consts::TAU * rate * time).cos()))
         }));
+        assert_eq!(found.kept.notes().len(), count, "{name}");
         assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
     }
 }
 
 /// A held saw through a low-pass filter swept from 200 Hz to 4 kHz and back
-/// once a second keeps the onset rule's notes.
+/// once a second stays one note.
 #[test]
 fn a_filter_sweep_never_splits_a_held_note() {
     for (name, f0) in [("A1", 55.0), ("E1", 41.203)] {
@@ -253,6 +255,7 @@ fn a_filter_sweep_never_splits_a_held_note() {
             })
             .collect();
         let found = cleaned(&stem);
+        assert_eq!(found.kept.notes().len(), 1, "{name}");
         assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
     }
 }
@@ -603,5 +606,35 @@ fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
             found.kept.notes().len()
         ),
         (22, 6, 24)
+    );
+}
+
+/// A held A1 20 dB under a louder A2 gated for 0.2 s in every 0.25 s
+/// dips at the A1's harmonics too, since below A2 their window cannot
+/// tell the two keys apart: the A1 splits at the A2's gates. The split
+/// join keeps 12 of the decoder's 14 pieces, and the attack split cuts
+/// the rest, 16.
+#[test]
+fn a_held_note_under_a_louder_gated_key_splits_at_its_gates() {
+    let low = held(55.0, |_| 0.1);
+    let stem: Vec<f64> = gated(&[110.0], 0.005, 0.2, 0.0, -400.0)
+        .into_iter()
+        .zip(low)
+        .map(|(high, low)| high + low)
+        .collect();
+    let found = cleaned(&stem);
+    let at_a1 = |list: &NoteList| {
+        list.notes()
+            .iter()
+            .filter(|note| (note.pitch().get() - 33.0).abs() < 0.5)
+            .count()
+    };
+    assert_eq!(
+        (
+            at_a1(&found.decoded),
+            at_a1(&found.onset_only),
+            at_a1(&found.kept)
+        ),
+        (14, 4, 16)
     );
 }

@@ -351,8 +351,17 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
     }
     println!("\nCleanup steps per part (detected settings): notes after each step\n");
     println!(
-        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
-        "part", "decoded", "moved", "flagged", "unchecked", "merged", "joined", "quiet", "kept"
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>5} {:>6} {:>5} {:>5}",
+        "part",
+        "decoded",
+        "moved",
+        "flagged",
+        "unchecked",
+        "merged",
+        "split",
+        "joined",
+        "quiet",
+        "kept"
     );
     for row in &tally.steps {
         println!("{row}");
@@ -461,13 +470,14 @@ fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<
 
 fn steps_row(part: &Part, steps: &CleanupSteps) -> String {
     format!(
-        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>5} {:>6} {:>5} {:>5}",
         part.name,
         steps.decoded,
         steps.octaves.moved,
         steps.octaves.flagged,
         steps.octaves.unchecked,
         steps.merged,
+        steps.split,
         steps.joined,
         steps.quiet,
         steps.kept

@@ -331,10 +331,10 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
 /// [`ATTACK_DIP`] or more below the loudest frame in the [`ATTACK_AFTER`]
 /// after it. The split falls on the last envelope reading at or below the
 /// first share of [`RISE_SPAN`] of the loudest reading in that span,
-/// before the first reading at the second share. It holds when the piece
-/// from there has an attack of its own after the piece before it, by the
-/// rule of the split join, which then keeps the two apart. Each piece
-/// keeps the note's key, octave flag and velocity.
+/// before the first reading at the second share after the quietest one.
+/// It holds when the piece from there has an attack of its own after the
+/// piece before it, by the rule of the split join, which then keeps the
+/// two apart. Each piece keeps the note's key, octave flag and velocity.
 #[must_use]
 pub fn split_at_attacks(notes: &NoteList, levels: &StemLevels<'_>) -> NoteList {
     let mut pieces: Vec<Note> = Vec::with_capacity(notes.notes().len());
@@ -426,7 +426,17 @@ fn split_point(
         .filter(|(time, _)| *time >= centre.get())
         .map(|&(_, level)| level)
         .fold(0.0, f64::max);
-    let rise = readings.iter().position(|&(_, level)| level >= to * peak)?;
+    // The climb starts at the quietest reading: the note before the dip
+    // can read louder than the one after it.
+    let trough = readings
+        .iter()
+        .enumerate()
+        .min_by(|a, b| a.1.1.total_cmp(&b.1.1))
+        .map(|(k, _)| k)?;
+    let rise = trough
+        + readings[trough..]
+            .iter()
+            .position(|&(_, level)| level >= to * peak)?;
     readings[..rise]
         .iter()
         .rev()
@@ -1407,6 +1417,30 @@ mod tests {
                 "ramp {ramp} s"
             );
         }
+    }
+
+    #[test]
+    fn a_quieter_repeat_splits() {
+        // After a 25 ms gap the first readings still see the note before
+        // it, 6 dB louder, above nine tenths of the peak after the dip;
+        // the climb starts at the quietest reading.
+        let mono = stem(onset(), |t| {
+            let level = if t < -0.025 {
+                1.0
+            } else if t < 0.0 {
+                0.0
+            } else {
+                0.5
+            };
+            (level, 0.0)
+        });
+        let pieces = split_at(45.0, &mono, -0.3, 0.3);
+        assert_eq!(pieces.len(), 2);
+        assert!(
+            (pieces[1] + 0.0053).abs() < 0.0005,
+            "split at {}",
+            pieces[1]
+        );
     }
 
     #[test]
