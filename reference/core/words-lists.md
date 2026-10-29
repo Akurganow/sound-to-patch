@@ -85,7 +85,7 @@ A style word hints at a card and never picks one alone. `pending` waits for the 
 
 ## Technique words
 
-The first sixteen name a neutral control group that the synth reference binds to controls; the rest are unmapped.
+The first 16 name a neutral control group that the synth reference binds to controls; the rest are unmapped.
 
 | Rank | Word | Control group |
 | :-- | :-- | :-- |

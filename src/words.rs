@@ -525,23 +525,20 @@ fn build() -> Result<Words, String> {
 
 /// Parses the embedded files without checking them.
 pub(crate) fn parse() -> Result<Words, String> {
+    fn read<T: serde::de::DeserializeOwned>(name: &str, data: &str) -> Result<T, String> {
+        serde_json::from_str(data).map_err(|error| format!("dictionary/words/{name}: {error}"))
+    }
     let mut entries = Vec::new();
     for file in AXES {
-        let parsed: Vec<Entry> = serde_json::from_str(file.data)
-            .map_err(|error| format!("dictionary/words/{}.json: {error}", file.axis.as_str()))?;
-        entries.extend(parsed);
+        entries.extend(read::<Vec<Entry>>(
+            &format!("{}.json", file.axis.as_str()),
+            file.data,
+        )?);
     }
-    let read = |name: &str, data: &str| -> Result<serde_json::Value, String> {
-        serde_json::from_str(data).map_err(|error| format!("dictionary/words/{name}: {error}"))
-    };
-    let ladder = serde_json::from_value(read("ladder.json", LADDER)?)
-        .map_err(|error| format!("dictionary/words/ladder.json: {error}"))?;
-    let listeners = serde_json::from_value(read("agreement.json", AGREEMENT)?)
-        .map_err(|error| format!("dictionary/words/agreement.json: {error}"))?;
-    let style = serde_json::from_value(read("style.json", STYLE)?)
-        .map_err(|error| format!("dictionary/words/style.json: {error}"))?;
-    let technique = serde_json::from_value(read("technique.json", TECHNIQUE)?)
-        .map_err(|error| format!("dictionary/words/technique.json: {error}"))?;
+    let ladder = read("ladder.json", LADDER)?;
+    let listeners = read("agreement.json", AGREEMENT)?;
+    let style = read("style.json", STYLE)?;
+    let technique = read("technique.json", TECHNIQUE)?;
     Ok(Words {
         entries,
         listeners,

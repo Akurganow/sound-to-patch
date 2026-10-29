@@ -145,6 +145,9 @@ fn listener_problems(words: &Words) -> Vec<String> {
 /// The count of sources a tag allows, over the sources that are not search
 /// excerpts, and whether the sources must all be search excerpts.
 fn tag_problem(tag: Tag, sources: &[String]) -> Option<&'static str> {
+    if sources.iter().collect::<BTreeSet<_>>().len() < sources.len() {
+        return Some("a source is listed twice");
+    }
     // The listener data is derived, so it states nothing and never counts
     // toward `source states` or `single source`.
     let pages = sources
@@ -192,6 +195,13 @@ fn value_problems(value: &Value, sources: &BTreeSet<String>) -> Vec<String> {
 
 fn entry_problems(entry: &Entry, words: &Words, sources: &BTreeSet<String>) -> Vec<String> {
     let mut found = Vec::new();
+    for name in std::iter::once(&entry.word).chain(&entry.aliases) {
+        if *name != name.to_lowercase() {
+            found.push(format!(
+                "`{name}` is not lowercase, so a lookup never finds it"
+            ));
+        }
+    }
     if !entry.id.ends_with(&format!(".{}", entry.sense)) {
         found.push(format!(
             "the id does not end with the sense `{}`",
@@ -456,5 +466,20 @@ mod tests {
         assert!(tag_problem(Tag::SingleSource, &strings(&["crowd-eq", "a"])).is_none());
         assert!(tag_problem(Tag::Inferred, &[]).is_none());
         assert!(tag_problem(Tag::Inferred, &strings(&["a"])).is_some());
+        assert_eq!(
+            tag_problem(Tag::SourceStates, &strings(&["a", "a"])),
+            Some("a source is listed twice")
+        );
+    }
+
+    #[test]
+    fn a_capitalised_word_or_alias_fails() {
+        let mut words = crate::words::parse().unwrap();
+        words.entries[0].word = words.entries[0].word.to_uppercase();
+        let found = problems(&words);
+        assert!(
+            found.iter().any(|p| p.contains("is not lowercase")),
+            "{found:?}"
+        );
     }
 }

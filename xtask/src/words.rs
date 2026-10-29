@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
+use sound_to_patch::words::check::CONTROL_GROUPS;
 use sound_to_patch::words::{AXES, Axis, Entry, Tag, Value, Words, dictionary};
 
 use crate::music::{CORE, page};
@@ -65,16 +66,12 @@ fn tag(tag: Tag) -> &'static str {
     }
 }
 
-fn number(value: f64) -> String {
-    let text = format!("{value}");
-    text.strip_suffix(".0").map_or(text.clone(), str::to_owned)
-}
-
 fn value_text(value: &Value) -> String {
-    let range = if number(value.low) == number(value.high) {
-        number(value.low)
+    // Display prints an integral f64 without a fraction: 22050, not 22050.0.
+    let range = if value.low.to_bits() == value.high.to_bits() {
+        value.low.to_string()
     } else {
-        format!("{} to {}", number(value.low), number(value.high))
+        format!("{} to {}", value.low, value.high)
     };
     let unit = match value.unit.as_str() {
         "cents" | "semitones" | "bits" | "voices" if range == "1" => {
@@ -179,12 +176,15 @@ fn axis_page(words: &Words, axis: Axis) -> String {
         table.push_str(&row(entry));
     }
     let mut sections = vec![("Words".to_owned(), table)];
-    let mut asked: Vec<&str> = entries
+    // Each word is asked once, at its first sense, wherever its senses sit.
+    let asked: Vec<&str> = entries
         .iter()
-        .filter(|entry| words.senses(&entry.word).len() > 1)
+        .filter(|entry| {
+            let senses = words.senses(&entry.word);
+            senses.len() > 1 && senses[0].id == entry.id
+        })
         .map(|entry| entry.word.as_str())
         .collect();
-    asked.dedup();
     if !asked.is_empty() {
         let mut questions = String::from(
             "When the request names a role, take the one sense that lists it. Otherwise take \
@@ -234,9 +234,10 @@ fn lists_page(words: &Words) -> String {
         let hint = row.hint.as_deref().unwrap_or("");
         let _ = writeln!(style, "| {} | {} | {hint} |", row.rank, ranked_word(row));
     }
-    let mut technique = String::from(
-        "The first sixteen name a neutral control group that the synth reference binds to \
+    let mut technique = format!(
+        "The first {} name a neutral control group that the synth reference binds to \
          controls; the rest are unmapped.\n\n| Rank | Word | Control group |\n| :-- | :-- | :-- |\n",
+        CONTROL_GROUPS.len()
     );
     for row in &words.technique {
         let group = row.group.as_deref().unwrap_or("unmapped");
@@ -285,7 +286,6 @@ mod tests {
             value_text(&value),
             "band of boominess: 60 to 125 Hz (source states, gloss-a gloss-b)"
         );
-        assert_eq!(number(0.2), "0.2");
         let one = Value {
             low: 1.0,
             high: 1.0,
@@ -297,6 +297,16 @@ mod tests {
             "{}",
             value_text(&one)
         );
-        assert_eq!(number(22050.0), "22050");
+        let wide = Value {
+            low: 0.2,
+            high: 22050.0,
+            unit: "Hz".to_owned(),
+            ..one
+        };
+        assert!(
+            value_text(&wide).contains(": 0.2 to 22050 Hz ("),
+            "{}",
+            value_text(&wide)
+        );
     }
 }
