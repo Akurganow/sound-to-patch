@@ -1,10 +1,16 @@
 //! The pYIN tracker behind the f0 track.
 //!
 //! It follows pyin 1.2.0 (a Rust port of librosa 0.9.1's `pyin`) step by
-//! step and gives the same frames, voiced flags and f0 to the last bit, so
-//! the goldens and the evaluation of the notes step hold. Only the
-//! cost differs: the search keeps one row of values and a table of 16-bit
-//! back-pointers instead of dense tables of states by frames.
+//! step. A one-off comparison with the crate found the same frames, voiced
+//! flags and f0 to the last bit on generated and real stems, so the goldens
+//! and the evaluation of the notes step hold. Only the cost differs: the
+//! search keeps one row of values and a table of 16-bit back-pointers
+//! instead of dense tables of states by frames.
+//!
+//! What the tests pin: the decoded pitch bin of each frame of three
+//! generated stems, taken from pyin 1.2.0, and the banded search against a
+//! dense one. They pin no f0 bit pattern and no hash, because the FFT code
+//! may differ in the last bit between platforms.
 //!
 //! The numerics are those of pyin 1.2.0, not of librosa 1.0: a window of
 //! half a frame, no pruned moves, and the last bits of its sums and logs. A
@@ -222,23 +228,26 @@ fn parabolic_shifts(yin: &[f64], shifts: &mut [f64]) {
 /// The symmetric triangle window of `size` points that stays above zero at
 /// both ends, as scipy's `windows.triang(size)` gives it.
 fn triangle(size: usize) -> Vec<f64> {
-    let ramp = size.div_ceil(2);
     let width = cast::usize_to_f64(size);
-    let steps = (1..=ramp).map(cast::usize_to_f64);
-    if size % 2 == 1 {
-        let half: Vec<f64> = steps.map(|m| m * 2.0 / (width + 1.0)).collect();
-        let mirrored = half.iter().rev().skip(1).copied().collect::<Vec<_>>();
-        half.into_iter().chain(mirrored).collect()
-    } else {
-        let half: Vec<f64> = steps.map(|m| (m * 2.0 - 1.0) / width).collect();
-        let mirrored = half.iter().rev().copied().collect::<Vec<_>>();
-        half.into_iter().chain(mirrored).collect()
-    }
+    let odd = size % 2 == 1;
+    let half: Vec<f64> = (1..=size.div_ceil(2))
+        .map(|m| {
+            let m = cast::usize_to_f64(m);
+            if odd {
+                m * 2.0 / (width + 1.0)
+            } else {
+                (m * 2.0 - 1.0) / width
+            }
+        })
+        .collect();
+    // An odd window shares its peak between the two halves.
+    let mirrored = half.iter().rev().skip(usize::from(odd)).copied();
+    half.iter().copied().chain(mirrored).collect()
 }
 
 /// The moves allowed between pitch bins, as a band around each bin, and the
 /// cost of every other move.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 struct Transition {
     bins: usize,
     /// The log probability of a move outside every band.
@@ -334,6 +343,16 @@ impl Transition {
     }
 }
 
+const TOO_MANY_BINS: &str = "too many pitch bins for the search";
+
+/// Whether every state of `bins` pitch bins, voiced and unvoiced, fits the
+/// 16-bit pointer of the search.
+fn states_fit(bins: usize) -> bool {
+    bins.checked_mul(2)
+        .and_then(|states| states.checked_sub(1))
+        .is_some_and(|last| u16::try_from(last).is_ok())
+}
+
 /// A state index as the 16-bit pointer the search stores. The search checks
 /// that every state fits.
 fn pointer(state: usize) -> u16 {
@@ -367,8 +386,8 @@ impl<'a> Viterbi<'a> {
         log_obs: &[f64],
     ) -> Result<Self, PyinError> {
         let bins = transition.bins;
-        if u16::try_from(bins * 2 - 1).is_err() {
-            return Err(PyinError("too many pitch bins for the search"));
+        if !states_fit(bins) {
+            return Err(PyinError(TOO_MANY_BINS));
         }
         let table = || [vec![(0.0, 0); bins], vec![(0.0, 0); bins]];
         Ok(Self {
@@ -506,8 +525,9 @@ struct Work {
     shifts: Vec<f64>,
     troughs: Vec<usize>,
     probs: Vec<f64>,
-    /// First the troughs that start under each threshold, then the troughs
-    /// under it.
+    /// The troughs by the first threshold they lie under, then the running
+    /// count of troughs under each threshold. The last slot only takes the
+    /// troughs at or above the top threshold.
     under: [usize; N_THRESHOLDS + 1],
     running: [usize; N_THRESHOLDS],
     fact: [f64; N_THRESHOLDS],
@@ -554,6 +574,10 @@ impl Pyin {
         let semitones =
             cast::round_to_usize(MAX_TRANSITION_RATE * 12.0 * cast::usize_to_f64(hop) / rate_hz)
                 .ok_or(PyinError("the hop does not fit"))?;
+        // Checked before the moves, which take memory by the square of the bins.
+        if !states_fit(bins) {
+            return Err(PyinError(TOO_MANY_BINS));
+        }
         let transition = Transition::new(bins, semitones * bins_per_semitone + 1)?;
         let mut planner = RealFftPlanner::<f64>::new();
         let step = (1.0 - 0.0) / cast::usize_to_f64(N_THRESHOLDS);
@@ -670,7 +694,7 @@ impl Pyin {
             let period = cast::usize_to_f64(trough + self.min_period) + work.shifts[trough];
             let bin =
                 cast::round_to_usize(((rate / period) / self.settings.fmin).log2() * per_octave)
-                    .unwrap_or(0);
+                    .ok_or(PyinError("a trough has no pitch bin"))?;
             // A bin past the top lands in the unvoiced half, which the
             // frame's unvoiced probability then overwrites.
             if bin < bins {
@@ -735,7 +759,7 @@ impl Pyin {
         let energy = |j: usize| zero_small(work.cumulative[win + j] - work.cumulative[j]);
         let lead = energy(0);
         let length = cast::usize_to_f64(frame);
-        for j in 0..frame - win {
+        for j in 0..=self.max_period {
             let correlation = zero_small(work.acf[win + j] / length);
             work.diff[j] = (lead + energy(j)) - correlation * 2.0;
         }
@@ -857,28 +881,16 @@ mod tests {
 
     #[test]
     fn the_sum_adds_in_the_order_of_eight_lanes() {
-        // Lanes 0 and 4 hold 1e16 and -1e16, so the ones added to either
-        // lane are lost differently than in a left-to-right sum.
+        // Lanes 0 and 4 hold 1e16 and -1e16 and lose the ones added to
+        // them. The lanes end at [1e16, 2, 2, 2, -1e16, 2, 2, 2], the fold
+        // gives 12 and the two tail elements add 2. A left-to-right sum
+        // of the same values gives 13.
         let values = [
             1e16, 1.0, 1.0, 1.0, -1e16, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
             1.0,
         ];
-        let mut lanes = [0.0_f64; 8];
-        for chunk in values[..16].chunks(8) {
-            for (lane, x) in lanes.iter_mut().zip(chunk) {
-                *lane += x;
-            }
-        }
-        let mut expected = 0.0;
-        expected += lanes[0] + lanes[4];
-        expected += lanes[1] + lanes[5];
-        expected += lanes[2] + lanes[6];
-        expected += lanes[3] + lanes[7];
-        expected += values[16];
-        expected += values[17];
-        assert_eq!(unrolled_sum(&values), expected);
-        let sequential: f64 = values.iter().sum();
-        assert_ne!(unrolled_sum(&values), sequential);
+        assert_eq!(unrolled_sum(&values), 14.0);
+        assert_eq!(values.iter().sum::<f64>(), 13.0);
         assert_eq!(unrolled_sum(&[]), 0.0);
         assert_eq!(unrolled_sum(&[2.0, 3.0]), 5.0);
     }
@@ -1219,5 +1231,245 @@ mod tests {
         for settings in bad {
             assert!(Pyin::new(settings).is_err(), "{settings:?}");
         }
+    }
+
+    /// The decoded pitch path that pyin 1.2.0 gives for three generated
+    /// stems, as runs of `(bin, frames)` with `bin = round(120 log2(f0 / 25))`
+    /// and `None` for an unvoiced frame. Each stem was also read with a
+    /// relative noise of 1e-15 on every sample, 40 times, without a change.
+    /// The stems and the runs below are taken from the crate `pyin` 1.2.0.
+    const GAPS_AND_NOISE: &[(Option<usize>, usize)] = &[
+        (None, 1),
+        (Some(260), 67),
+        (Some(261), 4),
+        (Some(262), 1),
+        (Some(263), 1),
+        (Some(264), 1),
+        (Some(272), 1),
+        (None, 19),
+        (Some(330), 74),
+        (Some(331), 2),
+        (None, 19),
+        (Some(381), 1),
+        (Some(380), 73),
+        (Some(381), 1),
+        (None, 20),
+    ];
+
+    const JUMPS: &[(Option<usize>, usize)] = &[
+        (None, 1),
+        (Some(261), 1),
+        (Some(260), 23),
+        (Some(263), 1),
+        (Some(262), 1),
+        (Some(261), 6),
+        (Some(260), 20),
+        (None, 4),
+        (Some(297), 1),
+        (Some(299), 1),
+        (Some(300), 20),
+        (Some(306), 1),
+        (Some(314), 1),
+        (Some(317), 1),
+        (Some(318), 1),
+        (Some(319), 1),
+        (Some(320), 20),
+        (None, 5),
+        (Some(257), 1),
+        (Some(260), 1),
+        (Some(259), 1),
+        (Some(260), 16),
+        (Some(259), 1),
+        (Some(256), 1),
+        (None, 5),
+        (Some(320), 20),
+        (Some(321), 1),
+        (None, 5),
+        (Some(380), 20),
+        (Some(381), 1),
+        (None, 5),
+        (Some(299), 1),
+        (Some(301), 1),
+        (Some(300), 17),
+        (Some(301), 1),
+    ];
+
+    const GLIDE: &[(Option<usize>, usize)] = &[
+        (None, 35),
+        (Some(310), 54),
+        (Some(311), 1),
+        (Some(312), 1),
+        (Some(314), 1),
+        (Some(317), 1),
+        (Some(318), 1),
+        (Some(321), 1),
+        (Some(323), 1),
+        (Some(326), 1),
+        (Some(328), 1),
+        (Some(330), 1),
+        (Some(333), 1),
+        (Some(335), 1),
+        (Some(337), 1),
+        (Some(340), 1),
+        (Some(342), 1),
+        (Some(344), 1),
+        (Some(346), 1),
+        (Some(348), 1),
+        (Some(351), 1),
+        (Some(354), 1),
+        (Some(356), 1),
+        (Some(358), 1),
+        (Some(360), 1),
+        (Some(362), 1),
+        (Some(365), 1),
+        (Some(367), 1),
+        (Some(369), 1),
+        (Some(371), 1),
+        (Some(374), 1),
+        (Some(376), 1),
+        (Some(378), 1),
+        (Some(381), 1),
+        (Some(383), 1),
+        (Some(386), 1),
+        (Some(388), 1),
+        (Some(389), 1),
+        (Some(393), 1),
+        (Some(394), 1),
+        (Some(397), 1),
+        (Some(399), 1),
+        (Some(402), 1),
+        (Some(403), 1),
+        (Some(406), 1),
+        (Some(408), 1),
+        (Some(411), 1),
+        (Some(413), 1),
+        (Some(416), 1),
+        (Some(417), 1),
+        (Some(420), 1),
+        (Some(422), 1),
+        (Some(424), 1),
+        (Some(427), 1),
+        (Some(428), 1),
+        (Some(429), 2),
+        (Some(430), 46),
+    ];
+
+    const SAMPLE_RATE: f64 = 22_050.0;
+
+    /// A tone of `count` samples with the given partial amplitudes.
+    fn harmonic(hz: f64, count: usize, partials: &[f64]) -> Vec<f64> {
+        (0..count)
+            .map(|n| {
+                let t = cast::usize_to_f64(n) / SAMPLE_RATE;
+                let sum: f64 = partials
+                    .iter()
+                    .enumerate()
+                    .map(|(h, a)| {
+                        a * (std::f64::consts::TAU * cast::usize_to_f64(h + 1) * hz * t).sin()
+                    })
+                    .sum();
+                sum * 0.4
+            })
+            .collect()
+    }
+
+    /// The frequency of a pitch bin centre.
+    fn bin_hz(bin: f64) -> f64 {
+        25.0 * (bin / 120.0).exp2()
+    }
+
+    /// Three notes with digital silence between them, over noise at 3 % of
+    /// the peak.
+    fn gaps_and_noise() -> Vec<f64> {
+        let mut out = Vec::new();
+        for bin in [260.0, 330.0, 380.0] {
+            out.extend(harmonic(bin_hz(bin), 8820, &[1.0, 0.5, 0.33, 0.25]));
+            out.extend(vec![0.0; 3300]);
+        }
+        let mut noise = Stream(3);
+        for x in &mut out {
+            *x += 0.02 * (noise.next() * 2.0 - 1.0);
+        }
+        out
+    }
+
+    /// Eight notes of 0.15 s that jump by up to 180 bins (1.5 octaves).
+    fn jumps() -> Vec<f64> {
+        [260.0, 380.0, 300.0, 440.0, 260.0, 440.0, 380.0, 300.0]
+            .into_iter()
+            .flat_map(|bin| harmonic(bin_hz(bin), 3300, &[1.0, 0.5, 0.33]))
+            .collect()
+    }
+
+    /// 0.2 s of silence, then 0.3 s on bin 310, a rise of 120 bins in 0.3 s
+    /// and 0.3 s on bin 430, with all the harmonics under the Nyquist rate.
+    fn glide() -> Vec<f64> {
+        let (hold, ramp) = (6615, 6615);
+        let start = bin_hz(310.0);
+        let harmonics: Vec<f64> = (1..=64)
+            .map(cast::usize_to_f64)
+            .take_while(|h| h * start * 2.0 < SAMPLE_RATE / 2.0)
+            .collect();
+        let mut out = vec![0.0; 4410];
+        let mut phase = 0.0;
+        for i in 0..2 * hold + ramp {
+            let step = if i < hold {
+                0.0
+            } else if i < hold + ramp {
+                cast::usize_to_f64(i - hold) / cast::usize_to_f64(ramp)
+            } else {
+                1.0
+            };
+            let x: f64 = harmonics
+                .iter()
+                .map(|h| (std::f64::consts::TAU * h * phase).sin() / h)
+                .sum();
+            out.push(0.5 * x);
+            phase += start * step.exp2() / SAMPLE_RATE;
+        }
+        out
+    }
+
+    /// The runs of the decoded bin of a stem.
+    fn runs(samples: &[f64]) -> Vec<(Option<usize>, usize)> {
+        let frames = Pyin::new(settings()).unwrap().run(samples).unwrap();
+        let mut runs: Vec<(Option<usize>, usize)> = Vec::new();
+        for f0 in frames {
+            let bin = f0.map(|hz| cast::round_to_usize(120.0 * (hz / 25.0).log2()).unwrap());
+            match runs.last_mut() {
+                Some((last, count)) if *last == bin => *count += 1,
+                _ => runs.push((bin, 1)),
+            }
+        }
+        runs
+    }
+
+    #[test]
+    fn the_decoded_pitch_path_is_the_one_pyin_1_2_0_gives() {
+        assert_eq!(runs(&gaps_and_noise()), GAPS_AND_NOISE);
+        assert_eq!(runs(&jumps()), JUMPS);
+        assert_eq!(runs(&glide()), GLIDE);
+    }
+
+    #[test]
+    fn too_many_pitch_bins_fail_before_the_moves_are_built() {
+        // 1000 bins per semitone make 88 708 bins, whose moves would take
+        // 63 GB, and the search stores its states in 16 bits.
+        let too_fine = Settings {
+            bins_per_semitone: 1000,
+            ..settings()
+        };
+        assert_eq!(
+            Pyin::new(too_fine).err(),
+            Some(PyinError("too many pitch bins for the search"))
+        );
+        let absurd = Settings {
+            bins_per_semitone: usize::MAX,
+            ..settings()
+        };
+        assert!(Pyin::new(absurd).is_err());
+        assert!(states_fit(32_768));
+        assert!(!states_fit(32_769));
+        assert!(!states_fit(usize::MAX));
     }
 }

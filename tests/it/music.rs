@@ -158,7 +158,7 @@ fn offsets_of(id: &str) -> BTreeSet<u8> {
 // `semitone_count` taken mod 12, plus 0, as a sorted set. The crate stays out
 // of the build: it needs an old `clap` that pulls in `atty`.
 #[test]
-fn the_scales_rust_music_theory_has_equal_the_dictionary() {
+fn the_pinned_scale_offsets_equal_the_dictionary() {
     let shared: [(&str, &[u8]); 13] = [
         ("scale.major", &[0, 2, 4, 5, 7, 9, 11]),
         ("scale.dorian", &[0, 2, 3, 5, 7, 9, 10]),
@@ -184,7 +184,7 @@ fn the_scales_rust_music_theory_has_equal_the_dictionary() {
 }
 
 #[test]
-fn the_chords_rust_music_theory_has_differ_only_by_policy() {
+fn the_pinned_chord_offsets_differ_only_by_policy() {
     let shared: [(&str, &[u8]); 23] = [
         ("chord.major-triad", &[0, 4, 7]),
         ("chord.minor-triad", &[0, 3, 7]),

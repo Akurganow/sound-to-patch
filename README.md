@@ -308,7 +308,7 @@ and ideas, from which we copy no code, text or data.
 - [kymatio](https://github.com/kymatio/kymatio) (BSD-3-Clause): scattering transform implementation, read for joint time-frequency scattering.
 - [LAION-CLAP](https://github.com/LAION-AI/CLAP) (CC0-1.0): 48 kHz, 10 s, 64-band log-mel recipe.
 - [libf0](https://github.com/groupmm/libf0) (MIT): YIN, pYIN and salience f0 estimator definitions.
-- [librosa](https://github.com/librosa/librosa) (ISC): MFCC, mel and spectral descriptor definitions, reimplemented in Rust, and the `pyin` function that the f0 tracker follows step by step.
+- [librosa](https://github.com/librosa/librosa) (ISC): MFCC, mel and spectral descriptor definitions, reimplemented in Rust, and the `pyin` function of release 0.9.1 that the f0 tracker follows step by step. Its notice ships in `THIRD-PARTY-LICENSES.html`.
 - [llama-cpp-2](https://github.com/utilityai/llama-cpp-rs) (MIT OR Apache-2.0): Rust binding facts for local audio language models.
 - [LTU](https://github.com/YuanGongND/ltu) (no license): audio language model judged weak on timbre attributes. Inspiration only.
 - [MERT](https://github.com/yizhilll/MERT) (Apache-2.0 code, CC BY-NC 4.0 weights): music embedding model, surveyed for pitch and reverb probes. Inspiration only.

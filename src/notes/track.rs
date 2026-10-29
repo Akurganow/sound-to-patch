@@ -29,7 +29,7 @@ pub const TRACK_FRAME: usize = 2048;
 /// Samples between frames at the model rate.
 pub const TRACK_HOP: usize = 128;
 /// Pitch bins per semitone.
-const BINS_PER_SEMITONE: f64 = 10.0;
+const BINS_PER_SEMITONE: usize = 10;
 /// The level of a frame of digital silence.
 const SILENT_LEVEL: Decibels = Decibels::from_const(-200.0);
 
@@ -60,8 +60,10 @@ impl PitchTrack {
     ///
     /// # Errors
     ///
-    /// Returns a [`TrackError`] when resampling fails or a sample is not
-    /// finite.
+    /// Returns a [`TrackError`] when resampling fails, a sample is not
+    /// finite or the tracker cannot run: it refuses the settings, a
+    /// transform fails or a candidate has no pitch bin. The settings are
+    /// constants, so the last three point to a bug.
     pub fn of(mono: &[f64], rate: SampleRate) -> Result<Self, TrackError> {
         let mut samples = resample(mono, rate, MODEL_RATE).map_err(TrackError::Resample)?;
         if let Some(index) = samples.iter().position(|x| !x.is_finite()) {
@@ -80,12 +82,9 @@ impl PitchTrack {
             rate: MODEL_RATE.get(),
             frame: TRACK_FRAME,
             hop: TRACK_HOP,
-            bins_per_semitone: cast::round_to_usize(BINS_PER_SEMITONE).unwrap_or(1),
-        })
-        .map_err(|PyinError(reason)| TrackError::Tracker(reason))?;
-        let f0s = tracker
-            .run(&samples)
-            .map_err(|PyinError(reason)| TrackError::Tracker(reason))?;
+            bins_per_semitone: BINS_PER_SEMITONE,
+        })?;
+        let f0s = tracker.run(&samples)?;
         // The same centred frames as the tracker's, so frame m lines up.
         let rms = frame_rms(
             &samples,
@@ -202,6 +201,12 @@ impl fmt::Display for TrackError {
     }
 }
 
+impl From<PyinError> for TrackError {
+    fn from(PyinError(reason): PyinError) -> Self {
+        Self::Tracker(reason)
+    }
+}
+
 impl Error for TrackError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
@@ -262,10 +267,17 @@ mod tests {
                 .starts_with("cannot prepare the stem for the f0 track: ")
         );
         assert!(resample.source().is_some());
+        let tracker = TrackError::from(PyinError("the frame is too short"));
+        assert_eq!(
+            tracker.to_string(),
+            "cannot track f0: the frame is too short"
+        );
+        assert!(tracker.source().is_none());
     }
 
-    /// The constructor of the tracker panics unless these hold; the
-    /// settings are constants, so this test is their only check.
+    /// The tracker refuses the settings unless these hold, and the f0 track
+    /// then fails with [`TrackError::Tracker`]. The settings are constants,
+    /// so this test is their only check.
     #[test]
     fn the_settings_meet_every_rule_of_the_tracker() {
         let rate = f64::from(MODEL_RATE.get());
@@ -280,8 +292,11 @@ mod tests {
         assert!(longest - shortest >= 2);
         // Pitch bins against the widest transition of 35.92 octaves per
         // second.
-        let bins =
-            cast::floor_to_usize(12.0 * BINS_PER_SEMITONE * (fmax / fmin).log2()).unwrap() + 1;
+        let bins = cast::floor_to_usize(
+            12.0 * cast::usize_to_f64(BINS_PER_SEMITONE) * (fmax / fmin).log2(),
+        )
+        .unwrap()
+            + 1;
         let per_frame =
             cast::round_to_usize(35.92 * 12.0 * cast::usize_to_f64(TRACK_HOP) / rate).unwrap();
         assert!(bins > per_frame * 10);

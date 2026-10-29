@@ -43,23 +43,13 @@ needs from the matrix below and names them in its issue.
 `cargo bench --bench notes` runs the benchmark harness groups of the notes step on
 one generated 60 s stem: the model load, the model run at one thread and
 at all threads, the f0 track, the MIDI write and the whole step at both
-thread counts. A run takes about 30 minutes, most of it in the f0 track.
-CI compiles the benches and never runs them.
+thread counts. CI compiles the benches and never runs them.
 
-The notes budget is the median plus 25 %, per minute of audio. The median
-is the benchmark's own `median` estimate, from a run with nothing else
-on the machine:
-
-| Threads | Median | Budget |
-| :-- | :-- | :-- |
-| 1 | 30.05 s | 37.6 s |
-| All | 29.17 s | 36.5 s |
-
-A run above the budget names its step: the f0 track takes 29.31 s of the
-30.05 s. `cargo run --release --example notes_memory -- <stage>` runs one
-stage on the same stem, so a tool that reports a process's peak memory
-measures each stage. The [pipeline page](../analysis/pipeline.md#time-budget)
-gives every group.
+A bench measures wall-clock time, so its medians need a quiet machine.
+`cargo run --release --example notes_memory -- <stage>` runs one stage on
+the same stem, so a tool that reports a process's CPU time and peak memory
+measures each stage. The [pipeline page](../analysis/pipeline.md#time-cost)
+gives both for every stage.
 
 ## Running the tests
 
@@ -322,14 +312,14 @@ unit test with the input bytes inline, next to the code it broke.
 - `cargo run --release -p xtask -- eval` scores the notes step on generated
   parts with known notes and prints its tables. It stays local, renders
   its audio on each run and commits nothing. Run it as a release build:
-  the f0 tracker's generic code compiles at our crate's level, so a debug
-  run is about 55 times slower. `--part TEXT` runs the matching parts and
+  the f0 tracker is part of our crate, so a debug run costs about 15
+  times the CPU time: 160 s against 10 s for the whole table. `--part TEXT` runs the matching parts and
   prints their notes, raw and clean. It fails when a golden of the
   cleanup breaks. The dry 110 Hz saw must show its octave copy at MIDI 57
   before the cleanup, and only true notes after it: 5 of its 6, since the
   model misses one onset. Its six notes through reverb must give the six
-  true notes. Those stems take minutes in a debug build, so no test in CI
-  runs them.
+  true notes. Those stems cost seconds of CPU time each in a debug build, so no
+  test in CI runs them.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.
