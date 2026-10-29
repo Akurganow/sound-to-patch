@@ -5,16 +5,16 @@
 //! the octave check of the notes and the f0 contour of each note. It runs
 //! at the model rate with frames of 2048 samples, a hop of 128 samples
 //! (5.8 ms) and pitch bins of a tenth of a semitone, over the whole stem
-//! at once. Its cost grows with the stem: #64 reports its memory and time,
-//! which this epic does not reduce.
+//! at once. The tracker is the in-repo port of pYIN in `pyin.rs`; its cost
+//! grows with the length of the stem.
 
 use std::error::Error;
 use std::fmt;
 
-use pyin::{Framing, PYINExecutor, PadMode};
-
+use super::pyin::{Pyin, PyinError, Settings};
 use super::{Contour, ContourPoint, MODEL_RATE, Note, NoteList};
 use crate::audio::{ResampleError, SampleRate, resample};
+use crate::cast;
 use crate::dsp::{StftParams, frame_rms};
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
@@ -29,7 +29,7 @@ pub const TRACK_FRAME: usize = 2048;
 /// Samples between frames at the model rate.
 pub const TRACK_HOP: usize = 128;
 /// Pitch bins per semitone.
-const BINS_PER_SEMITONE: f64 = 10.0;
+const BINS_PER_SEMITONE: usize = 10;
 /// The level of a frame of digital silence.
 const SILENT_LEVEL: Decibels = Decibels::from_const(-200.0);
 
@@ -60,8 +60,10 @@ impl PitchTrack {
     ///
     /// # Errors
     ///
-    /// Returns a [`TrackError`] when resampling fails or a sample is not
-    /// finite.
+    /// Returns a [`TrackError`] when resampling fails, a sample is not
+    /// finite or the tracker cannot run: it refuses the settings, a
+    /// transform fails or a candidate has no pitch bin. The settings are
+    /// constants, so the last three point to a bug.
     pub fn of(mono: &[f64], rate: SampleRate) -> Result<Self, TrackError> {
         let mut samples = resample(mono, rate, MODEL_RATE).map_err(TrackError::Resample)?;
         if let Some(index) = samples.iter().position(|x| !x.is_finite()) {
@@ -74,17 +76,15 @@ impl PitchTrack {
         for x in &mut samples {
             *x /= peak;
         }
-        let mut executor = PYINExecutor::new(
-            TRACK_FMIN.get(),
-            TRACK_FMAX.get(),
-            MODEL_RATE.get(),
-            TRACK_FRAME,
-            None,
-            Some(TRACK_HOP),
-            Some(1.0 / BINS_PER_SEMITONE),
-        );
-        let (times, f0, voiced, _) =
-            executor.pyin(&samples, f64::NAN, Framing::Center(PadMode::Constant(0.0)));
+        let tracker = Pyin::new(Settings {
+            fmin: TRACK_FMIN.get(),
+            fmax: TRACK_FMAX.get(),
+            rate: MODEL_RATE.get(),
+            frame: TRACK_FRAME,
+            hop: TRACK_HOP,
+            bins_per_semitone: BINS_PER_SEMITONE,
+        })?;
+        let f0s = tracker.run(&samples)?;
         // The same centred frames as the tracker's, so frame m lines up.
         let rms = frame_rms(
             &samples,
@@ -94,14 +94,15 @@ impl PitchTrack {
                 .unwrap_or(StftParams::fixed(TRACK_FRAME)),
         );
         let loudest = rms.iter().copied().fold(0.0, f64::max);
-        let frames = times
+        let frames = f0s
             .into_iter()
-            .zip(f0)
-            .zip(voiced)
             .enumerate()
-            .map(|(m, ((time, f0), voiced))| TrackFrame {
-                time: Seconds::clamped(time),
-                f0: (voiced && f0.is_finite() && f0 > 0.0).then(|| Hz::clamped(f0)),
+            .map(|(m, f0)| TrackFrame {
+                time: Seconds::clamped(
+                    cast::usize_to_f64(m) * cast::usize_to_f64(TRACK_HOP)
+                        / f64::from(MODEL_RATE.get()),
+                ),
+                f0: f0.filter(|hz| hz.is_finite() && *hz > 0.0).map(Hz::clamped),
                 level: rms
                     .get(m)
                     .and_then(|&value| Decibels::from_amplitude_gain(value / loudest).ok())
@@ -184,6 +185,8 @@ pub enum TrackError {
     Resample(ResampleError),
     /// A sample at this index is NaN or infinite.
     NotFinite(usize),
+    /// The tracker could not run, for the reason given.
+    Tracker(&'static str),
 }
 
 impl fmt::Display for TrackError {
@@ -193,7 +196,14 @@ impl fmt::Display for TrackError {
                 write!(f, "cannot prepare the stem for the f0 track: {source}")
             }
             Self::NotFinite(index) => write!(f, "cannot track f0: sample {index} is not finite"),
+            Self::Tracker(reason) => write!(f, "cannot track f0: {reason}"),
         }
+    }
+}
+
+impl From<PyinError> for TrackError {
+    fn from(PyinError(reason): PyinError) -> Self {
+        Self::Tracker(reason)
     }
 }
 
@@ -201,7 +211,7 @@ impl Error for TrackError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Resample(source) => Some(source),
-            Self::NotFinite(_) => None,
+            Self::NotFinite(_) | Self::Tracker(_) => None,
         }
     }
 }
@@ -257,10 +267,17 @@ mod tests {
                 .starts_with("cannot prepare the stem for the f0 track: ")
         );
         assert!(resample.source().is_some());
+        let tracker = TrackError::from(PyinError("the frame is too short"));
+        assert_eq!(
+            tracker.to_string(),
+            "cannot track f0: the frame is too short"
+        );
+        assert!(tracker.source().is_none());
     }
 
-    /// The constructor of the tracker panics unless these hold; the
-    /// settings are constants, so this test is their only check.
+    /// The tracker refuses the settings unless these hold, and the f0 track
+    /// then fails with [`TrackError::Tracker`]. The settings are constants,
+    /// so this test is their only check.
     #[test]
     fn the_settings_meet_every_rule_of_the_tracker() {
         let rate = f64::from(MODEL_RATE.get());
@@ -275,8 +292,11 @@ mod tests {
         assert!(longest - shortest >= 2);
         // Pitch bins against the widest transition of 35.92 octaves per
         // second.
-        let bins =
-            cast::floor_to_usize(12.0 * BINS_PER_SEMITONE * (fmax / fmin).log2()).unwrap() + 1;
+        let bins = cast::floor_to_usize(
+            12.0 * cast::usize_to_f64(BINS_PER_SEMITONE) * (fmax / fmin).log2(),
+        )
+        .unwrap()
+            + 1;
         let per_frame =
             cast::round_to_usize(35.92 * 12.0 * cast::usize_to_f64(TRACK_HOP) / rate).unwrap();
         assert!(bins > per_frame * 10);

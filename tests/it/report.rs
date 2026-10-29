@@ -103,8 +103,7 @@ fn midi(dir: &Path, file_bpm: f64) -> PathBuf {
 }
 
 /// The notes of [`stem`] at 120 BPM. A report test passes them, so the
-/// notes step, whose f0 track is slow in a debug build, runs only where a
-/// test needs it.
+/// notes step runs only where a test needs it.
 pub(crate) fn given(dir: &Path) -> PathBuf {
     midi(dir, 120.0)
 }
@@ -126,9 +125,9 @@ fn transcriber() -> Transcriber {
     Transcriber::new().unwrap()
 }
 
-/// `transcriber` with an empty f0 track. The pYIN track takes minutes per
-/// stem in a debug build, and a test of the tempo or the notes step's
-/// wiring does not read it.
+/// `transcriber` with an empty f0 track. A test of the tempo or the notes
+/// step's wiring does not read the track, and a debug build runs the pYIN
+/// track at about half a second per second of audio.
 fn untracked(transcriber: Transcriber) -> Transcriber {
     transcriber.with_tracker(|_, _| Ok(PitchTrack::default()))
 }
