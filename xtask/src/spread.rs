@@ -124,8 +124,8 @@ struct Reference {
 /// file and tempo, against the spread of those renders, and writes the
 /// report to `out`. The verdict comes after a gain that matches the
 /// recording's level to the renders, on the outputs of the sound's shape;
-/// the comparison as recorded is for information. The renders stay in the folder [`renders_folder`]
-/// names, one folder per reference.
+/// the comparison as recorded is for information. The renders stay in the
+/// folder [`renders_folder`] names, one folder per reference.
 ///
 /// Every manifest row is read first: its preset, MIDI file, recording and
 /// exported state. Then the references render, [`ReferenceRun::workers`]

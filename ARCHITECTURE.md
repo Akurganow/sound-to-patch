@@ -118,20 +118,19 @@ joins `READY` when its adapter lands.
   built-in template, the writers of routes, wavetables and LFO shapes, the
   capabilities, the laws that span controls and the layer map of its
   controls.
-- `render`: rendering a preset and its notes to audio. `recipe` holds
-  the versioned render recipe and the tail rule that sets the clip
-  length, `fake` a seeded additive synth that stands in for a plug-in in
-  tests, `state` the plug-in state of a preset and the check of a saved
-  state, `check` the load check against the plug-in's init patch, `file`
-  the `render` command's run from files to a WAV file and a record,
+- `render`: rendering a preset and its notes to audio. `recipe` holds the
+  versioned render recipe and the tail rule that sets the clip length,
+  `fake` a seeded additive synth that stands in for a plug-in in tests,
+  `state` the plug-in state of a preset and the check of a saved state,
+  `check` the load check against the plug-in's init patch, `file` the
+  `render` command's run from files to a WAV file and a record,
   `wire` the protocol of the host process, `plugin` the renderer that
-  starts that process and picks its architecture from the plug-in
-  bundle, `session` the worker pool that every consumer renders through,
-  `timing` the table of load and render times, `spread` the
-  repeat-render spread, its sequential draws and the comparison against
-  it, and the module root the render job, the record and the `Renderer`
-  trait. The record's committed schema is
-  `schemas/render-record.schema.json`.
+  starts that process and picks its architecture from the plug-in bundle,
+  `session` the worker pool that every consumer renders through, `timing`
+  the table of load and render times, `spread` the repeat-render spread,
+  its sequential draws and the comparison against it, and the module
+  root the render job, the record and the `Renderer` trait.
+  The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
   with `notes.mid`. `layers` writes `layers.json`, whose committed schema

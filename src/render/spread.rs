@@ -15,7 +15,8 @@
 //! them. Its tolerance comes from the same median taken for each render
 //! against the other renders, so the clip and the renders are measured
 //! alike: the tolerance is the median at rank [`tolerance_rank`], which a
-//! clip of the same sound exceeds 1 time in 20. A floor keeps an output
+//! clip of the same sound exceeds 1 time in 21 for 20 renders. A floor
+//! keeps an output
 //! that every render repeats from turning the comparison into an equality
 //! test.
 //!
@@ -315,7 +316,8 @@ pub enum ClipOutput {
     PeakDb,
     /// The peak over the RMS level, in dB: the crest factor. Two clips
     /// compare with the RMS level over their common span, as
-    /// [`ClipOutput::RmsDb`] does. A gain leaves it unchanged.
+    /// [`ClipOutput::RmsDb`] does. A gain shifts the peak and the RMS level
+    /// alike, so it moves the ratio only where it moves the clip's end.
     PeakToRmsDb,
     /// [`ClipMetrics::duration_s`].
     DurationS,
@@ -336,7 +338,9 @@ impl ClipOutput {
     /// The outputs of the sound's shape, which [`compare_fitted`] compares
     /// after a gain fit: the peak-to-RMS ratio, the duration to the tail
     /// floor and the envelope distance. The RMS level and the peak follow
-    /// the level, so the fit takes them out.
+    /// the level, so the fit takes them out. The duration and the
+    /// envelope still depend on the level, which is why the fit comes
+    /// first.
     pub const SHAPE: [Self; 3] = [Self::PeakToRmsDb, Self::DurationS, Self::EnvelopeDistanceDb];
 
     /// The name of the output in a spread file.
@@ -660,8 +664,12 @@ fn shared_rate(clips: &[ClipMetrics]) -> Result<Option<SampleRate>, SpreadError>
 ///
 /// # Errors
 ///
-/// Returns [`SpreadError::UnknownUnit`] for a field with no known unit.
+/// Returns [`SpreadError::Runs`] for fewer than [`MIN_RUNS`] reports and
+/// [`SpreadError::UnknownUnit`] for a field with no known unit.
 pub fn layer_rows(reports: &[Value]) -> Result<Vec<SpreadRow>, SpreadError> {
+    if reports.len() < MIN_RUNS {
+        return Err(SpreadError::Runs(reports.len()));
+    }
     let mut paths: BTreeMap<String, (String, Vec<f64>)> = BTreeMap::new();
     for report in reports {
         for (path, unit, value) in layer_values(report)? {
@@ -1245,6 +1253,46 @@ mod tests {
         let rows = layer_rows(&[zero(), zero(), zero()]).unwrap();
         assert!(rows[0].floor > 0.0, "{rows:?}");
         assert!(rows[0].limit() > 0.0, "{rows:?}");
+    }
+
+    #[test]
+    fn too_few_layer_reports_fail_like_too_few_clips() {
+        let report = || serde_json::json!({ "stem": { "rms_dbfs": { "value": -16.0 } } });
+        let error = layer_rows(&[report(), report()]).unwrap_err();
+        assert!(matches!(error, SpreadError::Runs(2)), "{error}");
+        assert!(layer_rows(&[report(), report(), report()]).is_ok());
+    }
+
+    #[test]
+    fn the_peak_to_rms_distance_ignores_a_gain() {
+        let base = metrics(0.25, 0.5, 0);
+        let other = metrics(0.3, 0.4, 0);
+        let distance = ClipOutput::PeakToRmsDb.distance(&base, &other);
+        // ±6 dB, near half and twice the level.
+        for gain in [0.501_187_233_627_272_2, 1.995_262_314_968_879_5] {
+            let louder = metrics(0.25 * gain, 0.5, 0);
+            assert!(
+                (ClipOutput::PeakToRmsDb.distance(&louder, &other) - distance).abs() < 1e-9,
+                "{gain}"
+            );
+            assert!(
+                ClipOutput::PeakToRmsDb.distance(&louder, &base) < 1e-9,
+                "{gain}"
+            );
+            assert!(ClipOutput::RmsDb.distance(&louder, &base) > 5.9, "{gain}");
+        }
+    }
+
+    #[test]
+    fn a_fitted_comparison_refuses_a_spread_without_a_shape_row() {
+        let clips: Vec<ClipMetrics> = (0..3).map(|_| metrics(0.5, 0.2, 0)).collect();
+        let mut rows = clip_rows(&clips).unwrap();
+        rows.retain(|row| row.output != "envelope_distance_db");
+        let error = compare_fitted(&tone(0.4, 0.2, 0), "the recording", &clips, &rows).unwrap_err();
+        assert!(
+            matches!(error, SpreadError::MissingRow("envelope_distance_db")),
+            "{error}"
+        );
     }
 
     #[test]

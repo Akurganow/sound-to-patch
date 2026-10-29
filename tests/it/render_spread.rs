@@ -4,13 +4,14 @@
 use std::num::NonZeroUsize;
 
 use sound_to_patch::audio::{Audio, decode, write_wav};
+use sound_to_patch::notes::Velocity;
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer};
 use sound_to_patch::render::session::{BoxedRenderer, RESTART_AFTER, RenderSession};
 use sound_to_patch::render::spread::{
     ClipMetrics, ClipOutput, FittedComparison, MIN_RUNS, SPREAD_RUNS, SpreadError, clip_rows,
     compare, compare_fitted, distinct, draw, envelope_distance, tolerance_rank,
 };
-use sound_to_patch::render::{Material, RenderJob, Rendered};
+use sound_to_patch::render::{Material, RenderJob, RenderNote, Rendered};
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::{Bpm, Seconds};
 
@@ -99,6 +100,27 @@ fn the_draws_of_a_spread_are_distinct() {
 fn a_draw_takes_three_renders_up_to_the_restart() {
     let at = |count: usize| draw(fake(1), &job(0.5), count).map(|renders| renders.len());
     assert_eq!(at(3).unwrap(), 3);
+    // The most one instance renders before the session restarts it, on a
+    // short note so that 256 renders stay quick.
+    let short = {
+        let note = RenderNote::new(
+            60,
+            Seconds::new(0.0).unwrap(),
+            Seconds::new(0.01).unwrap(),
+            Velocity::new(100).unwrap(),
+        )
+        .unwrap();
+        let state = FakePatch {
+            harmonics: vec![0.5],
+            attack: Seconds::new(0.001).unwrap(),
+            release: Seconds::new(0.01).unwrap(),
+        }
+        .state(Synth::Vital)
+        .unwrap();
+        RenderJob::new(state, vec![note], Bpm::new(120.0).unwrap()).unwrap()
+    };
+    let most = usize::try_from(RESTART_AFTER).unwrap();
+    assert_eq!(draw(fake(1), &short, most).unwrap().len(), most);
     for count in [0, 2, usize::try_from(RESTART_AFTER).unwrap() + 1] {
         let error = at(count).unwrap_err();
         assert!(

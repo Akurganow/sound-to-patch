@@ -50,7 +50,9 @@ Nothing was tuned to make a recording match.
 
 - Duration. A clip ends at its last sample above -96 dBFS. The gain fit
   raises each recording before its end is measured, so the level offset
-  does not explain an early end.
+  does not explain an early end. The data point to the export stopping
+  early, so an early end measures where the export stopped, not how the
+  tail decays.
   - 21 recordings end earlier than the renders, beyond the limit, and 3
     end later.
   - 14 of the earlier ones end 0.1 s or more early, from 0.22 to 1.68 s.
@@ -65,11 +67,22 @@ Nothing was tuned to make a recording match.
   `iso_porta_force_0.1__chord_long_C4maj_v102`, at a ratio of 1.98, and
   2.96 on the envelope.
 
-In the recordings that end 0.1 s or more early, the tail falls below -96
-dBFS sooner than in the renders, and the cause is open. A calibration
+The recordings and renders stay local, so no test recomputes these
+numbers; they were measured on the local files after the gain fit:
+
+- In each of the 21 recordings that end earlier than the renders, the
+  file ends within 371 frames, 8.4 ms, of the recording's last sample
+  above -96 dBFS.
+- In the 14 that end 0.1 s or more early, the last 50 ms of the
+  recording lie within 1.9 dB of the renders' median over the same span
+  from the onset. The delay preset stops at -76.1 dBFS against -75.4 for
+  the renders, so its sound still sits 20 dB above the tail floor when
+  the file ends.
+
+So each recording stops while it still sounds as the renders do: the
+export ended before the tail did. This is an inference. The calibration
 recording, signals of known level and decay sent through the DAW chain
-of the references and through our host, can tell whether the DAW chain
-cuts or shapes a tail.
+of the references and through our host, will settle it.
 
 ## The draws
 

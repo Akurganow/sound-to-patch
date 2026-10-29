@@ -68,7 +68,7 @@ the same check.
 | `identity` | The synth, its build, the host and the architecture, as in the [render record](render-record.md). |
 | `recipe_version` | The recipe version of the renders. |
 | `oversampling` | The quality setting: `"2x"` for every Vital render of recipe version 1. |
-| `n` | How many renders, 20, each a distinct draw. |
+| `n` | How many renders, 3 to 256 and 20 by default, each a distinct draw. |
 | `statistic` | `"p95_pairwise_distance"`. |
 | `tolerance` | `"conformal_95_leave_one_out_median"`. |
 | `coverage` | The share of clips of the same sound that lie within the tolerance: the rank over n + 1, 20 / 21 for 20 renders. |
@@ -105,7 +105,7 @@ its peak, to its end, the last sample above the recipe's tail floor of
 | :-- | :-- | :-- |
 | `rms_db` | dB | The RMS level, in dBFS. Two clips compare over their common span: from the onset for the shorter clip's length, so a cut tail does not change the level. |
 | `peak_db` | dB | The largest sample magnitude, in dBFS. |
-| `peak_to_rms_db` | dB | The peak over the RMS level, the crest factor. Two clips compare with the RMS level over their common span. A gain leaves it unchanged. |
+| `peak_to_rms_db` | dB | The peak over the RMS level, the crest factor. Two clips compare with the RMS level over their common span. A gain shifts the peak and the RMS level alike, so it moves this output only where it moves the clip's end. |
 | `duration_s` | s | From onset to end. |
 | `envelope_distance_db` | dB | The distance of two envelopes of 10 ms frames, aligned at their onsets: the mean absolute level difference over the frames where either lies within 40 dB of the loudest frame of both. A frame below that range, or past the end of the shorter clip, counts at the bottom of the range, so a longer tail adds to the distance. |
 
@@ -140,6 +140,9 @@ that out before the verdict:
 3. Compare it on the outputs of the sound's shape: `peak_to_rms_db`,
    `duration_s` and `envelope_distance_db`.
 
-The recording matches when all three lie within their limits. A gain
+The duration and the envelope distance still depend on the level, which
+is why they compare only after the gain; the peak-to-RMS ratio moves
+with it only where the clip's end moves. The recording matches when all
+three lie within their limits. A gain
 beyond ±3 dB is a finding to explain, not a failure: `compare` matches
 the loudness of two sounds before its distances.
