@@ -33,7 +33,7 @@ needs from the matrix below and names them in its issue.
 | `analyze` | ● | ● | ● | ● | ● | ● | ● | – | ○ | ○ | ● |
 | `notes` | ● | ● | ● | ● | ○ | ○ | ● | – | ● | ○ | ● |
 | `compare` | ● | ● | ● | ● | ○ | ● | ● | – | ● | ● | ● |
-| `render` | ○ | ○ | ● | ● | – | – | ○ | – | – | – | ● |
+| `render` | ○ | ○ | ● | ● | – | – | ○ | – | ○ | – | ● |
 | `refine` | ● | ● | ● | ● | ○ | ○ | ○ | – | ● | ○ | ● |
 | Test bench | ● | ○ | – | – | ○ | ○ | – | – | – | – | ● |
 | Skill and docs | – | – | ● | ● | ○ | – | – | – | – | – | ○ |
@@ -60,6 +60,9 @@ A run above the budget names its step: the f0 track takes 29.31 s of the
 stage on the same stem, so a tool that reports a process's peak memory
 measures each stage. The [pipeline page](../analysis/pipeline.md#time-budget)
 gives every group.
+
+Render timing needs the synth, so it is an `xtask` task, not a bench:
+see [Render timing](#render-timing).
 
 ## Running the tests
 
@@ -230,6 +233,16 @@ What runs in CI, with no plug-in:
   place of an output, a read-only WAV file that `--force` replaces, and a
   read-only folder or a failed second write, which leave the existing
   files as they were.
+- The render session on the fake: a crash, a hang or a panic tried once
+  more on a new renderer with the same job, a render that fails twice
+  giving the sentinel while the session goes on, a panic named with its
+  job, a renderer that does not start, a wrong synth failing at once on
+  the same renderer, a restart after 256 renders, one live renderer per
+  worker, the flush before every render and the order of the outcomes. A
+  stub host that exits on its first render is retried on a new host.
+- The timing table on the fake: every row with a median and a 95th
+  percentile, the build and the architecture, and the clip length of a
+  long tail.
 - The recipe, its snapshot and its hash, the note events, the tail watch,
   the MIDI reading with its hash, and the record against its schema.
 - The wire protocol, the host's request loop, the architecture pick from
@@ -259,7 +272,10 @@ They run the contract suite, read the saved state back, check the forced
 2x oversampling, and run the load check on a loaded preset, the init
 patch, a slower attack on the init patch, a newer stamp, a preset with no
 sound source, a dropped key and a bundle that is no plug-in. Two more send
-a full pitch bend and a mod wheel move and measure their effect.
+a full pitch bend and a mod wheel move and measure their effect. A session
+of two workers renders four presets of rising level in order, and the
+timing table fills every row with two runs. Two fresh instances render the same first clip bit
+for bit, and an instance's second render differs from its first.
 
 What needs Serum 2: nothing yet. Its renderer follows in its own epic.
 
@@ -270,6 +286,37 @@ without its end, comes from another release, closes its pipes and
 lingers, never answers `quit`, lingers after `quit`, or writes a clip that
 does not decode. A unit test cuts plug-in output without line ends at
 64 KB and reads a longer reply whole.
+
+### Render timing
+
+`cargo xtask render-timing --out "$TMPDIR/timing.json"` times the Vital
+plug-in on this machine and writes the table to a local file, outside
+the repository. Refine sets its render budget from it. The table stays
+local: it describes the machine, so the repository holds the method and
+no numbers. It takes the same
+`SOUND_TO_PATCH_HOST` as the Vital tests, or `--host`. `--preset` names
+the preset, by default the `routes.vital` fixture, and `--runs` the
+measurements per row, by default 20.
+
+Each row holds the median and the 95th percentile, linear between the
+two nearest measurements:
+
+- `plugin_load`: starting a renderer, the host process and the plug-in
+  load included, in seconds.
+- `state_load`: loading the preset state into the plug-in, timed in the
+  host around the `vst3-host` state load, in seconds.
+- `render`: one render of the recipe's lead note, MIDI 60 held 3 s, with
+  the state load and the pre-roll, in seconds.
+- `clip_length`: the length of that clip, at least 4 s and longer while
+  the tail sounds.
+- `renders_per_second`, for 1, 2, 4 and 8 workers: each measurement is
+  one batch of one job per worker in a session whose workers have
+  started. Its 95th percentile is the rate at the 95th percentile of the
+  batch time, the slow end.
+
+The table also names the synth, its build, the host, the architecture of
+the host process, the recipe version and the number of runs. It measures
+only: nothing in it tunes a render.
 
 ## Fuzzing
 

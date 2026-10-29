@@ -36,7 +36,9 @@ pub use descriptors::{
     BAND_CONVENTION, BAND_EDGES_HZ, BandShare, Descriptors, FLATNESS_CONVENTION, FLATNESS_FLOOR,
     FrameDescriptors, LEVEL_CONVENTION, SHAPE_CONVENTION, describe, frame_descriptors,
 };
-pub use frames::{ACTIVE_GATE_DB, ActiveFrames, MIN_ACTIVE_FRAMES, Stats, Summary, frame_rms};
+pub use frames::{
+    ACTIVE_GATE_DB, ActiveFrames, MIN_ACTIVE_FRAMES, Stats, Summary, frame_rms, quantile,
+};
 pub use lomb::{GRID_STEP_HZ, SETTLE_S, gated_samples, grid, lomb_scargle, periodogram_rate};
 pub use modulation::{
     BPM_SCAN, FOLD_BINS, LINE_PROMINENCE, MIN_CYCLES, MIN_LINE_DEPTH, ModulationSpectrum,

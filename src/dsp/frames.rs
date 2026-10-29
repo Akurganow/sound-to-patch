@@ -124,8 +124,8 @@ impl Summary {
         let mut sorted = values.to_vec();
         sorted.sort_by(f64::total_cmp);
         Some(Self {
-            median: quantile(&sorted, 0.5),
-            iqr: quantile(&sorted, 0.75) - quantile(&sorted, 0.25),
+            median: quantile(&sorted, 0.5)?,
+            iqr: quantile(&sorted, 0.75)? - quantile(&sorted, 0.25)?,
         })
     }
 
@@ -175,13 +175,16 @@ impl<T: Copy> Stats<T> {
     }
 }
 
-/// Linear-interpolation quantile of sorted, non-empty values.
-fn quantile(sorted: &[f64], q: f64) -> f64 {
-    let position = q * cast::usize_to_f64(sorted.len() - 1);
-    let lower = cast::floor_to_usize(position).unwrap_or(0);
-    let upper = (lower + 1).min(sorted.len() - 1);
-    let fraction = position - cast::usize_to_f64(lower);
-    sorted[lower] + fraction * (sorted[upper] - sorted[lower])
+/// The linear quantile of sorted values, the default of `numpy.quantile`.
+/// Returns `None` for no values.
+#[must_use]
+pub fn quantile(sorted: &[f64], q: f64) -> Option<f64> {
+    let last = sorted.len().checked_sub(1)?;
+    let position = q * cast::usize_to_f64(last);
+    let below = cast::floor_to_usize(position)?.min(last);
+    let above = (below + 1).min(last);
+    let fraction = position - cast::usize_to_f64(below);
+    Some(sorted[below] + (sorted[above] - sorted[below]) * fraction)
 }
 
 #[cfg(test)]

@@ -333,6 +333,82 @@ fn the_mod_wheel_reaches_a_route() {
 
 #[test]
 #[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_session_of_two_vital_workers_keeps_each_job_and_its_order() {
+    use std::num::NonZeroUsize;
+
+    use sound_to_patch::render::session::{BoxedRenderer, RenderSession};
+
+    let session = RenderSession::new(NonZeroUsize::new(2).unwrap(), |_| {
+        Ok(Box::new(renderer()) as BoxedRenderer)
+    });
+    let levels = [0.2, 0.4, 0.6, 0.8];
+    let jobs: Vec<RenderJob> = levels
+        .iter()
+        .map(|level| {
+            lead(state(|settings| {
+                settings.insert("osc_1_level".into(), (*level).into());
+            }))
+        })
+        .collect();
+    let outcomes = session.render_all(&jobs);
+    let loudness: Vec<f64> = outcomes
+        .iter()
+        .map(|outcome| rms(&outcome.rendered().unwrap().audio))
+        .collect();
+    assert!(
+        loudness.windows(2).all(|pair| pair[0] < pair[1]),
+        "{loudness:?}"
+    );
+    assert_eq!(session.starts(), [1, 1]);
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_timing_table_holds_every_row_on_vital() {
+    use std::num::NonZeroUsize;
+
+    use sound_to_patch::render::session::BoxedRenderer;
+    use sound_to_patch::render::timing::{TimingKind, measure};
+
+    let table = measure(
+        |_| Ok(Box::new(renderer()) as BoxedRenderer),
+        &state(|_| {}),
+        NonZeroUsize::new(2).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        table.identity.build,
+        sound_to_patch::preset::vital::RETAIL_BUILD
+    );
+    assert_eq!(table.rows.len(), 8);
+    let state_load = table
+        .rows
+        .iter()
+        .find(|row| row.kind == TimingKind::StateLoad);
+    assert!(state_load.unwrap().median > 0.0);
+    for row in &table.rows {
+        assert!(row.median.is_finite() && row.p95.is_finite(), "{row:?}");
+    }
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_fresh_instance_renders_bit_identically_and_later_renders_differ() {
+    let job = lead(state(|_| {}));
+    let mut first = renderer();
+    let mut second = renderer();
+    let a = first.render(&job).unwrap().audio;
+    let b = second.render(&job).unwrap().audio;
+    assert_eq!(a, b, "two fresh instances rendered different first clips");
+    let later = first.render(&job).unwrap().audio;
+    assert_ne!(
+        a, later,
+        "an instance rendered its second clip like its first"
+    );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
 fn a_render_at_another_tempo_passes_the_load_check() {
     // The preset holds 120 BPM; the renders play at 140 and 100.3 BPM.
     for (bpm, expected) in [(140.0, 2.333_333_492_279_052_7), (100.3, vital_bps(100.3))] {
