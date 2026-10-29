@@ -46,7 +46,8 @@ together, at the rate whose sine explains the most power beyond the line, search
 1.5 cycles over the span up to 20 Hz in 0.01 Hz steps and refined by golden-section search; extent_raw_ct is that sine's amplitude, half the peak-to-peak swing; extent_ct is \
 extent_raw_ct times extent_factor, which undoes the smoothing of the f0 track at that rate; a \
 vibrato counts at 2.97 to 12.12 Hz, 3 to 12 Hz with 1 % slack, with extent_ct of 10 or more and a share, the power the sine \
-explains over the power left after the line alone, of 0.5 or more, over 2.5 cycles or more";
+explains beyond the line, the line's residual less that of the line and sine together, over the \
+power left after the line alone, of 0.5 or more, over 2.5 cycles or more";
 
 /// A vibrato read from one span.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -133,7 +134,8 @@ pub(crate) fn extent_factor(rate: Hz) -> f64 {
 }
 
 /// Fits a vibrato to voiced frames `(time, f0)` in time order. `None` when
-/// the frames span less than [`VIBRATO_SPAN_MIN`] or hold no motion.
+/// the frames span less than [`VIBRATO_SPAN_MIN`], hold no motion, or are
+/// too few for the line and the sine together.
 #[must_use]
 pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
     let (first, last) = (frames.first()?, frames.last()?);
@@ -160,7 +162,9 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
     if power <= 0.0 {
         return None;
     }
-    let explained = |rate: f64| power - sine_fit(&times, &cents, rate).0;
+    let explained = |rate: f64| {
+        sine_fit(&times, &cents, rate).map_or(f64::NEG_INFINITY, |(left, _)| power - left)
+    };
     let lo = SEARCH_LO.max(SEARCH_CYCLES / span);
     let steps = cast::floor_to_usize((SEARCH_HI - lo) / SEARCH_STEP)?;
     let (best, _) = (0..=steps)
@@ -173,7 +177,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         (best + SEARCH_STEP).min(SEARCH_HI),
         1e-6,
     );
-    let (left, amplitude) = sine_fit(&times, &cents, rate);
+    let (left, amplitude) = sine_fit(&times, &cents, rate)?;
     let explained_power = power - left;
     let kurtosis = kurtosis(&residuals);
     let rate = Hz::new(rate).ok()?;
@@ -195,7 +199,8 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
 /// over a fraction of a cycle from leaking into the line. The sine term
 /// can share power with the line, so the power it explains beyond the line
 /// is the line's residual less the joint one, not the term's own power.
-fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
+/// `None` when the joint fit is singular.
+fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> Option<(f64, f64)> {
     let mut normal = [[0.0; 5]; 4];
     for (&time, &value) in times.iter().zip(values) {
         let (sine, cosine) = (std::f64::consts::TAU * rate * time).sin_cos();
@@ -207,9 +212,7 @@ fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
             row[4] += u * value;
         }
     }
-    let Some([offset, slope, along_cos, along_sin]) = solve4(normal) else {
-        return (f64::INFINITY, 0.0);
-    };
+    let [offset, slope, along_cos, along_sin] = solve4(normal)?;
     let left = times
         .iter()
         .zip(values)
@@ -218,7 +221,7 @@ fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
             (value - offset - slope * time - along_cos * cosine - along_sin * sine).powi(2)
         })
         .sum();
-    (left, along_cos.hypot(along_sin))
+    Some((left, along_cos.hypot(along_sin)))
 }
 
 /// `y` less its least-squares line over `t`; a flat line when `t` holds a
@@ -323,6 +326,40 @@ mod tests {
                 )
             })
             .collect()
+    }
+
+    #[test]
+    fn the_rate_search_maximises_the_power_beyond_the_line() {
+        // A 10-cent sine at 6 Hz over 0.8 s on a bowed contour. Below 2 Hz
+        // a sine term bends with the bow and shares its power with the
+        // line: maximising the term's own power read 1.89 Hz. The power it
+        // adds beyond the line reads near 6 Hz.
+        let hop = 128.0 / 22_050.0;
+        let count = cast::floor_to_usize(0.8 / hop).unwrap();
+        let frames: Vec<(Seconds, Hz)> = (0..=count)
+            .map(|k| {
+                let t = cast::usize_to_f64(k) * hop;
+                let cents =
+                    300.0 * (t - 0.4).powi(2) + 10.0 * (std::f64::consts::TAU * 6.0 * t).sin();
+                (
+                    Seconds::new(0.2 + t).unwrap(),
+                    Hz::new(220.0 * 2f64.powf(cents / 1200.0)).unwrap(),
+                )
+            })
+            .collect();
+        let fit = fit_vibrato(&frames).unwrap();
+        assert!((fit.rate.get() - 6.0).abs() < 0.3, "{fit:?}");
+    }
+
+    #[test]
+    fn a_singular_joint_fit_reads_no_vibrato() {
+        // Three frames over 0.6 s leave the line and the sine underdetermined.
+        let frames: Vec<(Seconds, Hz)> = [0.2, 0.5, 0.8]
+            .iter()
+            .zip([220.0, 221.0, 219.0])
+            .map(|(&t, f)| (Seconds::new(t).unwrap(), Hz::new(f).unwrap()))
+            .collect();
+        assert_eq!(fit_vibrato(&frames), None);
     }
 
     #[test]

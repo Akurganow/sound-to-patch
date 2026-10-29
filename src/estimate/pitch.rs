@@ -933,9 +933,9 @@ fn in_band(fit: &DropFit) -> f64 {
 /// strongest partial of its band, so it would read the second harmonic as
 /// the note. Each band stops at 0.99 of the Nyquist frequency. When twice
 /// the pitch lies above that, at rates under about 4 times the pitch, the
-/// harmonic cannot be measured and the test passes. The cut band then
-/// narrows towards nothing, and the filter's padding grows as the inverse
-/// of its width.
+/// harmonic lies outside its band and the test passes. Short of that the
+/// cut band would narrow towards nothing, and the filter's padding grows as
+/// the inverse of its width.
 fn weak_fundamental(
     segment: &[f64],
     rate: SampleRate,
@@ -948,17 +948,14 @@ fn weak_fundamental(
     let from = index(window.0.get());
     let to = index(window.1.get()).min(segment.len());
     let nyquist = rate.nyquist().get();
-    let edges = |centre: f64| {
-        (
-            centre * 2f64.powf(-0.25),
-            (centre * 2f64.powf(0.25)).min(0.99 * nyquist),
-        )
-    };
     if from >= to || 2.0 * pitch.get() >= 0.99 * nyquist {
         return Ok(false);
     }
     let band = |centre: f64| -> Result<f64, PitchError> {
-        let (lo, hi) = edges(centre);
+        let (lo, hi) = (
+            centre * 2f64.powf(-0.25),
+            (centre * 2f64.powf(0.25)).min(0.99 * nyquist),
+        );
         let mut values =
             band_magnitude(segment, rate, Hz::clamped(lo), Hz::clamped(hi))?[from..to].to_vec();
         values.sort_by(f64::total_cmp);
@@ -1181,8 +1178,8 @@ mod tests {
     fn a_second_harmonic_above_nyquist_leaves_the_fundamental_alone() {
         // A 190 Hz note's second harmonic band starts at 319.5 Hz. At 600 Hz
         // it lies above the 300 Hz Nyquist frequency. At 646 Hz it is cut
-        // to 0.24 Hz under 0.99 of Nyquist, below the 380 Hz harmonic, so a
-        // strong tone inside it passes too. At 800 Hz the band holds the
+        // to 0.24 Hz under 0.99 of Nyquist, and at 767 Hz to 60 Hz, both
+        // below the 380 Hz harmonic, so a strong tone inside either passes. At 800 Hz the band holds the
         // harmonic, and one four times the fundamental reads weak.
         let weak = |rate: u32, upper: f64| {
             let r = f64::from(rate);
@@ -1206,6 +1203,7 @@ mod tests {
         };
         assert!(!weak(600, 250.0));
         assert!(!weak(646, 319.65));
+        assert!(!weak(767, 379.6));
         assert!(weak(800, 380.0));
     }
 
@@ -1261,11 +1259,18 @@ mod tests {
         assert_eq!(level(3.45), Some(Level::Low));
         assert_eq!(level(3.4), Some(Level::Medium));
         assert_eq!(level(JITTER_HIGH), Some(Level::High));
-        let short = rate_glide(GlideFit {
-            detected: Seconds::clamped(0.06),
-            ..glide
-        })
-        .unwrap();
-        assert_eq!(short.confidence.level(), Some(Level::Low));
+        // A clean glide reads low only when its motion lasts under 90 ms.
+        let span = |detected: f64| {
+            rate_glide(GlideFit {
+                detected: Seconds::clamped(detected),
+                jitter: Cents::clamped(1.0),
+                ..glide
+            })
+            .unwrap()
+            .confidence
+            .level()
+        };
+        assert_eq!(span(0.06), Some(Level::Low));
+        assert_eq!(span(0.1), Some(Level::Medium));
     }
 }

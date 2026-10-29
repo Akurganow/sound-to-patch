@@ -144,10 +144,11 @@ A glide:
 | `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
 | `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
 | `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, needs a detected span of at most 2.5 times its fitted time, and reads low with `curve_bound`. |
-| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. |
+| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. That stable pitch has a median level within 40 dB of the loudest frame, and the pitch does not swing back half the lead within 167 ms after it, or before the next stable pitch or the end of its note. |
 
 Its reasons are `motion_span` (seconds), `fit_residual` (cents),
-`pitch_jitter` (cents) and `curve_bound` (flag).
+`pitch_jitter` (cents) and `curve_bound` (flag). A glide whose
+`motion_span` is under 0.09 reads low.
 
 A drop:
 
@@ -183,10 +184,11 @@ does, and so does a vibrato on a pitch below 100 Hz.
 
 `flags` holds four booleans: `chord_skipped`, `glide_too_short` (a motion
 between two notes lasted 35 to 90 ms over its fitted time, or over its
-detected span when the fit failed), `weak_fundamental` (a low note's second harmonic exceeded its
-fundamental by 6 dB, so its drop was not reported) and `no_notes`. At a
-sample rate under about 4 times a note's pitch the second harmonic
-cannot be measured, and that note is not tested for `weak_fundamental`.
+detected span when the fit failed), `weak_fundamental` (a low note's
+second harmonic exceeded its fundamental by 6 dB, so its drop was not
+reported) and `no_notes`. At a sample rate under about 4 times a note's
+pitch the second harmonic cannot be measured, and that note is not
+tested for `weak_fundamental`.
 `needs_render` is `false`.
 
 ## Conventions

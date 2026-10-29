@@ -445,9 +445,9 @@ A glide is pitch moving from one stable pitch to another.
   `glide_too_short`, from 90 ms on a glide [proposal]. A fit off the
   curve bound that passes every test of a glide over a detected span of
   35 to 90 ms reads as a glide at low confidence, and a motion whose fit
-  fails over such a span is too short [proposal]. The task sets a 90 ms
-  floor on the detected span, the shortest transition of a published
-  portamento detector [fact]. On real stems a slide of a semitone over
+  fails over such a span is too short [proposal]. The 90 ms is the
+  shortest transition of a published portamento detector, cited and
+  untuned [fact]. On real stems a slide of a semitone over
   about 60 ms, clear in the spectrum, fell under it [fact]. Reading such
   fits changes no record of the generated sets [synthetic]. The track
   smears a step between two 808 notes over a detected span of 100 to
@@ -496,17 +496,20 @@ A glide is pitch moving from one stable pitch to another.
   stable pitch [proposal]. Its median level lies within 40 dB of the
   loudest frame, the gate of active frames [fact]. And within half a
   period of 3 Hz, the slowest vibrato, the smoothed pitch does not swing
-  back half the lead [proposal]. On real stems a wobble of ±60 cents at
-  6 to 7 Hz read its first half-cycle as a fall from silence, coming back
-  82 % of its lead [fact]. A quiet onset after digital silence read one
-  into a stable pitch at -42 dB, 2 dB under the gate [fact]. True falls
-  there came back 0 and 24 % and settled at -16 and -9 dB [fact].
-  Generated falls that swing back or settle at -45 dB read none
-  [synthetic]. A generated fall from 150 Hz
+  back half the lead [proposal]. The window ends sooner at the run's next
+  stable pitch or the end of the note, so a step to the next note does
+  not count [proposal]. On real stems a wobble of ±60 cents at 6 to 7 Hz
+  read its first half-cycle as a fall from silence, coming back 82 % of
+  its lead [fact]. A quiet onset after digital silence read one into a
+  stable pitch at -41.9 dB, 1.9 dB past the gate [fact]. True falls there
+  came back 0 and 24 % and settled at -16 and -9 dB [fact]. Generated
+  falls that swing back or settle at -42 dB read none; one that rebounds
+  a quarter of its lead, or steps to the next note 30 ms after the stable
+  pitch, reads [synthetic]. A generated fall from 150 Hz
   into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
   rule as a drop [synthetic]. It reads as a fall from silence at medium,
-  14.6 of its 19.0 semitones: it starts at 115 Hz, where the fall stands
-  17 ms after the onset [synthetic]. The sound must start up to 100 ms
+  14.6 of its 19.0 semitones: it starts near 116 Hz, where the fall
+  stands 17 ms after the onset [synthetic]. The sound must start up to 100 ms
   before the run: the full-band RMS over 30 ms rises 20 dB above
   the RMS from 60 to 30 ms before, searched in 5 ms steps [proposal]. The
   track voices a run some frames after the sound starts, and a beating
@@ -585,6 +588,10 @@ glides, $\tau$ 30 to 120 ms at 110 to 247 Hz, all read, at low confidence
 
 Limits:
 
+- A fall from silence whose stable pitch sits just past the 40 dB gate is
+  not read: on real stems a fall of about 1.4 semitones over 200 ms, in
+  which the first three partials all fall, settled at -40.9 dB and was
+  lost [fact].
 - A glide that the transcriber merges into one note, with its two ends in
   one note, is not read [fact].
 - A step between two 808 notes can raise `glide_too_short` when the fit
@@ -671,10 +678,11 @@ Limits:
   medium [proposal]. The generated vibratos read a kurtosis of 1.36 to
   1.66, a semitone trill at 6 Hz 1.06 [synthetic].
   - On real stems every vibrato above 100 Hz with 4 cycles or more matched
-    an independent f0, at a share of 0.51 to 0.64; the share did not tell
-    the real ones from the rest, which read 0.52 to 0.70 [fact]. Those
-    shares were read from the sine term's own power, which reads up to
-    0.06 higher on generated contours [synthetic].
+    an independent f0 [fact]. The 23 vibratos the independent f0 found
+    plausible read a share of 0.502 to 0.838, the 12 at high 0.502 to
+    0.630; the other 12 read 0.501 to 0.734, so the share does not tell
+    them apart [fact]. None read under 0.5: the lowest, 0.501, sits at the
+    threshold, so the margin there is nil [fact].
   - Below 100 Hz few matched, and the extent read up to 5 times too wide
     [fact]. A generated low saw with amplitude modulation, two beating
     voices or none reads no vibrato, and one with a ±30-cent vibrato reads
