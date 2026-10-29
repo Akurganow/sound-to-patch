@@ -161,20 +161,25 @@ pub fn draw(
     if count < MIN_RUNS || !u64::try_from(count).is_ok_and(|count| count <= RESTART_AFTER) {
         return Err(SpreadError::Runs(count));
     }
+    // One borrowed job per call, so the draws share one copy of the
+    // state; the session keeps its instance between calls.
     let session = RenderSession::new(NonZeroUsize::MIN, spawn);
-    let renders = session
-        .render_all(&vec![job.clone(); count])
-        .into_iter()
-        .map(|outcome| match outcome {
-            RenderOutcome::Rendered(rendered) => Ok(rendered),
-            RenderOutcome::Failed(failure) => Err(SpreadError::Render(
-                failure
-                    .errors
-                    .last()
-                    .map_or_else(|| "no error".to_owned(), ToString::to_string),
-            )),
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+    let mut renders = Vec::with_capacity(count);
+    for _ in 0..count {
+        for outcome in session.render_all(std::slice::from_ref(job)) {
+            match outcome {
+                RenderOutcome::Rendered(rendered) => renders.push(rendered),
+                RenderOutcome::Failed(failure) => {
+                    return Err(SpreadError::Render(
+                        failure
+                            .errors
+                            .last()
+                            .map_or_else(|| "no error".to_owned(), ToString::to_string),
+                    ));
+                }
+            }
+        }
+    }
     distinct(&renders)?;
     Ok(renders)
 }

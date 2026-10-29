@@ -40,6 +40,7 @@ pub(crate) struct SpreadRun<'a> {
 /// Measures the spread of one preset and writes it to `out`. The renders
 /// and their layer reports stay in the folder [`renders_folder`] names.
 pub(crate) fn run_spread(spread: &SpreadRun<'_>, plugin: &Plugin, out: &Path) -> Result<()> {
+    check_out(out, [spread.preset, spread.midi])?;
     let (state, preset_sha256) = read_preset(spread.preset)?;
     let job = RenderJob::from_midi(state, spread.midi, spread.bpm)?;
     plugin.check(&job)?;
@@ -115,9 +116,13 @@ struct Reference {
     recording_sha256: String,
     bpm: Bpm,
     job: RenderJob,
-    recording: Audio,
+    /// Read again at its render, so only the recordings that render hold
+    /// their samples in memory.
+    recording: PathBuf,
     clip: ClipMetrics,
     state_differences: Value,
+    /// The files the row reads, which the report must not replace.
+    inputs: Vec<PathBuf>,
 }
 
 /// Compares each reference recording with renders of its preset, MIDI
@@ -135,7 +140,14 @@ pub(crate) fn run_reference(
     plugin: &Plugin,
     out: &Path,
 ) -> Result<()> {
+    check_out(out, [reference.manifest])?;
     let references = read_manifest(reference)?;
+    check_out(
+        out,
+        references
+            .iter()
+            .flat_map(|entry| entry.inputs.iter().map(PathBuf::as_path)),
+    )?;
     let next = AtomicUsize::new(0);
     // Errors cross threads as text: the task error type is not Send.
     let done: Mutex<Vec<Option<std::result::Result<Value, String>>>> =
@@ -187,6 +199,7 @@ fn read_manifest(reference: &ReferenceRun<'_>) -> Result<Vec<Reference>> {
                 .ok_or_else(|| format!("a manifest row has no `{key}`: {line}"))
         };
         let preset_id = field("preset_id")?;
+        check_id(&preset_id)?;
         let preset = reference.root.join(field("preset_file")?);
         let midi = reference.root.join(field("midi_file")?);
         let recording = reference.root.join(field("render_file")?);
@@ -199,31 +212,101 @@ fn read_manifest(reference: &ReferenceRun<'_>) -> Result<Vec<Reference>> {
             .into());
         }
         let (state, preset_sha256) = read_preset(&preset)?;
-        let state_differences = match entry["state_file"].as_str() {
-            Some(file) => json!(state_differences(&state, &reference.root.join(file), bpm)?),
+        let mut inputs = vec![preset.clone(), midi.clone(), recording.clone()];
+        let state_differences = match state_file(&entry)? {
+            Some(file) => {
+                let file = reference.root.join(file);
+                let differences = state_differences(&state, &file, bpm)?;
+                inputs.push(file);
+                json!(differences)
+            }
             None => Value::Null,
         };
         let job = RenderJob::from_midi(state, &midi, bpm)?;
-        let recording_bytes = std::fs::read(&recording)
-            .map_err(|error| format!("cannot read {}: {error}", recording.display()))?;
-        let audio = decode(&recording)?.into_audio();
+        let (recording_sha256, audio) = read_recording(&recording)?;
         let clip = ClipMetrics::of(&audio, &format!("the recording of {id}"))?;
         references.push(Reference {
             id,
             preset_id,
             preset_sha256,
-            recording_sha256: sha256_hex(&recording_bytes),
+            recording_sha256,
             bpm,
             job,
-            recording: audio,
+            recording,
             clip,
             state_differences,
+            inputs,
         });
     }
     if references.is_empty() {
         return Err("the manifest names no reference".into());
     }
     Ok(references)
+}
+
+/// Refuses an output file that is one of `inputs`, which the run would
+/// read and then replace with its report.
+fn check_out<'a>(out: &Path, inputs: impl IntoIterator<Item = &'a Path>) -> Result<()> {
+    let target = canonical(out);
+    for input in inputs {
+        if canonical(input) == target {
+            return Err(format!(
+                "--out {} is an input of the run, which the report would replace. Write the report to another file",
+                out.display()
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+/// The canonical path of `path`, or of its folder joined with its name
+/// when the file does not exist yet.
+fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| {
+        let folder = match path.parent() {
+            Some(parent) if !parent.as_os_str().is_empty() => parent,
+            _ => Path::new("."),
+        };
+        let folder = std::fs::canonicalize(folder).unwrap_or_else(|_| folder.to_owned());
+        path.file_name()
+            .map_or_else(|| folder.clone(), |name| folder.join(name))
+    })
+}
+
+/// The SHA-256 of a recording file and its samples.
+fn read_recording(path: &Path) -> Result<(String, Audio)> {
+    let bytes =
+        std::fs::read(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
+    Ok((sha256_hex(&bytes), decode(path)?.into_audio()))
+}
+
+/// Refuses a preset id that is no plain folder name, since the id names
+/// the renders folder of its row.
+fn check_id(preset_id: &str) -> Result<()> {
+    if preset_id.is_empty()
+        || preset_id == "."
+        || preset_id == ".."
+        || preset_id.contains(['/', '\\'])
+    {
+        return Err(format!(
+            "the preset id `{preset_id}` is no plain name: it names a renders folder. Use an id without `/`, `\\`, `.` or `..`"
+        )
+        .into());
+    }
+    Ok(())
+}
+
+/// The `state_file` of a manifest row: absent, `null` or a path.
+fn state_file(entry: &Value) -> Result<Option<&str>> {
+    match &entry["state_file"] {
+        Value::Null => Ok(None),
+        Value::String(file) => Ok(Some(file)),
+        other => Err(format!(
+            "a manifest row has a `state_file` that is not a path: {other}. Give the path as a string, or leave the field out"
+        )
+        .into()),
+    }
 }
 
 /// Renders one reference, compares its recording and returns its report
@@ -252,8 +335,16 @@ fn render_reference(
         clip_rows(&clips)?,
     )?;
     let as_recorded = compare(&entry.clip, &clips, &spread.outputs)?;
+    let (sha256, recording) = read_recording(&entry.recording)?;
+    if sha256 != entry.recording_sha256 {
+        return Err(format!(
+            "{} changed during the run. Run the comparison again",
+            entry.recording.display()
+        )
+        .into());
+    }
     let fitted = compare_fitted(
-        &entry.recording,
+        &recording,
         &format!("the recording of {}", entry.id),
         &clips,
         &spread.outputs,
@@ -328,4 +419,45 @@ fn file_stem(path: &Path) -> String {
 /// The default MIDI file of a spread: three notes at 120 BPM.
 pub(crate) fn default_midi() -> PathBuf {
     crate::root().join("tests/cmd/data/three-notes.mid")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_output_that_is_an_input_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let preset = dir.path().join("a.vital");
+        std::fs::write(&preset, "{}").unwrap();
+        let error = check_out(&preset, [preset.as_path()]).unwrap_err();
+        assert!(
+            error.to_string().contains("is an input of the run"),
+            "{error}"
+        );
+        // The same file through another spelling of its folder.
+        let other = dir.path().join(".").join("a.vital");
+        assert!(check_out(&other, [preset.as_path()]).is_err());
+        check_out(&dir.path().join("report.json"), [preset.as_path()]).unwrap();
+    }
+
+    #[test]
+    fn a_preset_id_that_leaves_its_folder_is_refused() {
+        for id in ["../../outside", "a/b", "a\\b", "..", ".", ""] {
+            assert!(check_id(id).is_err(), "{id}");
+        }
+        check_id("iso_init").unwrap();
+    }
+
+    #[test]
+    fn a_state_file_that_is_no_path_is_refused() {
+        assert_eq!(state_file(&json!({})).unwrap(), None);
+        assert_eq!(state_file(&json!({ "state_file": null })).unwrap(), None);
+        assert_eq!(
+            state_file(&json!({ "state_file": "s.vital" })).unwrap(),
+            Some("s.vital")
+        );
+        let error = state_file(&json!({ "state_file": 3 })).unwrap_err();
+        assert!(error.to_string().contains("not a path"), "{error}");
+    }
 }

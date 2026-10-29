@@ -27,9 +27,11 @@ on every control, at the recording's tempo.
 ## Result
 
 The acceptance of #256 asks every recording to match after its gain, so
-it is not met. A level difference within ±3 dB is no fault: `compare`
-matches the loudness of two sounds before its distances. The comparison
-as recorded is for information only.
+it is not met. A level difference within ±3 dB is no fault: the compare
+stage of #12 matches the loudness of two sounds before its distances.
+`render::spread::compare_fitted` gives the verdict after the gain, and
+`render::spread::compare` the comparison as recorded, for information
+only.
 
 - After the gain fit, 12 of 38 recordings match the renders on all three
   outputs of the sound's shape: the peak-to-RMS ratio on 37, the

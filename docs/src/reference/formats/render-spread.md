@@ -143,6 +143,7 @@ that out before the verdict:
 The duration and the envelope distance still depend on the level, which
 is why they compare only after the gain; the peak-to-RMS ratio moves
 with it only where the clip's end moves. The recording matches when all
-three lie within their limits. A gain
-beyond ±3 dB is a finding to explain, not a failure: `compare` matches
-the loudness of two sounds before its distances.
+three lie within their limits. `compare_fitted` gives this verdict, and
+`compare` the comparison of all five outputs as recorded. A gain beyond
+±3 dB is a finding to explain, not a failure: the compare stage of #12
+matches the loudness of two sounds before its distances.
