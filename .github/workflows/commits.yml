@@ -1,0 +1,62 @@
+name: Commits
+
+# The `commits` job is a required check in the main ruleset. It lives in its
+# own workflow because it must re-run when the title or the description
+# changes (`edited`), and that must not start the heavy jobs of ci.yml.
+#
+# No `paths:` filter and no job-level `if:`. A skipped job reports success
+# under the same name, so it would hide a failure of an earlier run on the
+# same commit. A run that is superseded is cancelled, never skipped.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+# Keep this env equal to ci.yml: rust-cache hashes CARGO*, RUST* and CC* vars
+# into its key, and the linux-xtask cache is shared with the docs job.
+env:
+  CARGO_TERM_COLOR: always
+
+# The newest event of a pull request wins: it reads the current title and
+# description.
+concurrency:
+  group: commits-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  # The squash merge turns the title into the commit subject and the
+  # description into the commit body, so both are checked here.
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions are pinned by commit SHA, because a tag can move; the comment
+      # names the release.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-cog
+      # The title is untrusted text: it reaches the script through env only.
+      # cog verify reads the git author, which a fresh runner lacks.
+      - name: Check the title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          printf '%s\n' "$PR_TITLE" | cog verify --file -
+      # Dependabot writes its own description, so only the title applies.
+      # The docs job in ci.yml builds the same xtask on Linux and saves the
+      # cache on main, so this job reads it instead of compiling the xtask.
+      - if: github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
+          cache-key: linux-xtask
+      - name: Check the description
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: cargo xtask check-pr-body

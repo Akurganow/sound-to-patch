@@ -62,9 +62,17 @@ repository = "https://github.com/Akurganow/sound-to-patch"
 publish = false
 
 # Tests run FFTs of 100 000 points and more. Optimised dependencies keep a
-# debug test run fast; our own code stays at the debug level.
+# debug test run fast.
 [profile.dev.package."*"]
 opt-level = 3
+
+# Our own code is optimised in test builds too: the whole suite then runs in
+# well under a minute of CPU time instead of about 15 minutes, at the cost of
+# a slower build of the workspace crates. A debug build and a debugger session
+# keep the unoptimised dev profile. `tests/it/profile.rs` checks that the
+# profile still has debug assertions and overflow checks.
+[profile.test]
+opt-level = 1
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
