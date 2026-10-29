@@ -931,7 +931,8 @@ fn in_band(fit: &DropFit) -> f64 {
 /// later, and not before the fit's pitch lies inside the band around the
 /// note, to the end of the fit span or of the note. The line follows the
 /// strongest partial of its band, so it would read the second harmonic as
-/// the note.
+/// the note. At a rate whose Nyquist frequency lies under the band around
+/// twice the pitch, the harmonic cannot be measured and the test passes.
 fn weak_fundamental(
     segment: &[f64],
     rate: SampleRate,
@@ -943,7 +944,7 @@ fn weak_fundamental(
     let index = |t: f64| cast::round_to_usize(((t - start.get()) * r).max(0.0)).unwrap_or(0);
     let from = index(window.0.get());
     let to = index(window.1.get()).min(segment.len());
-    if from >= to {
+    if from >= to || 2.0 * pitch.get() * 2f64.powf(-0.25) >= 0.99 * rate.nyquist().get() {
         return Ok(false);
     }
     let band = |centre: f64| -> Result<f64, PitchError> {
@@ -957,7 +958,8 @@ fn weak_fundamental(
 }
 
 /// Fits a vibrato to each steady span of the track, without 50 ms at each
-/// end and without the settling of a drop.
+/// end. A drop inside a span splits it: the part before ends 50 ms before
+/// the onset, and the part after starts once the drop has settled.
 fn vibratos(
     track: &PitchTrack,
     glides: &[GlideFit],
@@ -972,28 +974,39 @@ fn vibratos(
         let mut pitches: Vec<f64> = span.iter().map(|(_, f0)| f0.get()).collect();
         pitches.sort_by(f64::total_cmp);
         let lag = track_lag(Hz::clamped(pitches[pitches.len() / 2])).get();
-        let mut from = first.get() + RUN_TRIM.get();
-        let to = last.get() - RUN_TRIM.get();
+        let mut parts = vec![(first.get() + RUN_TRIM.get(), last.get() - RUN_TRIM.get())];
         for drop in drops {
+            let strike = drop.onset.get() + lag - RUN_TRIM.get();
             let settled = drop.settled().get().max(drop.onset.get() + SETTLE_MIN) + lag;
-            if drop.onset.get() + lag <= to && settled > from {
-                from = settled;
-            }
+            parts = parts
+                .into_iter()
+                .flat_map(|(from, to)| {
+                    if strike > to || settled <= from {
+                        vec![(from, to)]
+                    } else {
+                        vec![(from, strike), (settled, to)]
+                    }
+                })
+                .filter(|(from, to)| from < to)
+                .collect();
         }
-        let frames: Vec<(Seconds, Hz)> = span
-            .into_iter()
-            .filter(|(time, _)| (from..=to).contains(&time.get()))
-            .collect();
-        let Some(fit) = fit_vibrato(&frames) else {
-            continue;
-        };
-        counts.vibrato_candidates += 1;
-        if fit.accepted() {
-            found.push(VibratoFit {
-                start: Seconds::clamped(fit.start.get() - lag),
-                end: Seconds::clamped(fit.end.get() - lag),
-                ..fit
-            });
+        for (from, to) in parts {
+            let frames: Vec<(Seconds, Hz)> = span
+                .iter()
+                .copied()
+                .filter(|(time, _)| (from..=to).contains(&time.get()))
+                .collect();
+            let Some(fit) = fit_vibrato(&frames) else {
+                continue;
+            };
+            counts.vibrato_candidates += 1;
+            if fit.accepted() {
+                found.push(VibratoFit {
+                    start: Seconds::clamped(fit.start.get() - lag),
+                    end: Seconds::clamped(fit.end.get() - lag),
+                    ..fit
+                });
+            }
         }
     }
     found
@@ -1151,6 +1164,25 @@ fn ratio_db(ratio: f64) -> String {
 mod tests {
     use super::*;
     use crate::notes::Note;
+
+    #[test]
+    fn a_second_harmonic_above_nyquist_leaves_the_fundamental_alone() {
+        // At 600 Hz a 190 Hz note's second harmonic band starts at 319.5 Hz,
+        // above the 300 Hz Nyquist frequency.
+        let rate = SampleRate::new(600).unwrap();
+        let segment: Vec<f64> = (0..600)
+            .map(|n| (std::f64::consts::TAU * 190.0 * cast::usize_to_f64(n) / 600.0).sin())
+            .collect();
+        let window = (Seconds::clamped(0.1), Seconds::clamped(0.9));
+        let weak = weak_fundamental(
+            &segment,
+            rate,
+            Seconds::clamped(0.0),
+            window,
+            Hz::clamped(190.0),
+        );
+        assert!(!weak.unwrap());
+    }
 
     #[test]
     fn a_drop_settles_on_a_note_of_its_own_strike() {

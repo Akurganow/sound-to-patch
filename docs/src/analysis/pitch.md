@@ -12,8 +12,9 @@ that settles in 20 ms [fact]. With `--notes` the model does not run, but
 the f0 track still reads the stem, unless the notes play chords or are
 empty and the layer is skipped [fact].
 
-Every figure below comes from generated signals at 22,050 Hz, through the
-transcriber's notes and the f0 track of the release build [synthetic]. A
+Every figure below comes from generated signals at 22,050 Hz, unless it
+names another rate, through the transcriber's notes and the f0 track of
+the release build [synthetic]. A
 real stem adds filters, reverb and separation artefacts.
 
 ## What the layer reads
@@ -439,12 +440,14 @@ A glide is pitch moving from one stable pitch to another.
   where the slope of the 5-frame moving average, 29 ms, stays at 86 cents
   per second or more in the direction of the motion [fact]. Under 35 ms
   it is a step between notes [fact, proposal for 35 ms].
-- Otherwise the fitted time decides with the same bounds: under 35 ms a
-  step, from 35 to 90 ms a glide too short to read, counted and flagged
-  `glide_too_short`, from 90 ms on a glide [proposal]. The track smears a
-  step between two 808 notes over a detected span of 100 to 450 ms, while
-  the fit finds the motion short [synthetic]. A motion whose fit fails is
-  too short when its detected span lies from 35 to 90 ms [fact].
+- Then the fitted time decides with the same bounds: under 35 ms a step,
+  from 35 to 90 ms a glide too short to read, counted and flagged
+  `glide_too_short`, from 90 ms on a glide [proposal]. A fit off the
+  curve bound that passes every test of a glide over a detected span of
+  35 to 90 ms is too short as well, and so is a motion whose fit fails
+  over such a span [proposal]. The track
+  smears a step between two 808 notes over a detected span of 100 to
+  450 ms, while the fit finds the motion short [synthetic].
 - Fit. $s(x) = 1 - (1 - x)^p$ between the two stable pitches is fitted by
   least squares over the motion and 50 ms of each stable pitch, with the
   start, the full time and $p$ free [fact]. $p > 1$ starts fast, $p < 1$
@@ -481,9 +484,12 @@ A glide is pitch moving from one stable pitch to another.
   interval, and is not read [synthetic].
 - `time_s` is the full 0 to 100 % time [fact]. `start_s` is the fitted
   start less the track's lag at the start pitch [fact].
-- From silence. When a voiced run starts away from its first stable pitch
-  by 100 cents or more, and the motion into it lasts 90 ms or more, the
-  glide carries `from_silence: true` [fact]. The sound must start up to
+- From silence. When a voiced run starts above or below its first stable
+  pitch by 100 cents or more, and the motion into it lasts 90 ms or more,
+  the glide carries `from_silence: true` [fact]. A generated fall from
+  150 Hz into 50 Hz under a 300 ms attack fails the strike rule as a drop
+  and reads as a fall of 14.6 semitones from silence at medium
+  [synthetic]. The sound must start up to
   100 ms before the run: the full-band RMS over 30 ms rises 20 dB above
   the RMS from 60 to 30 ms before, searched in 5 ms steps [proposal]. The
   track voices a run some frames after the sound starts, and a beating
@@ -594,9 +600,14 @@ Limits:
 - Spans. The voiced runs of the track split where two stable pitches lie
   150 cents or more apart, so a step between notes never reads as a
   vibrato, while a vibrato of ±60 cents, whose stable pitches lie 120
-  cents apart, stays whole [proposal]. Each span loses 50 ms at each end,
-  the frames where a glide moves and the settling of a drop: five time
-  constants, at least 100 ms [fact]. A generated octave drop into A1 with
+  cents apart, stays whole [proposal]. Each span loses 50 ms at each end
+  and the frames where a glide moves [fact]. A drop inside a span splits
+  it: the part before ends 50 ms before the onset, and the part after
+  starts once the drop has settled, five time constants, at least 100 ms
+  [fact]. A generated vibrato on A1, restruck mid-span with a fast drop
+  the track does not show, reads before the drop; starting the whole span
+  after the settling left 0.38 s, under the 0.5 s the search reads
+  [synthetic]. A generated octave drop into A1 with
   $\tau$ = 60 ms, then a vibrato, reads that vibrato; skipping only
   100 ms left a fifth of the fall in the span, and the search read none
   [synthetic].

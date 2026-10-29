@@ -40,8 +40,8 @@ const SEARCH_STEP: f64 = 0.01;
 pub const VIBRATO_CONVENTION: &str = "the voiced f0 frames of a steady span, a voiced run of \
 the track split where two stable pitches lie 150 cents or more apart, without 50 ms at each end, \
 without the frames where a glide's fitted curve lies more than 10 cents from both its pitches \
-and without the settling of a drop, five time constants and at least 100 ms, in \
-cents; start_s and end_s are its first and last frame in audio time; a least-squares line and sine fitted \
+and without a drop: the span before it ends 50 ms before its onset, and the span after starts \
+once it has settled, five time constants and at least 100 ms after the onset; in cents; start_s and end_s are its first and last frame in audio time; a least-squares line and sine fitted \
 together, at the rate whose sine explains the most power beyond the line, searched from 1 Hz or \
 1.5 cycles over the span up to 20 Hz in 0.01 Hz steps and refined by golden-section search; extent_raw_ct is that sine's amplitude, half the peak-to-peak swing; extent_ct is \
 extent_raw_ct times extent_factor, which undoes the smoothing of the f0 track at that rate; a \

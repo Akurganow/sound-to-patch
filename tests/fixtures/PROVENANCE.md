@@ -1,7 +1,9 @@
 # Test fixture provenance
 
-Every committed fixture has one row here. The license text of each fixture
-follows the table, under a heading with the fixture's file name.
+Every committed fixture has one row here, except that a generated set may
+share one row that gives the SHA-256 of its manifest, as `pitch/*.json`
+does. The license text follows the table, under a heading for each
+fixture or set.
 
 Golden vectors under `golden/` are generated, not taken from another
 project. Each carries its own provenance: recipe, generator, tool versions

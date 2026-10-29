@@ -258,22 +258,27 @@ pub(crate) fn find_glides(
             )
             && note_of(first).is_some()
         {
+            let lead = run[0].cents - first.median;
+            let signed: Vec<f64> = slope.iter().map(|s| -s * lead.signum()).collect();
             let motion = detected(
                 &run,
-                &slope,
+                &signed,
                 0,
                 first.first + (first.last - first.first) / 2,
             );
-            let lead = run[0].cents - first.median;
             if lead.abs() >= GLIDE_INTERVAL_MIN.get()
                 && let Some(span) = motion
             {
+                // `too_short` counts motions between two stable pitches only:
+                // a fall from silence is mostly a strike's pitch drop.
+                let mut from_silence = GlideRead::default();
                 classify(
-                    &mut read,
+                    &mut from_silence,
                     span,
                     || fit_from_silence(&run, *first, span),
                     false,
                 );
+                read.glides.extend(from_silence.glides);
             }
         }
         for pair in plateaus.windows(2) {
@@ -346,9 +351,12 @@ pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(
 /// Counts a motion as a step, a glide too short, or a glide.
 ///
 /// A motion whose detected span is shorter than [`GLIDE_STEP_MAX`] is a
-/// step. Otherwise the fitted time decides, with the same bounds: the
-/// track smears a step between two 808 notes over a detected span of 100
-/// to 450 ms, while the fit finds the motion short. A fit of
+/// step. Then the fitted time decides, with the same bounds: the track
+/// smears a step between two 808 notes over a detected span of 100 to
+/// 450 ms, while the fit finds the motion short. A fit off that bound that
+/// follows the curve over a detected span under [`GLIDE_TIME_MIN`] is too
+/// short as well, and so is a motion whose fit fails when its detected
+/// span is. A fit of
 /// [`GLIDE_TIME_MIN`] or more whose `p` sits on the lower bound of
 /// [`CURVE_RANGE`], or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does
 /// not follow the curve, so the motion is no glide. On the upper bound the
@@ -357,8 +365,7 @@ pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(
 /// times the fitted time, the glide must not come from silence, and it is
 /// marked: a melody step on a sine, a driven drop and a smeared step read
 /// as glides on that bound otherwise. A `stepped` motion, a step across a
-/// gap, is no glide either. A motion whose fit fails is too short when its
-/// detected span is.
+/// gap, is no glide either.
 fn classify(
     read: &mut GlideRead,
     span: (f64, f64),
@@ -394,7 +401,11 @@ fn classify(
     };
     let glide = GlideFit { on_bound, ..glide };
     if glide.curve > CURVE_EDGE * lo && follows && !stepped {
-        read.glides.push(glide);
+        if length < GLIDE_TIME_MIN.get() {
+            read.too_short += 1;
+        } else {
+            read.glides.push(glide);
+        }
     }
 }
 
@@ -962,6 +973,27 @@ mod tests {
     }
 
     #[test]
+    fn a_short_detected_span_is_too_short_whatever_the_fit() {
+        let glide = GlideFit {
+            start: Seconds::from_const(0.5),
+            interval: Semitones::from_const(2.0),
+            time: Seconds::from_const(0.12),
+            curve: 1.0,
+            from_silence: false,
+            detected: Seconds::from_const(0.06),
+            residual: Cents::from_const(5.0),
+            jitter: Cents::from_const(1.0),
+            on_bound: false,
+        };
+        for (span, glides, too_short) in [(0.06, 0, 1), (0.1, 1, 0)] {
+            let mut read = GlideRead::default();
+            classify(&mut read, (0.5, 0.5 + span), || Some(glide), false);
+            assert_eq!(read.glides.len(), glides, "{span}");
+            assert_eq!(read.too_short, too_short, "{span}");
+        }
+    }
+
+    #[test]
     fn a_glide_into_the_first_note_comes_from_silence() {
         let rising = track(1.0, |t| {
             (0.2..1.0).contains(&t).then(|| {
@@ -977,5 +1009,18 @@ mod tests {
         assert!((glide.interval.get() - 5.0).abs() < 0.3, "{glide:?}");
         let skipped = find_glides(&rising, &line, |_, _| false, |_, _| false);
         assert_eq!(skipped.glides, []);
+        let falling = track(1.0, |t| {
+            (0.2..1.0).contains(&t).then(|| {
+                let x = ((t - 0.2) / 0.2).clamp(0.0, 1.0);
+                5500.0 - 500.0 * x
+            })
+        });
+        let read = find_glides(&falling, &line, |_, _| false, |_, _| true);
+        assert_eq!(read.glides.len(), 1, "{read:?}");
+        assert!(read.glides[0].from_silence);
+        assert!(
+            (read.glides[0].interval.get() + 5.0).abs() < 0.3,
+            "{read:?}"
+        );
     }
 }

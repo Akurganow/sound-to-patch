@@ -574,7 +574,7 @@ mod tests {
             }
             .accepted()
         );
-        assert!((-DROP_FIT_START.get() / DROP_TAU_MIN.get()).exp() - 0.1 < 1e-12);
+        assert!(((-DROP_FIT_START.get() / DROP_TAU_MIN.get()).exp() - 0.1).abs() < 1e-12);
         // Three octaves count; more do not.
         let octaves = |n: f64| DropFit {
             df_hz: 41.2 * (2f64.powf(n) - 1.0),

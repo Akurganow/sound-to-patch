@@ -2005,3 +2005,25 @@ fn a_vibrato_after_a_slow_drop_starts_once_the_drop_has_settled() {
         "{vibrato:?}"
     );
 }
+
+#[test]
+fn a_vibrato_before_a_drop_inside_its_span_reads() {
+    // A vibrato of 35 cents at 5.5 Hz on A1 from 0.2 to 1.4 s, restruck at
+    // 0.85 s with a fast octave drop the track does not show. The drop
+    // splits the steady span: 0.57 s of vibrato before it reads. Starting
+    // the whole span after the drop's settling left 0.38 s, under the
+    // 0.5 s the search reads.
+    let mut mono = vec![0.0; round_to_usize(0.65 * f64::from(RATE))];
+    mono.extend(sweep(55.0, 55.0, 0.03, &[0.2], 0.003, 0.9));
+    let cents = |t: f64| Some(3300.0 + 35.0 * (std::f64::consts::TAU * 5.5 * t).sin());
+    let read = audio_track_layer(&mono, cents, &[(0.2, 0.85, 33.0), (0.85, 1.4, 33.0)]);
+    assert_eq!(read.drops.len(), 1, "{:?}", read.counts);
+    assert_eq!(read.vibrato.len(), 1, "{:?}", read.counts);
+    let vibrato = &read.vibrato[0].value;
+    assert!(vibrato.end.get() < 0.85, "{vibrato:?}");
+    assert!((vibrato.rate.get() - 5.5).abs() <= 0.1, "{vibrato:?}");
+    assert!(
+        (vibrato.extent().get() / 35.0 - 1.0).abs() <= 0.15,
+        "{vibrato:?}"
+    );
+}
