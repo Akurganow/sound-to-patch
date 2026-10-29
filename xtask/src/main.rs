@@ -15,9 +15,11 @@ mod music;
 mod plugins;
 mod pr;
 mod reference;
+mod timing;
 mod version;
 mod vital;
 
+use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -110,6 +112,26 @@ enum Task {
         #[arg(long, conflicts_with = "check")]
         coverage: bool,
     },
+    /// Time plug-in loads, state loads, renders and the throughput of 1, 2,
+    /// 4 and 8 workers on the Vital plug-in, and write the table; local
+    /// only.
+    RenderTiming {
+        /// The preset to render.
+        #[arg(long, default_value = "tests/fixtures/vital/routes.vital")]
+        preset: PathBuf,
+        /// The Vital .vst3 bundle [default: the standard VST3 folders].
+        #[arg(long)]
+        plugin: Option<PathBuf>,
+        /// The sound-to-patch-host binary [default: `SOUND_TO_PATCH_HOST`].
+        #[arg(long)]
+        host: Option<PathBuf>,
+        /// How many measurements each row takes.
+        #[arg(long, default_value_t = NonZeroUsize::new(20).unwrap_or(NonZeroUsize::MIN))]
+        runs: NonZeroUsize,
+        /// The JSON file to write.
+        #[arg(long)]
+        out: PathBuf,
+    },
     /// Write a release version into the workspace manifest and the lock files.
     SetVersion {
         /// The new version, without a `v` prefix.
@@ -141,6 +163,13 @@ fn main() -> ExitCode {
         Task::VitalRegistry { source, check } => vital::run(root(), &source, check),
         Task::Reference { check } => reference::run(root(), check),
         Task::SetVersion { version } => version::set(root(), &version),
+        Task::RenderTiming {
+            preset,
+            plugin,
+            host,
+            runs,
+            out,
+        } => timing::run(&preset, plugin.as_deref(), host.as_deref(), runs, &out),
         Task::VitalFixtures { check, coverage } => {
             if coverage {
                 fixtures::coverage()

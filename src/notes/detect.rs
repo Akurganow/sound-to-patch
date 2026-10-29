@@ -13,6 +13,7 @@ use super::{
     NoteList, PitchRange, PitchTrack, TranscribeError, min_note_frames,
 };
 use crate::cast;
+use crate::dsp::quantile;
 use crate::units::{Bpm, Decibels, MidiPitch, Semitones};
 
 /// The low and high percentiles of the voiced f0 frames that bound the
@@ -368,16 +369,6 @@ fn probe_register(notes: &NoteList) -> Option<(MidiPitch, MidiPitch)> {
     let low = pitches.clone().reduce(f64::min)?;
     let high = pitches.reduce(f64::max)?;
     Some((MidiPitch::clamped(low), MidiPitch::clamped(high)))
-}
-
-/// The linear quantile of sorted values, the default of `numpy.quantile`.
-fn quantile(sorted: &[f64], q: f64) -> Option<f64> {
-    let last = sorted.len().checked_sub(1)?;
-    let position = q * cast::usize_to_f64(last);
-    let below = cast::floor_to_usize(position)?.min(last);
-    let above = (below + 1).min(last);
-    let fraction = position - cast::usize_to_f64(below);
-    Some(sorted[below] + (sorted[above] - sorted[below]) * fraction)
 }
 
 #[cfg(test)]

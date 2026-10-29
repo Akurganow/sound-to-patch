@@ -334,6 +334,7 @@ pub struct PluginRenderer {
     identity: HostIdentity,
     renders: u64,
     loaded: bool,
+    last_state_load: Option<Seconds>,
     timeouts: Timeouts,
     /// A private folder for the clips the host writes.
     scratch: tempfile::TempDir,
@@ -462,6 +463,7 @@ impl PluginRenderer {
             },
             renders: 0,
             loaded: false,
+            last_state_load: None,
             timeouts,
             scratch,
         };
@@ -722,9 +724,15 @@ impl PluginRenderer {
         };
         self.loaded |= load;
         let timeout = self.timeouts.render + Duration::from_secs_f64(job.last_note_off().get());
+        self.last_state_load = None;
         let reply = self.ask(&request, timeout);
         let read = reply.and_then(|reply| match reply {
-            Reply::Rendered { frames, capped } => {
+            Reply::Rendered {
+                frames,
+                capped,
+                state_load_s,
+            } => {
+                self.last_state_load = state_load_s.and_then(|s| Seconds::new(s).ok());
                 let decoded = decode(&audio).map_err(|source| {
                     RenderError::Crashed(format!(
                         "the host wrote a clip that does not decode ({source})"
@@ -767,6 +775,10 @@ impl Renderer for PluginRenderer {
             ));
         }
         self.play(job, false)
+    }
+
+    fn last_state_load(&self) -> Option<Seconds> {
+        self.last_state_load
     }
 
     fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {

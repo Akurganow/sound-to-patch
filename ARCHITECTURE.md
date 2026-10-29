@@ -27,9 +27,10 @@ with the `stem` group and the spectrogram, the transcriber with its
 profiles and its register detection, the f0 track, the note cleanup, the
 MIDI writer, the layer map of the agent reference, and the render core:
 the recipe, the renderer trait, a fake renderer, the Vital plug-in state,
-the renderer that drives the plug-in host, the load check and the
-`render` command. The reference itself is the folder `reference/`, which
-an agent plugin and a project skill both read.
+the renderer that drives the plug-in host, the load check, the render
+session, the timing table and the `render` command. The reference itself
+is the folder `reference/`, which an agent plugin and a project skill
+both read.
 
 ## Synth adapter seam
 
@@ -119,7 +120,9 @@ joins `READY` when its adapter lands.
   `render` command's run from files to a WAV file and a record,
   `wire` the protocol of the host process, `plugin` the renderer that
   starts that process and picks its architecture from the plug-in bundle,
-  and the module root the render job, the record and the `Renderer` trait.
+  `session` the worker pool that every consumer renders through, `timing`
+  the table of load and render times, and the module root the render job,
+  the record and the `Renderer` trait.
   The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
@@ -185,6 +188,10 @@ joins `READY` when its adapter lands.
   not is an error.
 - A model keeps every key it read, unknown keys included, so a rewrite
   loses no feature of a newer build.
+- Many renders go through `render::session`, the one worker pool. A
+  consumer starts no pool of its own and adds no retry or flush. A render
+  that fails twice is a `RenderFailure` with a large finite score, never a
+  panic or an aborted run.
 
 ## Layer boundaries
 
