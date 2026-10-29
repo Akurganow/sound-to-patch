@@ -32,8 +32,11 @@ mod transcribe;
 mod write;
 
 pub use cleanup::{
-    COPY_SLACK, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES, OCTAVE_TOLERANCE,
-    OctaveCheck, SPLIT_GAP, SPLIT_ONSET, check_octaves, join_splits, merge_overlaps,
+    ATTACK_AFTER, ATTACK_BEFORE, ATTACK_DIP, COPY_SLACK, HARMONIC_DIP, HOLD_BEFORE, HOLD_RATIO,
+    HOLD_SEARCH, HOLD_SPAN, OCTAVE_AGREEMENT, OCTAVE_FIX_CEILING, OCTAVE_MIN_FRAMES,
+    OCTAVE_TOLERANCE, OctaveCheck, RISE_LATEST, RISE_READ, RISE_SLACK, RISE_SPAN, RISE_STEP,
+    RISE_WINDOW, SPLIT_GAP, SPLIT_ONSET, check_octaves, join_splits, join_splits_with,
+    merge_overlaps,
 };
 pub use detect::{
     CHORD_OVERLAP, CHORD_SHARE, Detection, HOLD_WINDOW, REFERENCE_PERCENTILE, REGISTER_MARGIN,
@@ -48,7 +51,7 @@ pub use profile::{
     DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
     Profile, RangeError, min_note_frames,
 };
-pub use quiet::{QUIET_FRAME, QUIET_GATE, drop_quiet};
+pub use quiet::{HARMONICS, QUIET_FRAME, QUIET_GATE, StemLevels, drop_quiet, drop_quiet_with};
 #[doc(inline)]
 pub use sound_to_patch_core::notes::{NoteError, Velocity};
 pub use stem::{

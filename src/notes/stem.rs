@@ -9,8 +9,8 @@ use serde::Serialize;
 
 use super::{
     DecodeSettings, Detection, MODEL_SHA256, ModelRun, NoteList, OctaveCheck, PitchTrack, Profile,
-    QUIET_GATE, TrackError, TranscribeError, Transcriber, Voicing, check_octaves, detect,
-    drop_quiet, join_splits, merge_overlaps,
+    QUIET_GATE, StemLevels, TrackError, TranscribeError, Transcriber, Voicing, check_octaves,
+    detect, drop_quiet_with, join_splits_with, merge_overlaps,
 };
 use crate::audio::SampleRate;
 use crate::units::Bpm;
@@ -61,8 +61,9 @@ pub fn clean_up(
         ),
     };
     let merged = merge_overlaps(&checked);
-    let joined = join_splits(&merged, run);
-    let (kept, quiet) = drop_quiet(&joined, mono, rate, QUIET_GATE);
+    let levels = StemLevels::new(mono, rate);
+    let joined = join_splits_with(&merged, run, &levels);
+    let (kept, quiet) = drop_quiet_with(&joined, &levels, QUIET_GATE);
     let steps = CleanupSteps {
         decoded: decoded.notes().len(),
         octaves,
