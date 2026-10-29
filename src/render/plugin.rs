@@ -1145,6 +1145,32 @@ mod tests {
         }
 
         #[test]
+        fn a_session_retries_a_crashed_host_on_a_new_one() {
+            use crate::render::session::{BoxedRenderer, RenderSession};
+            let dir = tempfile::tempdir().unwrap();
+            let mark = dir.path().join("crashed");
+            let clip = dir.path().join("clip.wav");
+            let rate = crate::audio::SampleRate::new(44_100).unwrap();
+            let audio = crate::audio::Audio::new(rate, vec![vec![0.5; 100], vec![0.5; 100]]);
+            crate::audio::write_wav(&clip, &audio.unwrap()).unwrap();
+            // The first host exits on its first render; the next one copies
+            // a prepared clip to the path the request names.
+            let script = format!(
+                r#"{OPEN}read -r line; if [ -e "$MARK" ]; then path=$(printf '%s' "$line" | sed 's/.*"audio":"\([^"]*\)".*/\1/'); cp "$CLIP" "$path"; printf '%s{{"reply":"rendered","frames":100,"capped":false}}\n' "$PREFIX"; read -r line; else : > "$MARK"; echo 'host fell over' >&2; exit 3; fi"#
+            );
+            let session = RenderSession::new(std::num::NonZeroUsize::MIN, move |_| {
+                let mut command = command(&script);
+                command.env("MARK", &mark).env("CLIP", &clip);
+                PluginRenderer::spawn(command, Synth::Vital, Path::new("Vital.vst3"), SHORT)
+                    .map(|renderer| Box::new(renderer) as BoxedRenderer)
+            });
+            let outcomes = session.render_all(&[job()]);
+            let rendered = outcomes[0].rendered().unwrap();
+            assert_eq!(rendered.audio.frames(), 100);
+            assert_eq!(session.starts(), [2]);
+        }
+
+        #[test]
         fn a_clip_that_does_not_decode_is_removed() {
             let mark = tempfile::tempdir().unwrap();
             let marked = mark.path().join("audio");

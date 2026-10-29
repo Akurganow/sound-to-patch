@@ -9,11 +9,29 @@
 //! which a consumer scores [`FAILED_SCORE`]; the session goes on with the
 //! next job.
 //!
-//! Every render starts with the flush of the recipe, because every
-//! [`Renderer::render`] loads the job's state and plays the pre-roll
-//! before the clip.
+//! Every render starts with the flush of the recipe. That is the
+//! renderer's duty, not the session's: every [`Renderer::render`] loads
+//! the job's state and plays the pre-roll before the clip.
+//!
+//! A panic in a renderer counts as a failed try, so it costs one job a
+//! retry and never the jobs of the other workers. A
+//! [`RenderError::WrongSynth`] is the caller's mistake, not a fault of
+//! the plug-in: it fails the job at once and keeps the renderer.
+//!
+//! # Costs
+//!
+//! - Each worker holds one plug-in in its own host process. A Vital host
+//!   takes about 270 to 325 MB of resident memory, and the session sets no
+//!   cap on the worker count, so pick it for the machine.
+//! - Run [`RenderSession::start_all`] before [`RenderSession::render_all`].
+//!   A plug-in that cannot start otherwise fails every job after two start
+//!   time-outs each, every job returns the sentinel, and a search spends
+//!   its budget on nothing.
+//! - A job that always hangs costs about two render time-outs: one per
+//!   try.
 
 use std::num::NonZeroUsize;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -23,8 +41,9 @@ use super::{RenderError, RenderJob, Rendered, Renderer};
 pub const RESTART_AFTER: u64 = 256;
 /// How many times a failed render is tried again.
 pub const RETRIES: usize = 1;
-/// The score a consumer gives a failed render: large, so a search ranks it
-/// last, and finite, so sums and means of scores stay finite.
+/// The score a consumer gives a failed render: far above any distance a
+/// render can score, so a search ranks it last, and finite, so sums and
+/// means of scores stay finite.
 pub const FAILED_SCORE: f64 = 1.0e9;
 
 /// A renderer a worker can own on its own thread.
@@ -82,14 +101,12 @@ struct Worker {
 pub struct RenderSession {
     spawn: Box<Spawn>,
     workers: Vec<Mutex<Worker>>,
-    restart_after: u64,
 }
 
 impl std::fmt::Debug for RenderSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RenderSession")
             .field("workers", &self.workers.len())
-            .field("restart_after", &self.restart_after)
             .finish_non_exhaustive()
     }
 }
@@ -107,14 +124,7 @@ impl RenderSession {
             workers: (0..workers.get())
                 .map(|_| Mutex::new(Worker::default()))
                 .collect(),
-            restart_after: RESTART_AFTER,
         }
-    }
-
-    /// Returns how many workers the session has.
-    #[must_use]
-    pub fn workers(&self) -> usize {
-        self.workers.len()
     }
 
     /// Returns how many renderers each worker started so far.
@@ -142,7 +152,7 @@ impl RenderSession {
                     scope.spawn(move || {
                         let mut worker = lock(worker);
                         if worker.renderer.is_none() {
-                            self.start(index, &mut worker)?;
+                            self.start(index, &mut worker, None)?;
                         }
                         Ok(())
                     })
@@ -174,7 +184,7 @@ impl RenderSession {
                             let Some(job) = jobs.get(at) else {
                                 break done;
                             };
-                            done.push((at, self.render_one(index, &mut worker, job)));
+                            done.push((at, self.render_one(index, &mut worker, at, job)));
                         }
                     })
                 })
@@ -197,16 +207,22 @@ impl RenderSession {
             .collect()
     }
 
-    /// Renders one job on `worker`, with a new renderer after
+    /// Renders job `at` on `worker`, with a new renderer after
     /// [`RESTART_AFTER`] renders and after each failure.
-    fn render_one(&self, index: usize, worker: &mut Worker, job: &RenderJob) -> RenderOutcome {
+    fn render_one(
+        &self,
+        index: usize,
+        worker: &mut Worker,
+        at: usize,
+        job: &RenderJob,
+    ) -> RenderOutcome {
         let mut errors = Vec::new();
         for _ in 0..=RETRIES {
-            if worker.renders >= self.restart_after {
+            if worker.renders >= RESTART_AFTER {
                 worker.renderer = None;
             }
             if worker.renderer.is_none()
-                && let Err(error) = self.start(index, worker)
+                && let Err(error) = self.start(index, worker, Some(at))
             {
                 errors.push(error);
                 continue;
@@ -215,8 +231,16 @@ impl RenderSession {
                 continue;
             };
             worker.renders += 1;
-            match renderer.render(job) {
+            let result = catch_unwind(AssertUnwindSafe(|| renderer.render(job)))
+                .unwrap_or_else(|payload| Err(panic_error(Some(at), payload.as_ref())));
+            match result {
                 Ok(clip) => return RenderOutcome::Rendered(clip),
+                Err(error @ RenderError::WrongSynth { .. }) => {
+                    // The job is wrong, not the plug-in: a retry gives the
+                    // same error, and the renderer stays healthy.
+                    errors.push(error);
+                    break;
+                }
                 Err(error) => {
                     errors.push(error);
                     // A failed plug-in may hold a broken state, so the try
@@ -228,13 +252,20 @@ impl RenderSession {
         RenderOutcome::Failed(RenderFailure { errors })
     }
 
-    fn start(&self, index: usize, worker: &mut Worker) -> Result<(), RenderError> {
+    fn start(
+        &self,
+        index: usize,
+        worker: &mut Worker,
+        at: Option<usize>,
+    ) -> Result<(), RenderError> {
         // The old renderer ends before the new one starts, so a worker
         // never holds two plug-in instances.
         worker.renderer = None;
         worker.starts += 1;
         worker.renders = 0;
-        worker.renderer = Some((self.spawn)(index)?);
+        let started = catch_unwind(AssertUnwindSafe(|| (self.spawn)(index)))
+            .unwrap_or_else(|payload| Err(panic_error(at, payload.as_ref())))?;
+        worker.renderer = Some(started);
         Ok(())
     }
 }
@@ -251,4 +282,59 @@ fn lock(worker: &Mutex<Worker>) -> std::sync::MutexGuard<'_, Worker> {
 
 fn panicked() -> RenderError {
     RenderError::Crashed("a render worker thread panicked".to_owned())
+}
+
+/// The error of a renderer that panicked, naming the job it worked on.
+fn panic_error(at: Option<usize>, payload: &(dyn std::any::Any + Send)) -> RenderError {
+    let message = payload
+        .downcast_ref::<&str>()
+        .map(|text| (*text).to_owned())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "no message".to_owned());
+    let job = at.map_or_else(
+        || "while it started".to_owned(),
+        |at| format!("on job {at}"),
+    );
+    RenderError::Crashed(format!("the renderer panicked {job}: {message}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_poisoned_worker_drops_its_renderer() {
+        let worker = Mutex::new(Worker {
+            renderer: Some(Box::new(crate::render::fake::FakeRenderer::new(
+                crate::synth::Synth::Vital,
+                0,
+            ))),
+            renders: 3,
+            starts: 1,
+        });
+        let poisoned = std::thread::scope(|scope| {
+            scope
+                .spawn(|| {
+                    let _guard = worker.lock().unwrap();
+                    panic!("poison the lock");
+                })
+                .join()
+                .is_err()
+        });
+        assert!(poisoned && worker.is_poisoned());
+        let worker = lock(&worker);
+        assert!(worker.renderer.is_none());
+        assert_eq!((worker.renders, worker.starts), (3, 1));
+    }
+
+    #[test]
+    fn a_panic_names_the_job_and_its_message() {
+        let error = panic_error(Some(6), &"boom");
+        assert_eq!(
+            error.to_string(),
+            RenderError::Crashed("the renderer panicked on job 6: boom".to_owned()).to_string()
+        );
+        let error = panic_error(None, &String::from("bad"));
+        assert!(error.to_string().contains("panicked while it started: bad"));
+    }
 }

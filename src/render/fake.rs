@@ -104,8 +104,8 @@ pub enum FakeStep {
     Load,
     /// A step of the recipe's pre-roll.
     PreRoll(PreRoll),
-    /// The clip.
-    Clip,
+    /// The clip of a job, named by the end of its last note.
+    Clip(Seconds),
 }
 
 /// The steps that renderers played, shared between renderers.
@@ -277,7 +277,7 @@ impl FakeRenderer {
                     .copied()
                     .map(FakeStep::PreRoll),
             );
-            log.push(FakeStep::Clip);
+            log.push(FakeStep::Clip(job.last_note_off()));
         }
         let mut rng = SplitMix::for_render(self.seed, index);
         let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence))?;
