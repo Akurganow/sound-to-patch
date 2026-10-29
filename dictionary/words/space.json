@@ -1,1 +1,443 @@
-[]
+[
+  {
+    "id": "wide.stereo-width",
+    "word": "wide",
+    "aliases": [
+      "wider"
+    ],
+    "axis": "space",
+    "sense": "stereo-width",
+    "meaning": "The left and right channels differ, which spreads the sound sideways. Keep the low end centered and widen only the higher harmonics. A too-wide sound turns thin or hollow when summed to mono. In the listener reverb data, wide lengthens the decay and sets no stereo width.",
+    "roles": [],
+    "conflicts": [
+      "narrow.mono"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 62,
+      "spread_ratio": 0.62,
+      "effects": {
+        "delay_time": 0.22,
+        "decay": 0.19,
+        "stereo_spread": -0.02,
+        "cutoff_freq": -0.11,
+        "wet_gain": -0.12
+      }
+    },
+    "measure": {
+      "key": "sm_db",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "highest frequency kept centered, low end of the range",
+        "low": 100,
+        "high": 150,
+        "unit": "Hz",
+        "sources": [
+          "width-guide",
+          "snip-width"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "highest frequency kept centered, in one bass guide",
+        "low": 80,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "lowest frequency worth widening",
+        "low": 150,
+        "high": 150,
+        "unit": "Hz",
+        "sources": [
+          "width-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "high-pass point for a wide layer",
+        "low": 150,
+        "high": 200,
+        "unit": "Hz",
+        "sources": [
+          "snip-mono-stack"
+        ],
+        "tag": "snippet"
+      },
+      {
+        "what": "share of side energy where a mix may fail in mono",
+        "low": 40,
+        "high": 40,
+        "unit": "%",
+        "sources": [
+          "snip-width"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "width-guide",
+      "bass-guide",
+      "crowd-eq",
+      "snip-width",
+      "snip-mono-stack"
+    ]
+  },
+  {
+    "id": "stereo.two-channel",
+    "word": "stereo",
+    "aliases": [],
+    "axis": "space",
+    "sense": "two-channel",
+    "meaning": "Different left and right channels, heard as sideways spread. In the listener reverb data, stereo is the word that raises the stereo spread, unlike wide.",
+    "roles": [],
+    "conflicts": [
+      "narrow.mono"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 12,
+      "spread_ratio": 1.09,
+      "effects": {
+        "delay_time": -0.68,
+        "decay": -0.57,
+        "stereo_spread": 0.71,
+        "cutoff_freq": 0.22,
+        "wet_gain": 0.05
+      }
+    },
+    "measure": {
+      "key": "rho",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "narrow.mono",
+    "word": "narrow",
+    "aliases": [
+      "mono"
+    ],
+    "axis": "space",
+    "sense": "mono",
+    "meaning": "The left and right channels are nearly the same, so the sound sits in the center. Mono is the extreme case. In the listener reverb data, narrow cuts the delay time strongly.",
+    "roles": [],
+    "conflicts": [
+      "wide.stereo-width",
+      "stereo.two-channel"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 6,
+      "spread_ratio": 0.32,
+      "effects": {
+        "delay_time": -0.91,
+        "decay": 0.18,
+        "stereo_spread": -0.07,
+        "cutoff_freq": -0.1,
+        "wet_gain": -0.05
+      }
+    },
+    "measure": {
+      "key": "sm_db",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "spacious.room",
+    "word": "spacious",
+    "aliases": [
+      "roomy"
+    ],
+    "axis": "space",
+    "sense": "room",
+    "meaning": "An open sound with a roomy tail. In the listener reverb data, spacious lengthens the delay time and the decay a little.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 381,
+      "spread_ratio": 0.76,
+      "effects": {
+        "delay_time": 0.17,
+        "decay": 0.15,
+        "stereo_spread": -0.09,
+        "cutoff_freq": 0.03,
+        "wet_gain": -0.09
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "dreamy.hazy",
+    "word": "dreamy",
+    "aliases": [
+      "ethereal",
+      "ambient"
+    ],
+    "axis": "space",
+    "sense": "hazy",
+    "meaning": "A soft, hazy, floating sound. In the listener reverb data, dreamy lengthens the decay and delay time, darkens the cutoff and narrows the stereo spread. Some guides add slow pitch wobble to dreamy pads.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 24,
+      "spread_ratio": 0.35,
+      "effects": {
+        "delay_time": 0.29,
+        "decay": 0.56,
+        "stereo_spread": -0.4,
+        "cutoff_freq": -0.54,
+        "wet_gain": -0.09
+      }
+    },
+    "measure": null,
+    "values": [],
+    "music": [
+      "mood.dreamy"
+    ],
+    "tag": "single source",
+    "sources": [
+      "crowd-eq",
+      "lofi-mix"
+    ]
+  },
+  {
+    "id": "wet.reverberant",
+    "word": "wet",
+    "aliases": [],
+    "axis": "space",
+    "sense": "reverberant",
+    "meaning": "A sound with a strong effect return, mostly reverb or delay, and a clear tail. In the listener reverb data, wet lengthens the decay.",
+    "roles": [],
+    "conflicts": [
+      "dry.no-effects"
+    ],
+    "default": true,
+    "agreement": {
+      "value": -0.33,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 14,
+      "spread_ratio": 0.54,
+      "effects": {
+        "delay_time": 0.36,
+        "decay": 0.49,
+        "stereo_spread": -0.23,
+        "cutoff_freq": 0.01,
+        "wet_gain": -0.13
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "dry.no-effects",
+    "word": "dry",
+    "aliases": [],
+    "axis": "space",
+    "sense": "no-effects",
+    "meaning": "A sound with little or no reverb or delay, so it arrives without a tail.",
+    "roles": [],
+    "conflicts": [
+      "wet.reverberant"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.92,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 5,
+      "spread_ratio": 0.62,
+      "effects": {
+        "delay_time": 0.06,
+        "decay": 0.02,
+        "stereo_spread": 0.12,
+        "cutoff_freq": -0.93,
+        "wet_gain": 0.09
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "distant.far",
+    "word": "distant",
+    "aliases": [
+      "far"
+    ],
+    "axis": "space",
+    "sense": "far",
+    "meaning": "A sound that seems far away. In the listener reverb data, distant lengthens the decay, lowers the cutoff and lowers the wet gain a little.",
+    "roles": [],
+    "conflicts": [
+      "close.near"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.7,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 412,
+      "spread_ratio": 0.72,
+      "effects": {
+        "delay_time": 0.07,
+        "decay": 0.23,
+        "stereo_spread": -0.06,
+        "cutoff_freq": -0.1,
+        "wet_gain": -0.1
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "close.near",
+    "word": "close",
+    "aliases": [
+      "intimate"
+    ],
+    "axis": "space",
+    "sense": "near",
+    "meaning": "A near, present, intimate sound with a short, tight tail. In the listener reverb data, close shortens the decay and the delay time strongly.",
+    "roles": [],
+    "conflicts": [
+      "distant.far"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 44,
+      "spread_ratio": 1.06,
+      "effects": {
+        "delay_time": -0.44,
+        "decay": -0.78,
+        "stereo_spread": 0.27,
+        "cutoff_freq": 0.12,
+        "wet_gain": 0.01
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "echo.repeats",
+    "word": "echo",
+    "aliases": [
+      "echoey",
+      "echoing"
+    ],
+    "axis": "space",
+    "sense": "repeats",
+    "meaning": "Distinct repeats of the sound after a delay, unlike a smooth reverb tail. In the listener reverb data, echo lengthens the delay time and the decay.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "reverb": {
+      "n": 701,
+      "spread_ratio": 0.75,
+      "effects": {
+        "delay_time": 0.17,
+        "decay": 0.24,
+        "stereo_spread": -0.11,
+        "cutoff_freq": 0.04,
+        "wet_gain": -0.1
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  }
+]

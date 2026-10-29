@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/ranked.schema.json",
+  "title": "dictionary/words/style.json and technique.json",
+  "description": "Style and technique words in the rank order of the published word lexicon. A style word carries a card hint, `pending` until the routing data fills it, or `no hint`. The first sixteen technique words name a neutral control group; the per-synth maps bind it to controls.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "rank",
+      "word",
+      "aliases"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "rank": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "word": {
+        "type": "string",
+        "minLength": 1
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uniqueItems": true
+      },
+      "hint": {
+        "type": "string",
+        "minLength": 1
+      },
+      "group": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

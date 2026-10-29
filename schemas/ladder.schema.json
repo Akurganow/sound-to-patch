@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/ladder.schema.json",
+  "title": "dictionary/words/ladder.json",
+  "description": "The intensity ladder: the step each modifier word picks, and sourced anchors that set each step per kind of control.",
+  "type": "object",
+  "required": [
+    "tag",
+    "meaning",
+    "modifiers",
+    "anchors"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tag": {
+      "const": "inferred",
+      "description": "No source quantifies the modifiers."
+    },
+    "meaning": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^0-9]*$"
+    },
+    "modifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "words",
+          "step"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "words": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "step": {
+            "enum": [
+              "mild",
+              "medium",
+              "strong",
+              "against"
+            ]
+          },
+          "warn": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "control",
+          "step",
+          "value"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "control": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^0-9]*$"
+          },
+          "step": {
+            "enum": [
+              "mild",
+              "medium",
+              "strong",
+              "edge"
+            ]
+          },
+          "value": {
+            "type": "object",
+            "required": [
+              "what",
+              "low",
+              "high",
+              "unit",
+              "sources",
+              "tag"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "what": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^[^0-9]*$",
+                "description": "What the number is, in our own words, with no digit."
+              },
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number",
+                "description": "Equal to `low` for a single number."
+              },
+              "unit": {
+                "enum": [
+                  "Hz",
+                  "dB",
+                  "cents",
+                  "semitones",
+                  "%",
+                  "ms",
+                  "s",
+                  "bits",
+                  "voices",
+                  "per bar",
+                  "ratio",
+                  "count"
+                ]
+              },
+              "sources": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/id"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              },
+              "tag": {
+                "$ref": "#/$defs/source_tag"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$"
+    },
+    "source_tag": {
+      "enum": [
+        "source states",
+        "single source",
+        "snippet"
+      ],
+      "description": "How many sources back a value: `source states` two or more, `single source` one, `snippet` search excerpts only."
+    }
+  }
+}

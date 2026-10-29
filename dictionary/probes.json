@@ -113,5 +113,50 @@
     "file": "reference/core/statistics-keys.md",
     "question": "Which share counts minor tracks in the 604-track annotated set?",
     "answer": "minor-share.set1"
+  },
+  {
+    "file": "reference/core/words-tone.md",
+    "question": "Which sense of warm does a bass take by default?",
+    "answer": "warm.low-mid"
+  },
+  {
+    "file": "reference/core/words-body.md",
+    "question": "Which sense of punchy is a click in the upper mids?",
+    "answer": "punchy.transient-body"
+  },
+  {
+    "file": "reference/core/words-texture.md",
+    "question": "Which entry describes the lo-fi chain?",
+    "answer": "lo-fi.degraded"
+  },
+  {
+    "file": "reference/core/words-structure.md",
+    "question": "Which sense of hollow is the default?",
+    "answer": "hollow.odd-harmonics"
+  },
+  {
+    "file": "reference/core/words-space.md",
+    "question": "Which entry holds the listener reverb numbers of wide?",
+    "answer": "wide.stereo-width"
+  },
+  {
+    "file": "reference/core/words-movement.md",
+    "question": "Which sense of wobble is the default?",
+    "answer": "wobble.lfo-filter"
+  },
+  {
+    "file": "reference/core/words-envelope.md",
+    "question": "Which entry describes a plucky envelope?",
+    "answer": "plucky.pluck"
+  },
+  {
+    "file": "reference/core/words-mood.md",
+    "question": "Which entry covers the word scary?",
+    "answer": "scary.mood"
+  },
+  {
+    "file": "reference/core/words-lists.md",
+    "question": "Which control group does the technique word resonance name?",
+    "answer": "| 16 | resonance | filter resonance |"
   }
 ]

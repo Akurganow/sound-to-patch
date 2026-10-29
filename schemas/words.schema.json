@@ -2,14 +2,31 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/words.schema.json",
   "title": "dictionary/words/<axis>.json",
-  "description": "The neutral word entries of one axis: what a producer word means and how to check it, with no synth control. The per-synth maps bind each entry to controls. One entry per sense of a word.",
+  "description": "The neutral word entries of one axis: what a producer word means and how to check it, with no synth control. The per-synth maps bind each entry to controls. One entry per sense of a word. Every number lives in `values` with its sources; `meaning` holds no digit.",
   "type": "array",
   "items": { "$ref": "#/$defs/entry" },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*(\\.[a-z0-9]+(-[a-z0-9]+)*)*$" },
+    "source_tag": {
+      "enum": ["source states", "single source", "snippet"],
+      "description": "How many sources back a value: `source states` two or more, `single source` one, `snippet` search excerpts only."
+    },
+    "value": {
+      "type": "object",
+      "required": ["what", "low", "high", "unit", "sources", "tag"],
+      "additionalProperties": false,
+      "properties": {
+        "what": { "type": "string", "minLength": 1, "pattern": "^[^0-9]*$", "description": "What the number is, in our own words, with no digit." },
+        "low": { "type": "number" },
+        "high": { "type": "number", "description": "Equal to `low` for a single number." },
+        "unit": { "enum": ["Hz", "dB", "cents", "semitones", "%", "ms", "s", "bits", "voices", "per bar", "ratio", "count"] },
+        "sources": { "type": "array", "items": { "$ref": "#/$defs/id" }, "minItems": 1, "uniqueItems": true },
+        "tag": { "$ref": "#/$defs/source_tag" }
+      }
+    },
     "entry": {
       "type": "object",
-      "required": ["id", "word", "aliases", "axis", "sense", "meaning", "roles", "conflicts", "default", "agreement", "few_sample", "measure", "tag", "sources"],
+      "required": ["id", "word", "aliases", "axis", "sense", "meaning", "roles", "conflicts", "default", "agreement", "few_sample", "measure", "values", "tag", "sources"],
       "additionalProperties": false,
       "properties": {
         "id": { "$ref": "#/$defs/id", "description": "Stable id, `<word>.<sense>`, such as `warm.low-mid`." },
@@ -17,11 +34,11 @@
         "aliases": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
         "axis": { "enum": ["tone", "body", "texture", "structure", "space", "movement", "envelope", "mood"] },
         "sense": { "type": "string", "minLength": 1, "description": "The sense id within the word, such as `low-mid`." },
-        "meaning": { "type": "string", "minLength": 1, "description": "The plain meaning, in our own words." },
-        "roles": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40, "pattern": "^[^0-9]*$", "description": "The short option text of this sense in the word's question. Only the senses offered in the question carry one." },
+        "meaning": { "type": "string", "minLength": 1, "pattern": "^[^0-9]*$", "description": "The plain meaning, in our own words, with no digit." },
+        "roles": { "type": "array", "items": { "enum": ["sub-bass", "808", "bass", "lead", "pad", "keys", "pluck", "arp", "vocal", "drums"] }, "uniqueItems": true, "description": "The roles this sense applies to; empty for every role. A role named by one sense only picks that sense." },
         "conflicts": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true, "description": "Ids of the senses this one cannot share a sound with." },
         "default": { "type": "boolean", "description": "The sense to take when the description gives no context. Exactly one per word." },
-        "question": { "type": "string", "minLength": 1, "description": "The one short question that picks a sense, on the default entry of a word with several senses." },
         "agreement": {
           "type": "object",
           "required": ["value", "n", "class"],
@@ -30,10 +47,32 @@
             "value": { "type": ["number", "null"], "minimum": -1, "maximum": 1 },
             "n": { "type": "integer", "minimum": 0 },
             "class": { "enum": ["high", "medium", "low", "unknown", "no data"] }
-          }
+          },
+          "description": "The listener agreement of the word, copied from `agreement.json`."
         },
         "few_sample": { "type": "boolean" },
-        "spread_ratio": { "type": "number", "minimum": 0, "description": "Reverb words: within-word variance over total variance; lower is more shared." },
+        "reverb": {
+          "type": "object",
+          "required": ["n", "spread_ratio", "effects"],
+          "additionalProperties": false,
+          "properties": {
+            "n": { "type": "integer", "minimum": 5 },
+            "spread_ratio": { "type": "number", "minimum": 0 },
+            "effects": {
+              "type": "object",
+              "required": ["delay_time", "decay", "stereo_spread", "cutoff_freq", "wet_gain"],
+              "additionalProperties": false,
+              "properties": {
+                "delay_time": { "type": "number" },
+                "decay": { "type": "number" },
+                "stereo_spread": { "type": "number" },
+                "cutoff_freq": { "type": "number" },
+                "wet_gain": { "type": "number" }
+              }
+            }
+          },
+          "description": "Reverb words: the listener reverb numbers of the word, copied from `agreement.json`."
+        },
         "measure": {
           "oneOf": [
             { "type": "null" },
@@ -42,15 +81,21 @@
               "required": ["key", "direction"],
               "additionalProperties": false,
               "properties": {
-                "key": { "enum": ["centroid_over_f0", "flatness", "rolloff85_hz", "band_share", "rho", "sm_db", "hnr_db"] },
+                "key": { "enum": ["centroid_over_f0", "flatness", "rolloff85_hz", "band_share", "rho", "sm_db", "crest_db"] },
+                "band": { "enum": ["sub", "bass", "low_mid", "mid", "high", "air"], "description": "The analyzer band of a `band_share` measure." },
                 "direction": { "enum": ["up", "down"] }
               }
             }
           ]
         },
-        "control": { "enum": ["no control"], "description": "Mood and style words: the entry names no control." },
-        "card_hint": { "type": "string", "minLength": 1, "description": "A role or style card the word hints at, or `unmapped`. A hint never picks a card alone." },
-        "tag": { "enum": ["source states", "crowd data", "inferred", "snippet", "single source", "name-inferred"] },
+        "values": { "type": "array", "items": { "$ref": "#/$defs/value" } },
+        "control": { "enum": ["no control"], "description": "Mood and character words: the entry names no control." },
+        "card_hint": { "enum": ["bass", "lead", "pad", "keys", "drums", "fx", "arp", "sequence", "pluck", "chord and stab", "atmosphere", "bell and mallet", "texture and drone", "hit", "chip", "experimental", "unmapped"], "description": "The role card of the card set the word hints at, or `unmapped`. A hint never picks a card alone." },
+        "music": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true, "description": "Ids of music dictionary entries the word points to, such as a mood's key and tempo." },
+        "tag": {
+          "enum": ["source states", "single source", "snippet", "crowd data", "inferred"],
+          "description": "What backs the meaning: two or more sources, one source, search excerpts, the listener data alone, or no source."
+        },
         "sources": { "type": "array", "items": { "$ref": "#/$defs/id" }, "uniqueItems": true }
       }
     }

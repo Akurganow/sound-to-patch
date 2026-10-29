@@ -1,1 +1,320 @@
-[]
+[
+  {
+    "id": "plucky.pluck",
+    "word": "plucky",
+    "aliases": [
+      "pluck",
+      "snappy",
+      "staccato",
+      "stab"
+    ],
+    "axis": "envelope",
+    "sense": "pluck",
+    "meaning": "A short attack, a short decay and no sustain, so the note starts at once and fades fast. With sustain left up it turns into a pad. Brightness opens on the attack and closes in the decay. A very short decay sounds thin. Snappy is used for trance plucks.",
+    "roles": [],
+    "conflicts": [
+      "sustained.long"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "amplitude attack time",
+        "low": 0,
+        "high": 5,
+        "unit": "ms",
+        "sources": [
+          "snip-pluck-env"
+        ],
+        "tag": "snippet"
+      },
+      {
+        "what": "amplitude decay time",
+        "low": 200,
+        "high": 500,
+        "unit": "ms",
+        "sources": [
+          "snip-pluck-env"
+        ],
+        "tag": "snippet"
+      },
+      {
+        "what": "amplitude release time",
+        "low": 150,
+        "high": 250,
+        "unit": "ms",
+        "sources": [
+          "snip-pluck-env"
+        ],
+        "tag": "snippet"
+      },
+      {
+        "what": "sustain level",
+        "low": 0,
+        "high": 0,
+        "unit": "%",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low-pass cutoff of a pluck",
+        "low": 2000,
+        "high": 4000,
+        "unit": "Hz",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "filter resonance of a pluck, given as zero point four of full on the page",
+        "low": 40,
+        "high": 40,
+        "unit": "%",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "pitch envelope rise at the start of the note",
+        "low": 1,
+        "high": 2,
+        "unit": "semitones",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "time for the pitch envelope to return to zero",
+        "low": 50,
+        "high": 50,
+        "unit": "ms",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "pluck-guide",
+      "envelope-guide",
+      "snip-pluck-env",
+      "snip-trance-pluck"
+    ]
+  },
+  {
+    "id": "bouncy.rebound",
+    "word": "bouncy",
+    "aliases": [],
+    "axis": "envelope",
+    "sense": "rebound",
+    "meaning": "No source defines it for synths. The reading here is a pluck-like envelope with a rhythmic gap and a small pitch drop.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "music": [
+      "position.bouncy"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "percussive.short-decay",
+    "word": "percussive",
+    "aliases": [
+      "short"
+    ],
+    "axis": "envelope",
+    "sense": "short-decay",
+    "label": "a short pluck-like decay",
+    "meaning": "A short attack, a short decay, low sustain and a short release make a pluck-like hit.",
+    "roles": [],
+    "conflicts": [
+      "percussive.ringing",
+      "sustained.long"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "envelope-guide"
+    ]
+  },
+  {
+    "id": "percussive.ringing",
+    "word": "percussive",
+    "aliases": [],
+    "axis": "envelope",
+    "sense": "ringing",
+    "label": "a long ring with no sustain",
+    "meaning": "A short attack with a long decay and zero sustain rings like a bell or a marimba.",
+    "roles": [],
+    "conflicts": [
+      "percussive.short-decay"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "envelope-guide"
+    ]
+  },
+  {
+    "id": "sustained.long",
+    "word": "sustained",
+    "aliases": [
+      "long",
+      "drone",
+      "pad-like",
+      "swelling"
+    ],
+    "axis": "envelope",
+    "sense": "long",
+    "meaning": "A long attack, full sustain and a long release, as on a pad. The note holds and swells in instead of striking.",
+    "roles": [],
+    "conflicts": [
+      "plucky.pluck",
+      "percussive.short-decay"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "crest_db",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "source states",
+    "sources": [
+      "envelope-guide",
+      "pad-guide"
+    ]
+  },
+  {
+    "id": "compressed.squashed",
+    "word": "compressed",
+    "aliases": [
+      "squashed"
+    ],
+    "axis": "envelope",
+    "sense": "squashed",
+    "label": "reduced dynamic range",
+    "meaning": "The gap between loud and quiet parts shrinks, so the level stays near one value.",
+    "roles": [],
+    "conflicts": [
+      "compressed.pumping",
+      "dynamic.range"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "crest_db",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "compressed.pumping",
+    "word": "compressed",
+    "aliases": [
+      "pumping"
+    ],
+    "axis": "envelope",
+    "sense": "pumping",
+    "label": "pumping level dips",
+    "meaning": "The level ducks and recovers on the beat, as when a kick sidechains the sound. A modulator on level gives the same feel.",
+    "roles": [],
+    "conflicts": [
+      "compressed.squashed"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "wobble-guide"
+    ]
+  },
+  {
+    "id": "dynamic.range",
+    "word": "dynamic",
+    "aliases": [],
+    "axis": "envelope",
+    "sense": "range",
+    "meaning": "A wide gap between loud and quiet parts, with clear accents. The opposite of squashed.",
+    "roles": [],
+    "conflicts": [
+      "compressed.squashed"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  }
+]

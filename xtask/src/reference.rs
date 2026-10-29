@@ -92,6 +92,7 @@ pub(crate) fn generate() -> crate::Result<BTreeMap<PathBuf, String>> {
         files.insert(dir.join("global.md"), catalogue.layer_file(None));
     }
     files.extend(crate::music::files()?);
+    files.extend(crate::words::files()?);
     Ok(files)
 }
 

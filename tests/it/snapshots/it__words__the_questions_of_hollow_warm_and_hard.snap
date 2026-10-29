@@ -1,0 +1,7 @@
+---
+source: tests/it/words.rs
+expression: "questions.join(\"\\n\")"
+---
+Hollow: odd harmonics like a square (default), a midrange problem in the mix or fewer lows?
+Warm: more low-mid weight (default), duller highs or too much mid-bass?
+Hard: an upper-mid edge (default), heavy lows or a firm character?
