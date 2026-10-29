@@ -1,21 +1,27 @@
 //! The repeat-render spread: the noise floor that every later comparison
 //! cites.
 //!
-//! Renders of one preset differ a little, because a synth starts its
-//! voices at random phases. A fresh Vital instance renders bit-identically
-//! to any other fresh instance, so [`draw`] renders the [`SPREAD_RUNS`]
-//! draws of a spread in sequence on one instance and refuses a set with a
-//! repeated render.
+//! Renders of one preset differ a little. On one Vital instance each
+//! render differs from the one before, and a fresh instance renders
+//! bit-identically to any other fresh instance: an ignored Vital test pins
+//! both. So [`draw`] renders the [`SPREAD_RUNS`] draws of a spread in
+//! sequence on one instance and refuses a set with a repeated render.
 //!
 //! For each output the spread is the 95th percentile of the distances over
 //! every pair of renders, 190 pairs for 20 renders, in the output's own
 //! unit. The distance of a scalar output is the absolute difference.
 //!
 //! A clip compares with the renders by the median of its distances from
-//! them. Its tolerance is the 95th percentile of the same median taken for
-//! each render against the other renders, so the clip and the renders are
-//! measured alike. A floor keeps an output that every render repeats from
-//! turning the comparison into an equality test.
+//! them. Its tolerance comes from the same median taken for each render
+//! against the other renders, so the clip and the renders are measured
+//! alike: the tolerance is the median at rank [`tolerance_rank`], which a
+//! clip of the same sound exceeds 1 time in 20. A floor keeps an output
+//! that every render repeats from turning the comparison into an equality
+//! test.
+//!
+//! A recording made elsewhere compares through [`compare_fitted`]: one
+//! gain matches its level to the renders, and the verdict covers the
+//! outputs of the sound's shape, [`ClipOutput::SHAPE`].
 //!
 //! The repository keeps no spread of record. The reference recordings page
 //! holds the metrics of each recording.
@@ -24,35 +30,40 @@ use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 use std::num::NonZeroUsize;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use super::recipe::Recipe;
-use super::session::{BoxedRenderer, RenderOutcome, RenderSession};
+use super::session::{BoxedRenderer, RESTART_AFTER, RenderOutcome, RenderSession};
 use super::{HostIdentity, Oversampling, RenderError, RenderJob, Rendered};
-use crate::audio::{Audio, SampleRate};
+use crate::audio::{Audio, AudioError, SampleRate};
 use crate::cast;
-use crate::dsp::quantile;
-use crate::units::Bpm;
+use crate::dsp::{Summary, quantile};
+use crate::units::{Bpm, Decibels};
 
 /// How many renders a spread takes.
 pub const SPREAD_RUNS: usize = 20;
-/// The quantile of the pairwise distances and of the leave-one-out
-/// medians.
+/// The fewest renders a spread takes: fewer leave no leave-one-out median
+/// of two distances.
+pub const MIN_RUNS: usize = 3;
+/// The quantile of the pairwise distances.
 pub const SPREAD_QUANTILE: f64 = 0.95;
+/// The share of clips of the same sound, in percent, that the tolerance
+/// covers.
+pub const COVERAGE_PERCENT: usize = 95;
 /// The name of the spread statistic, as the spread file records it.
 pub const STATISTIC: &str = "p95_pairwise_distance";
 /// The name of the comparison tolerance, as the spread file records it.
-pub const TOLERANCE: &str = "p95_leave_one_out_median";
+pub const TOLERANCE: &str = "conformal_95_leave_one_out_median";
 /// A clip starts at its first sample within this many dB of its peak, so
 /// a lead-in of silence or latency does not count.
-pub const ONSET_RANGE_DB: f64 = 40.0;
+pub const ONSET_RANGE_DB: Decibels = Decibels::from_const(40.0);
 /// The envelope frames per second: one frame is 10 ms.
 pub const ENVELOPE_FRAMES_PER_S: u32 = 100;
 /// The envelope distance counts the frames within this many dB of the
 /// loudest frame of either clip.
-pub const ENVELOPE_RANGE_DB: f64 = 40.0;
+pub const ENVELOPE_RANGE_DB: Decibels = Decibels::from_const(40.0);
 /// The floor of a tolerance in dB: a level difference below it counts as
 /// none.
 pub const LEVEL_FLOOR_DB: f64 = 0.01;
@@ -65,6 +76,8 @@ const SILENT_DB: f64 = -400.0;
 pub enum SpreadError {
     /// A render failed on both tries.
     Render(String),
+    /// A spread asked for too few or too many renders.
+    Runs(usize),
     /// Some renders repeat others, so they are not independent draws.
     Repeated {
         /// How many renders differ.
@@ -83,15 +96,23 @@ pub enum SpreadError {
     },
     /// A number of the layer report has a field name with no known unit.
     UnknownUnit(String),
+    /// A comparison found no spread row for a clip output.
+    MissingRow(&'static str),
+    /// A recording could not be scaled by its fitted gain.
+    Audio(AudioError),
 }
 
 impl fmt::Display for SpreadError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Render(cause) => write!(f, "a render of the spread failed: {cause}"),
+            Self::Runs(runs) => write!(
+                f,
+                "a spread takes {MIN_RUNS} to {RESTART_AFTER} renders, not {runs}: fewer leave no leave-one-out median, and more pass the restart, whose fresh instance repeats the first draw. Give a count in that range"
+            ),
             Self::Repeated { distinct, renders } => write!(
                 f,
-                "only {distinct} of {renders} renders differ, so the spread would count repeats as draws. Render the draws in sequence on one plug-in instance"
+                "only {distinct} of {renders} renders differ, so the spread would count repeats as draws. Render the draws in sequence on one plug-in instance, with no restart between them"
             ),
             Self::Silent(what) => {
                 write!(f, "{what} is silent: no sample lies above the tail floor")
@@ -103,6 +124,11 @@ impl fmt::Display for SpreadError {
             Self::UnknownUnit(path) => write!(
                 f,
                 "the layer report number {path} has no known unit. Name the field with a unit suffix, or add it to the unitless fields of render::spread"
+            ),
+            Self::Audio(error) => write!(f, "the recording cannot take its fitted gain: {error}"),
+            Self::MissingRow(output) => write!(
+                f,
+                "the spread has no row for {output}, so the comparison would pass without it. Compare with the rows of clip_rows"
             ),
         }
     }
@@ -117,17 +143,23 @@ impl std::error::Error for SpreadError {}
 /// later render on one instance differs. So the draws come from one
 /// instance, and the set fails [`distinct`] when a render repeats. A retry
 /// after a crash starts a fresh instance, whose first render repeats the
-/// first draw, so it fails too.
+/// first draw, so it fails too. For the same reason `count` stops at
+/// [`RESTART_AFTER`], where the session restarts its instance.
 ///
 /// # Errors
 ///
-/// Returns [`SpreadError::Render`] for a render that failed on both tries
-/// and [`SpreadError::Repeated`] for a set with a repeated render.
+/// Returns [`SpreadError::Runs`] for a `count` below [`MIN_RUNS`] or above
+/// [`RESTART_AFTER`], [`SpreadError::Render`] for a render that failed on
+/// both tries and [`SpreadError::Repeated`] for a set with a repeated
+/// render.
 pub fn draw(
     spawn: impl Fn(usize) -> Result<BoxedRenderer, RenderError> + Send + Sync + 'static,
     job: &RenderJob,
     count: usize,
 ) -> Result<Vec<Rendered>, SpreadError> {
+    if count < MIN_RUNS || !u64::try_from(count).is_ok_and(|count| count <= RESTART_AFTER) {
+        return Err(SpreadError::Runs(count));
+    }
     let session = RenderSession::new(NonZeroUsize::MIN, spawn);
     let renders = session
         .render_all(&vec![job.clone(); count])
@@ -222,7 +254,10 @@ impl ClipMetrics {
         if peak <= floor {
             return Err(silent());
         }
-        let threshold = peak * gain(-ONSET_RANGE_DB);
+        let threshold = peak
+            * Decibels::clamped(-ONSET_RANGE_DB.get())
+                .to_amplitude_gain()
+                .unwrap_or(0.0);
         let onset = (0..frames)
             .find(|frame| magnitude(*frame) >= threshold)
             .ok_or_else(silent)?;
@@ -278,6 +313,10 @@ pub enum ClipOutput {
     RmsDb,
     /// [`ClipMetrics::peak_db`].
     PeakDb,
+    /// The peak over the RMS level, in dB: the crest factor. Two clips
+    /// compare with the RMS level over their common span, as
+    /// [`ClipOutput::RmsDb`] does. A gain leaves it unchanged.
+    PeakToRmsDb,
     /// [`ClipMetrics::duration_s`].
     DurationS,
     /// The envelope distance, [`envelope_distance`].
@@ -286,12 +325,19 @@ pub enum ClipOutput {
 
 impl ClipOutput {
     /// Every clip output.
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::RmsDb,
         Self::PeakDb,
+        Self::PeakToRmsDb,
         Self::DurationS,
         Self::EnvelopeDistanceDb,
     ];
+
+    /// The outputs of the sound's shape, which [`compare_fitted`] compares
+    /// after a gain fit: the peak-to-RMS ratio, the duration to the tail
+    /// floor and the envelope distance. The RMS level and the peak follow
+    /// the level, so the fit takes them out.
+    pub const SHAPE: [Self; 3] = [Self::PeakToRmsDb, Self::DurationS, Self::EnvelopeDistanceDb];
 
     /// The name of the output in a spread file.
     #[must_use]
@@ -299,6 +345,7 @@ impl ClipOutput {
         match self {
             Self::RmsDb => "rms_db",
             Self::PeakDb => "peak_db",
+            Self::PeakToRmsDb => "peak_to_rms_db",
             Self::DurationS => "duration_s",
             Self::EnvelopeDistanceDb => "envelope_distance_db",
         }
@@ -309,18 +356,19 @@ impl ClipOutput {
     pub fn unit(self) -> &'static str {
         match self {
             Self::DurationS => "s",
-            Self::RmsDb | Self::PeakDb | Self::EnvelopeDistanceDb => "dB",
+            Self::RmsDb | Self::PeakDb | Self::PeakToRmsDb | Self::EnvelopeDistanceDb => "dB",
         }
     }
 
     /// The value of the output for one clip; `None` for the envelope
     /// distance, which only two clips have. The RMS level is the one from
-    /// onset to end.
+    /// onset to end, here and in the peak-to-RMS ratio.
     #[must_use]
     pub fn value(self, clip: &ClipMetrics) -> Option<f64> {
         match self {
             Self::RmsDb => Some(clip.rms_db),
             Self::PeakDb => Some(clip.peak_db),
+            Self::PeakToRmsDb => Some(clip.peak_db - clip.rms_db),
             Self::DurationS => Some(clip.duration_s),
             Self::EnvelopeDistanceDb => None,
         }
@@ -335,6 +383,10 @@ impl ClipOutput {
                 (a.rms_over(frames) - b.rms_over(frames)).abs()
             }
             Self::PeakDb => (a.peak_db - b.peak_db).abs(),
+            Self::PeakToRmsDb => {
+                let frames = a.frames().min(b.frames());
+                ((a.peak_db - a.rms_over(frames)) - (b.peak_db - b.rms_over(frames))).abs()
+            }
             Self::DurationS => (a.duration_s - b.duration_s).abs(),
             Self::EnvelopeDistanceDb => envelope_distance(a, b),
         }
@@ -346,7 +398,9 @@ impl ClipOutput {
     pub fn floor(self, sample_rate: SampleRate) -> f64 {
         match self {
             Self::DurationS => 1.0 / f64::from(sample_rate.get()),
-            Self::RmsDb | Self::PeakDb | Self::EnvelopeDistanceDb => LEVEL_FLOOR_DB,
+            Self::RmsDb | Self::PeakDb | Self::PeakToRmsDb | Self::EnvelopeDistanceDb => {
+                LEVEL_FLOOR_DB
+            }
         }
     }
 }
@@ -365,7 +419,7 @@ pub fn envelope_distance(a: &ClipMetrics, b: &ClipMetrics) -> f64 {
         .iter()
         .chain(&b.envelope_db)
         .fold(SILENT_DB, |x, y| x.max(*y));
-    let bottom = loudest - ENVELOPE_RANGE_DB;
+    let bottom = loudest - ENVELOPE_RANGE_DB.get();
     let level =
         |envelope: &[f64], frame: usize| envelope.get(frame).copied().unwrap_or(bottom).max(bottom);
     let frames = a.envelope_db.len().max(b.envelope_db.len());
@@ -382,8 +436,22 @@ pub fn envelope_distance(a: &ClipMetrics, b: &ClipMetrics) -> f64 {
     }
 }
 
+/// The rank, counted from 1 in ascending order, of the leave-one-out
+/// median that is the tolerance of `count` renders: `⌈0.95 (count + 1)⌉`,
+/// at most `count`.
+///
+/// A clip of the same sound and the renders are exchangeable, so the
+/// clip's median lies at or below the median at this rank with a
+/// probability of the rank over `count + 1`: 20/21 for 20 renders. With
+/// fewer than 19 renders the rank stops at `count`, and the coverage falls
+/// below 95 %.
+#[must_use]
+pub fn tolerance_rank(count: usize) -> usize {
+    (COVERAGE_PERCENT * (count + 1)).div_ceil(100).min(count)
+}
+
 /// The spread of one output.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct SpreadRow {
     /// The output: a [`ClipOutput`] name, or the path of a number in the
     /// layer report, such as `stem.rms_dbfs`.
@@ -393,33 +461,49 @@ pub struct SpreadRow {
     /// The [`SPREAD_QUANTILE`] of the distances over every pair of
     /// renders: how far two renders lie apart.
     pub spread: f64,
-    /// The [`SPREAD_QUANTILE`] of the leave-one-out medians: for each
+    /// The leave-one-out median at rank [`tolerance_rank`]: for each
     /// render, the median of its distances from the other renders. A clip
     /// compares with the renders against it.
     pub tolerance: f64,
     /// The least tolerance a comparison uses, so float noise on an output
-    /// that every render repeats does not count as a difference.
+    /// that every render repeats does not count as a difference. Always
+    /// positive.
     pub floor: f64,
-    /// The median distance of the renders next to each other in the
-    /// sequence over the median distance of all pairs. Near 1 when a draw
-    /// does not depend on the one before; absent when every pair is 0.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// How many renders lie within the limit of the other renders, each
+    /// held out in turn and compared as a clip: a check of the coverage
+    /// that [`tolerance_rank`] states.
+    pub held_out_within: usize,
+    /// A diagnostic of the draws: the median distance of the renders next
+    /// to each other in the sequence over the median distance of all
+    /// pairs. Near 1 when a draw does not depend on the one before; absent
+    /// when every pair is 0. With 19 adjacent pairs it is noisy.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub adjacent_ratio: Option<f64>,
+    /// A diagnostic of the draws: the lag-1 autocorrelation of the output's
+    /// value over the sequence, [`lag1_autocorrelation`]. Absent for an
+    /// output of two clips and for a value that every render repeats.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lag1_autocorrelation: Option<f64>,
 }
 
 impl SpreadRow {
     /// The spread row of `count` renders whose pairwise distances
-    /// `distance` gives. Returns `None` for fewer than three renders, which
-    /// leave no leave-one-out median of two distances.
+    /// `distance` gives, with the output's `values` in draw order when it
+    /// has one per render.
+    ///
+    /// Returns `None` for fewer than [`MIN_RUNS`] renders, for a `floor`
+    /// that is not positive and finite, which would let a difference over
+    /// a limit of 0 be no number, and for a distance that is not finite.
     #[must_use]
     pub fn of(
         output: &str,
         unit: &str,
         count: usize,
         distance: impl Fn(usize, usize) -> f64,
+        values: Option<&[f64]>,
         floor: f64,
     ) -> Option<Self> {
-        if count < 3 {
+        if count < MIN_RUNS || !(floor.is_finite() && floor > 0.0) {
             return None;
         }
         let mut matrix = vec![0.0; count * count];
@@ -430,34 +514,37 @@ impl SpreadRow {
                 matrix[j * count + i] = d;
             }
         }
+        let at = |i: usize, j: usize| matrix[i * count + j];
+        let all: Vec<usize> = (0..count).collect();
         let pairs: Vec<f64> = (0..count)
             .flat_map(|i| (i + 1..count).map(move |j| (i, j)))
-            .map(|(i, j)| matrix[i * count + j])
+            .map(|(i, j)| at(i, j))
             .collect();
-        let medians: Vec<f64> = (0..count)
-            .map(|i| {
-                median(
-                    (0..count)
-                        .filter(|j| *j != i)
-                        .map(|j| matrix[i * count + j])
-                        .collect(),
-                )
-            })
-            .collect::<Option<_>>()?;
-        let adjacent = median((1..count).map(|i| matrix[(i - 1) * count + i]).collect())?;
-        let all = median(pairs.clone())?;
+        let tolerance = tolerance_of(&all, at)?;
+        let mut held_out_within = 0;
+        for held in 0..count {
+            let rest: Vec<usize> = (0..count).filter(|i| *i != held).collect();
+            let difference = median(&rest.iter().map(|j| at(held, *j)).collect::<Vec<_>>())?;
+            if difference <= tolerance_of(&rest, at)?.max(floor) {
+                held_out_within += 1;
+            }
+        }
+        let adjacent = median(&(1..count).map(|i| at(i - 1, i)).collect::<Vec<_>>())?;
+        let typical = median(&pairs)?;
         Some(Self {
             output: output.to_owned(),
             unit: unit.to_owned(),
             spread: sorted_quantile(pairs, SPREAD_QUANTILE)?,
-            tolerance: sorted_quantile(medians, SPREAD_QUANTILE)?,
+            tolerance,
             floor,
-            adjacent_ratio: (all > 0.0).then(|| adjacent / all),
+            held_out_within,
+            adjacent_ratio: (typical > 0.0).then(|| adjacent / typical),
+            lag1_autocorrelation: values.and_then(lag1_autocorrelation),
         })
     }
 
-    /// The spread row of a scalar output from its value in each render.
-    /// Returns `None` for fewer than three values.
+    /// The spread row of a scalar output from its value in each render, in
+    /// draw order. Returns `None` as [`SpreadRow::of`] does.
     #[must_use]
     pub fn of_values(output: &str, unit: &str, values: &[f64], floor: f64) -> Option<Self> {
         Self::of(
@@ -465,6 +552,7 @@ impl SpreadRow {
             unit,
             values.len(),
             |i, j| (values[i] - values[j]).abs(),
+            Some(values),
             floor,
         )
     }
@@ -477,28 +565,72 @@ impl SpreadRow {
     }
 }
 
-/// The spread rows of the clip outputs. Returns no row for fewer than three
-/// clips.
+/// The tolerance of the renders `of`: the leave-one-out median at rank
+/// [`tolerance_rank`], each median over the distances `at` gives from one
+/// render to the others.
+fn tolerance_of(of: &[usize], at: impl Fn(usize, usize) -> f64) -> Option<f64> {
+    let mut medians = of
+        .iter()
+        .map(|i| {
+            median(
+                &of.iter()
+                    .filter(|j| *j != i)
+                    .map(|j| at(*i, *j))
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .collect::<Option<Vec<_>>>()?;
+    medians.sort_by(f64::total_cmp);
+    medians
+        .get(tolerance_rank(of.len()).checked_sub(1)?)
+        .copied()
+}
+
+/// The lag-1 autocorrelation of `values` in draw order: the sum of
+/// products of each deviation from the mean with the next one, over the
+/// sum of squared deviations.
+///
+/// A diagnostic: for independent draws it lies near `-1 / n`, within about
+/// `2 / √n`, so ±0.45 for 20 renders. A drift over the sequence takes it
+/// towards 1. Returns `None` for fewer than two values or values that do
+/// not vary.
+#[must_use]
+pub fn lag1_autocorrelation(values: &[f64]) -> Option<f64> {
+    if values.len() < 2 {
+        return None;
+    }
+    let mean = values.iter().sum::<f64>() / cast::usize_to_f64(values.len());
+    let deviation: Vec<f64> = values.iter().map(|value| value - mean).collect();
+    let variance: f64 = deviation.iter().map(|d| d * d).sum();
+    let lagged: f64 = deviation.windows(2).map(|pair| pair[0] * pair[1]).sum();
+    (variance > 0.0 && variance.is_finite()).then(|| lagged / variance)
+}
+
+/// The spread rows of the clip outputs, one per [`ClipOutput`].
 ///
 /// # Errors
 ///
-/// Returns [`SpreadError::SampleRate`] when the clips' sample rates differ.
+/// Returns [`SpreadError::Runs`] for fewer than [`MIN_RUNS`] clips and
+/// [`SpreadError::SampleRate`] when the clips' sample rates differ.
 pub fn clip_rows(clips: &[ClipMetrics]) -> Result<Vec<SpreadRow>, SpreadError> {
-    let Some(rate) = shared_rate(clips)? else {
-        return Ok(Vec::new());
+    let Some(rate) = shared_rate(clips)?.filter(|_| clips.len() >= MIN_RUNS) else {
+        return Err(SpreadError::Runs(clips.len()));
     };
-    Ok(ClipOutput::ALL
+    ClipOutput::ALL
         .into_iter()
-        .filter_map(|output| {
+        .map(|output| {
+            let values: Option<Vec<f64>> = clips.iter().map(|clip| output.value(clip)).collect();
             SpreadRow::of(
                 output.name(),
                 output.unit(),
                 clips.len(),
                 |i, j| output.distance(&clips[i], &clips[j]),
+                values.as_deref(),
                 output.floor(rate),
             )
+            .ok_or(SpreadError::MissingRow(output.name()))
         })
-        .collect())
+        .collect()
 }
 
 fn shared_rate(clips: &[ClipMetrics]) -> Result<Option<SampleRate>, SpreadError> {
@@ -522,7 +654,9 @@ fn shared_rate(clips: &[ClipMetrics]) -> Result<Option<SampleRate>, SpreadError>
 /// A number that some report lacks, or holds as `null`, gets no row: it has
 /// no value to compare in that render. The floor of a level in dB is
 /// [`LEVEL_FLOOR_DB`]; any other unit takes the float32 resolution of the
-/// largest value, as the reports carry estimates made in float32 audio.
+/// largest value, as the reports carry estimates made in float32 audio,
+/// and at least the smallest normal float32, for a value that every render
+/// holds at 0.
 ///
 /// # Errors
 ///
@@ -545,7 +679,8 @@ pub fn layer_rows(reports: &[Value]) -> Result<Vec<SpreadRow>, SpreadError> {
             let floor = if unit == "dB" {
                 LEVEL_FLOOR_DB
             } else {
-                values.iter().fold(0.0, |max: f64, v| max.max(v.abs())) * f64::from(f32::EPSILON)
+                (values.iter().fold(0.0, |max: f64, v| max.max(v.abs())) * f64::from(f32::EPSILON))
+                    .max(f64::from(f32::MIN_POSITIVE))
             };
             SpreadRow::of_values(path, unit, values, floor)
         })
@@ -648,7 +783,7 @@ fn unit_of(name: &str) -> Option<&'static str> {
 }
 
 /// The spread of one preset on one synth build and quality setting.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct SpreadTable {
     /// What rendered: the synth, its build, the host and the architecture.
     pub identity: HostIdentity,
@@ -662,11 +797,14 @@ pub struct SpreadTable {
     pub statistic: String,
     /// The comparison tolerance, [`TOLERANCE`].
     pub tolerance: String,
+    /// The share of clips of the same sound that the tolerance covers: the
+    /// [`tolerance_rank`] of `n` over `n + 1`.
+    pub coverage: f64,
     /// The SHA-256 of the preset file.
     pub preset_sha256: String,
     /// The SHA-256 of the MIDI file the notes came from, when they came
     /// from one.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub midi_sha256: Option<String>,
     /// The tempo.
     pub bpm: Bpm,
@@ -696,6 +834,8 @@ impl SpreadTable {
             n: renders.len(),
             statistic: STATISTIC.to_owned(),
             tolerance: TOLERANCE.to_owned(),
+            coverage: cast::usize_to_f64(tolerance_rank(renders.len()))
+                / cast::usize_to_f64(renders.len() + 1),
             preset_sha256,
             midi_sha256: first.record.midi_sha256.clone(),
             bpm,
@@ -705,22 +845,23 @@ impl SpreadTable {
 }
 
 /// How a clip compares with renders of the same preset on one output.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Comparison {
     /// The output.
     pub output: String,
     /// The unit.
     pub unit: String,
     /// The clip's value; absent for a distance.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub clip: Option<f64>,
     /// The median of the renders' values; absent for a distance.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub renders: Option<f64>,
     /// The median, over the renders, of the distance between the clip and
     /// one render.
     pub difference: f64,
-    /// The tolerance: the larger of the row's tolerance and floor.
+    /// The tolerance: the larger of the row's tolerance and floor, so
+    /// always positive.
     pub limit: f64,
     /// The difference over the limit: at most 1 for a match.
     pub ratio: f64,
@@ -728,42 +869,139 @@ pub struct Comparison {
     pub within: bool,
 }
 
-/// Compares `clip` with each of `renders` on every clip output that
-/// `rows` holds.
+/// Compares `clip` with each of `renders` on every clip output.
 ///
 /// The difference is the median over the renders of the clip's distance
-/// from one render. It lies within the row's limit when the clip lies as
-/// close to the renders as 95 % of the renders lie to the others.
+/// from one render. A clip of the same sound lies within the row's limit
+/// with the coverage of [`tolerance_rank`].
 ///
 /// # Errors
 ///
 /// Returns [`SpreadError::SampleRate`] when the clip and the renders have
-/// different sample rates.
+/// different sample rates, [`SpreadError::Runs`] for no render and
+/// [`SpreadError::MissingRow`] for a clip output that `rows` lacks.
 pub fn compare(
     clip: &ClipMetrics,
     renders: &[ClipMetrics],
     rows: &[SpreadRow],
 ) -> Result<Vec<Comparison>, SpreadError> {
-    if let Some(rate) = shared_rate(renders)?
-        && rate != clip.sample_rate
-    {
-        return Err(SpreadError::SampleRate {
+    compare_on(&ClipOutput::ALL, clip, renders, rows)
+}
+
+/// A fitted gain beyond this many dB, either way, is a finding to explain:
+/// within it a level difference is no fault, since a comparison of two
+/// sounds matches their loudness first.
+pub const GAIN_RANGE_DB: f64 = 3.0;
+
+/// How a recording compares with renders of the same preset once a gain
+/// matches its level to theirs.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct FittedComparison {
+    /// The gain applied to the recording, in dB: [`fit_gain`].
+    pub gain_db: f64,
+    /// Whether the gain lies beyond [`GAIN_RANGE_DB`]: a finding, not a
+    /// failure.
+    pub gain_beyond_range: bool,
+    /// The comparisons of the recording after the gain on the
+    /// [`ClipOutput::SHAPE`] outputs.
+    pub comparisons: Vec<Comparison>,
+    /// Whether every comparison lies within its limit.
+    pub within: bool,
+}
+
+/// The gain in dB that matches the level of `clip` to `renders`.
+///
+/// It is the median over the renders of their RMS level minus the clip's,
+/// each pair over its common span, as [`ClipOutput::RmsDb`] compares them.
+/// Returns `None` for no render.
+#[must_use]
+pub fn fit_gain(clip: &ClipMetrics, renders: &[ClipMetrics]) -> Option<f64> {
+    median(
+        &renders
+            .iter()
+            .map(|render| {
+                let frames = clip.frames().min(render.frames());
+                render.rms_over(frames) - clip.rms_over(frames)
+            })
+            .collect::<Vec<_>>(),
+    )
+}
+
+/// Fits the gain of `recording` to `renders`, applies it and compares the
+/// result on the [`ClipOutput::SHAPE`] outputs.
+///
+/// The gain moves the recording's end too, since the end is the last
+/// sample above a fixed tail floor, so the duration compares after it.
+///
+/// # Errors
+///
+/// Returns [`SpreadError::Silent`], naming `what`, for a silent
+/// recording, [`SpreadError::Audio`] for a recording the gain cannot
+/// scale, and the errors of [`compare`].
+pub fn compare_fitted(
+    recording: &Audio,
+    what: &str,
+    renders: &[ClipMetrics],
+    rows: &[SpreadRow],
+) -> Result<FittedComparison, SpreadError> {
+    let clip = ClipMetrics::of(recording, what)?;
+    check_rate(&clip, renders)?;
+    let gain_db = fit_gain(&clip, renders).ok_or(SpreadError::Runs(renders.len()))?;
+    let amplitude = Decibels::clamped(gain_db)
+        .to_amplitude_gain()
+        .unwrap_or(1.0);
+    let scaled = Audio::new(
+        recording.sample_rate(),
+        recording
+            .channels()
+            .iter()
+            .map(|channel| channel.iter().map(|x| x * amplitude).collect())
+            .collect(),
+    )
+    .map_err(SpreadError::Audio)?;
+    let fitted = ClipMetrics::of(&scaled, what)?;
+    let comparisons = compare_on(&ClipOutput::SHAPE, &fitted, renders, rows)?;
+    Ok(FittedComparison {
+        gain_db,
+        gain_beyond_range: gain_db.abs() > GAIN_RANGE_DB,
+        within: comparisons.iter().all(|comparison| comparison.within),
+        comparisons,
+    })
+}
+
+fn check_rate(clip: &ClipMetrics, renders: &[ClipMetrics]) -> Result<(), SpreadError> {
+    match shared_rate(renders)? {
+        Some(rate) if rate != clip.sample_rate => Err(SpreadError::SampleRate {
             clip: clip.sample_rate,
             renders: rate,
-        });
+        }),
+        _ => Ok(()),
     }
-    Ok(ClipOutput::ALL
-        .into_iter()
-        .filter_map(|output| {
-            let row = rows.iter().find(|row| row.output == output.name())?;
+}
+
+fn compare_on(
+    outputs: &[ClipOutput],
+    clip: &ClipMetrics,
+    renders: &[ClipMetrics],
+    rows: &[SpreadRow],
+) -> Result<Vec<Comparison>, SpreadError> {
+    check_rate(clip, renders)?;
+    outputs
+        .iter()
+        .map(|&output| {
+            let row = rows
+                .iter()
+                .find(|row| row.output == output.name())
+                .ok_or(SpreadError::MissingRow(output.name()))?;
             let difference = median(
-                renders
+                &renders
                     .iter()
                     .map(|render| output.distance(clip, render))
-                    .collect(),
-            )?;
+                    .collect::<Vec<_>>(),
+            )
+            .ok_or(SpreadError::Runs(renders.len()))?;
             let limit = row.limit();
-            Some(Comparison {
+            Ok(Comparison {
                 output: row.output.clone(),
                 unit: row.unit.clone(),
                 clip: output.value(clip),
@@ -771,18 +1009,18 @@ pub fn compare(
                     .iter()
                     .map(|render| output.value(render))
                     .collect::<Option<Vec<_>>>()
-                    .and_then(median),
+                    .and_then(|values| median(&values)),
                 difference,
                 limit,
                 ratio: difference / limit,
                 within: difference <= limit,
             })
         })
-        .collect())
+        .collect()
 }
 
-fn median(values: Vec<f64>) -> Option<f64> {
-    sorted_quantile(values, 0.5)
+fn median(values: &[f64]) -> Option<f64> {
+    Summary::of(values).map(Summary::median)
 }
 
 fn sorted_quantile(mut values: Vec<f64>, q: f64) -> Option<f64> {
@@ -790,16 +1028,8 @@ fn sorted_quantile(mut values: Vec<f64>, q: f64) -> Option<f64> {
     quantile(&values, q)
 }
 
-fn gain(db: f64) -> f64 {
-    10_f64.powf(db / 20.0)
-}
-
 fn power_db(power: f64) -> f64 {
-    if power > 0.0 {
-        10.0 * power.log10()
-    } else {
-        SILENT_DB
-    }
+    Decibels::from_power_ratio(power).map_or(SILENT_DB, Decibels::get)
 }
 
 #[cfg(test)]
@@ -955,22 +1185,82 @@ mod tests {
         assert_eq!(pairs.len(), 190);
         pairs.sort_by(f64::total_cmp);
         let expected = quantile(&pairs, 0.95).unwrap();
-        let row = SpreadRow::of_values("x", "dB", &values, 0.0).unwrap();
+        let row = SpreadRow::of_values("x", "dB", &values, 1e-9).unwrap();
         assert!((row.spread - expected).abs() < 1e-12);
-        assert!(SpreadRow::of_values("x", "dB", &values[..2], 0.0).is_none());
+        assert!(SpreadRow::of_values("x", "dB", &values[..2], 1e-9).is_none());
     }
 
     #[test]
-    fn the_tolerance_is_the_95th_percentile_of_the_leave_one_out_medians() {
+    fn the_tolerance_rank_covers_95_percent_of_n_plus_one() {
+        // ⌈0.95 (n + 1)⌉: the largest of 19 or 20 medians, the 39th of 40.
+        assert_eq!(tolerance_rank(20), 20);
+        assert_eq!(tolerance_rank(19), 19);
+        assert_eq!(tolerance_rank(40), 39);
+        assert_eq!(tolerance_rank(100), 96);
+        // Below 19 renders the rank stops at n.
+        assert_eq!(tolerance_rank(3), 3);
+    }
+
+    #[test]
+    fn the_tolerance_is_the_leave_one_out_median_at_the_rank() {
         // Values 0..5: the medians of each value's distances to the others
-        // are 2.5, 1.5, 1.5, 1.5, 2.5.
+        // are 2.5, 1.5, 1.5, 1.5, 2.5, and the rank of 5 is 5.
         let values: Vec<f64> = (0..5).map(f64::from).collect();
-        let row = SpreadRow::of_values("x", "dB", &values, 0.0).unwrap();
-        let mut medians = vec![2.5, 1.5, 1.5, 1.5, 2.5];
-        medians.sort_by(f64::total_cmp);
-        assert!((row.tolerance - quantile(&medians, 0.95).unwrap()).abs() < 1e-12);
+        let row = SpreadRow::of_values("x", "dB", &values, 1e-9).unwrap();
+        assert_eq!(row.tolerance, 2.5);
+        // Held out, the end values lie 2.5 from the other four, whose
+        // largest median is 2: only the middle three lie within.
+        assert_eq!(row.held_out_within, 3);
         // Adjacent values lie 1 apart; the median of all ten pairs is 2.
         assert_eq!(row.adjacent_ratio, Some(0.5));
+    }
+
+    #[test]
+    fn a_drift_over_the_draws_shows_in_both_diagnostics() {
+        // The same 20 values, once rising in draw order and once
+        // interleaved, so the spread and the tolerance stay alike.
+        let rising: Vec<f64> = (0..20).map(f64::from).collect();
+        let interleaved: Vec<f64> = (0..20)
+            .map(|i| f64::from(if i % 2 == 0 { i / 2 } else { 19 - i / 2 }))
+            .collect();
+        let drift = SpreadRow::of_values("x", "dB", &rising, 1e-9).unwrap();
+        let mixed = SpreadRow::of_values("x", "dB", &interleaved, 1e-9).unwrap();
+        assert_eq!(
+            (drift.spread, drift.tolerance),
+            (mixed.spread, mixed.tolerance)
+        );
+        let drift_r = drift.lag1_autocorrelation.unwrap();
+        let mixed_r = mixed.lag1_autocorrelation.unwrap();
+        assert!(drift_r > 0.8, "{drift_r}");
+        assert!(mixed_r < -0.8, "{mixed_r}");
+        assert!(drift.adjacent_ratio.unwrap() < 0.2, "{drift:?}");
+        assert!(mixed.adjacent_ratio.unwrap() > 1.5, "{mixed:?}");
+        assert_eq!(lag1_autocorrelation(&[1.0; 5]), None);
+    }
+
+    #[test]
+    fn a_floor_of_zero_gives_no_row() {
+        assert!(SpreadRow::of_values("x", "ratio", &[0.0; 4], 0.0).is_none());
+        let zero = || serde_json::json!({ "stem": { "flatness": { "value": 0.0 } } });
+        let rows = layer_rows(&[zero(), zero(), zero()]).unwrap();
+        assert!(rows[0].floor > 0.0, "{rows:?}");
+        assert!(rows[0].limit() > 0.0, "{rows:?}");
+    }
+
+    #[test]
+    fn too_few_clips_or_a_missing_row_fail_the_comparison() {
+        let clips: Vec<ClipMetrics> = (0..2).map(|_| metrics(0.5, 0.2, 0)).collect();
+        let error = clip_rows(&clips).unwrap_err();
+        assert!(matches!(error, SpreadError::Runs(2)), "{error}");
+        let clips: Vec<ClipMetrics> = (0..3).map(|_| metrics(0.5, 0.2, 0)).collect();
+        let mut rows = clip_rows(&clips).unwrap();
+        assert_eq!(rows.len(), ClipOutput::ALL.len());
+        rows.remove(1);
+        let error = compare(&clips[0], &clips, &rows).unwrap_err();
+        assert!(
+            matches!(error, SpreadError::MissingRow("peak_db")),
+            "{error}"
+        );
     }
 
     #[test]

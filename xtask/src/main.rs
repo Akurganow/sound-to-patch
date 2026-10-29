@@ -30,7 +30,8 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 
-use sound_to_patch::render::spread::SPREAD_RUNS;
+use sound_to_patch::render::session::RESTART_AFTER;
+use sound_to_patch::render::spread::{MIN_RUNS, SPREAD_RUNS};
 use sound_to_patch::units::Bpm;
 
 use crate::fetch::Sha256Digest;
@@ -166,8 +167,8 @@ enum Task {
         #[arg(long, default_value_t = 120.0)]
         bpm: f64,
         /// How many renders, drawn in sequence on one plug-in instance.
-        #[arg(long, default_value_t = SPREAD)]
-        runs: NonZeroUsize,
+        #[arg(long, default_value_t = SPREAD_RUNS, value_parser = runs_parser())]
+        runs: usize,
         #[command(flatten)]
         plugin: PluginArgs,
         /// The JSON file to write.
@@ -185,16 +186,12 @@ enum Task {
         #[arg(long)]
         manifest: PathBuf,
         /// How many renders per recording.
-        #[arg(long, default_value_t = SPREAD)]
-        runs: NonZeroUsize,
+        #[arg(long, default_value_t = SPREAD_RUNS, value_parser = runs_parser())]
+        runs: usize,
         /// How many recordings render at once, each on its own plug-in
         /// instance.
         #[arg(long, default_value_t = WORKERS)]
         workers: NonZeroUsize,
-        /// A gain in dB for every recording, a diagnostic of a level
-        /// offset in the recording chain; the report records it.
-        #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
-        recording_gain_db: f64,
         #[command(flatten)]
         plugin: PluginArgs,
         /// The JSON file to write.
@@ -266,7 +263,6 @@ fn main() -> ExitCode {
             manifest,
             runs,
             workers,
-            recording_gain_db,
             plugin,
             out,
         } => plugin.find().and_then(|found| {
@@ -275,7 +271,6 @@ fn main() -> ExitCode {
                 manifest: &manifest,
                 runs,
                 workers,
-                recording_gain_db,
             };
             spread::run_reference(&run, &found, &out)
         }),
@@ -313,8 +308,16 @@ impl PluginArgs {
     }
 }
 
-/// The renders of a spread.
-const SPREAD: NonZeroUsize = NonZeroUsize::new(SPREAD_RUNS).unwrap();
+/// The renders a spread may take: at least three for a leave-one-out
+/// median of two distances, and no more than one plug-in instance renders
+/// before the session restarts it.
+fn runs_parser() -> clap::builder::RangedU64ValueParser<usize> {
+    clap::builder::RangedU64ValueParser::new().range(MIN_RUNS_U64..=RESTART_AFTER)
+}
+
+/// [`MIN_RUNS`] for the range of [`runs_parser`].
+#[allow(clippy::as_conversions, reason = "a const cast of a small constant")]
+const MIN_RUNS_U64: u64 = MIN_RUNS as u64;
 /// The recordings a reference run renders at once.
 const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
 
@@ -332,3 +335,30 @@ fn write_json(out: &Path, value: &serde_json::Value) -> Result<()> {
 
 /// The error of any task: a message that says what failed and how to fix it.
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_spread_takes_three_renders_up_to_the_restart() {
+        for (runs, valid) in [("2", false), ("3", true), ("256", true), ("257", false)] {
+            for args in [
+                &["render-spread", "--out", "s.json"][..],
+                &[
+                    "render-reference",
+                    "--root",
+                    ".",
+                    "--manifest",
+                    "m",
+                    "--out",
+                    "r.json",
+                ],
+            ] {
+                let parsed =
+                    Xtask::try_parse_from(["xtask"].iter().chain(args).chain(&["--runs", runs]));
+                assert_eq!(parsed.is_ok(), valid, "{args:?} --runs {runs}");
+            }
+        }
+    }
+}

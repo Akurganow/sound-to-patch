@@ -334,10 +334,11 @@ A fresh Vital instance renders bit-identically to any other fresh
 instance, and each later render on one instance differs. So the 20
 draws render in sequence on one fresh instance, through
 `render::spread::draw`. A draw whose samples repeat another's, by their
-SHA-256, fails the run: a repeat would count as a draw. Each output's
-row records the adjacent ratio, the median distance of renders next to
-each other in the sequence over that of all pairs, as a check that a
-draw does not depend on the one before.
+SHA-256, fails the run: a repeat would count as a draw. `--runs` takes 3
+to 256 renders, the most one instance renders before the session
+restarts it. Each output's row counts the renders that lie within the
+limit of the others, each held out in turn, and records two diagnostics
+of the draws: the adjacent ratio and the lag-1 autocorrelation.
 
 Each render is stored as a WAV file in a folder beside the output, named
 after it with `-renders`, and measured from the stored file, as a
@@ -348,15 +349,18 @@ keeps no spread of record; the per-recording metrics are on the
 [reference recordings](reference-recordings.md) page only.
 
 On the fake, `render_spread` checks that a spread's 20 draws are
-distinct, and that the distinct check refuses the renders of two workers
-that start alike. It recomputes the 95th percentile of the 190 pairs and
-of the leave-one-out medians from 20 stored renders with its own
-quantile. It checks that a render of the same preset matches while a
-louder one does not. Two more tests read the committed reference
-reports: one checks their ids, hashes and verdicts, the other recomputes
-the counts and the table of the reference page. On Vital,
-`the_draws_of_a_spread_on_vital_are_distinct` draws 20 renders of one
-lead note on the plug-in and finds all of them distinct.
+distinct, that a draw refuses fewer than 3 renders and more than 256,
+and that the distinct check refuses the renders of two workers that
+start alike. It recomputes the 95th percentile of the 190 pairs and the
+largest leave-one-out median from 20 stored renders with its own
+quantile and median. It checks that a render of the same preset matches
+while a louder one does not. After the gain fit, a louder render and one
+8 dB quieter match on the shape, the quieter one flagged beyond ±3 dB,
+and a longer release does not match. Two more tests read the committed
+reference report: one checks its ids, hashes, gains and verdicts, the
+other recomputes every count, range and table of the reference page. On
+Vital, `the_draws_of_a_spread_on_vital_are_distinct` draws 20 renders of
+one lead note on the plug-in and finds all of them distinct.
 
 ### Reference recordings
 
@@ -375,7 +379,7 @@ folder. Then, for each recording, it runs the load check, draws 20
 renders of the preset with the same MIDI file and tempo, and measures
 their spread. `--workers` recordings render at once, 4 by default, each
 on its own fresh instance. The recording compares with the renders on
-the four clip outputs of the spread page, against the tolerance. An
+the clip outputs of the spread page, against the tolerance. An
 exported state is read back against the preset as the load check does,
 the tempo against the recording's tempo. The name and the tuning are
 left out, because the DAW names the export and saves no tuning in a
@@ -386,10 +390,12 @@ Recordings and renders stay local. The repository holds the preset ids,
 the hashes and the metrics of the comparison, on the
 [reference recordings](reference-recordings.md) page.
 
-`--recording-gain-db` raises every recording by a gain before the
-comparison. It is a diagnostic that separates a level offset of the
-recording chain from a difference of the sound. The report records the
-gain and names each verdict `within_with_gain` in place of `within`.
+The verdict comes after a gain fit, as the
+[render spread page](../reference/formats/render-spread.md#comparing-with-the-spread)
+describes: one gain per recording matches its level to the renders, and
+the recording matches on the peak-to-RMS ratio, the duration and the
+envelope. The report records each gain, flags one beyond ±3 dB, and
+keeps the comparison as recorded on all five outputs for information.
 
 ## Fuzzing
 
