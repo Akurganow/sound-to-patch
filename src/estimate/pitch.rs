@@ -15,13 +15,13 @@ mod vibrato;
 
 pub use drop::{
     DROP_CONVENTION, DROP_FIT_START, DROP_MAX, DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE,
-    DROP_TAU_MIN, DropFit, DropMiss, ONSET_SMOOTHING, band_onset, fit_drop,
+    DROP_TAU_MIN, DropFit, DropMiss, ONSET_SMOOTHING, RISE_PERIODS, band_onset, fit_drop,
 };
 pub use glide::{CURVE_RANGE, GLIDE_CONVENTION, GLIDE_SLOPE_MIN, GlideFit};
 pub use line::{LINE_CONVENTION, SubBandLine};
 pub use vibrato::{EXTENT_SHARE, VIBRATO_CONVENTION, VIBRATO_SPAN_MIN, VibratoFit, fit_vibrato};
 
-use drop::{DROP_FIT_END, band_attack};
+use drop::{DROP_FIT_END, band_attack, rises_into};
 use glide::{GlideRead, find_glides, steady_spans, track_lag};
 use line::{LINE_HI, LINE_LO, LINE_LO_FAST};
 
@@ -47,13 +47,6 @@ const SETTLE_MIN: f64 = 0.1;
 /// A glide from silence is a drop when its run starts this close to the
 /// onset of an accepted drop.
 pub const DROP_GLIDE_DISTANCE: Seconds = Seconds::from_const(0.2);
-/// An onset this close to the start of a search that begins where the
-/// previous note's search ended, and before the drop read last has
-/// settled, is that strike found again: its rise crosses the border, and
-/// the next search reads the rest of the rise as an onset 5 ms in. A
-/// struck note 250 ms after a drop with a tau of 60 ms is a strike of its
-/// own.
-const BORDER_SPAN: f64 = 0.02;
 /// A drop settles on a note whose pitch lies within this many cents of
 /// `f_end`.
 pub const DROP_NOTE_MATCH: Cents = Cents::from_const(100.0);
@@ -87,17 +80,18 @@ pub const FAST_TAU: Seconds = Seconds::from_const(0.01);
 /// The low-pass of the note line, as a multiple of the note's pitch.
 ///
 /// A fit after a strike of [`STRIKE_RISE`] that is no drop is fitted
-/// again on a line that keeps the band below this edge, when the edge lies
-/// under 200 Hz, the top of the band, so the note sits under 133 Hz. Below
-/// 66 Hz the second and third harmonics of a note lie inside the band, and
-/// at -5 to -14 dB they swing the line by more than the note's pitch: a
-/// real sweep into C1 fitted a residual of 2.5. At 1.5 times the note the
-/// second harmonic falls 10 dB more, and a fall that starts higher stays
-/// the strongest component on its way down. At 1.2 a generated sweep into
-/// C1 with strong overtones read tau 24 % long and one struck again inside
-/// its note read none; at 3 both read none. Without a strike, the note line smooths the swing where a
-/// retriggered tone restarts its phase into a fall: three generated
-/// retriggers that rose 0.6 to 1.6 dB read one.
+/// again on a line that keeps the band below this edge. That needs the
+/// edge under 200 Hz, the top of the band, so the note sits under 133 Hz.
+/// Below 66 Hz the second and third harmonics of a note lie inside the
+/// band. At -5 to -14 dB they swing the line by more than the note's
+/// pitch: a real sweep into C1 fitted a residual of 2.5. At 1.5 times the
+/// note the second harmonic falls 10 dB more. A fall that starts higher
+/// then stays the strongest component on its way down. At 1.2 a generated
+/// sweep into C1 with strong overtones read tau 24 % long, and one struck
+/// again inside its note read none. At 3 both read none. Without a
+/// strike, the note line smooths the swing where a retriggered tone
+/// restarts its phase into a fall. Three generated retriggers that rose
+/// 0.6 to 1.6 dB read one.
 pub const NOTE_LINE_EDGE: f64 = 1.5;
 /// A fit on the note line counts when the note line keeps the fall: its
 /// RMS envelope over the fall lies at most this far below the band's.
@@ -110,7 +104,7 @@ pub const NOTE_LINE_EDGE: f64 = 1.5;
 /// Generated tones of that shape lay 4.8 to 7.6 dB below, so the ones
 /// under this edge still read as drops. The margins are thin: the true
 /// drops lie 2.2 dB under the edge at most, and the false tones of the
-/// tests 0.6 and 1.4 dB over it.
+/// tests 0.6 and 1.3 dB over it.
 pub const NOTE_LINE_LOSS: Decibels = Decibels::from_const(6.0);
 /// The spans, in seconds from a band onset, of the RMS before and after
 /// it that a strike compares. A pitch falling into the band from above
@@ -669,8 +663,13 @@ fn strikes(
             continue;
         };
         if search_from <= border
-            && onset.get() - search_from < BORDER_SPAN
             && drops.last().is_some_and(|last| onset < last.fit.settled())
+            && rises_into(
+                &line,
+                Seconds::clamped(search_from),
+                Seconds::clamped(search_to),
+                settled,
+            )
         {
             skips.settling += 1;
             continue;
@@ -795,8 +794,8 @@ fn struck_enough(fit: &DropFit, rise: f64, attack: Seconds) -> bool {
     rise >= STRIKE_RISE || (fit.f_end.get() + fit.df_hz < LINE_HI.get() && attack <= STRIKE_ATTACK)
 }
 
-/// Whether a drop settles on a note: a note sounds while the drop is
-/// settled, from five time constants after the onset to the end of the fit
+/// Whether a drop settles on a note: a note sounds at some point while the
+/// drop is settled, from five time constants after the onset to the end of the fit
 /// span at `span_end` or [`DROP_FIT_END`], with its pitch within
 /// [`DROP_NOTE_MATCH`] of `f_end`, that starts [`DROP_NOTE_LEAD`] or less
 /// before the onset. A slow fall that is not settled by then needs the

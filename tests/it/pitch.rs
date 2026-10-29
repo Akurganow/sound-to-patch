@@ -1767,7 +1767,7 @@ fn a_tone_an_octave_above_the_note_reads_no_drop_on_the_note_line() {
     // A tone at 123.5 Hz struck at 0.2 s, and the note's 61.7 Hz entering
     // 70 to 75 ms later. The note line keeps the upper tone down, and its
     // line falls from it to the lower one as that enters: a step between
-    // two tones, not a fall. Over that fall the note line lies 7.4 and
+    // two tones, not a fall. Over that fall the note line lies 7.3 and
     // 6.6 dB under the band, and without the 6 dB cap each read as a drop.
     // A real tone of this shape read as one.
     let rate = f64::from(RATE);
@@ -1859,6 +1859,76 @@ fn drops_struck_250_ms_apart_read_each() {
 }
 
 #[test]
+fn a_slow_strike_across_a_search_border_reads_one_drop() {
+    // A fall into C1 struck at 0.2 s under two C1 notes. The first note's
+    // search ends 5 to 70 ms into the strike's attack and finds it; the
+    // second search starts there, inside the rise, and finds it again. A
+    // second harmonic as loud as the fundamental beats with it and dips the
+    // envelope by up to 12 dB in the rise; over two periods of the note the
+    // beat averages out. A fixed 20 ms after the border read a second drop
+    // where the 80 ms attack crossed the half-peak later.
+    for (h2, attack_s, tau) in [
+        (0.2, 0.03, 0.03),
+        (0.2, 0.08, 0.03),
+        (0.2, 0.08, 0.06),
+        (1.0, 0.08, 0.06),
+    ] {
+        let mono = sweep(32.7, 36.0, tau, &[h2], attack_s, 0.6);
+        for border in [0.005, 0.01, 0.015, 0.025, 0.035, 0.04, 0.055, 0.07] {
+            let notes = note_list(&[(0.1 + border, 0.8, 24.0), (0.22 + border, 0.8, 24.0)]);
+            let read = drop_layer(&mono, &notes);
+            assert_eq!(
+                read.drops.len(),
+                1,
+                "{h2} {attack_s} {tau} {border}: {:?}",
+                read.counts
+            );
+        }
+    }
+}
+
+#[test]
+fn drops_struck_115_ms_apart_read_each() {
+    // Six 808 hits of 105 ms with 10 ms gaps, the last three with drops of
+    // tau 30 ms. Each strike lands 15 ms after the border of its search,
+    // while the drop before still settles. The envelope dips in the gap
+    // before each, so each is a strike of its own. A fixed 20 ms after the
+    // border skipped one of them; an average over three periods of the
+    // note smooths the dip of the fifth hit of the second line away.
+    const LINES: [[f64; 6]; 2] = [
+        [33.0, 36.0, 31.0, 33.0, 36.0, 31.0],
+        [38.0, 33.0, 38.0, 33.0, 38.0, 33.0],
+    ];
+    const DROPS: [[(usize, f64, f64); 3]; 2] = [
+        [(3, 0.5, 0.03), (4, 0.5, 0.03), (5, 0.5, 0.03)],
+        [(3, 1.0, 0.03), (4, 1.0, 0.03), (5, 1.0, 0.03)],
+    ];
+    for (line, drops) in LINES.iter().zip(&DROPS) {
+        let hits = Hits {
+            hit_s: 0.105,
+            gap_s: 0.01,
+            drops,
+            ..Hits::new(line, 0.0)
+        };
+        let notes = hits.notes();
+        let read = drop_layer(&hits.render(f64::from(RATE)), &note_list(&notes));
+        assert_eq!(
+            read.counts.drop_skips.settling, 0,
+            "{line:?}: {:?}",
+            read.counts
+        );
+        assert_eq!(read.drops.len(), 3, "{line:?}: {:?}", read.counts);
+        for (drop, &(on, _, _)) in read.drops.iter().zip(&notes[3..]) {
+            assert!(
+                (drop.value.onset.get() - on).abs() < 0.005,
+                "{on}: {:?}",
+                drop.value
+            );
+        }
+    }
+}
+
+#[test]
 fn a_fast_sweep_into_c1_reads_on_the_note_line_above_the_tau_floor() {
     // From 68.7 Hz into C1 with a tau of 12 ms and a second harmonic 4 dB
     // under the fundamental, struck sharply. The 20 to 200 Hz line reads
@@ -1872,4 +1942,66 @@ fn a_fast_sweep_into_c1_reads_on_the_note_line_above_the_tau_floor() {
     let fit = &read.drops[0].value;
     assert!((fit.f_end.get() - 32.7).abs() < 1.0, "{fit:?}");
     assert!((0.012..0.02).contains(&fit.tau.get()), "{fit:?}");
+}
+
+#[test]
+fn fast_sweeps_whose_band_fit_sits_on_the_tau_bound_read_on_the_note_line() {
+    // Falls of an octave into A1 and of half an octave into C2, tau 12 ms,
+    // with overtones 4 to 14 dB under the fundamental. The 20 to 200 Hz
+    // line and the 10 Hz one fit them with tau on the 3.04 ms bound of the
+    // search; the note line reads each with a tau of 13 to 15 ms. A refit
+    // after a size or residual miss alone read neither.
+    for (f_end, df, pitch) in [(55.0, 55.0, 33.0), (65.4, 32.7, 36.0)] {
+        let read = drop_layer(
+            &sweep(f_end, df, 0.012, &[0.6, 0.3, 0.2], 0.003, 0.6),
+            &note_list(&[(0.2, 0.8, pitch)]),
+        );
+        assert_eq!(read.drops.len(), 1, "{f_end}: {:?}", read.counts);
+        let fit = &read.drops[0].value;
+        assert!((fit.f_end.get() - f_end).abs() < 1.0, "{fit:?}");
+        assert!((0.012..0.02).contains(&fit.tau.get()), "{fit:?}");
+    }
+}
+
+#[test]
+fn a_drop_settles_on_a_note_that_sounds_once_it_has_settled() {
+    // A fall into C1 struck at 0.2 s with tau 54 ms, found in the search of
+    // a note at 82.4 Hz that starts with it and ends at 0.6 s. Its fall
+    // has settled at 0.474 s. A C1 note that ends at 0.52 s takes the drop;
+    // one that ends at 0.44 s does not, since it stops before the fall
+    // settles. Ten time constants run past the end of the fit span, and
+    // then neither note took it.
+    let mono = sweep(32.7, 36.0, 0.06, &[0.2], 0.003, 0.6);
+    for (off, drops) in [(0.52, 1), (0.44, 0)] {
+        let read = drop_layer(&mono, &note_list(&[(0.06, off, 24.0), (0.22, 0.6, 40.0)]));
+        assert_eq!(read.drops.len(), drops, "{off}: {:?}", read.counts);
+    }
+}
+
+#[test]
+fn a_vibrato_after_a_slow_drop_starts_once_the_drop_has_settled() {
+    // An octave drop into A1 with tau 60 ms, then a vibrato of 35 cents at
+    // 5.5 Hz from five time constants on. Its search starts there and reads
+    // it. Started 100 ms after the onset, a fifth of the fall still lay in
+    // the span, and the search read no vibrato.
+    let tau = 0.06;
+    let mono = sweep(55.0, 55.0, tau, &[0.2], 0.003, 1.2);
+    let cents = |t: f64| {
+        let x = t - 0.2;
+        let vibrato = if x > 5.0 * tau {
+            35.0 * (std::f64::consts::TAU * 5.5 * x).sin()
+        } else {
+            0.0
+        };
+        Some(3300.0 + 1200.0 * (1.0 + (-x / tau).exp()).log2() + vibrato)
+    };
+    let read = audio_track_layer(&mono, cents, &[(0.2, 1.4, 33.0)]);
+    assert_eq!(read.drops.len(), 1, "{:?}", read.counts);
+    assert_eq!(read.vibrato.len(), 1, "{:?}", read.counts);
+    let vibrato = &read.vibrato[0].value;
+    assert!((vibrato.rate.get() - 5.5).abs() <= 0.1, "{vibrato:?}");
+    assert!(
+        (vibrato.extent().get() / 35.0 - 1.0).abs() <= 0.15,
+        "{vibrato:?}"
+    );
 }

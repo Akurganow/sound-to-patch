@@ -40,6 +40,18 @@ pub(crate) const ATTACK_FROM: f64 = 0.1;
 pub(crate) const ATTACK_TO: f64 = 0.9;
 /// The centred average of the band envelope that the onset search reads.
 pub const ONSET_SMOOTHING: Seconds = Seconds::from_const(0.01);
+/// The span, in periods of the note, of the band envelope average that
+/// tells a strike found again from a strike of its own.
+///
+/// A search that starts where the previous one ended, inside the rise of
+/// the strike read last, is lowest at its first sample. A new strike dips
+/// first. A second harmonic in the band beats with the fundamental, and
+/// the beat dips a 10 ms average by up to 12 dB. On 456 generated sweeps
+/// with the border 20 ms before to 70 ms into the strike, a 10 ms average
+/// read a second drop 21 times. One period read 5, 1.5 periods 1 and two
+/// periods none. Over three periods, 90 runs of 808 hits struck every
+/// 115 ms lost 2 of their drops.
+pub const RISE_PERIODS: f64 = 2.0;
 /// The largest `tau` the search covers.
 const TAU_MAX: f64 = 1.0;
 /// A fit whose `tau` lies within this factor of [`DROP_TAU_MIN`] sits on
@@ -70,14 +82,15 @@ over half a period of f_end when tau is 10 ms or more and over a full period whe
 periods or more, over the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when \
 df_st is above 2 and at most 36, that fall is above 2 semitones too, tau is above the bound of \
 the search, residual is below 0.15, and f_end lies within 100 cents of a note that starts 150 \
-ms or less before the onset and sounds from 5 tau after the onset, or from the end of the fit \
-span if that comes first, to the end of the fit span; a fit after a 6 dB strike that is no \
+ms or less before the onset and sounds at some point from 5 tau after the onset, or from the end \
+of the fit span if that comes first, to the end of the fit span; a fit after a 6 dB strike that is no \
 drop is fitted again on the note line, whose low-pass sits at 1.5 times the note's pitch, when \
 that lies under 200 Hz, with its span ending one period of the note before the note line's \
 frequency first falls to 0 Hz, and the refit counts with tau of 10 ms or more and an RMS \
-envelope over its fall, from 7 ms to 5 tau, at most 6 dB below the line the first fit read; an \
-onset within 20 ms of a search that starts where the previous note's search ended, before the \
-drop read last has settled, 5 tau after its onset, is the same strike";
+envelope over its fall, from 7 ms to 5 tau, at most 6 dB below the line the first fit read; a \
+search that starts where the previous note's search ended, before the drop read last has \
+settled, 5 tau after its onset, finds that strike again when its 20 to 200 Hz envelope, \
+averaged over a centred 2 periods of the note, is lowest at its first sample";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -185,12 +198,22 @@ pub enum DropMiss {
 /// every period. A centred average leaves the midpoint of a step in place.
 #[must_use]
 pub fn band_onset(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
-    let (start, smooth) = smoothed_envelope(line, from, to)?;
+    let (start, smooth) = smoothed_envelope(line, from, to, ONSET_SMOOTHING.get())?;
     let (low, peak) = low_and_peak(&smooth)?;
     let first = smooth[low..]
         .iter()
         .position(|&e| e >= DROP_ONSET_SHARE * peak)?;
     Some(line.sample_time(start + low + first))
+}
+
+/// Whether the band envelope inside `from..to`, averaged over a centred
+/// [`RISE_PERIODS`] periods of `pitch`, is lowest at its first sample: the
+/// span starts inside a rise that began before it.
+#[must_use]
+pub(crate) fn rises_into(line: &SubBandLine, from: Seconds, to: Seconds, pitch: Hz) -> bool {
+    smoothed_envelope(line, from, to, RISE_PERIODS / pitch.get()).is_some_and(|(_, smooth)| {
+        (0..smooth.len()).min_by(|&a, &b| smooth[a].total_cmp(&smooth[b])) == Some(0)
+    })
 }
 
 /// The attack of a strike inside `from..to`.
@@ -200,7 +223,7 @@ pub fn band_onset(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seco
 /// lowest point. `None` when no attack lies inside the span.
 #[must_use]
 pub(crate) fn band_attack(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
-    let (_, smooth) = smoothed_envelope(line, from, to)?;
+    let (_, smooth) = smoothed_envelope(line, from, to, ONSET_SMOOTHING.get())?;
     let (low, peak) = low_and_peak(&smooth)?;
     let after = &smooth[low..];
     let first = after.iter().position(|&e| e >= ATTACK_FROM * peak)?;
@@ -212,9 +235,14 @@ pub(crate) fn band_attack(line: &SubBandLine, from: Seconds, to: Seconds) -> Opt
 
 /// The band envelope inside `from..to`, averaged over a centred
 /// [`ONSET_SMOOTHING`], with the index of its first sample.
-fn smoothed_envelope(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<(usize, Vec<f64>)> {
+fn smoothed_envelope(
+    line: &SubBandLine,
+    from: Seconds,
+    to: Seconds,
+    span: f64,
+) -> Option<(usize, Vec<f64>)> {
     let rate = line.sample_rate().hz().get();
-    let half = cast::round_to_usize(0.5 * ONSET_SMOOTHING.get() * rate).unwrap_or(0);
+    let half = cast::round_to_usize(0.5 * span * rate).unwrap_or(0);
     let envelope = line.envelope();
     let (start, end) = (line.index_at(from), line.index_at(to).min(envelope.len()));
     if start >= end {
@@ -455,7 +483,7 @@ mod tests {
     #[test]
     fn the_convention_states_the_note_line_constants() {
         use super::super::line::LINE_HI;
-        use super::super::{BORDER_SPAN, FAST_TAU, NOTE_LINE_EDGE, NOTE_LINE_LOSS, STRIKE_RISE};
+        use super::super::{FAST_TAU, NOTE_LINE_EDGE, NOTE_LINE_LOSS, STRIKE_RISE};
         use super::super::{num, ratio_db, says};
         let ms = |s: f64| num(1000.0 * s);
         says(
@@ -476,9 +504,9 @@ mod tests {
                     num(NOTE_LINE_LOSS.get())
                 ),
                 format!(
-                    "an onset within {} ms of a search that starts where the previous note's \
-                     search ended",
-                    ms(BORDER_SPAN)
+                    "averaged over a centred {} periods of the note, is lowest at its first \
+                     sample",
+                    num(RISE_PERIODS)
                 ),
             ],
         );

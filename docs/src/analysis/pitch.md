@@ -184,6 +184,8 @@ settled pitch.
   [synthetic]. Octave falls into 82.4 and 103.8 Hz whose second harmonic
   is as strong as the fundamental or 5.6 dB stronger settle 120 and 130
   cents sharp on the 20 to 200 Hz line and read on the note line
+  [synthetic]. Falls with $\tau$ = 12 ms into A1 and C2 fit $\tau$ on the
+  bound of the search on both band lines and read on the note line
   [synthetic]. At 1.2 times the note a generated sweep into C1 with
   strong overtones read $\tau$ 24 % long and one struck again inside its
   note read none; at 3 times both read none [synthetic].
@@ -213,21 +215,37 @@ settled pitch.
   entering 80 ms after the strike, lay 10.8 dB below: the note line held
   the upper tone 18 dB down and fell from it to the lower one as that
   entered, a step between two tones [fact]. Generated tones of that
-  shape lie 4.8 to 7.6 dB under; the two in the tests, 6.6 and 7.4 dB,
+  shape lie 4.8 to 7.6 dB under; the two in the tests, 6.6 and 7.3 dB,
   read as drops without the cap, so the margins are 2.2 dB under it and
-  0.6 dB over it [synthetic]. Without a strike the note
-  line smooths the swing where a retriggered tone restarts its phase into
-  a fall: three generated retriggers that rose 0.6 to 1.6 dB read one
-  [synthetic].
+  0.6 dB over it [synthetic]. Without a strike the note line smooths the
+  swing where a retriggered tone restarts its phase into a fall: three
+  generated retriggers that rose 0.6 to 1.6 dB read one [synthetic].
 - Same strike. Each note's onset search starts where the one before
   ended, and a strike on that border rises across it: the next search
-  found it again 5 ms later and read it as a second drop [synthetic]. So
-  an onset within 20 ms of a search that starts on that border, before
-  the drop read last has settled, five time constants after its onset,
-  is the same strike [proposal]. A strike later in the search is a strike
-  of its own: 808 hits struck every 250 ms with drops of $\tau$ = 60 ms
-  read three drops, where skipping every onset inside the settling read
-  two [synthetic].
+  finds it again and reads it as a second drop [synthetic]. A search
+  that starts inside that rise is lowest at its first sample, and a new
+  strike dips inside the search first [fact]. So a search that starts on
+  that border, before the drop read last has settled, five time
+  constants after its onset, holds the same strike when its band
+  envelope, averaged over two periods of the note, is lowest at its
+  first sample [proposal].
+  - The average. A second harmonic in the band beats with the
+    fundamental and dips a 10 ms average by up to 12 dB [synthetic]. The
+    test set is 456 generated sweeps into C1 [synthetic]. They have
+    attacks of 3, 30 and 80 ms, $\tau$ of 30 and 60 ms and second
+    harmonics of 0 to 1. The border lies 20 ms before to 70 ms into the
+    strike. Over 10 ms, 21 of them read a second drop; over one period 5,
+    over 1.5 periods 1 and over two none [synthetic]. Eight read no drop
+    under every rule. Over three periods, 90 runs of 808 hits struck
+    every 115 ms lost 2 of their 270 drops [synthetic].
+  - Against a fixed span. An onset within 20 ms of the border read 47 of
+    the 456 sweeps as two drops: an 80 ms attack crosses half its peak 22
+    to 35 ms after a border 5 to 15 ms in [synthetic]. 808 hits struck
+    every 115 ms land 15 ms after their border. That span skipped 59 of
+    their onsets and lost 15 of the 270 drops [synthetic]. Hits struck
+    every 250 ms with drops of $\tau$ = 60 ms read three drops either
+    way, where skipping every onset inside the settling read two
+    [synthetic].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
@@ -260,22 +278,26 @@ settled pitch.
   1.41 times the lower, since it is twice as wide [fact]. Below the factor
   a fit that reads the harmonic settles 1200 cents off the note and fails
   the settling rule [fact].
-- Settling. A drop also settles on a note: one note sounds while the drop
-  is settled, from five time constants after the onset to the end of the
-  fit span, with its pitch within 100 cents of $f_\text{end}$, and it
-  starts 150 ms or less before the onset [proposal]. A note that started
+- Settling. A drop also settles on a note. One note sounds at some point
+  while the drop is settled, from five time constants after the onset to
+  the end of the fit span. Its pitch lies within 100 cents of
+  $f_\text{end}$, and it starts 150 ms or less before the onset
+  [proposal]. A note that started
   earlier belongs to a sound before the strike: on real stems a fit on the
   lead-in to a step settled on the note that had sounded for 790 ms, and a
   fit inside a chord on a note an octave below that had started 210 ms
   before [fact]. A generated fall into C1, found in the search of a
   higher note struck with it, settles on a C1 note that started 100 ms
   before the strike and on none that started 200 ms before [synthetic].
+  A C1 note that ends 46 ms after such a fall has settled takes the drop,
+  and one that ends 34 ms before it does not [synthetic].
   A slow fall not settled by the end of the span needs the note at its
   end: with $\tau$ = 90 ms on a 350 ms note, five time constants end after
-  the note, and the sweep read as a glide from silence [synthetic]. At a saw's onset
-  several partials share the band and the line swings; on a generated 55
-  Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
-  settling at 49.7 Hz, which this rule rejects [synthetic].
+  the note, and the sweep read as a glide from silence [synthetic]. At a
+  saw's onset several partials share the band and the line swings; on a
+  generated 55 Hz saw that swing fitted a fall of 62 semitones with
+  $\tau$ = 2 ms settling at 49.7 Hz, which this rule rejects
+  [synthetic].
 - Skips. The summary line `drop skips` counts the low notes the search
   read no drop at, by the first gate that stopped each: no onset,
   settling, quiet, no strike, weak fundamental, no fall, tau on bound,
@@ -399,9 +421,9 @@ A glide is pitch moving from one stable pitch to another.
   the settle after it keep moving the way the step jumped, at 5 to 17
   cents per millisecond, so neither the slope limit nor the motion test
   tells them from a glide [fact]. On real stems steps of 3 to 10.5
-  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real stem jumped
-  200 of its 210 cents across a gap while the level rose 17.5 dB, and
-  reads none [fact]. Unison glides whose voices leave the track
+  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real
+  stem jumped 200 of its 210 cents across a gap while the level rose
+  17.5 dB, and reads none [fact]. Unison glides whose voices leave the track
   unvoiced for 75 ms jump 0.53 and 0.54 of the interval across the gap; a
   step between 808 notes jumped 0.72 [synthetic].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
@@ -555,9 +577,9 @@ Limits:
   independent f0 confirmed most of them: their confidence is pessimistic
   [fact].
 - A slide on the bound whose track keeps drifting for over 2.5 times its
-  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem, which
-  an independent f0 confirmed, drifted for 4.3 times its fitted time
-  [fact].
+  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem,
+  which an independent f0 confirmed, drifted for 4.3 times its fitted
+  time [fact].
 - Where the tracker reads a tone's second harmonic, a glide still reads
   its interval: on a real stem a tone rose 2.2 semitones from 921 Hz,
   the track followed its second harmonic from 1845 to 2100 Hz, and the
@@ -574,7 +596,10 @@ Limits:
   vibrato, while a vibrato of ±60 cents, whose stable pitches lie 120
   cents apart, stays whole [proposal]. Each span loses 50 ms at each end,
   the frames where a glide moves and the settling of a drop: five time
-  constants, at least 100 ms [fact].
+  constants, at least 100 ms [fact]. A generated octave drop into A1 with
+  $\tau$ = 60 ms, then a vibrato, reads that vibrato; skipping only
+  100 ms left a fifth of the fall in the span, and the search read none
+  [synthetic].
 - A glide moves where its fitted curve lies more than 10 cents, the
   smallest extent of a vibrato, from both its pitches [proposal]. A
   curve on the upper bound of $p$ comes within 3 % of its interval of its
