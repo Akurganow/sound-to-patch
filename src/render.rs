@@ -37,6 +37,7 @@ pub mod session;
 pub mod spread;
 pub mod state;
 pub mod timing;
+pub mod vita;
 pub mod wire;
 
 pub use recipe::{

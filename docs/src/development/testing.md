@@ -189,24 +189,109 @@ copy of one input is enough.
 
 ## The open Vital engine
 
-Two ignored tests check written presets against Vital. They need tools
-that CI does not install by default:
+The open-engine tests run in the open Vital engine through the GPL-3.0
+`vita` package, which runs only as a separate Python process. No crate of
+ours depends on it. They need `VITA_PYTHON`, a Python with the packages of
+`tools/vita/requirements.txt`, pinned with their hashes, made outside the
+repository:
+
+```sh
+uv venv --python 3.12.14 /tmp/vita-env
+uv pip install --python /tmp/vita-env/bin/python --require-hashes -r tools/vita/requirements.txt
+VITA_PYTHON=/tmp/vita-env/bin/python cargo nextest run --test it --run-ignored only -E 'test(/open_engine/)'
+```
+
+The CI job `open-engine` runs the same commands on each pull request:
 
 - `written_presets_load_in_the_open_engine` writes the load-check variants
-  and loads each in the open Vital engine through
-  `tools/vita/load_check.py`. It needs `VITA_PYTHON`, a Python with the
-  GPL-3.0 `vita` package, made outside the repository:
+  and loads each through `tools/vita/load_check.py`.
+- `the_open_engine_passes_the_single_note_contract` runs the renderer
+  contract suite on `render::vita::VitaRenderer`, with its single-note
+  cases: the bass and lead notes, and a note at 1 s.
+- Two more refuse a MIDI file with more than one note and pass the load
+  check at 140 BPM.
+- `the_open_engine_renders_a_job_identically_twice` pins that the open
+  engine's spread is 0.
+- `the_open_engine_renders_every_length_it_is_asked_for` renders 12
+  onsets and lengths that are not whole milliseconds.
+- `the_open_engine_script_renders_and_releases_at_the_frames_it_is_asked_for`
+  sends render and note lengths straight to the script.
+- `the_open_engine_refusal_of_a_preset_is_a_state_error` sends a preset
+  that the engine does not load through the renderer, which reports a
+  state error.
+- `the_open_engine_prints_stay_off_the_reply` makes the engine write to
+  file descriptor 1 as it starts, and the reply still parses.
 
-  ```sh
-  python3 -m venv /tmp/vita-env
-  /tmp/vita-env/bin/pip install vita numpy
-  VITA_PYTHON=/tmp/vita-env/bin/python cargo nextest run --run-ignored only -E 'test(written_presets)'
-  ```
+The refusals of a job the engine cannot play, another synth's state, more
+than one note, controller changes and a custom tuning, come before the
+script runs. Unit tests of `render::vita` check them in every CI run.
+Stub scripts, run with `python3`, check that exit code 3 maps to a state
+error and any other failure to a host error, that a refused load leaves
+no loaded state and no tempo, and that a clip of another length than
+asked is a crash. Without `python3` the stub tests skip and say so.
 
-  `vita` runs only as a separate process. No crate of ours depends on it,
-  and CI does not run this test.
-- `a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
-  saved after loading a written preset, from `VITAL_SAVED_PRESET`.
+`VitaRenderer` starts `tools/vita/render.py` once per request, with JSON
+in and JSON out. The engine renders one note per call and takes no MIDI
+file, so a job with more than one note or with controller changes is
+refused. Each call starts with no sound left from the one before. The
+renderer plays the recipe's warm-up note after the load and drops it, so
+smoothed parameters settle. The engine has no call that renders silence,
+so the recipe's settle steps add to that warm-up render's length. The
+clip renders to the tail cap and ends where the recipe's tail watch ends
+it. The engine reads no `tuning` from a preset, so a custom tuning is
+refused. The script writes the job's tempo into `beats_per_minute`, as a
+plug-in in a host takes its tempo from the host. Two renders of one
+preset, each in its own process, come out identical, so the open engine's
+spread is 0.
+
+Probed on `vita` 0.1.0:
+
+- Velocity 0 still sounds: a note at velocity 0 renders at an RMS of
+  0.10. The renderer never sends one, since a note's velocity is 1 to
+  127.
+- `set_bpm` before the load leaves the saved `beats_per_minute` as the
+  preset holds it: 2.0 after `set_bpm(140)`. After the load it saves the
+  new tempo, 2.333 beats per second. The script calls it before the load
+  and writes the tempo into the preset, so both agree.
+- `load_init_preset` resets `beats_per_minute` to 2.0, 120 BPM, whatever
+  `set_bpm` or an earlier preset set.
+- The engine multiplies a length in seconds by the rate in float32 and
+  truncates, so a length of n frames sent as n / rate can come back one
+  frame short. At 400,000 to 520,000 frames it did for 16 of 121 lengths;
+  that float32 product predicts each of them. The script passes
+  `(n + 0.5) / rate` and checks the float32 product, and the renderer
+  refuses a clip of another length than it asked for.
+- The engine releases a note at the end of a block of 64 frames: a note
+  of 64 k + 1 frames releases a block later than one of 64 k. With
+  n / rate, a note of 64 k + 1 frames could truncate to 64 k and release
+  a block early. `the_open_engine_script_renders_and_releases_at_the_frames_it_is_asked_for`
+  sends render and note lengths that truncated that way straight to the
+  script, so it fails if either goes back to n / rate.
+- The engine's prints would mix into the JSON reply, so the script sends
+  its standard output to standard error and writes the reply to the saved
+  descriptor. A preset the engine does not load and samples that are not
+  finite exit with code 3, which the renderer reports as a state error.
+- The recipe's warm-up note changes the probe preset's clip by at most
+  1.6e-7, about one float32 step, and a preset whose LFO retriggers on
+  each note by as little. On a preset with an LFO in sync mode, which
+  runs on the time the engine has rendered, it changes the clip by up to
+  1.65, the LFO's whole phase. The renderer keeps the warm-up, so such a
+  preset starts after the same pre-roll as on the plug-in.
+
+The cross-engine check needs Vital, `SOUND_TO_PATCH_HOST` and
+`VITA_PYTHON`: `render_vital::retail_and_vita_renders_compare_on_one_note`
+renders the probe preset's lead note 20 times on retail, in sequence on
+one instance, and once in the open engine. It compares the open render
+with the retail ones against the retail tolerance and prints each
+output. The levels must agree within coarse bounds, 0.1 dB on the RMS
+level and the peak and 1.0 dB on the envelope distance, so a broken or
+wrong render fails: an open render at -12 dB, or of the init patch,
+fails by 12.0 dB and 4.0 dB. The engines differ in build, so a miss of
+the retail limit is a finding about the engines, printed here, not a
+failure of either.
+
+`a_preset_saved_by_vital_keeps_the_edits` reads a file the retail app
+saved after loading a written preset, from `VITAL_SAVED_PRESET`.
 
 ## Rendering
 
@@ -250,6 +335,9 @@ the plug-in as a library and opens no window. They need:
 - `SOUND_TO_PATCH_HOST`, the path of a `sound-to-patch-host` binary that
   loads Vital. Vital 1.0.7 holds x86_64 code only, so on Apple silicon the
   host needs an x86_64 slice and runs under Rosetta.
+- `VITA_PYTHON` for one of them, the cross-engine check
+  `retail_and_vita_renders_compare_on_one_note`, which also renders in the
+  open engine. Without it that test fails at once and names the variable.
 
 ```sh
 rustup target add x86_64-apple-darwin

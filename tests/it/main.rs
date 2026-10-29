@@ -65,6 +65,7 @@ mod tempo;
 mod track;
 #[cfg(test)]
 mod transcribe;
+#[cfg(test)]
 mod vita;
 #[cfg(test)]
 mod words;
