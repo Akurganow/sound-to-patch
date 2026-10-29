@@ -127,8 +127,8 @@ joins `READY` when its adapter lands.
   `wire` the protocol of the host process, `plugin` the renderer that
   starts that process and picks its architecture from the plug-in bundle,
   `session` the worker pool that every consumer renders through, `timing`
-  the table of load and render times, `spread` the repeat-render spread
-  and the comparison within it, and the module root the render job, the
+  the table of load and render times, `spread` the repeat-render spread,
+  its sequential draws and the comparison against it, and the module root the render job, the
   record and the `Renderer` trait.
   The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`

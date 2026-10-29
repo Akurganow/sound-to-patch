@@ -3,24 +3,27 @@
 //! comparison of reference recordings with automatic renders. Both write
 //! local files.
 
-use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Value, json};
 use sound_to_patch::audio::{Audio, decode, write_wav};
 use sound_to_patch::notes::Transcriber;
 use sound_to_patch::render::spread::{
-    ClipMetrics, STATISTIC, SpreadTable, clip_rows, compare, layer_values, value_row,
+    ClipMetrics, Comparison, SpreadTable, clip_rows, compare, layer_rows,
 };
 use sound_to_patch::render::state::readback_mismatches;
 use sound_to_patch::render::{PresetState, RenderJob, Rendered};
 use sound_to_patch::report::{AnalyzeRequest, analyze};
 use sound_to_patch::synth::Synth;
-use sound_to_patch::units::Bpm;
+use sound_to_patch::units::{Bpm, Decibels};
 
 use crate::Result;
-use crate::plugin::{Plugin, read_preset, sha256_hex};
+use crate::fetch::sha256_hex;
+use crate::plugin::{Plugin, read_preset};
 
 /// What a spread run renders.
 pub(crate) struct SpreadRun<'a> {
@@ -32,8 +35,6 @@ pub(crate) struct SpreadRun<'a> {
     pub(crate) bpm: Bpm,
     /// How many renders.
     pub(crate) runs: NonZeroUsize,
-    /// How many workers render them.
-    pub(crate) workers: NonZeroUsize,
 }
 
 /// Measures the spread of one preset and writes it to `out`. The renders
@@ -42,12 +43,12 @@ pub(crate) fn run_spread(spread: &SpreadRun<'_>, plugin: &Plugin, out: &Path) ->
     let (state, preset_sha256) = read_preset(spread.preset)?;
     let job = RenderJob::from_midi(state, spread.midi, spread.bpm)?;
     plugin.check(&job)?;
-    let renders = plugin.render(&job, spread.runs.get(), spread.workers)?;
+    let renders = plugin.draw(&job, spread.runs.get())?;
     let folder = renders_folder(out);
     std::fs::create_dir_all(&folder)?;
     let transcriber = Transcriber::new()?;
     let mut clips = Vec::with_capacity(renders.len());
-    let mut layers: BTreeMap<String, (String, Vec<f64>)> = BTreeMap::new();
+    let mut reports = Vec::with_capacity(renders.len());
     for (index, rendered) in renders.iter().enumerate() {
         let wav = folder.join(format!("render-{index:02}.wav"));
         clips.push(stored_metrics(&wav, rendered)?);
@@ -66,34 +67,17 @@ pub(crate) fn run_spread(spread: &SpreadRun<'_>, plugin: &Plugin, out: &Path) ->
             &transcriber,
         )?;
         let text = std::fs::read_to_string(report.join("layers.json"))?;
-        for (path, unit, value) in layer_values(&serde_json::from_str(&text)?) {
-            layers
-                .entry(path)
-                .or_insert((unit, Vec::new()))
-                .1
-                .push(value);
-        }
+        reports.push(serde_json::from_str(&text)?);
     }
-    let mut outputs = clip_rows(&clips);
-    // An output that some render left without an estimate has no spread.
-    outputs.extend(layers.iter().filter_map(|(path, (unit, values))| {
-        (values.len() == renders.len()).then(|| value_row(path, unit, values))?
-    }));
-    let first = renders.first().ok_or("no render came back")?;
-    let table = SpreadTable {
-        identity: first.record.identity.clone(),
-        recipe_version: first.record.recipe_version,
-        oversampling: first.record.oversampling,
-        n: renders.len(),
-        statistic: STATISTIC.to_owned(),
-        preset_sha256,
-        midi_sha256: first.record.midi_sha256.clone(),
-        bpm: spread.bpm,
-        outputs,
-    };
-    write_json(out, &serde_json::to_value(&table)?)?;
+    let mut outputs = clip_rows(&clips)?;
+    outputs.extend(layer_rows(&reports)?);
+    let table = SpreadTable::new(&renders, preset_sha256, spread.bpm, outputs)?;
+    crate::write_json(out, &serde_json::to_value(&table)?)?;
     for row in &table.outputs {
-        println!("{}: {:.4} {}", row.output, row.spread, row.unit);
+        println!(
+            "{}: spread {:.4}, tolerance {:.4} {}",
+            row.output, row.spread, row.tolerance, row.unit
+        );
     }
     println!("wrote {}", out.display());
     Ok(())
@@ -103,8 +87,10 @@ pub(crate) fn run_spread(spread: &SpreadRun<'_>, plugin: &Plugin, out: &Path) ->
 /// consumer reads it.
 fn stored_metrics(wav: &Path, rendered: &Rendered) -> Result<ClipMetrics> {
     write_wav(wav, &rendered.audio)?;
-    ClipMetrics::of(&decode(wav)?.into_audio())
-        .ok_or_else(|| format!("{} is silent", wav.display()).into())
+    Ok(ClipMetrics::of(
+        &decode(wav)?.into_audio(),
+        &wav.display().to_string(),
+    )?)
 }
 
 /// What a reference run reads and renders.
@@ -117,7 +103,7 @@ pub(crate) struct ReferenceRun<'a> {
     pub(crate) manifest: &'a Path,
     /// How many renders per reference.
     pub(crate) runs: NonZeroUsize,
-    /// How many workers render them.
+    /// How many references render at once, each on its own instance.
     pub(crate) workers: NonZeroUsize,
     /// A gain in dB applied to every recording before the comparison: a
     /// diagnostic that separates a level offset of the recording chain
@@ -125,18 +111,78 @@ pub(crate) struct ReferenceRun<'a> {
     pub(crate) recording_gain_db: f64,
 }
 
+/// One manifest row, read and checked before any render.
+struct Reference {
+    id: String,
+    preset_id: String,
+    preset_sha256: String,
+    recording_sha256: String,
+    bpm: Bpm,
+    job: RenderJob,
+    clip: ClipMetrics,
+    state_differences: Value,
+}
+
 /// Compares each reference recording with renders of its preset, MIDI
-/// file and tempo, within the spread of those renders, and writes the
+/// file and tempo, against the spread of those renders, and writes the
 /// report to `out`. The renders stay in the folder [`renders_folder`]
 /// names, one folder per reference.
+///
+/// Every manifest row is read first: its preset, MIDI file, recording and
+/// exported state. Then the references render, [`ReferenceRun::workers`]
+/// at once, each drawn in sequence on its own plug-in instance.
 pub(crate) fn run_reference(
     reference: &ReferenceRun<'_>,
     plugin: &Plugin,
     out: &Path,
 ) -> Result<()> {
+    let gain = Decibels::new(reference.recording_gain_db)?.to_amplitude_gain()?;
+    let references = read_manifest(reference, gain)?;
+    let next = AtomicUsize::new(0);
+    // Errors cross threads as text: the task error type is not Send.
+    let done: Mutex<Vec<Option<std::result::Result<Value, String>>>> =
+        Mutex::new((0..references.len()).map(|_| None).collect());
+    let threads = reference.workers.get().min(references.len());
+    std::thread::scope(|scope| {
+        for _ in 0..threads {
+            scope.spawn(|| {
+                loop {
+                    let at = next.fetch_add(1, Ordering::Relaxed);
+                    let Some(entry) = references.get(at) else {
+                        break;
+                    };
+                    let row = render_reference(entry, reference, plugin, out)
+                        .map_err(|error| format!("{}: {error}", entry.id));
+                    if let Ok(mut done) = done.lock() {
+                        done[at] = Some(row);
+                    }
+                }
+            });
+        }
+    });
+    let rows = done
+        .into_inner()
+        .map_err(|_| "a reference thread panicked")?
+        .into_iter()
+        .map(|row| row.unwrap_or_else(|| Err("a reference did not render".to_owned())))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let report = json!({
+        "recording_gain_db": reference.recording_gain_db,
+        "references": rows,
+    });
+    crate::write_json(out, &report)?;
+    println!("wrote {}", out.display());
+    Ok(())
+}
+
+/// Reads every manifest row: the preset state, the job, the recording's
+/// metrics with `gain` applied and the exported state's differences.
+/// Refuses a row whose id another row already holds, since both would
+/// write one renders folder.
+fn read_manifest(reference: &ReferenceRun<'_>, gain: f64) -> Result<Vec<Reference>> {
     let text = std::fs::read_to_string(reference.manifest)?;
-    let mut rows = Vec::new();
-    let mut header = None;
+    let mut ids = HashSet::new();
+    let mut references = Vec::new();
     for line in text.lines().filter(|line| !line.trim().is_empty()) {
         let entry: Value = serde_json::from_str(line)?;
         let field = |key: &str| {
@@ -151,26 +197,21 @@ pub(crate) fn run_reference(
         let recording = reference.root.join(field("render_file")?);
         let bpm = Bpm::new(entry["bpm"].as_f64().ok_or("a manifest row has no `bpm`")?)?;
         let id = format!("{preset_id}__{}", file_stem(&midi));
+        if !ids.insert(id.clone()) {
+            return Err(format!(
+                "two manifest rows have the id {id}: one preset and one MIDI file. Remove the repeated row"
+            )
+            .into());
+        }
         let (state, preset_sha256) = read_preset(&preset)?;
         let state_differences = match entry["state_file"].as_str() {
             Some(file) => json!(state_differences(&state, &reference.root.join(file), bpm)?),
             None => Value::Null,
         };
         let job = RenderJob::from_midi(state, &midi, bpm)?;
-        plugin.check(&job)?;
-        let renders = plugin.render(&job, reference.runs.get(), reference.workers)?;
-        let folder = renders_folder(out).join(&id);
-        std::fs::create_dir_all(&folder)?;
-        let clips = renders
-            .iter()
-            .enumerate()
-            .map(|(index, rendered)| {
-                stored_metrics(&folder.join(format!("render-{index:02}.wav")), rendered)
-            })
-            .collect::<Result<Vec<_>>>()?;
-        let recording_bytes = std::fs::read(&recording)?;
+        let recording_bytes = std::fs::read(&recording)
+            .map_err(|error| format!("cannot read {}: {error}", recording.display()))?;
         let audio = decode(&recording)?.into_audio();
-        let gain = 10_f64.powf(reference.recording_gain_db / 20.0);
         let audio = Audio::new(
             audio.sample_rate(),
             audio
@@ -179,54 +220,95 @@ pub(crate) fn run_reference(
                 .map(|channel| channel.iter().map(|x| x * gain).collect())
                 .collect(),
         )?;
-        let clip =
-            ClipMetrics::of(&audio).ok_or_else(|| format!("the recording of {id} is silent"))?;
-        let spread = clip_rows(&clips);
-        let comparisons = compare(&clip, &clips, &spread);
-        let within = comparisons.iter().all(|comparison| comparison.within);
-        println!(
-            "{id}: {}",
-            comparisons
-                .iter()
-                .map(|c| format!(
-                    "{} {:.3}/{:.3}{}",
-                    c.output,
-                    c.difference,
-                    c.spread,
-                    if c.within { "" } else { " BEYOND" }
-                ))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
-        let first = renders.first().ok_or("no render came back")?;
-        header.get_or_insert_with(|| {
-            json!({
-                "identity": first.record.identity,
-                "recipe_version": first.record.recipe_version,
-                "oversampling": first.record.oversampling,
-                "n": renders.len(),
-                "statistic": STATISTIC,
-                "recording_gain_db": reference.recording_gain_db,
-            })
+        let clip = ClipMetrics::of(&audio, &format!("the recording of {id}"))?;
+        references.push(Reference {
+            id,
+            preset_id,
+            preset_sha256,
+            recording_sha256: sha256_hex(&recording_bytes),
+            bpm,
+            job,
+            clip,
+            state_differences,
         });
-        rows.push(json!({
-            "id": id,
-            "preset_id": preset_id,
-            "bpm": bpm,
-            "preset_sha256": preset_sha256,
-            "midi_sha256": first.record.midi_sha256,
-            "recording_sha256": sha256_hex(&recording_bytes),
-            "state_differences": state_differences,
-            "spread": spread,
-            "comparisons": comparisons,
-            "within": within,
-        }));
     }
-    let mut report = header.ok_or("the manifest names no reference")?;
-    report["references"] = Value::Array(rows);
-    write_json(out, &report)?;
-    println!("wrote {}", out.display());
-    Ok(())
+    if references.is_empty() {
+        return Err("the manifest names no reference".into());
+    }
+    Ok(references)
+}
+
+/// Renders one reference, compares its recording and returns its report
+/// row.
+fn render_reference(
+    entry: &Reference,
+    reference: &ReferenceRun<'_>,
+    plugin: &Plugin,
+    out: &Path,
+) -> Result<Value> {
+    plugin.check(&entry.job)?;
+    let renders = plugin.draw(&entry.job, reference.runs.get())?;
+    let folder = renders_folder(out).join(&entry.id);
+    std::fs::create_dir_all(&folder)?;
+    let clips = renders
+        .iter()
+        .enumerate()
+        .map(|(index, rendered)| {
+            stored_metrics(&folder.join(format!("render-{index:02}.wav")), rendered)
+        })
+        .collect::<Result<Vec<_>>>()?;
+    let spread = SpreadTable::new(
+        &renders,
+        entry.preset_sha256.clone(),
+        entry.bpm,
+        clip_rows(&clips)?,
+    )?;
+    let comparisons = compare(&entry.clip, &clips, &spread.outputs)?;
+    println!("{}: {}", entry.id, summary(&comparisons));
+    let within = comparisons.iter().all(|comparison| comparison.within);
+    let mut comparisons = serde_json::to_value(&comparisons)?;
+    // A verdict after a diagnostic gain is not a match of the recording as
+    // it was made, so it carries another name.
+    let verdict = if reference.recording_gain_db == 0.0 {
+        "within"
+    } else {
+        "within_with_gain"
+    };
+    if verdict != "within"
+        && let Some(items) = comparisons.as_array_mut()
+    {
+        for item in items.iter_mut().filter_map(Value::as_object_mut) {
+            if let Some(value) = item.remove("within") {
+                item.insert(verdict.to_owned(), value);
+            }
+        }
+    }
+    let mut row = json!({
+        "id": entry.id,
+        "preset_id": entry.preset_id,
+        "recording_sha256": entry.recording_sha256,
+        "state_differences": entry.state_differences,
+        "spread": spread,
+        "comparisons": comparisons,
+    });
+    row[verdict] = json!(within);
+    Ok(row)
+}
+
+fn summary(comparisons: &[Comparison]) -> String {
+    comparisons
+        .iter()
+        .map(|c| {
+            format!(
+                "{} {:.3}/{:.3}{}",
+                c.output,
+                c.difference,
+                c.limit,
+                if c.within { "" } else { " BEYOND" }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The values that differ between the state of the preset and the state
@@ -255,12 +337,6 @@ fn file_stem(path: &Path) -> String {
     path.file_stem()
         .map(|stem| stem.to_string_lossy().into_owned())
         .unwrap_or_default()
-}
-
-fn write_json(out: &Path, value: &Value) -> Result<()> {
-    let text = serde_json::to_string_pretty(value)? + "\n";
-    std::fs::write(out, text)
-        .map_err(|error| format!("cannot write {}: {error}", out.display()).into())
 }
 
 /// The default MIDI file of a spread: three notes at 120 BPM.

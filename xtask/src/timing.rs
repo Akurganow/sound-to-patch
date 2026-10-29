@@ -13,9 +13,7 @@ use crate::plugin::{Plugin, read_preset};
 pub(crate) fn run(preset: &Path, plugin: &Plugin, runs: NonZeroUsize, out: &Path) -> Result<()> {
     let (state, _) = read_preset(preset)?;
     let table = measure(plugin.spawn(), &state, runs)?;
-    let json = serde_json::to_string_pretty(&table)?;
-    std::fs::write(out, json + "\n")
-        .map_err(|error| format!("cannot write {}: {error}", out.display()))?;
+    crate::write_json(out, &serde_json::to_value(&table)?)?;
     for row in &table.rows {
         let workers = row
             .workers

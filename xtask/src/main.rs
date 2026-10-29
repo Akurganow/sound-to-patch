@@ -156,21 +156,18 @@ enum Task {
     /// Render a preset 20 times on the Vital plug-in and write the
     /// repeat-render spread of each output; local only.
     RenderSpread {
-        /// The preset to render.
-        #[arg(long, default_value = "tests/fixtures/vital/routes.vital")]
-        preset: PathBuf,
+        /// The preset to render [default: `tests/fixtures/vital/routes.vital`].
+        #[arg(long)]
+        preset: Option<PathBuf>,
         /// The MIDI file [default: `tests/cmd/data/three-notes.mid`].
         #[arg(long)]
         midi: Option<PathBuf>,
         /// The tempo of the MIDI file in beats per minute.
         #[arg(long, default_value_t = 120.0)]
         bpm: f64,
-        /// How many renders.
+        /// How many renders, drawn in sequence on one plug-in instance.
         #[arg(long, default_value_t = SPREAD)]
         runs: NonZeroUsize,
-        /// How many workers render them.
-        #[arg(long, default_value_t = WORKERS)]
-        workers: NonZeroUsize,
         #[command(flatten)]
         plugin: PluginArgs,
         /// The JSON file to write.
@@ -190,7 +187,8 @@ enum Task {
         /// How many renders per recording.
         #[arg(long, default_value_t = SPREAD)]
         runs: NonZeroUsize,
-        /// How many workers render them.
+        /// How many recordings render at once, each on its own plug-in
+        /// instance.
         #[arg(long, default_value_t = WORKERS)]
         workers: NonZeroUsize,
         /// A gain in dB for every recording, a diagnostic of a level
@@ -250,17 +248,16 @@ fn main() -> ExitCode {
             midi,
             bpm,
             runs,
-            workers,
             plugin,
             out,
         } => plugin.find().and_then(|found| {
+            let preset = preset.unwrap_or_else(timing::default_preset);
             let midi = midi.unwrap_or_else(spread::default_midi);
             let run = spread::SpreadRun {
                 preset: &preset,
                 midi: &midi,
                 bpm: Bpm::new(bpm)?,
                 runs,
-                workers,
             };
             spread::run_spread(&run, &found, &out)
         }),
@@ -318,12 +315,19 @@ impl PluginArgs {
 
 /// The renders of a spread.
 const SPREAD: NonZeroUsize = NonZeroUsize::new(SPREAD_RUNS).unwrap();
-/// The workers of a spread.
+/// The recordings a reference run renders at once.
 const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
 
 /// The workspace root, whatever directory `cargo xtask` runs from.
 fn root() -> &'static Path {
     Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/.."))
+}
+
+/// Writes `value` to `out` as pretty JSON with a final newline.
+fn write_json(out: &Path, value: &serde_json::Value) -> Result<()> {
+    let text = serde_json::to_string_pretty(value)? + "\n";
+    std::fs::write(out, text)
+        .map_err(|error| format!("cannot write {}: {error}", out.display()).into())
 }
 
 /// The error of any task: a message that says what failed and how to fix it.

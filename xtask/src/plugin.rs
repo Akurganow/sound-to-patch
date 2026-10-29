@@ -1,20 +1,20 @@
 //! The Vital plug-in setup that the render tasks share: the bundle, the
-//! host binary, renderers for a session and the load check before a batch.
+//! host binary, renderers for a session, the load check before a batch and
+//! the draws of a spread.
 
-use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
-use sha2::{Digest, Sha256};
 use sound_to_patch::render::check::render_checked;
 use sound_to_patch::render::plugin::{HOST_ENV, PluginRenderer, find_plugin, host_binary};
 use sound_to_patch::render::recipe::Recipe;
-use sound_to_patch::render::session::{BoxedRenderer, RenderOutcome, RenderSession};
+use sound_to_patch::render::session::BoxedRenderer;
+use sound_to_patch::render::spread;
 use sound_to_patch::render::state::preset_state;
 use sound_to_patch::render::{PresetState, RenderError, RenderJob, Rendered};
 use sound_to_patch::synth::Synth;
 
 use crate::Result;
-use crate::fetch::Sha256Digest;
+use crate::fetch::sha256_hex;
 
 /// The plug-in bundle and the host binary.
 #[derive(Clone, Debug)]
@@ -65,26 +65,10 @@ impl Plugin {
         Ok(())
     }
 
-    /// Renders `job` `runs` times on a session of `workers` workers.
-    pub(crate) fn render(
-        &self,
-        job: &RenderJob,
-        runs: usize,
-        workers: NonZeroUsize,
-    ) -> Result<Vec<Rendered>> {
-        let session = RenderSession::new(workers, self.spawn());
-        session
-            .render_all(&vec![job.clone(); runs])
-            .into_iter()
-            .map(|outcome| match outcome {
-                RenderOutcome::Rendered(rendered) => Ok(rendered),
-                RenderOutcome::Failed(failure) => Err(failure
-                    .errors
-                    .into_iter()
-                    .last()
-                    .map_or_else(|| "a render failed".into(), Into::into)),
-            })
-            .collect()
+    /// Draws `runs` renders of `job` in sequence on one fresh plug-in
+    /// instance, each a distinct render.
+    pub(crate) fn draw(&self, job: &RenderJob, runs: usize) -> Result<Vec<Rendered>> {
+        Ok(spread::draw(self.spawn(), job, runs)?)
     }
 }
 
@@ -95,9 +79,4 @@ pub(crate) fn read_preset(path: &Path) -> Result<(PresetState, String)> {
         std::fs::read(path).map_err(|error| format!("cannot read {}: {error}", path.display()))?;
     let state = preset_state(Synth::Vital, &bytes, &Recipe::current())?;
     Ok((state, sha256_hex(&bytes)))
-}
-
-/// The SHA-256 of a file's bytes in lower-case hex.
-pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256Digest(Sha256::digest(bytes).into()).to_string()
 }
