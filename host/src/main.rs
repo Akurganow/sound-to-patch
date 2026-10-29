@@ -99,6 +99,13 @@ fn run() -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
+    if std::env::args()
+        .skip(1)
+        .any(|arg| arg == "--version" || arg == "-V")
+    {
+        println!("sound-to-patch-host {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    }
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {

@@ -1,0 +1,15 @@
+# A run on the fake backend: every step prints what it found, and the WAV
+# file and the record land in target/. `--force` replaces an earlier run.
+bin.name = "sound-to-patch"
+args = ["render", "tests/fixtures/vital/routes.vital", "--midi", "tests/cmd/data/three-notes.mid", "--bpm", "120", "-o", "target/render-fake.wav", "--force", "--backend", "fake"]
+stdout = """
+plug-in: Vital fake, in fake as fake
+preset: routes, 2x oversampling
+notes: 3, the last note-off at 3.000 s, 120 BPM
+init patch: 2 renders, 0.06 dB apart
+load check: passed; the saved state matches, and the render lies 63.63 dB from the init patch, beyond the margin of 0.17 dB
+clip: 4.479 s, the tail went quiet
+wrote target/render-fake.wav
+wrote target/render-fake.json
+"""
+stderr = ""

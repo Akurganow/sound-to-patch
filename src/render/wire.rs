@@ -35,10 +35,14 @@ pub enum Request {
     /// Loads `state`, plays the pre-roll, renders `notes` at `bpm` and
     /// writes the clip to `audio` as a 32-bit float WAV file.
     Render {
-        /// The plug-in state, base64.
-        state: String,
+        /// The plug-in state, base64. `None` renders the plug-in's own init
+        /// patch, before any state load.
+        state: Option<String>,
         /// The notes.
         notes: Vec<WireNote>,
+        /// Controller changes: pitch bend and mod wheel.
+        #[serde(default)]
+        controls: Vec<WireControl>,
         /// The tempo in beats per minute.
         bpm: f64,
         /// Where to write the clip.
@@ -62,6 +66,41 @@ pub struct WireNote {
     pub offset: f64,
     /// The MIDI velocity.
     pub velocity: u8,
+}
+
+/// A controller change on the wire.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum WireControlKind {
+    /// Pitch bend, 0 to 16383 with the centre at 8192.
+    PitchBend {
+        /// The bend value.
+        value: u16,
+    },
+    /// The mod wheel, MIDI controller 1, 0 to 127.
+    ModWheel {
+        /// The wheel value.
+        value: u8,
+    },
+}
+
+/// A controller change at a time of the clip.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WireControl {
+    /// The time in seconds.
+    pub time: f64,
+    /// The change.
+    #[serde(flatten)]
+    pub kind: WireControlKind,
+}
+
+impl From<WireControlKind> for super::ControlKind {
+    fn from(kind: WireControlKind) -> Self {
+        match kind {
+            WireControlKind::PitchBend { value } => Self::PitchBend(value),
+            WireControlKind::ModWheel { value } => Self::ModWheel(value),
+        }
+    }
 }
 
 /// A reply from the host.

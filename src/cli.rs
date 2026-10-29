@@ -11,6 +11,7 @@ use clap::{Parser, Subcommand};
 pub mod analyze;
 pub mod notes;
 pub mod preset;
+pub mod render;
 
 /// Arguments of the `sound-to-patch` command.
 ///
@@ -58,6 +59,16 @@ pub enum Command {
     Notes(notes::NotesArgs),
     /// Read, inspect and write synth presets.
     Preset(preset::PresetArgs),
+    /// Render a preset and a MIDI file to a WAV file through the synth.
+    ///
+    /// The synth's plug-in loads headless in the plug-in host process. A
+    /// render counts only after the load check: the clip sounds, and the
+    /// state the plug-in saves back holds the preset. A clip whose octave
+    /// bands match the plug-in's init patch gives a warning. Each step
+    /// prints what it found.
+    ///
+    /// Example: sound-to-patch render bass.vital --midi notes.mid --bpm 140 -o bass.wav
+    Render(render::RenderArgs),
 }
 
 /// The text a command prints: the result to standard output, warnings to
@@ -156,6 +167,7 @@ impl Command {
                         .collect(),
                 })
             }
+            Self::Render(args) => render(args),
             Self::Preset(args) => match &args.command {
                 preset::PresetCommand::Inspect(inspect) => Ok(crate::preset::inspect(
                     &inspect.file,
@@ -177,4 +189,29 @@ impl Command {
             },
         }
     }
+}
+
+fn render(args: &render::RenderArgs) -> Result<Output, Box<dyn Error + Send + Sync>> {
+    let report = crate::render::file::render_file(&crate::render::file::RenderRequest {
+        preset: &args.preset,
+        midi: &args.midi,
+        bpm: args.bpm,
+        out: &args.out,
+        synth: args.synth.resolve(Some(&args.preset))?,
+        plugin: args.plugin.as_deref(),
+        force: args.force,
+        backend: args.backend,
+    })?;
+    Ok(Output {
+        stdout: report
+            .summary()
+            .into_iter()
+            .map(|line| line + "\n")
+            .collect(),
+        stderr: report
+            .warnings()
+            .into_iter()
+            .map(|warning| "warning: ".to_owned() + &warning + "\n")
+            .collect(),
+    })
 }

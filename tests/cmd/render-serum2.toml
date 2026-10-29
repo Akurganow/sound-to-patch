@@ -1,0 +1,8 @@
+# Serum 2 has no renderer yet.
+bin.name = "sound-to-patch"
+args = ["render", "bass.SerumPreset", "--synth", "serum2", "--midi", "tests/cmd/data/three-notes.mid", "--bpm", "120", "-o", "target/render-serum2.wav"]
+status.code = 1
+stdout = ""
+stderr = """
+error: cannot read "bass.SerumPreset": Serum 2 files cannot be read yet. Only Vital files (.vital) work now
+"""

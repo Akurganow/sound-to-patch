@@ -17,6 +17,8 @@ mod fixtures;
 #[cfg(test)]
 mod golden;
 #[cfg(test)]
+mod load_check;
+#[cfg(test)]
 mod lomb;
 mod mapper;
 #[cfg(test)]
@@ -34,6 +36,8 @@ mod preset;
 mod reference;
 #[cfg(test)]
 mod render;
+#[cfg(test)]
+mod render_file;
 #[cfg(test)]
 mod render_vital;
 #[cfg(test)]

@@ -8,8 +8,8 @@
   scope, its acceptance cases and the tests it needs.
 - Improve the docs in `docs/`, the README or the rustdoc.
 
-Out of scope for now: training models, rendering presets to audio, tempo
-detection, drums and running the toolkit in the cloud.
+Out of scope for now: training models, tempo detection, drums and running
+the toolkit in the cloud.
 
 ## Setup
 
@@ -30,7 +30,7 @@ cargo nextest run --workspace
 cargo test --workspace --doc
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
-cargo about generate --locked --fail -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
+cargo about generate --locked --fail -m host/Cargo.toml -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
 ```
 
 The book check needs mdBook, its KaTeX preprocessor and lychee:

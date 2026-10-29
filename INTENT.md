@@ -451,7 +451,6 @@ checks whether the agent read it.
 ## Out of scope now
 
 - Training neural networks.
-- Rendering presets to audio, and everything that depends on it.
 - Tempo detection: Suno already reports the BPM.
 - Drums.
 - Cloud execution of the toolkit. It runs locally on macOS. The agent is a
@@ -461,12 +460,14 @@ checks whether the agent read it.
 ## Later
 
 - `render`: render a preset with MIDI to WAV through the target synth.
+  Vital renders through its retail plug-in now, with the load check. The
+  open engine, the render session and the repeat-render spread follow.
   Each synth has its own render state adapter.
   - Vital: `vita` runs the open 1.0.x engine as a separate process and
     returns the audio as NumPy arrays. It has wheels for Apple silicon.
     It serves tests and CI without a plugin license. The retail plugin
     through VST3 is the final check. The retail state is the preset JSON, and
-    whether a bare JSON loads is a probe. Render the same preset in both and
+    a bare JSON loads. Render the same preset in both and
     compare within the spread, since the engines differ in version.
   - Serum 2 ships as VST3, AU and AAX, with no CLAP build.
   - Load the preset through a VST3 processor state: the preset CBOR with

@@ -70,6 +70,14 @@ impl Renderer for RightSilent {
             record: rendered.record,
         })
     }
+
+    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        self.0.render_init(job)
+    }
+
+    fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
+        self.0.save_state()
+    }
 }
 
 #[test]
