@@ -2,8 +2,8 @@ name: CI
 
 # The job names fmt, clippy, test, doc, licenses and docs are required
 # checks in the main ruleset, with `commits` from commits.yml; test-linux,
-# pages and release are not. No `paths:` filter: a skipped workflow never
-# reports, and its required check stays pending.
+# open-engine, pages and release are not. No `paths:` filter: a skipped
+# workflow never reports, and its required check stays pending.
 on:
   pull_request:
     # Not `edited`: a title or description change re-runs only commits.yml.
@@ -104,6 +104,27 @@ jobs:
         env:
           INSTA_UPDATE: "no"
       - run: cargo test --workspace --doc
+
+  # The open Vital engine renders in tests with no Vital licence. `vita` is
+  # GPL-3.0 and runs only as a separate Python process, so the job installs
+  # it from the hash-pinned requirements and nothing of ours links it. Not a
+  # required check yet.
+  open-engine:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-nextest@0.9.149,uv@0.12.17
+      - run: uv venv --python 3.12.14 "$RUNNER_TEMP/vita"
+      - run: uv pip install --python "$RUNNER_TEMP/vita/bin/python" --require-hashes -r tools/vita/requirements.txt
+      - run: cargo nextest run --test it --profile ci --run-ignored only -E 'test(/open_engine/)'
+        env:
+          VITA_PYTHON: ${{ runner.temp }}/vita/bin/python
 
   doc:
     runs-on: macos-latest

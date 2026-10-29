@@ -126,7 +126,8 @@ joins `READY` when its adapter lands.
   `render` command's run from files to a WAV file and a record,
   `wire` the protocol of the host process, `plugin` the renderer that
   starts that process and picks its architecture from the plug-in bundle,
-  `session` the worker pool that every consumer renders through, `timing`
+  `vita` the open engine for single notes, `session` the worker pool that
+  every consumer renders through, `timing`
   the table of load and render times, `spread` the repeat-render spread,
   its sequential draws and the comparison against it, and the module
   root the render job, the record and the `Renderer` trait.
@@ -180,7 +181,9 @@ joins `READY` when its adapter lands.
   `schemas/`.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
-  engine. It runs only as a separate Python process with `vita`.
+  engine, and the script that renders one note in it for
+  `render::vita`. Both run only as a separate Python process with `vita`,
+  from the hash-pinned `requirements.txt`.
 
 ## Invariants
 

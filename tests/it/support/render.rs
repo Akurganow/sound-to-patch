@@ -8,6 +8,22 @@ use sound_to_patch::render::{
 };
 use sound_to_patch::units::{Bpm, Seconds};
 
+/// The minimal Vital fixture named `Probe`, with `edit` applied to the
+/// whole preset, as a render state. Both Vital engines render from it.
+pub(crate) fn probe(edit: impl FnOnce(&mut serde_json::Value)) -> PresetState {
+    let mut preset: serde_json::Value =
+        serde_json::from_slice(&std::fs::read("tests/fixtures/vital/minimal.vital").unwrap())
+            .unwrap();
+    preset["preset_name"] = "Probe".into();
+    edit(&mut preset);
+    sound_to_patch::render::state::preset_state(
+        sound_to_patch::synth::Synth::Vital,
+        &serde_json::to_vec(&preset).unwrap(),
+        &sound_to_patch::render::Recipe::current(),
+    )
+    .unwrap()
+}
+
 /// The peak a clip must exceed to count as sound: about -80 dBFS.
 const SOUND: f64 = 1e-4;
 
