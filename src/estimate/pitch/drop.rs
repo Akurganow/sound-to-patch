@@ -360,8 +360,7 @@ mod tests {
         use super::super::line::{LINE_HI, LINE_LO, LINE_LO_FAST};
         use super::super::{
             DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, NOTE_LINE_EDGE, NOTE_LINE_LOSS,
-            RUN_START_RISE,
-            STRIKE_ATTACK, STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
+            RUN_START_RISE, STRIKE_ATTACK, STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
         };
         use crate::dsp::ACTIVE_GATE_DB;
         use crate::notes::QUIET_FRAME;
