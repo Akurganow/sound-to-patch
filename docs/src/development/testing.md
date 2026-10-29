@@ -73,6 +73,49 @@ serialize tests; use a nextest test group instead. nextest does not run
 doc tests, hence the second command. CI uses the `ci` profile from
 `.config/nextest.toml`: no fail-fast and a slow-test timeout.
 
+Test builds optimise our own crates at `opt-level = 1` (`[profile.test]` in
+`Cargo.toml`), and the dependencies at `opt-level = 3`. The numeric tests
+run FFTs and trackers over whole stems, so unoptimised code made the suite
+take about 15 CPU-minutes. With the optimised build it takes about one,
+and the doc tests reuse the same build. Debug assertions and overflow
+checks stay on; `tests/it/profile.rs` fails if a change drops either. Plain
+`cargo build` and `cargo run` keep the unoptimised dev profile.
+
+## Continuous integration
+
+Two workflows run on a pull request.
+
+| Workflow | Jobs | Starts on |
+| :-- | :-- | :-- |
+| `ci.yml` | `fmt`, `clippy`, `test`, `doc`, `licenses`, `docs`, `test-linux` | a pull request that is opened, pushed to or reopened, and a push to `main` |
+| `commits.yml` | `commits` | the same events, and a change of the title or description |
+
+`commits` has its own workflow because it reads only the title and the
+description. Editing them runs that one Linux job and none of the heavy
+ones. The job has no `if:` and no path filter: a skipped job reports
+success under its own name and would hide an earlier failure on the same
+commit. The main ruleset requires `fmt`, `clippy`, `test`, `doc`,
+`commits`, `licenses` and `docs` by job name, so a job keeps its name when
+it moves between workflows.
+
+Each workflow cancels the run of an older push to the same pull request. A
+push to `main` never cancels another run, because every merged commit
+needs its checks and may need a release. The `release` and `pages` jobs
+keep their own groups, which queue and never cancel.
+
+The build cache of the dependencies comes from `Swatinem/rust-cache`,
+through `.github/actions/setup-rust`. A key holds the job, the lockfiles
+and manifests, and the compiler version, so a new stable release starts a
+fresh cache. Only a run on `main` saves a cache. A pull request restores
+the newest cache of `main` and compiles its own crates on top; it saves
+nothing, so branches cannot fill the repository quota. The `docs`
+and `commits` jobs share one Linux cache (`linux-xtask`), because they
+build the same `xtask` with the same features. The `release` job uses no
+cache, because it holds the deploy key. The `test` job builds
+the dependencies twice, once for the tests and once for `xtask`, because
+`cargo xtask` resolves fewer features than the test build. The cache holds
+both builds.
+
 ## CI versus local
 
 - A test that needs a synth (Vital or Serum 2), `vita` or a dataset
