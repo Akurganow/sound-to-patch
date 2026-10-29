@@ -22,7 +22,7 @@ pub use line::{LINE_CONVENTION, SubBandLine};
 pub use vibrato::{EXTENT_SHARE, VIBRATO_CONVENTION, VIBRATO_SPAN_MIN, VibratoFit, fit_vibrato};
 
 use drop::{DROP_FIT_END, band_attack, rises_into};
-use glide::{GlideRead, find_glides, steady_spans, track_lag};
+use glide::{GLIDE_TIME_MIN as SPAN_MIN, GlideRead, find_glides, steady_spans, track_lag};
 use line::{LINE_HI, LINE_LO, LINE_LO_FAST};
 
 use crate::audio::SampleRate;
@@ -1024,7 +1024,9 @@ fn vibratos(
 
 fn rate_glide(glide: GlideFit) -> Result<Rated<GlideFit>, ConfidenceError> {
     let (residual, jitter) = (glide.residual.get(), glide.jitter.get());
-    let level = if jitter > JITTER_LOW || glide.on_bound {
+    // A motion under the 90 ms floor of the published detector reads low: on
+    // real stems such a slide of a semitone was clear in the spectrum.
+    let level = if jitter > JITTER_LOW || glide.on_bound || glide.detected < SPAN_MIN {
         Level::Low
     } else if residual <= RESIDUAL_HIGH
         && jitter <= JITTER_HIGH
@@ -1259,5 +1261,11 @@ mod tests {
         assert_eq!(level(3.45), Some(Level::Low));
         assert_eq!(level(3.4), Some(Level::Medium));
         assert_eq!(level(JITTER_HIGH), Some(Level::High));
+        let short = rate_glide(GlideFit {
+            detected: Seconds::clamped(0.06),
+            ..glide
+        })
+        .unwrap();
+        assert_eq!(short.confidence.level(), Some(Level::Low));
     }
 }

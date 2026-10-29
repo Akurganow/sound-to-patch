@@ -444,10 +444,14 @@ A glide is pitch moving from one stable pitch to another.
   from 35 to 90 ms a glide too short to read, counted and flagged
   `glide_too_short`, from 90 ms on a glide [proposal]. A fit off the
   curve bound that passes every test of a glide over a detected span of
-  35 to 90 ms is too short as well, and so is a motion whose fit fails
-  over such a span [proposal]. The track smears a step between two 808
-  notes over a detected span of 100 to 450 ms, while the fit finds the
-  motion short [synthetic].
+  35 to 90 ms reads as a glide at low confidence, and a motion whose fit
+  fails over such a span is too short [proposal]. The task sets a 90 ms
+  floor on the detected span, the shortest transition of a published
+  portamento detector [fact]. On real stems a slide of a semitone over
+  about 60 ms, clear in the spectrum, fell under it [fact]. Reading such
+  fits changes no record of the generated sets [synthetic]. The track
+  smears a step between two 808 notes over a detected span of 100 to
+  450 ms, while the fit finds the motion short [synthetic].
 - Fit. $s(x) = 1 - (1 - x)^p$ between the two stable pitches is fitted by
   least squares over the motion and 50 ms of each stable pitch, with the
   start, the full time and $p$ free [fact]. $p > 1$ starts fast, $p < 1$
@@ -488,7 +492,17 @@ A glide is pitch moving from one stable pitch to another.
   pitch by 100 cents or more, and the motion into it lasts 90 ms or more,
   the glide carries `from_silence: true` [fact]. A shorter motion from
   silence is neither read nor counted toward `glide_too_short`, which
-  names a motion between two notes [fact]. A generated fall from 150 Hz
+  names a motion between two notes [fact]. The run must settle on that
+  stable pitch [proposal]. Its median level lies within 40 dB of the
+  loudest frame, the gate of active frames [fact]. And within half a
+  period of 3 Hz, the slowest vibrato, the smoothed pitch does not swing
+  back half the lead [proposal]. On real stems a wobble of ±60 cents at
+  6 to 7 Hz read its first half-cycle as a fall from silence, coming back
+  82 % of its lead [fact]. A quiet onset after digital silence read one
+  into a stable pitch at -42 dB, 2 dB under the gate [fact]. True falls
+  there came back 0 and 24 % and settled at -16 and -9 dB [fact].
+  Generated falls that swing back or settle at -45 dB read none
+  [synthetic]. A generated fall from 150 Hz
   into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
   rule as a drop [synthetic]. It reads as a fall from silence at medium,
   14.6 of its 19.0 semitones: it starts at 115 Hz, where the fall stands
@@ -504,8 +518,8 @@ A glide is pitch moving from one stable pitch to another.
   in cents and the jitter: the RMS deviation of the two stable pitches
   from their medians, and `curve_bound` [fact]. High needs a residual of
   15 cents or less, a jitter of 3 cents or less, a motion of 150 ms or
-  more and $p$ of 3 or less; low comes with a jitter above 3.4 cents or a
-  curve on the bound [proposal].
+  more and $p$ of 3 or less; low comes with a jitter above 3.4 cents, a
+  curve on the bound or a detected span under 90 ms [proposal].
   - A faster start reads its rise less well: on the generated sets, up to
     11 % off at $p$ 4.4, while high-confidence glides read their rise
     within 7.1 % [synthetic].

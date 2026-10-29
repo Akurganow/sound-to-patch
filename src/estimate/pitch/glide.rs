@@ -2,8 +2,9 @@
 //! track, with the curve `s(x) = 1 - (1 - x)^p` fitted between the two.
 
 use super::fit::nelder_mead;
-use super::vibrato::VIBRATO_EXTENT_MIN;
+use super::vibrato::{VIBRATO_EXTENT_MIN, VIBRATO_RATE_MIN};
 use crate::cast;
+use crate::dsp::ACTIVE_GATE_DB;
 use crate::notes::{MODEL_RATE, NoteList, PitchTrack, TRACK_FRAME, TRACK_HOP};
 use crate::units::{Cents, Hz, Seconds, Semitones};
 
@@ -55,6 +56,14 @@ pub(crate) const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
 /// real stems 0.44 to 2.28. The cut sits 10 % above the highest slide and
 /// 14 % below the lowest step.
 pub(crate) const BOUND_SPAN_MAX: f64 = 2.5;
+/// A glide from silence is none when the pitch swings back this share of
+/// its lead within half a period of the slowest vibrato after its first
+/// stable pitch.
+///
+/// On real stems a wobble of ±60 cents at 6 to 7 Hz on a bass read its
+/// first half-cycle as a fall from silence; the pitch came back 90 % of
+/// the lead within 40 ms. True falls from silence came back 0 % and 24 %.
+const SWING_BACK: f64 = 0.5;
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
 pub(crate) const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
@@ -116,22 +125,24 @@ pub const GLIDE_CONVENTION: &str = "pitch in cents of the voiced f0 frames; a st
 span of 50 ms or more within 30 cents of its running mean whose least-squares slope stays at 86 \
 cents per second or less; a glide joins two stable pitches 100 cents or more apart that match \
 notes of different pitch within 50 cents, where the slope of the 5-frame moving average stays \
-at 86 cents per second or more, in the direction of the motion, over 90 ms or more; s(x) = 1 - \
+at 86 cents per second or more, in the direction of the motion, over 35 ms or more; s(x) = 1 - \
 (1 - x)^p is fitted between the two stable pitches by least squares over the motion and 50 ms of \
 each; start_s is the fitted start less the track's lag of a quarter frame, 23.2 ms, less half \
 a period; time_s is the full 0 to 100 % time; from_silence marks a glide into the first stable \
 pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 100 ms before \
-it, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
+it, when that stable pitch has a median level within 40 dB of the loudest frame and the smoothed \
+pitch does not swing back 50 % of the lead within half a period of 3 Hz after it, and the fit \
+also finds its start pitch; a voiced run that starts within 100 ms of the one \
 before joins it when the full-band RMS does not rise 6 dB in the gap, its 10 ms RMS stays within \
 20 dB of the 20 ms before or after the gap and within 40 dB of the loudest frame of the stem, \
 and the pitch keeps moving after the gap the way it jumped, at 30 cents per millisecond or \
 slower; two stable pitches with a bridged gap between them whose jump goes against the interval \
-by 20 cents or more, or carries more than 60 % of it, join no glide; motion of 35 to 90 ms, over \
-the detected span or the fitted time, counts as too short; a fit of 90 ms or more with p within \
+by 20 cents or more, or carries more than 60 % of it, join no glide; motion of 35 to 90 ms over \
+the fitted time, or over the detected span when the fit fails, counts as too short; a fit of 90 ms or more with p within \
 5 % of 0.2, with p within 5 % of 5 and an RMS residual above 20 cents, a detected span under 90 \
 ms or over 2.5 times the fitted time, or a start from silence, or with an RMS residual above 40 \
 cents, is no glide; a glide with p within 5 % of 5 reads at low \
-confidence with the reason curve_bound";
+confidence with the reason curve_bound, and so does one whose detected span lasts under 90 ms";
 
 /// A fitted glide.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -190,6 +201,8 @@ pub(crate) struct GlideRead {
 struct Frame {
     time: f64,
     cents: f64,
+    /// The level against the loudest frame of the stem, in dB.
+    level: f64,
 }
 
 /// A stable pitch: frames `first..=last` of a run.
@@ -267,6 +280,7 @@ pub(crate) fn find_glides(
                 first.first + (first.last - first.first) / 2,
             );
             if lead.abs() >= GLIDE_INTERVAL_MIN.get()
+                && settles(&run, &smooth, *first, lead)
                 && let Some(span) = motion
             {
                 // `too_short` counts motions between two stable pitches only:
@@ -354,9 +368,9 @@ pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(
 /// step. Then the fitted time decides, with the same bounds: the track
 /// smears a step between two 808 notes over a detected span of 100 to
 /// 450 ms, while the fit finds the motion short. A fit off that bound that
-/// follows the curve over a detected span under [`GLIDE_TIME_MIN`] is too
-/// short as well, and so is a motion whose fit fails when its detected
-/// span is. A fit of
+/// follows the curve is a glide over a detected span under
+/// [`GLIDE_TIME_MIN`] too, and the pitch layer reads it at low confidence;
+/// a motion whose fit fails over such a span is too short. A fit of
 /// [`GLIDE_TIME_MIN`] or more whose `p` sits on the lower bound of
 /// [`CURVE_RANGE`], or whose residual exceeds [`GLIDE_MAX_RESIDUAL`], does
 /// not follow the curve, so the motion is no glide. On the upper bound the
@@ -401,11 +415,7 @@ fn classify(
     };
     let glide = GlideFit { on_bound, ..glide };
     if glide.curve > CURVE_EDGE * lo && follows && !stepped {
-        if length < GLIDE_TIME_MIN.get() {
-            read.too_short += 1;
-        } else {
-            read.glides.push(glide);
-        }
+        read.glides.push(glide);
     }
 }
 
@@ -447,6 +457,7 @@ fn voiced_runs(track: &PitchTrack) -> Vec<Vec<Frame>> {
             run.push(Frame {
                 time: frame.time.get(),
                 cents: 6900.0 + 1200.0 * (f0.get() / 440.0).log2(),
+                level: frame.level.get(),
             });
         } else if !run.is_empty() {
             runs.push(std::mem::take(&mut run));
@@ -456,6 +467,27 @@ fn voiced_runs(track: &PitchTrack) -> Vec<Vec<Frame>> {
         runs.push(run);
     }
     runs
+}
+
+/// Whether a run that leads into its first stable pitch `first` by `lead`
+/// cents settles there. The stable pitch must be active, with its median
+/// level within [`ACTIVE_GATE_DB`] of the loudest frame: on real stems a
+/// quiet onset after digital silence read a false fall into a stable pitch
+/// at -43 dB. And the smoothed pitch must not swing back [`SWING_BACK`] of
+/// the lead within half a period of [`VIBRATO_RATE_MIN`] after it.
+fn settles(run: &[Frame], smooth: &[f64], first: Plateau, lead: f64) -> bool {
+    let mut levels: Vec<f64> = run[first.first..=first.last]
+        .iter()
+        .map(|f| f.level)
+        .collect();
+    levels.sort_by(f64::total_cmp);
+    let active = levels[levels.len() / 2] >= -ACTIVE_GATE_DB.get();
+    let until = run[first.last].time + 0.5 / VIBRATO_RATE_MIN.get();
+    let back = (first.last + 1..run.len())
+        .take_while(|&k| run[k].time <= until)
+        .map(|k| (smooth[k] - first.median) * lead.signum())
+        .fold(0.0, f64::max);
+    active && back < SWING_BACK * lead.abs()
 }
 
 /// The centred moving average over [`SMOOTH_FRAMES`], shorter at the ends.
@@ -737,7 +769,6 @@ mod tests {
         use super::super::{
             DIP_SIDE, DIP_WINDOW, GAP_DIP_DB, RUN_START_RISE, STRIKE_RISE, num, ratio_db, says,
         };
-        use crate::dsp::ACTIVE_GATE_DB;
         let ms = |s: f64| num(1000.0 * s);
         let quarter = 1000.0 * cast::usize_to_f64(TRACK_FRAME / 4) / MODEL_RATE.hz().get();
         says(
@@ -758,13 +789,26 @@ mod tests {
                     SMOOTH_FRAMES,
                     num(GLIDE_SLOPE_MIN)
                 ),
-                format!("over {} ms or more;", ms(GLIDE_TIME_MIN.get())),
+                format!("over {} ms or more;", ms(GLIDE_STEP_MAX.get())),
+                format!(
+                    "one whose detected span lasts under {} ms",
+                    ms(GLIDE_TIME_MIN.get())
+                ),
                 format!("over the motion and {} ms of each", ms(FIT_MARGIN)),
                 format!("a quarter frame, {quarter:.1} ms"),
                 format!(
                     "the full-band RMS rising {}, up to {} ms before it",
                     ratio_db(RUN_START_RISE),
                     ms(ONSET_LOOKBACK.get())
+                ),
+                format!(
+                    "a median level within {} dB of the loudest frame",
+                    num(ACTIVE_GATE_DB.get())
+                ),
+                format!(
+                    "swing back {} % of the lead within half a period of {} Hz after it",
+                    num(100.0 * SWING_BACK),
+                    num(VIBRATO_RATE_MIN.get())
                 ),
                 format!(
                     "within {} ms of the one before joins it when the full-band RMS does not \
@@ -858,7 +902,11 @@ mod tests {
 
     #[test]
     fn a_jump_across_a_gap_faster_than_30_cents_per_ms_is_no_glide_motion() {
-        let frame = |time: f64, cents: f64| Frame { time, cents };
+        let frame = |time: f64, cents: f64| Frame {
+            time,
+            cents,
+            level: 0.0,
+        };
         let last = frame(0.0, 0.0);
         // Four hops apart: 1000 cents is 43 per ms, 300 cents 13.
         for (jump, bridged) in [(-1000.0, false), (-300.0, true)] {
@@ -873,7 +921,11 @@ mod tests {
 
     #[test]
     fn a_jump_across_a_gap_that_carries_most_of_the_interval_is_a_step() {
-        let frame = |time: f64, cents: f64| Frame { time, cents };
+        let frame = |time: f64, cents: f64| Frame {
+            time,
+            cents,
+            level: 0.0,
+        };
         let gap = [
             frame(0.0, 6900.0),
             frame(HOP, 6890.0),
@@ -973,7 +1025,7 @@ mod tests {
     }
 
     #[test]
-    fn a_short_detected_span_is_too_short_whatever_the_fit() {
+    fn a_short_detected_span_reads_when_the_fit_follows_the_curve() {
         let glide = GlideFit {
             start: Seconds::from_const(0.5),
             interval: Semitones::from_const(2.0),
@@ -985,11 +1037,19 @@ mod tests {
             jitter: Cents::from_const(1.0),
             on_bound: false,
         };
-        for (span, glides, too_short) in [(0.06, 0, 1), (0.1, 1, 0)] {
+        // A 60 ms span whose fit lasts 120 ms reads; on the curve bound it
+        // does not, and a failed fit over it is too short.
+        for (span, curve, fits, glides, too_short) in [
+            (0.06, 1.0, true, 1, 0),
+            (0.06, CURVE_RANGE.1, true, 0, 0),
+            (0.06, 1.0, false, 0, 1),
+            (0.1, 1.0, true, 1, 0),
+        ] {
             let mut read = GlideRead::default();
-            classify(&mut read, (0.5, 0.5 + span), || Some(glide), false);
-            assert_eq!(read.glides.len(), glides, "{span}");
-            assert_eq!(read.too_short, too_short, "{span}");
+            let fit = GlideFit { curve, ..glide };
+            classify(&mut read, (0.5, 0.5 + span), || fits.then_some(fit), false);
+            assert_eq!(read.glides.len(), glides, "{span} {curve} {fits}");
+            assert_eq!(read.too_short, too_short, "{span} {curve} {fits}");
         }
     }
 
@@ -1032,5 +1092,58 @@ mod tests {
         });
         let read = find_glides(&short, &line, |_, _| false, |_, _| true);
         assert_eq!(read, GlideRead::default());
+    }
+
+    /// From silence at 0.2 s, 120 cents above E1, a fall over 90 ms into
+    /// E1, held 60 ms; then, when `swings`, a ±60-cent wobble at 6.5 Hz
+    /// whose first crest comes back 110 cents.
+    fn fall_into_e1(swings: bool) -> PitchTrack {
+        track(1.2, move |t| {
+            (0.2..1.1).contains(&t).then(|| {
+                let x = ((t - 0.2) / 0.09).clamp(0.0, 1.0);
+                let fall = 4220.0 - 120.0 * x;
+                let after = t - 0.35;
+                if swings && after > 0.0 {
+                    fall + 55.0 - 55.0 * (std::f64::consts::TAU * 6.5 * after).cos()
+                } else {
+                    fall
+                }
+            })
+        })
+    }
+
+    #[test]
+    fn a_fall_from_silence_that_swings_back_is_no_glide() {
+        let line = notes(&[(0.2, 1.1, 41.0)]);
+        let held = find_glides(&fall_into_e1(false), &line, |_, _| false, |_, _| true);
+        assert_eq!(held.glides.len(), 1, "{held:?}");
+        assert!(held.glides[0].from_silence);
+        let wobble = find_glides(&fall_into_e1(true), &line, |_, _| false, |_, _| true);
+        assert_eq!(wobble.glides, [], "{wobble:?}");
+    }
+
+    #[test]
+    fn a_fall_from_silence_into_an_inactive_pitch_is_no_glide() {
+        let line = notes(&[(0.2, 1.1, 41.0)]);
+        let at = |level: f64| {
+            let frames = fall_into_e1(false)
+                .frames()
+                .iter()
+                .map(|f| TrackFrame {
+                    level: Decibels::new(level).unwrap(),
+                    ..*f
+                })
+                .collect();
+            find_glides(
+                &PitchTrack::from_frames(frames),
+                &line,
+                |_, _| false,
+                |_, _| true,
+            )
+            .glides
+            .len()
+        };
+        assert_eq!(at(-20.0), 1);
+        assert_eq!(at(-45.0), 0);
     }
 }
