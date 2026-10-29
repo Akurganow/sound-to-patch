@@ -37,8 +37,7 @@ pub use descriptors::{
     FrameDescriptors, LEVEL_CONVENTION, SHAPE_CONVENTION, describe, frame_descriptors,
 };
 pub use frames::{
-    ACTIVE_GATE_DB, ActiveFrames, MIN_ACTIVE_FRAMES, Stats, Summary, frame_ac_rms, frame_rms,
-    quantile,
+    ACTIVE_GATE_DB, ActiveFrames, MIN_ACTIVE_FRAMES, Stats, Summary, frame_rms, quantile,
 };
 pub use lomb::{GRID_STEP_HZ, SETTLE_S, gated_samples, grid, lomb_scargle, periodogram_rate};
 pub use modulation::{

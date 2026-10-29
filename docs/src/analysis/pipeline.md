@@ -318,11 +318,14 @@ The cleanup runs four steps and prints the note count after each [fact].
     shares. The readings run to 20 ms plus three limits after the onset.
     An envelope that never falls to a tenth climbs from no silence and
     fails, so a steady floor must lie 20 dB down. A climb counts only
-    after a hold: before the envelope last fell below six tenths of its
-    loudest reading ahead of the climb, it stayed above half of it for
-    60 ms. An envelope that stays below six tenths for 150 ms before the
-    climb dipped too long for a tremolo, and holds: the tremolos the rise
-    test passes run faster than 8 Hz.
+    after a hold. The dip runs from the last reading at six tenths of the
+    loudest one or more, at most 400 ms before the climb, to the first
+    such reading after it starts. Before the dip the envelope stayed
+    above half of the loudest reading for 60 ms and for 1.5 times the
+    dip. An envelope that stays below six tenths for the whole 400 ms
+    dipped too long for a tremolo, and holds. The level before the stem
+    starts is unknown, so a dip or a hold that reaches the start is too
+    short.
 - Why the stem's dip: under a line that moves to other keys, a split
   piece of the old key sees the new note's attack in the stem, but the
   stem never falls far between them [synthetic]. On the generated set
@@ -355,16 +358,37 @@ The cleanup runs four steps and prints the note count after each [fact].
   [fact]. The fall of a gate ripples by a few hundredths through the
   window, so a hold that ended at half could end on a ripple: at E1 a
   repeat after a 50 ms gap read just under half its peak 1 ms before the
-  fall and joined [synthetic]. On the generated sets 50 to 70 ms keep every repeat
-  and split no sine tremolo [synthetic]. At 45 ms full-depth tremolos of
-  14 Hz on E1 split, and at 80 ms sixteenths on E1 with attacks of 19
-  and 23 ms join [synthetic].
+  fall and joined [synthetic]. On the generated sets 50 to 70 ms keep
+  every repeat and split no sine tremolo [synthetic]. At 45 ms
+  full-depth tremolos of 14 Hz on E1 split, and at 80 ms sixteenths on
+  E1 with attacks of 19 and 23 ms join [synthetic].
+- Why 1.5 times the dip: a square tremolo rises like a gate, and slower
+  than about 9 Hz it holds through each pulse for 60 ms [synthetic]. Off
+  half its cycle it holds as long as it dips, and a gated note holds
+  longer than its gap [fact]. At 1.5 no square tremolo off half its cycle
+  splits a held note on the generated sets [synthetic]. At 1.25 a 9.1 Hz
+  square on C2 splits a held note into 10 where the onset rule gives 5.
+  At 2 eighths on E1 with a 10 ms attack and a 10 ms tail over a -40 dB
+  floor keep 3 of 16 repeats in the bass profile, as the onset rule
+  does, where 1.5 keeps 12 [synthetic].
+- Why 400 ms: a sine tremolo that reads as fast runs faster than about
+  8 Hz, and at full depth stays below six tenths of its peak for about
+  70 ms of each cycle at 8 Hz [fact]. A square tremolo off half its cycle
+  stays low for 167 ms at 3 Hz, and the search must reach its fall for
+  the ratio to weigh it [fact]. On the generated sets 200 to 500 ms give
+  the same notes; at 150 ms an E1 under a 3 Hz square off half its cycle
+  splits into 12 notes where the onset rule gives 7 [synthetic].
+- Why the stem start counts as unknown: a stem can start in the trough of
+  a tremolo, and its first climb then follows a dip that the search
+  cannot see the start of [synthetic]. Read as silence, that dip held,
+  and an A2 under a 14 Hz square off half its cycle, with 12 ms edges,
+  split into 4 notes where the onset rule gives 2 [synthetic].
 - Why the onset rule alone fails: the decoder can fill the gap before a
   low repeat and read its onset weak [synthetic]. A 55 Hz saw gated on
   for 0.2 s in every 0.25 s decodes as 16 notes that touch, 12 of them on
   onsets of 0.54 to 0.59. The onset rule alone joins them into 6, and the
   attack rule keeps all 16 [synthetic].
-- What the rule was measured on [synthetic]: two generated sets, each
+- What the rule was measured on [synthetic]: four generated sets, each
   stem decoded with the detected profile and with the bass profile, and
   the 37 eval parts.
   - The first set holds 358 stems. Held saws from A0 to A4 sit under
@@ -375,26 +399,35 @@ The cleanup runs four steps and prints the note count after each [fact].
     100 ms, tails of up to 40 ms, noise floors at -40 and -60 dB and
     attacks of 5 to 25 ms. Two voices a fifth and an octave apart and a
     DC offset complete it.
-  - The second set holds 525 stems with random settings. Held saws from
+  - The second set holds 523 stems with random settings. Held saws from
     A0 to A2 sit under sine, triangle and square tremolos of 2 to 20 Hz,
     ducks of -20 to -40 dB and tremolos with vibrato. 150 more stems
     sweep full-depth sine tremolos of 12 to 20 Hz on A0, B0, E1, A1 and
     A2 at six random phases each. Gated saws and two voices a fifth or
     an octave apart complete it.
+  - The third set holds 528 held saws at E1, A1, E2 and A2 under square
+    tremolos of 3 to 20 Hz. Each is loud for 50 to 80 % of its cycle,
+    with edges of 1 to 12 ms and depths of 0.8 to 1. 48 of them add a
+    vibrato of 30 to 80 cents.
+  - The fourth set holds 40 gated saws at B0, E1, A1, E2 and A2, one
+    every 0.25 s, with gaps of 80 to 150 ms.
 - On those sets no gated run keeps fewer repeats than the onset rule
-  alone, and 45 of the 716 first-set runs and 69 of the 154 gated
-  second-set runs keep more [synthetic]. The rule keeps every repeat
-  the decoder gives for the gated A1 with 50 ms gaps, with 30 ms gaps,
-  with a DC offset and with A2 above it [synthetic]. It keeps part of
-  the rest: 9 of 14 A1 repeats under a fifth, 14 of 16 eighths with a
-  20 ms tail, and fewer as the attack slows past 10 ms [synthetic].
-  Every sine tremolo, duck, triangle tremolo and tremolo with vibrato
-  gives the same notes as the onset rule alone, at every phase swept
-  [synthetic]. Square tremolos slower than about 9 Hz can split a held
-  note further, as the limits below give [synthetic]. The eval scores match
-  main in every cell [synthetic]. A slack of 6 to 8 ms gives the same
-  held notes on the first set. At 9 ms a duck to -40 dB on E1 splits;
-  each ms less keeps fewer repeats [synthetic]. Off these sets the margins are thinner: a
+  alone, and 45 of the 716 first-set runs, 69 of the 154 gated
+  second-set runs and 14 of the 80 fourth-set runs keep more
+  [synthetic]. The rule keeps every repeat the decoder gives for the
+  gated A1 with 50 ms gaps, with 30 ms gaps, with a DC offset and with
+  A2 above it [synthetic]. It keeps part of the rest: 9 of 14 A1
+  repeats under a fifth, 13 of 16 eighths with a 20 ms tail, and fewer
+  as the attack slows past 10 ms [synthetic]. Every sine tremolo, duck,
+  triangle tremolo and tremolo with vibrato gives the same notes as the
+  onset rule alone, at every phase swept, and so does every square
+  tremolo loud for half its cycle [synthetic]. Squares loud for 60 to
+  80 % of the cycle can split a held note further, as the limits below
+  give [synthetic]. The eval scores match main in every cell
+  [synthetic]. A slack of 6 to 8 ms gives the same held notes on the
+  first set. At 9 ms a duck to -40 dB on E1 splits, and on the second
+  set 8 ms splits one on A1; each ms less keeps fewer repeats
+  [synthetic]. Off these sets the margins are thinner: a
   55 Hz repeat under a reverb tail 20 dB down can read a harmonics' dip
   near 20 dB and join [synthetic].
 - A weaker piece before a stronger note is an early fragment of the
@@ -415,18 +448,28 @@ The cleanup runs four steps and prints the note count after each [fact].
     [fact]. The hold fails such a tremolo above about 7.8 Hz, and the
     window lengthens the hold a little, so at A0 a tremolo near 8 Hz can
     pass both tests [fact]. None of the generated ones did [synthetic].
-  - A tremolo with hard edges, such as a square LFO, rises like a gate
-    [synthetic]. Slower than about 9 Hz it also holds through each pulse
-    for 60 ms, and to the cleanup it is a gate. Of the 49 square tremolos
-    of the second set that give notes, 8 split a held note further in
-    each profile, at 3.2 to 9.1 Hz: an A1 at 6.3 Hz into 25 notes where
-    the onset rule alone gives 12 [synthetic].
+  - A square LFO off for 20 to 40 % of each cycle is, by level, a gated
+    repeat with short gaps: it rises like a gate and holds for 1.5 times
+    its dip or more [fact]. To the cleanup it is a gate. On the
+    third set squares loud for 60, 70 and 80 % of the cycle split a held
+    note further in 38, 57 and 22 of their 240 runs: an A1 under a 6 Hz
+    square loud for 70 % into 22 notes where the onset rule alone gives
+    6 [synthetic]. A vibrato under such a square splits the same way, in
+    18 of the 96 runs, all loud for 60 or 70 % [synthetic]. Only a cue
+    such as a phase reset at each repeat could tell the two apart
+    [proposal].
   - A repeat after a note that holds above half its level for less than
     60 ms joins the note before it when the decoder reads its onset weak
-    [synthetic]. At A2 a note of 56 ms before a 50 ms gap holds long
-    enough and one of 55 ms does not [synthetic]. Sixteenths played at
-    half length last 7500 / BPM ms, under 56 ms above about 134 BPM
-    [fact].
+    [synthetic]. At A2 a note of 59 ms before a 30 ms gap holds long
+    enough and one of 58 ms does not [synthetic]. Sixteenths played at
+    three quarters of their length last 11250 / BPM ms, under 59 ms
+    above about 190 BPM [fact].
+  - A repeat whose gap lasts longer than about two thirds of the note
+    before it joins as by the onset rule alone, since that note holds
+    for less than 1.5 times the dip [fact]. Staccato eighths at half
+    length, gated for 125 ms in every 250 ms, keep 3 of 16 repeats at E1
+    in the bass profile, as the onset rule does; with 100 ms gaps they
+    keep 8 where it keeps 3 [synthetic].
   - Most bowed, blown and sung re-attacks rise slower than about 10 ms,
     and such a re-attack joins when the decoder reads its onset weak
     [proposal]. The rule reads only the stem's level, and a slow

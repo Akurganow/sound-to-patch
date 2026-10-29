@@ -263,8 +263,8 @@ fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
             "8ths, 10 ms attack, 100 ms gaps, 20 ms tail over -40 dB",
             gated(&[55.0], 0.01, 0.15, 0.02, -40.0),
             vec![33.0],
-            vec![(16, 12, 14)],
-            (16, 12, 14),
+            vec![(16, 12, 13)],
+            (16, 12, 13),
         ),
         (
             "a DC offset 20 dB below the saw",
@@ -340,83 +340,193 @@ fn duck(depth: f64) -> impl Fn(f64) -> f64 {
     }
 }
 
-/// A held note under a tremolo or a sidechain duck joins as the onset rule
-/// alone would join it, from B0 to A3.
+/// The gain over time of a held case.
+#[derive(Clone, Copy)]
+enum Gain {
+    /// [`tremolo`]: a depth and a rate.
+    Tremolo(f64, f64),
+    /// [`phased`]: a rate and a phase.
+    Phased(f64, f64),
+    /// [`triangle`]: a rate.
+    Triangle(f64),
+    /// [`tremolo`] over [`held_with_vibrato`]: a depth and a rate.
+    Vibrato(f64, f64),
+    /// [`duck`]: a depth.
+    Duck(f64),
+}
+
+/// Held notes under a tremolo or a sidechain duck from B0 to A3, each
+/// named after its register, with the note's fundamental and its gain.
+const HELD_CASES: [(&str, f64, Gain); 28] = [
+    ("A2, depth 0.8 at 5 Hz", 110.0, Gain::Tremolo(0.8, 5.0)),
+    ("A2, depth 1 at 8 Hz", 110.0, Gain::Tremolo(1.0, 8.0)),
+    ("A1, depth 1 at 4 Hz", 55.0, Gain::Tremolo(1.0, 4.0)),
+    ("A1, depth 1 at 8 Hz", 55.0, Gain::Tremolo(1.0, 8.0)),
+    ("A1, depth 1 at 12 Hz", 55.0, Gain::Tremolo(1.0, 12.0)),
+    ("A1, depth 1 at 14 Hz", 55.0, Gain::Tremolo(1.0, 14.0)),
+    (
+        "A1, depth 1 at 12 Hz, phase 0.68",
+        55.0,
+        Gain::Phased(12.0, 0.68),
+    ),
+    (
+        "A1, depth 1 at 12 Hz, phase 1.39",
+        55.0,
+        Gain::Phased(12.0, 1.39),
+    ),
+    (
+        "A1, depth 1 at 16 Hz, phase 0.77",
+        55.0,
+        Gain::Phased(16.0, 0.77),
+    ),
+    (
+        "E1, depth 1 at 12 Hz, phase 1.78",
+        41.203,
+        Gain::Phased(12.0, 1.78),
+    ),
+    (
+        "E1, depth 1 at 18 Hz, phase 5.61",
+        41.203,
+        Gain::Phased(18.0, 5.61),
+    ),
+    (
+        "E1, depth 1 at 14 Hz, phase 0.85",
+        41.203,
+        Gain::Phased(14.0, 0.85),
+    ),
+    (
+        "E1, depth 1 at 14 Hz, phase 4.65",
+        41.203,
+        Gain::Phased(14.0, 4.65),
+    ),
+    (
+        "E1, depth 1 at 14.41 Hz, phase 5.58",
+        41.203,
+        Gain::Phased(14.41, 5.58),
+    ),
+    (
+        "E1, depth 1 at 16 Hz, phase 4.21",
+        41.203,
+        Gain::Phased(16.0, 4.21),
+    ),
+    (
+        "E1, depth 1 at 17.22 Hz, phase 1.70",
+        41.203,
+        Gain::Phased(17.22, 1.7),
+    ),
+    (
+        "E1, depth 1 at 18 Hz, phase 5.31",
+        41.203,
+        Gain::Phased(18.0, 5.31),
+    ),
+    (
+        "E1, depth 1 at 20 Hz, phase 1.32",
+        41.203,
+        Gain::Phased(20.0, 1.32),
+    ),
+    (
+        "B0, depth 1 at 14 Hz, phase 2.62",
+        30.868,
+        Gain::Phased(14.0, 2.62),
+    ),
+    ("A1, triangle at 8 Hz", 55.0, Gain::Triangle(8.0)),
+    (
+        "A1, depth 1 at 8 Hz with vibrato",
+        55.0,
+        Gain::Vibrato(1.0, 8.0),
+    ),
+    ("A1, -16 dB duck", 55.0, Gain::Duck(-16.0)),
+    ("A1, -30 dB duck", 55.0, Gain::Duck(-30.0)),
+    ("E1, depth 1 at 3 Hz", 41.203, Gain::Tremolo(1.0, 3.0)),
+    ("E1, depth 1 at 10 Hz", 41.203, Gain::Tremolo(1.0, 10.0)),
+    ("B0, depth 1 at 2 Hz", 30.868, Gain::Tremolo(1.0, 2.0)),
+    ("A3, depth 1 at 12 Hz", 220.0, Gain::Tremolo(1.0, 12.0)),
+    ("A3, depth 1 at 14 Hz", 220.0, Gain::Tremolo(1.0, 14.0)),
+];
+
+/// The stem of a case of [`HELD_CASES`].
+fn held_case(f0: f64, gain: Gain) -> Vec<f64> {
+    match gain {
+        Gain::Tremolo(depth, rate) => held(f0, tremolo(depth, rate)),
+        Gain::Phased(rate, phase) => held(f0, phased(rate, phase)),
+        Gain::Triangle(rate) => held(f0, triangle(rate)),
+        Gain::Vibrato(depth, rate) => held_with_vibrato(f0, tremolo(depth, rate)),
+        Gain::Duck(depth) => held(f0, duck(depth)),
+    }
+}
+
+/// The cases of [`HELD_CASES`] in `register` join as the onset rule alone
+/// would join them.
+fn assert_held_cases_join(register: &str) {
+    let mut cases = 0;
+    for (name, f0, gain) in HELD_CASES {
+        if name.split(',').next() != Some(register) {
+            continue;
+        }
+        cases += 1;
+        let found = cleaned(&held_case(f0, gain));
+        assert!(
+            found.onset_only.notes().len() < found.merged,
+            "{name}: nothing to join"
+        );
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
+    }
+    assert!(cases > 0, "no case at {register}");
+}
+
 #[test]
-fn a_tremolo_or_a_duck_never_splits_a_held_note() {
-    for (name, stem) in [
-        ("A2, depth 0.8 at 5 Hz", held(110.0, tremolo(0.8, 5.0))),
-        ("A2, depth 1 at 8 Hz", held(110.0, tremolo(1.0, 8.0))),
-        ("A1, depth 1 at 4 Hz", held(55.0, tremolo(1.0, 4.0))),
-        ("A1, depth 1 at 8 Hz", held(55.0, tremolo(1.0, 8.0))),
-        ("A1, depth 1 at 12 Hz", held(55.0, tremolo(1.0, 12.0))),
-        ("A1, depth 1 at 14 Hz", held(55.0, tremolo(1.0, 14.0))),
-        (
-            "A1, depth 1 at 12 Hz, phase 0.68",
-            held(55.0, phased(12.0, 0.68)),
-        ),
-        (
-            "A1, depth 1 at 12 Hz, phase 1.39",
-            held(55.0, phased(12.0, 1.39)),
-        ),
-        (
-            "A1, depth 1 at 16 Hz, phase 0.77",
-            held(55.0, phased(16.0, 0.77)),
-        ),
-        (
-            "E1, depth 1 at 12 Hz, phase 1.78",
-            held(41.203, phased(12.0, 1.78)),
-        ),
-        (
-            "E1, depth 1 at 18 Hz, phase 5.61",
-            held(41.203, phased(18.0, 5.61)),
-        ),
-        (
-            "E1, depth 1 at 14 Hz, phase 0.85",
-            held(41.203, phased(14.0, 0.85)),
-        ),
-        (
-            "E1, depth 1 at 14 Hz, phase 4.65",
-            held(41.203, phased(14.0, 4.65)),
-        ),
-        (
-            "E1, depth 1 at 14.41 Hz, phase 5.58",
-            held(41.203, phased(14.41, 5.58)),
-        ),
-        (
-            "E1, depth 1 at 16 Hz, phase 4.21",
-            held(41.203, phased(16.0, 4.21)),
-        ),
-        (
-            "E1, depth 1 at 17.22 Hz, phase 1.70",
-            held(41.203, phased(17.22, 1.7)),
-        ),
-        (
-            "E1, depth 1 at 18 Hz, phase 5.31",
-            held(41.203, phased(18.0, 5.31)),
-        ),
-        (
-            "E1, depth 1 at 20 Hz, phase 1.32",
-            held(41.203, phased(20.0, 1.32)),
-        ),
-        (
-            "B0, depth 1 at 14 Hz, phase 2.62",
-            held(30.868, phased(14.0, 2.62)),
-        ),
-        ("A1, triangle at 8 Hz", held(55.0, triangle(8.0))),
-        (
-            "A1, depth 1 at 8 Hz with vibrato",
-            held_with_vibrato(55.0, tremolo(1.0, 8.0)),
-        ),
-        ("A1, -16 dB duck", held(55.0, duck(-16.0))),
-        ("A1, -30 dB duck", held(55.0, duck(-30.0))),
-        ("E1, depth 1 at 3 Hz", held(41.203, tremolo(1.0, 3.0))),
-        ("E1, depth 1 at 10 Hz", held(41.203, tremolo(1.0, 10.0))),
-        ("B0, depth 1 at 2 Hz", held(30.868, tremolo(1.0, 2.0))),
-        ("A3, depth 1 at 12 Hz", held(220.0, tremolo(1.0, 12.0))),
-        ("A3, depth 1 at 14 Hz", held(220.0, tremolo(1.0, 14.0))),
+fn every_held_case_has_a_register_with_a_test() {
+    for (name, ..) in HELD_CASES {
+        let register = name.split(',').next().unwrap_or_default();
+        assert!(["B0", "E1", "A1", "A2", "A3"].contains(&register), "{name}");
+    }
+}
+
+#[test]
+fn a_tremolo_or_a_duck_never_splits_a_held_note_at_b0() {
+    assert_held_cases_join("B0");
+}
+
+#[test]
+fn a_tremolo_or_a_duck_never_splits_a_held_note_at_e1() {
+    assert_held_cases_join("E1");
+}
+
+#[test]
+fn a_tremolo_or_a_duck_never_splits_a_held_note_at_a1() {
+    assert_held_cases_join("A1");
+}
+
+#[test]
+fn a_tremolo_or_a_duck_never_splits_a_held_note_at_a2_and_a3() {
+    assert_held_cases_join("A2");
+    assert_held_cases_join("A3");
+}
+
+/// A square tremolo to silence at `rate` Hz, loud for the share `on` of
+/// each cycle, with linear edges of 1 ms.
+fn square(rate: f64, on: f64) -> impl Fn(f64) -> f64 {
+    move |time| {
+        let cycle = (rate * time).fract();
+        let into = if cycle < on {
+            cycle.min(on - cycle)
+        } else {
+            -(cycle - on).min(1.0 - cycle)
+        };
+        (0.5 + into / rate / 0.001).clamp(0.0, 1.0)
+    }
+}
+
+/// A square tremolo off half of each cycle joins as the onset rule alone
+/// would join it.
+#[test]
+fn a_square_tremolo_at_half_duty_never_splits_a_held_note() {
+    for (name, f0, rate) in [
+        ("E1 at 3 Hz", 41.203, 3.0),
+        ("A1 at 6 Hz", 55.0, 6.0),
+        ("A1 at 9 Hz", 55.0, 9.0),
     ] {
-        let found = cleaned(&stem);
+        let found = cleaned(&held(f0, square(rate, 0.5)));
         assert!(
             found.onset_only.notes().len() < found.merged,
             "{name}: nothing to join"
@@ -425,19 +535,18 @@ fn a_tremolo_or_a_duck_never_splits_a_held_note() {
     }
 }
 
-/// A square tremolo with 1 ms edges at `rate` Hz, off half of each cycle.
-fn square(rate: f64) -> impl Fn(f64) -> f64 {
-    move |time| {
-        let edge = 0.001 * rate;
-        (0.5 + 0.5 * (std::f64::consts::TAU * rate * time).sin() / (std::f64::consts::PI * edge))
-            .clamp(0.0, 1.0)
-    }
-}
-
-/// A square tremolo rises like a gate and splits a held note at A1, as
-/// the gated saws of `a_gated_55_hz_saw_keeps_its_16_repeats` stay apart.
+/// A square tremolo off for 30 % of each cycle reads by level as a gated
+/// repeat with short gaps, and splits a held note at A1 into every piece
+/// the decoder gives.
 #[test]
-fn a_square_tremolo_splits_like_a_gate() {
-    let found = cleaned(&held(55.0, square(6.0)));
-    assert!(found.kept.notes().len() > found.onset_only.notes().len());
+fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
+    let found = cleaned(&held(55.0, square(6.0, 0.7)));
+    assert_eq!(
+        (
+            found.decoded.notes().len(),
+            found.onset_only.notes().len(),
+            found.kept.notes().len()
+        ),
+        (22, 6, 22)
+    );
 }

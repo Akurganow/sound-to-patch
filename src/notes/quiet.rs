@@ -10,7 +10,7 @@ use std::ops::Range;
 
 use crate::audio::SampleRate;
 use crate::cast;
-use crate::dsp::{ActiveFrames, StftParams, Window, frame_ac_rms, frame_rms};
+use crate::dsp::{ActiveFrames, StftParams, Window, frame_rms};
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
 use super::NoteList;
@@ -31,7 +31,6 @@ pub struct StemLevels<'a> {
     rate: SampleRate,
     params: StftParams,
     rms: Vec<f64>,
-    ac_rms: Vec<f64>,
     window: Vec<f64>,
 }
 
@@ -48,7 +47,6 @@ impl<'a> StemLevels<'a> {
             rate,
             params,
             rms: frame_rms(mono, params),
-            ac_rms: frame_ac_rms(mono, params),
             window: Window::Hann.samples(params.frame_len()),
         }
     }
@@ -59,15 +57,35 @@ impl<'a> StemLevels<'a> {
         &self.rms
     }
 
-    /// Returns the RMS of each frame about its own mean: the level with
+    /// Returns the RMS of frame `frame` about its own mean: the level with
     /// any DC offset removed.
-    #[must_use]
-    pub fn ac_rms(&self) -> &[f64] {
-        &self.ac_rms
+    pub(crate) fn ac_rms(&self, frame: usize) -> f64 {
+        self.ac_level(frame * self.params.hop(), self.params.frame_len())
     }
 
     fn hops(&self, time: Seconds) -> f64 {
         time.get() * f64::from(self.rate.get()) / cast::usize_to_f64(self.params.hop())
+    }
+
+    /// Returns sample `offset` of the `len` samples centred at sample
+    /// `centre`. Samples outside the stem count as silence.
+    fn sample(&self, centre: usize, offset: usize, len: usize) -> f64 {
+        (centre + offset)
+            .checked_sub(len / 2)
+            .and_then(|index| self.mono.get(index))
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    /// Returns the RMS about its own mean of the `len` samples centred at
+    /// sample `centre`.
+    fn ac_level(&self, centre: usize, len: usize) -> f64 {
+        let (sum, energy) = (0..len)
+            .map(|offset| self.sample(centre, offset, len))
+            .fold((0.0, 0.0), |(sum, energy), x| (sum + x, energy + x * x));
+        let count = cast::usize_to_f64(len);
+        let mean = sum / count;
+        (energy / count - mean * mean).max(0.0).sqrt()
     }
 
     /// Returns the RMS about its own mean of the `window` of samples
@@ -79,19 +97,7 @@ impl<'a> StemLevels<'a> {
         let len = cast::round_to_usize(window.get() * rate)
             .unwrap_or(1)
             .max(1);
-        let centre = cast::round_to_usize(time.get() * rate).unwrap_or(0);
-        let (sum, energy) = (0..len)
-            .map(|offset| {
-                (centre + offset)
-                    .checked_sub(len / 2)
-                    .and_then(|index| self.mono.get(index))
-                    .copied()
-                    .unwrap_or(0.0)
-            })
-            .fold((0.0, 0.0), |(sum, energy), x| (sum + x, energy + x * x));
-        let count = cast::usize_to_f64(len);
-        let mean = sum / count;
-        (energy / count - mean * mean).max(0.0).sqrt()
+        self.ac_level(cast::round_to_usize(time.get() * rate).unwrap_or(0), len)
     }
 
     /// Returns the frames centred from `from` to `to`, both included.
@@ -117,15 +123,15 @@ impl<'a> StemLevels<'a> {
         let len = self.params.frame_len();
         let rate = f64::from(self.rate.get());
         let centre = frame * self.params.hop();
-        let raw = |offset: usize| {
-            (centre + offset)
-                .checked_sub(len / 2)
-                .and_then(|index| self.mono.get(index))
-                .copied()
-                .unwrap_or(0.0)
-        };
-        let mean = (0..len).map(raw).sum::<f64>() / cast::usize_to_f64(len);
-        let sample = |offset: usize| raw(offset) - mean;
+        let raw: Vec<f64> = (0..len)
+            .map(|offset| self.sample(centre, offset, len))
+            .collect();
+        let mean = raw.iter().sum::<f64>() / cast::usize_to_f64(len);
+        let windowed: Vec<f64> = raw
+            .iter()
+            .zip(&self.window)
+            .map(|(x, weight)| (x - mean) * weight)
+            .collect();
         let f0 = Hz::from(pitch).get();
         (1..=HARMONICS)
             .map(|h| f0 * f64::from(h))
@@ -135,8 +141,8 @@ impl<'a> StemLevels<'a> {
                 // frequency.
                 let coefficient = 2.0 * (std::f64::consts::TAU * frequency / rate).cos();
                 let (mut s1, mut s2) = (0.0, 0.0);
-                for (offset, weight) in self.window.iter().enumerate() {
-                    let s0 = sample(offset) * weight + coefficient * s1 - s2;
+                for x in &windowed {
+                    let s0 = x + coefficient * s1 - s2;
                     s2 = s1;
                     s1 = s0;
                 }
