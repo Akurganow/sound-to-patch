@@ -16,6 +16,12 @@ inputs:
       Shares one cache between jobs that build the same thing, such as the
       xtask in two workflows. Empty keeps one cache per job.
     default: ""
+  workspaces:
+    description: >
+      Cargo workspaces to cache, one `<workspace> -> <target>` per line, as
+      Swatinem/rust-cache reads them. Empty caches the root workspace. The
+      fuzz crate is a workspace of its own.
+    default: ""
 runs:
   using: composite
   steps:
@@ -30,4 +36,5 @@ runs:
       uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       with:
         shared-key: ${{ inputs.cache-key }}
+        workspaces: ${{ inputs.workspaces }}
         save-if: ${{ github.ref == 'refs/heads/main' }}

@@ -48,6 +48,9 @@ jobs:
       - uses: ./.github/actions/setup-rust
         with:
           cache: "true"
+          workspaces: |
+            . -> target
+            fuzz -> target
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       # The host loads x86_64-only plug-ins under Rosetta, so it also builds
       # for x86_64.
