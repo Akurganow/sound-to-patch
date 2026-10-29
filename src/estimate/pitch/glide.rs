@@ -2,6 +2,7 @@
 //! track, with the curve `s(x) = 1 - (1 - x)^p` fitted between the two.
 
 use super::fit::nelder_mead;
+use super::vibrato::VIBRATO_EXTENT_MIN;
 use crate::cast;
 use crate::notes::{MODEL_RATE, NoteList, PitchTrack, TRACK_FRAME, TRACK_HOP};
 use crate::units::{Cents, Hz, Seconds, Semitones};
@@ -48,10 +49,11 @@ pub(crate) const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
 ///
 /// The track smears a step into a fast curve on that bound and keeps
 /// drifting after it, so the slope stays up long after the fitted motion
-/// ends: 3.3 times its fitted time at a semitone step on one 808
-/// oscillator, 5.2 at a step between legato 808 notes, 2.9 and 9.1 at
-/// steps on real stems. RC slides and power curves of the generated set
-/// read 0.6 to 1.9, small slides on real stems 0.4 to 2.3.
+/// ends: 6.2 times its fitted time at the semitone step on one 808
+/// oscillator of the tests, 2.9 and 9.1 at steps on real stems. The RC
+/// slides of the tests read 0.77, 0.80 and 2.27, and 26 small slides on
+/// real stems 0.44 to 2.28. The cut sits 10 % above the highest slide and
+/// 14 % below the lowest step.
 pub(crate) const BOUND_SPAN_MAX: f64 = 2.5;
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
@@ -154,6 +156,22 @@ pub struct GlideFit {
     /// that approaches its target exponentially, as an RC portamento does,
     /// runs past the curve family.
     pub on_bound: bool,
+}
+
+impl GlideFit {
+    /// The span, in seconds of audio, where the fitted curve lies more than
+    /// [`VIBRATO_EXTENT_MIN`] from both its pitches. Outside it the glide
+    /// holds within the smallest vibrato of a stable pitch: a curve on the
+    /// upper bound of `p` comes within 3 % of its interval of its end
+    /// halfway through its time.
+    pub(crate) fn moving(&self) -> (f64, f64) {
+        let (p, cents) = (self.curve, 100.0 * self.interval.get().abs());
+        let near = (VIBRATO_EXTENT_MIN.get() / cents).min(1.0);
+        let from = 1.0 - (1.0 - near).powf(1.0 / p);
+        let to = 1.0 - near.powf(1.0 / p);
+        let at = |x: f64| self.start.get() + x * self.time.get();
+        (at(from), at(to))
+    }
 }
 
 /// What the search found.
@@ -284,15 +302,14 @@ pub(crate) fn find_glides(
 }
 
 /// The steady spans of the track: its voiced runs, split where two stable
-/// pitches lie [`STEADY_SPLIT`] or more apart and without the frames of
-/// each glide, as `(time, f0)` frames in track time.
+/// pitches lie [`STEADY_SPLIT`] or more apart and without the frames where
+/// a glide moves, as `(time, f0)` frames in track time.
 #[must_use]
 pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds, Hz)>> {
+    let moving: Vec<(f64, f64)> = glides.iter().map(GlideFit::moving).collect();
     let in_glide = |frame: &Frame| {
         let audio = frame.time - lag_at(frame.cents);
-        glides
-            .iter()
-            .any(|g| (g.start.get()..=g.start.get() + g.time.get()).contains(&audio))
+        moving.iter().any(|span| (span.0..=span.1).contains(&audio))
     };
     let mut spans = Vec::new();
     for run in voiced_runs(track) {
@@ -914,6 +931,34 @@ mod tests {
             |_, _| true,
         );
         assert_eq!(read, GlideRead::default());
+    }
+
+    #[test]
+    fn a_glide_on_the_bound_reads_up_to_its_span_ratio() {
+        let glide = GlideFit {
+            start: Seconds::from_const(0.5),
+            interval: Semitones::from_const(1.2),
+            time: Seconds::from_const(0.1),
+            curve: CURVE_RANGE.1,
+            from_silence: false,
+            detected: Seconds::from_const(0.1),
+            residual: Cents::from_const(5.0),
+            jitter: Cents::from_const(1.0),
+            on_bound: false,
+        };
+        let read = |ratio: f64| {
+            let mut read = GlideRead::default();
+            classify(&mut read, (0.5, 0.5 + ratio * 0.1), || Some(glide), false);
+            read.glides
+        };
+        assert_eq!(
+            read(2.4),
+            [GlideFit {
+                on_bound: true,
+                ..glide
+            }]
+        );
+        assert_eq!(read(2.6), []);
     }
 
     #[test]

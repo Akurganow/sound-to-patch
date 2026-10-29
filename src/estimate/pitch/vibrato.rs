@@ -39,7 +39,8 @@ const SEARCH_STEP: f64 = 0.01;
 /// The convention of a vibrato, as `layers.json` names it.
 pub const VIBRATO_CONVENTION: &str = "the voiced f0 frames of a steady span, a voiced run of \
 the track split where two stable pitches lie 150 cents or more apart, without 50 ms at each end, \
-without glides and without the settling of a drop, five time constants and at least 100 ms, in \
+without the frames where a glide's fitted curve lies more than 10 cents from both its pitches \
+and without the settling of a drop, five time constants and at least 100 ms, in \
 cents; start_s and end_s are its first and last frame in audio time; a least-squares line and sine fitted \
 together, at the rate whose sine explains the most power beyond the line, searched from 1 Hz or \
 1.5 cycles over the span up to 20 Hz in 0.01 Hz steps and refined by golden-section search; extent_raw_ct is that sine's amplitude, half the peak-to-peak swing; extent_ct is \
@@ -290,6 +291,10 @@ mod tests {
             &[
                 format!("lie {} cents or more apart", num(STEADY_SPLIT.get())),
                 format!("without {} ms at each end", ms(RUN_TRIM.get())),
+                format!(
+                    "a glide's fitted curve lies more than {} cents from both its pitches",
+                    num(VIBRATO_EXTENT_MIN.get())
+                ),
                 format!("five time constants and at least {} ms", ms(SETTLE_MIN)),
                 format!(
                     "searched from {} Hz or {} cycles over the span up to {} Hz in {} Hz steps",

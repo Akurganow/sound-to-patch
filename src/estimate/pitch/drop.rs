@@ -71,9 +71,12 @@ periods or more, over the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop 
 df_st is above 2 and at most 36, that fall is above 2 semitones too, tau is above the bound of \
 the search, residual is below 0.15, and f_end lies within 100 cents of a note that starts 150 \
 ms or less before the onset and sounds from 5 tau after the onset, or from the end of the fit \
-span if that comes first, to the end of the fit span; a fit after a 6 dB strike that misses on \
-its residual is fitted again on a line whose low-pass sits at 1.5 times the note's pitch, when \
-that lies under 200 Hz";
+span if that comes first, to the end of the fit span; a fit after a 6 dB strike that is no \
+drop is fitted again on the note line, whose low-pass sits at 1.5 times the note's pitch, when \
+that lies under 200 Hz, with its span ending one period of the note before the note line's \
+frequency first falls to 0 Hz, and the refit counts with tau of 10 ms or more and an RMS \
+envelope over its fall, from 7 ms to 5 tau, at most 6 dB below the line the first fit read; an \
+onset before the drop read last has settled, 5 tau after its onset, is the same strike";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -356,7 +359,8 @@ mod tests {
     fn the_convention_states_the_constants() {
         use super::super::line::{LINE_HI, LINE_LO, LINE_LO_FAST};
         use super::super::{
-            DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, NOTE_LINE_EDGE, RUN_START_RISE,
+            DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, NOTE_LINE_EDGE, NOTE_LINE_LOSS,
+            RUN_START_RISE,
             STRIKE_ATTACK, STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
         };
         use crate::dsp::ACTIVE_GATE_DB;
@@ -438,12 +442,18 @@ mod tests {
                     num(1000.0 * DROP_NOTE_LEAD.get())
                 ),
                 format!(
-                    "a fit after a {} strike that misses on its residual is fitted again on a \
-                     line whose low-pass sits at {} times the note's pitch, when that lies under \
-                     {} Hz",
+                    "a fit after a {} strike that is no drop is fitted again on the note line, \
+                     whose low-pass sits at {} times the note's pitch, when that lies under {} Hz",
                     ratio_db(STRIKE_RISE),
                     num(NOTE_LINE_EDGE),
                     num(LINE_HI.get())
+                ),
+                format!(
+                    "the refit counts with tau of {} ms or more and an RMS envelope over its \
+                     fall, from {} ms to 5 tau, at most {} dB below",
+                    ms(FAST_TAU.get()),
+                    ms(DROP_FIT_START.get()),
+                    num(NOTE_LINE_LOSS.get())
                 ),
             ],
         );

@@ -55,8 +55,9 @@ pub const DROP_NOTE_MATCH: Cents = Cents::from_const(100.0);
 /// A note that started earlier belongs to a sound before the strike. On
 /// real stems a fit on the lead-in to a step settled on the note that
 /// had sounded for 790 ms, and a fit inside a chord on a note an octave
-/// below that had started 210 ms before. The latest note a generated drop
-/// settles on starts 95 ms before its onset.
+/// below that had started 210 ms before. A generated fall into C1 settles
+/// on a C1 note that started 100 ms before its strike and on none that
+/// started 200 ms before.
 pub const DROP_NOTE_LEAD: Seconds = Seconds::from_const(0.15);
 /// The harmonic check of a strike reads the bands from this long after the
 /// onset.
@@ -78,17 +79,30 @@ pub const STRIKE_RISE: f64 = 2.0;
 pub const FAST_TAU: Seconds = Seconds::from_const(0.01);
 /// The low-pass of the note line, as a multiple of the note's pitch.
 ///
-/// A fit after a strike of [`STRIKE_RISE`] that misses on its residual is
-/// fitted again on a line that keeps the band below this edge, when the
-/// edge lies under 200 Hz, the top of the band. Below 66 Hz the second and
-/// third harmonics of a note lie inside the band, and at -5 to -14 dB they
-/// swing the line by more than the note's pitch: a real sweep into C1
-/// fitted a residual of 2.5. At 1.5 times the note the
+/// A fit after a strike of [`STRIKE_RISE`] that is no drop is fitted
+/// again on a line that keeps the band below this edge, when the edge lies
+/// under 200 Hz, the top of the band, so the note sits under 133 Hz. Below
+/// 66 Hz the second and third harmonics of a note lie inside the band, and
+/// at -5 to -14 dB they swing the line by more than the note's pitch: a
+/// real sweep into C1 fitted a residual of 2.5. At 1.5 times the note the
 /// second harmonic falls 10 dB more, and a fall that starts higher stays
-/// the strongest component on its way down. Without a strike, the note
-/// line smooths the swing where a retriggered tone restarts its phase into
-/// a fall: three generated retriggers that rose 0.6 to 1.6 dB read one.
+/// the strongest component on its way down. At 1.2 a generated sweep into
+/// C1 read a tau 28 % short, and at 3 one with a strong second harmonic
+/// read none. Without a strike, the note line smooths the swing where a
+/// retriggered tone restarts its phase into a fall: three generated
+/// retriggers that rose 0.6 to 1.6 dB read one.
 pub const NOTE_LINE_EDGE: f64 = 1.5;
+/// A fit on the note line counts when the note line keeps the fall: its
+/// RMS envelope over the fall lies at most this far below the band's.
+///
+/// Over the fall of four true drops on real stems the note line lay 2.2
+/// to 3.8 dB below the band, and generated sweeps 2.2 to 3.6 dB. A tone an
+/// octave above a real note, with the note's own tone entering 80 ms after
+/// the strike, lay 10.8 dB below: the note line held the upper tone 18 dB
+/// down, and its line fell from it to the lower one as that entered.
+/// Generated tones of that shape lay 4.8 to 7.6 dB below, so the ones
+/// under this edge still read as drops.
+pub const NOTE_LINE_LOSS: Decibels = Decibels::from_const(6.0);
 /// The spans, in seconds from a band onset, of the RMS before and after
 /// it that a strike compares. A pitch falling into the band from above
 /// raises the band envelope with no strike. The span before ends 25 ms
@@ -139,7 +153,9 @@ pub const SPAN_HIGH: Seconds = Seconds::from_const(0.15);
 /// 22.05 kHz and 3.45 to 6.93 at 44.1 kHz, the mono ones 0.66 to 8.03 at
 /// both rates, so the jitter alone cannot tell the two apart: a mono glide
 /// above it reads low too. From [`JITTER_HIGH`] to here only mono glides
-/// fall, and they read medium.
+/// fall, and they read medium. The margin is 0.05 cents: one unison
+/// fixture at 44.1 kHz sets the 3.45, and a track that reads it a little
+/// smoother lifts it to medium.
 pub const JITTER_LOW: f64 = 3.4;
 /// A drop without a full-band rise needs an attack this short or shorter.
 /// Struck 808 notes read 9 to 13 ms; a unison falling into the band from
@@ -268,6 +284,10 @@ pub struct PitchCounts {
 pub struct DropSkips {
     /// No attack inside the onset search.
     pub no_onset: usize,
+    /// The onset lies before the drop read last has settled, five time
+    /// constants after its onset: the next note's search found the same
+    /// strike again inside its rise.
+    pub settling: usize,
     /// The strike lies more than [`ACTIVE_GATE_DB`] below the loudest
     /// frame of the stem, or more than [`DROP_BAND_GATE`] below the
     /// loudest frame of the band.
@@ -293,6 +313,7 @@ impl DropSkips {
     pub fn items(&self) -> Vec<String> {
         [
             (self.no_onset, "no onset"),
+            (self.settling, "settling"),
             (self.quiet, "quiet"),
             (self.no_strike, "no strike"),
             (self.weak_fundamental, "weak fundamental"),
@@ -602,7 +623,9 @@ fn strikes(
     let rate = input.rate.hz().get();
     let mut drops: Vec<Strike> = Vec::new();
     // The search of each note starts after the previous note's search
-    // ended, so it never finds the previous strike again.
+    // ended. A strike on that border rises across it, and the next search
+    // finds it again a few milliseconds later, inside the settling of the
+    // drop read on it.
     let mut previous_to = 0.0_f64;
     let floor = loudest * gain_below(ACTIVE_GATE_DB);
     let band = band_pass_zero_phase(input.mono, input.rate, LINE_LO, LINE_HI)?;
@@ -636,6 +659,13 @@ fn strikes(
             skips.no_onset += 1;
             continue;
         };
+        if drops
+            .last()
+            .is_some_and(|last| onset.get() < last.fit.onset.get() + 5.0 * last.fit.tau.get())
+        {
+            skips.settling += 1;
+            continue;
+        }
         let rise = rise_ratio(segment, input.rate, start, onset, STRIKE_SPANS);
         if span_rms(segment, input.rate, start, onset, STRIKE_SPANS[1]) < floor
             || span_rms(&band, input.rate, origin, onset, STRIKE_SPANS[1]) < band_floor
@@ -651,25 +681,14 @@ fn strikes(
         .unwrap_or(Seconds::clamped(0.0));
         counts.drop_candidates += 1;
         let span_end = Seconds::clamped(note_off.max(onset.get()));
-        let mut fit = fit_drop(&line, onset, span_end);
-        let mut lo = LINE_LO;
-        if fit.is_some_and(|fit| fit.tau < FAST_TAU) || rise >= RUN_START_RISE {
-            lo = LINE_LO_FAST;
-            let low = SubBandLine::with_low_edge(segment, input.rate, start, lo)?;
-            fit = fit_drop(&low, onset, span_end);
-        }
-        let note_hi = Hz::clamped(NOTE_LINE_EDGE * settled.get());
-        if fit.is_some_and(|fit| fit.miss() == Some(DropMiss::Residual))
-            && note_hi < LINE_HI
-            && rise >= STRIKE_RISE
-        {
-            let note_line = SubBandLine::with_edges(segment, input.rate, start, lo, note_hi)?;
-            if let Some(note_fit) =
-                fit_drop(&note_line, onset, span_end).filter(|note_fit| note_fit.miss().is_none())
-            {
-                fit = Some(note_fit);
-            }
-        }
+        let (fit, fit_end) = fit_strike(
+            input,
+            (segment, start),
+            line,
+            (onset, span_end),
+            rise,
+            settled,
+        )?;
         let Some(fit) = fit else {
             skips.no_fall += 1;
             continue;
@@ -693,11 +712,59 @@ fn strikes(
             Some(DropMiss::Size) => skips.no_fall += 1,
             Some(DropMiss::TauBound) => skips.tau_bound += 1,
             Some(DropMiss::Residual) => skips.residual += 1,
-            None if !settles_on_a_note(input.notes, &fit, span_end) => skips.off_note += 1,
+            None if !settles_on_a_note(input.notes, &fit, fit_end) => skips.off_note += 1,
             None => drops.push(Strike { fit, attack }),
         }
     }
     Ok(drops)
+}
+
+/// The fit of a strike, with the end of its span.
+///
+/// The fit reads `line`, or a line with the high-pass at [`LINE_LO_FAST`]
+/// when that fit is faster than [`FAST_TAU`] or the strike rises
+/// [`RUN_START_RISE`]. When that fit is no drop, after a strike of
+/// [`STRIKE_RISE`], it reads the note line again: the band up to
+/// [`NOTE_LINE_EDGE`] times the note's `pitch`, when that lies under
+/// [`LINE_HI`]. Its span ends at a break of the note line, and its fit
+/// counts with a `tau` of [`FAST_TAU`] or more, since a line low-passed
+/// under 70 Hz cannot follow a fall that ends within a period, and a level
+/// within [`NOTE_LINE_LOSS`] of the band's. `segment` starts at the second
+/// item of its pair, and `span` runs from the onset to the end of the fit
+/// span.
+fn fit_strike(
+    input: &PitchInput<'_>,
+    (segment, start): (&[f64], Seconds),
+    line: SubBandLine,
+    (onset, span_end): (Seconds, Seconds),
+    rise: f64,
+    pitch: Hz,
+) -> Result<(Option<DropFit>, Seconds), PitchError> {
+    let mut fit = fit_drop(&line, onset, span_end);
+    let (lo, wide) = if fit.is_some_and(|fit| fit.tau < FAST_TAU) || rise >= RUN_START_RISE {
+        let low = SubBandLine::with_low_edge(segment, input.rate, start, LINE_LO_FAST)?;
+        fit = fit_drop(&low, onset, span_end);
+        (LINE_LO_FAST, low)
+    } else {
+        (LINE_LO, line)
+    };
+    let note_hi = Hz::clamped(NOTE_LINE_EDGE * pitch.get());
+    if !fit
+        .is_some_and(|fit| fit.miss().is_some() || !settles_on_a_note(input.notes, &fit, span_end))
+        || rise < STRIKE_RISE
+        || note_hi >= LINE_HI
+    {
+        return Ok((fit, span_end));
+    }
+    let note_line = SubBandLine::with_edges(segment, input.rate, start, lo, note_hi)?;
+    let end = break_in(&note_line, onset, span_end, pitch);
+    Ok(fit_drop(&note_line, onset, end)
+        .filter(|note_fit| {
+            note_fit.miss().is_none()
+                && note_fit.tau >= FAST_TAU
+                && line_loss(&note_line, &wide, note_fit, end) <= NOTE_LINE_LOSS
+        })
+        .map_or((fit, span_end), |note_fit| (Some(note_fit), end)))
 }
 
 /// Whether the strike under a drop rises enough for its fit.
@@ -738,6 +805,45 @@ fn settles_on_a_note(notes: &NoteList, fit: &DropFit, span_end: Seconds) -> bool
             .abs()
                 <= DROP_NOTE_MATCH.get()
     })
+}
+
+/// The end of a fit span on the note line: one period of the note's
+/// `pitch` before the first point after [`DROP_FIT_START`] where the
+/// line's frequency falls to 0 Hz or below, or `end`. The phase of a line
+/// that holds one tone never runs backwards; it does where that tone
+/// breaks off and a second sound starts, and the low-pass smears the break
+/// over about a period.
+fn break_in(line: &SubBandLine, onset: Seconds, end: Seconds, pitch: Hz) -> Seconds {
+    let from = line.index_at(Seconds::clamped(onset.get() + DROP_FIT_START.get()));
+    let to = line.index_at(end).min(line.hz().len());
+    (from..to).find(|&n| line.hz()[n] <= 0.0).map_or(end, |n| {
+        Seconds::clamped(line.time_of(n).get() - 1.0 / pitch.get())
+    })
+}
+
+/// How far the power of `note_line` lies below that of `wide` over the
+/// fall of `fit`: from [`DROP_FIT_START`] to five time constants after the
+/// onset, or to `end`.
+fn line_loss(note_line: &SubBandLine, wide: &SubBandLine, fit: &DropFit, end: Seconds) -> Decibels {
+    let from = fit.onset.get() + DROP_FIT_START.get();
+    let to = (fit.onset.get() + 5.0 * fit.tau.get())
+        .min(end.get())
+        .max(from);
+    Decibels::clamped(
+        20.0 * (envelope_rms(wide, from, to) / envelope_rms(note_line, from, to)).log10(),
+    )
+}
+
+/// The RMS of the envelope of `line` from `from` to `to`, in seconds.
+fn envelope_rms(line: &SubBandLine, from: f64, to: f64) -> f64 {
+    let envelope = line.envelope();
+    let first = line.index_at(Seconds::clamped(from));
+    let last = line.index_at(Seconds::clamped(to)).min(envelope.len());
+    if first >= last {
+        return 0.0;
+    }
+    (envelope[first..last].iter().map(|e| e * e).sum::<f64>() / cast::usize_to_f64(last - first))
+        .sqrt()
 }
 
 /// The full-band RMS over `after` over the RMS over `before`, both spans in

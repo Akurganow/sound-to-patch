@@ -167,22 +167,60 @@ settled pitch.
   harmonic too [proposal]. A sweep into 32.7 Hz with $\tau$ = 90 ms and a
   second harmonic at half the fundamental failed on the residual with half
   a period and reads with a full one [synthetic].
-- Note line. A fit after a 6 dB strike that misses on its residual is
-  fitted again on a line whose low-pass sits at 1.5 times the note's
-  pitch, when that edge lies under 200 Hz, and the refit counts if it
-  passes every test [proposal]. Below 66 Hz the second and third harmonics of a note lie
-  inside the band [fact]. On a real sweep into 32.7 Hz the second to
-  fourth harmonics sat 5 to 14 dB under the fundamental, the 20 to 200 Hz
-  line swung from -144 to +83 Hz while the spectral peak fell smoothly
-  from 69 Hz, and the fit's residual was 2.5, against 0.15 [fact]. At 1.5
-  times the note the second harmonic falls 10 dB more, while a fall that
-  starts higher stays the strongest component on its way down [fact]. A
-  generated sweep of that shape, with $\tau$ = 60 ms, misses on the 20 to
-  200 Hz line and reads on the note line, with $f_\text{end}$ within 1 Hz
-  and $\tau$ within 15 % [synthetic]. Without a strike the note line
-  smooths the swing where a retriggered tone restarts its phase into a
-  fall: three generated retriggers that rose 0.6 to 1.6 dB read one
+- Note line. A fit after a 6 dB strike that is no drop, by any test of
+  the rule or because it settles on no note, is fitted again on a line
+  whose low-pass sits at 1.5 times the note's pitch, when that edge lies
+  under 200 Hz, so the note sits under 133 Hz [proposal]. Below 66 Hz the
+  second and third harmonics of a note lie inside the band [fact]. On a
+  real sweep into 32.7 Hz the second to fourth harmonics sat 5 to 14 dB
+  under the fundamental, the 20 to 200 Hz line swung from -144 to +83 Hz
+  while the spectral peak fell smoothly from 69 Hz, and the fit's
+  residual was 2.5, against 0.15 [fact]. At 1.5 times the note the second
+  harmonic falls 10 dB more, while a fall that starts higher stays the
+  strongest component on its way down [fact]. A generated sweep of that
+  shape with harmonics 3 to 8 dB under the fundamental settles near 62 Hz
+  on the 20 to 200 Hz line, a fall of the wrong sign, and reads on the
+  note line with $f_\text{end}$ within 1 Hz and $\tau$ within 20 %
+  [synthetic]. Octave falls into 82.4 and 103.8 Hz whose second harmonic
+  is as strong as the fundamental or 5.6 dB stronger settle 120 and 130
+  cents sharp on the 20 to 200 Hz line and read on the note line
+  [synthetic]. At 1.2 times the note a generated sweep into C1 read
+  $\tau$ 28 % short, and at 3 times one with a strong second harmonic
+  read none [synthetic].
+- Note line span. The refit's span ends one period of the note before
+  the first point where the note line's frequency falls to 0 Hz or below
+  [proposal]. The phase of a line that holds one tone never runs
+  backwards; it does where that tone breaks off and a second sound starts
+  inside the same note, and the low-pass smears the break over about a
+  period [fact]. A real sweep into 32.7 Hz was struck again 390 ms later
+  inside the same note: the note line's frequency fell to -39 Hz there,
+  the fit over the whole 400 ms span missed on a residual of 0.24, and
+  fits ending 200 to 300 ms after the onset read $f_\text{end}$ 32 Hz, a
+  fall of 30.5 Hz and $\tau$ of 26 to 28 ms with a residual of 0.05
+  [fact]. A generated restrike of that shape reads within 1 Hz of the
+  note; ending the span at the break itself read 30.1 Hz, outside the
+  note [synthetic].
+- Note line tests. The refit counts when it passes every test of the
+  rule, when its $\tau$ is 10 ms or more, and when its RMS envelope over
+  the fall, from 7 ms to 5 $\tau$, lies at most 6 dB below the line the
+  first fit read [proposal]. A line low-passed under 70 Hz cannot follow
+  a fall that ends within a period: generated kicks from 255 into 55 Hz
+  with $\tau$ = 3 ms read a fifth of their fall with $\tau$ of 5 ms, and
+  sub kicks over a held note read falls of 3 to 4 ms [synthetic]. Over
+  the fall of four true drops on real stems the note line lay 2.2 to
+  3.8 dB below the band, and generated sweeps 2.2 to 3.6 dB [fact]. A
+  tone at 127 Hz over a note at 61.7 Hz, with the note's own tone
+  entering 80 ms after the strike, lay 10.8 dB below: the note line held
+  the upper tone 18 dB down and fell from it to the lower one as that
+  entered, a step between two tones [fact]. Without a strike the note
+  line smooths the swing where a retriggered tone restarts its phase into
+  a fall: three generated retriggers that rose 0.6 to 1.6 dB read one
   [synthetic].
+- Same strike. An onset before the drop read last has settled, five time
+  constants after its onset, is the same strike [proposal]. Each note's
+  onset search starts where the one before ended, and a strike on that
+  border rises across it: the next search found it again 5 ms later and
+  read it as a second drop [synthetic].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
@@ -222,14 +260,16 @@ settled pitch.
   earlier belongs to a sound before the strike: on real stems a fit on the
   lead-in to a step settled on the note that had sounded for 790 ms, and a
   fit inside a chord on a note an octave below that had started 210 ms
-  before [fact]. The latest note a generated drop settles on starts 95 ms
-  before its onset [synthetic].
+  before [fact]. A generated fall into C1, found in the search of a
+  higher note struck with it, settles on a C1 note that started 100 ms
+  before the strike and on none that started 200 ms before [synthetic].
   A slow fall not settled by the end of the span needs the note at its
   end: with $\tau$ = 90 ms on a 350 ms note, five time constants end after
-  the note, and the sweep read as a glide from silence [synthetic]. At a saw's onset
-  several partials share the band and the line swings; on a generated 55
-  Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
-  settling at 49.7 Hz, which this rule rejects [synthetic].
+  the note, and the sweep read as a glide from silence [synthetic]. At a
+  saw's onset several partials share the band and the line swings; on a
+  generated 55 Hz saw that swing fitted a fall of 62 semitones with
+  $\tau$ = 2 ms settling at 49.7 Hz, which this rule rejects
+  [synthetic].
 - Skips. The summary line `drop skips` counts the low notes the search
   read no drop at, by the first gate that stopped each: no onset, quiet,
   no strike, weak fundamental, no fall, tau on bound, residual and off
@@ -282,6 +322,20 @@ Limits:
   the same line, is not read 18 dB or more below it, so a soft note after
   loud ones loses its drop [fact].
 - A note above 200 Hz is not read: the band stops there [fact].
+- The note line helps only notes under 133 Hz, where 1.5 times the note
+  lies under the top of the band [fact]. It runs only after a strike of
+  6 dB, so a fall that the band fit misses under a note still ringing at
+  nearly its level stays lost [fact].
+- A tone an octave above the note, with the note's own tone entering
+  soon after it, can still read as a drop on the note line: generated
+  tones of that shape whose note line lay 4.8 to 6 dB below the band
+  read falls from the upper tone into the note [synthetic].
+- A true drop whose note started more than 150 ms before its onset, as
+  when the transcriber merges a restrike into the note before it, is
+  rejected [fact].
+- A kick at 55 Hz that decays over a quieter held sub at 43.6 Hz can read
+  as a fall from the kick into the sub on the 20 to 200 Hz line, with
+  $\tau$ of 17 to 40 ms [synthetic].
 - A kick with no pitch drop and a noise click, over a sub, reads a fast
   drop of 9 to 27 semitones at medium when it starts from silence, like a
   kick whose pitch drops [synthetic]. Inside the first period of the note
@@ -339,9 +393,9 @@ A glide is pitch moving from one stable pitch to another.
   the settle after it keep moving the way the step jumped, at 5 to 17
   cents per millisecond, so neither the slope limit nor the motion test
   tells them from a glide [fact]. On real stems steps of 3 to 10.5
-  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real stem jumped
-  200 of its 210 cents across a gap while the level rose 17.5 dB, and
-  reads none [fact]. Unison glides whose voices leave the track
+  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real
+  stem jumped 200 of its 210 cents across a gap while the level rose
+  17.5 dB, and reads none [fact]. Unison glides whose voices leave the track
   unvoiced for 75 ms jump 0.53 and 0.54 of the interval across the gap; a
   step between 808 notes jumped 0.72 [synthetic].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
@@ -384,16 +438,16 @@ A glide is pitch moving from one stable pitch to another.
 - Span ratio. A glide on the bound also needs a detected span of at most
   2.5 times its fitted time [proposal]. The track smears a step into a
   fast curve on the bound and keeps drifting after it, so the slope stays
-  up long after the fitted motion ends: 3.3 times its fitted time at a
-  semitone step on one 808 oscillator that keeps its phase, 5.2 at a step
-  between legato 808 notes [synthetic], 2.9 and 9.1 at two steps on real
-  stems that an independent f0 read as a step and as no slide [fact]. RC
-  slides and power curves of the generated set read 0.6 to 1.9
-  [synthetic]; 26 small slides of 1 to 2.1 semitones on real stems that
-  the independent f0 confirmed in full or in part read 0.4 to 2.3 [fact].
-  The level does not tell the two apart: at generated 808 steps the
-  full-band RMS over one period jumped 3.4 to 5.0 dB, at those real
-  slides 2.1 to 19 dB [fact].
+  up long after the fitted motion ends: 6.2 times its fitted time at the
+  semitone step on one 808 oscillator that keeps its phase [synthetic],
+  2.9 and 9.1 at two steps on real stems that an independent f0 read as
+  a step and as no slide [fact]. The RC slides of the tests read 0.77,
+  0.80 and 2.27 [synthetic]; 26 small slides of 1 to 2.1 semitones on
+  real stems that the independent f0 confirmed in full or in part read
+  0.44 to 2.28 [fact]. The cut sits 10 % above the highest slide and
+  14 % below the lowest step, so the margin is thin on both sides
+  [fact]. The level does not tell the two apart: at those real slides
+  the full-band RMS over one period jumped 2.1 to 19 dB [fact].
   An RC slide of 1.2 semitones at 110 Hz reads on the bound [synthetic];
   one of a semitone reads 90 cents on the grid, under the 100-cent
   interval, and is not read [synthetic].
@@ -492,9 +546,9 @@ Limits:
   independent f0 confirmed most of them: their confidence is pessimistic
   [fact].
 - A slide on the bound whose track keeps drifting for over 2.5 times its
-  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem, which
-  an independent f0 confirmed, drifted for 4.3 times its fitted time
-  [fact].
+  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem,
+  which an independent f0 confirmed, drifted for 4.3 times its fitted
+  time [fact].
 - Where the tracker reads a tone's second harmonic, a glide still reads
   its interval: on a real stem a tone rose 2.2 semitones from 921 Hz,
   the track followed its second harmonic from 1845 to 2100 Hz, and the
@@ -510,8 +564,16 @@ Limits:
   150 cents or more apart, so a step between notes never reads as a
   vibrato, while a vibrato of ±60 cents, whose stable pitches lie 120
   cents apart, stays whole [proposal]. Each span loses 50 ms at each end,
-  the frames of every glide and the settling of a drop: five time
+  the frames where a glide moves and the settling of a drop: five time
   constants, at least 100 ms [fact].
+- A glide moves where its fitted curve lies more than 10 cents, the
+  smallest extent of a vibrato, from both its pitches [proposal]. A
+  curve on the upper bound of $p$ comes within 3 % of its interval of its
+  end halfway through its time [fact]. On a real stem a vibrato of 3.1
+  cycles at 5.9 Hz began where a 1.8-semitone glide on that bound ended;
+  held for the glide's full fitted time of 122 ms, its span after the trim
+  fell from 0.53 to 0.47 s, under the 0.5 s the search reads [fact]. A
+  generated glide and vibrato of that shape keep the vibrato [synthetic].
 - A span of 0.5 s or more is searched [fact]. A least-squares line and
   sine are fitted together at each rate from 1 Hz, or 1.5 cycles over the
   span, to 20 Hz in 0.01 Hz steps; the rate whose sine explains the most
