@@ -318,6 +318,60 @@ The table also names the synth, its build, the host, the architecture of
 the host process, the recipe version and the number of runs. It measures
 only: nothing in it tunes a render.
 
+### Repeat-render spread
+
+`cargo run --release -p xtask -- render-spread --out spread.json` renders
+one preset 20 times on four workers of the render session and writes its
+spread, the noise floor every later comparison cites. The
+[render spread page](../reference/formats/render-spread.md) lists the
+outputs and the statistic. `--preset`, `--midi` and `--bpm` name what it
+renders, by default the `routes.vital` fixture and
+`tests/cmd/data/three-notes.mid` at 120 BPM. The load check runs first on
+a fresh renderer, so a spread never measures a preset the plug-in did
+not load.
+
+Each render is stored as a WAV file in a folder beside the output, named
+after it with `-renders`, and measured from the stored file, as a
+consumer reads it. `analyze` writes each render's layer report there,
+with the MIDI file and the exact tempo. The file is local: the spread
+depends on the synth's build and its quality setting, and the repository
+holds the method and no numbers.
+
+On the fake, `render_spread` recomputes the 95th percentile of the 190
+pairs from 20 stored renders with its own quantile, and checks that a
+render of the same preset matches while a louder one does not. A
+third test reads the committed reference reports and checks their ids,
+hashes and outputs.
+
+### Reference recordings
+
+`cargo run --release -p xtask -- render-reference --root DIR --manifest FILE --out report.json`
+compares reference recordings with automatic renders. A reference
+recording is a render of a generated preset and MIDI file made in a
+standard DAW host, not by our host, so the comparison is not circular.
+Each manifest line names the `preset_id`, the `preset_file`, the
+`midi_file`, the `bpm` and the `render_file`, with paths from `--root`,
+and a `state_file` when the DAW exported the state it played.
+
+For each recording the task runs the load check, renders the preset 20
+times with the same MIDI file and tempo, and measures the spread of those
+renders. It then compares the recording with the renders on the four clip
+outputs of the spread page, within that spread. An exported state is
+read back against the preset as the load check does; the name, the tempo
+and the tuning are left out, because the DAW names the export, writes its
+own tempo and saves no tuning in a preset file. A recording that differs
+beyond the spread is reported with its numbers. Nothing is tuned to make
+it match.
+
+Recordings and renders stay local. The repository holds the preset ids,
+the hashes and the metrics of the comparison, on the
+[reference recordings](reference-recordings.md) page.
+
+`--recording-gain-db` raises every recording by a gain before the
+comparison. It is a diagnostic that separates a level offset of the
+recording chain from a difference of the sound, and the report records
+it.
+
 ## Fuzzing
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated

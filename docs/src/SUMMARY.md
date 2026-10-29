@@ -22,10 +22,12 @@
   - [Vital preset](reference/formats/vital-preset.md)
   - [Layer report](reference/formats/layers.md)
   - [Render record](reference/formats/render-record.md)
+  - [Render spread](reference/formats/render-spread.md)
 
 # Development
 
 - [Testing](development/testing.md)
+- [Reference recordings](development/reference-recordings.md)
 - [Release](development/release.md)
 - [Agent reference](development/agent-reference.md)
 

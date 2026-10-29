@@ -1,0 +1,2599 @@
+{
+  "identity": {
+    "synth": "vital",
+    "build": "1.0.7",
+    "host": "sound-to-patch-host 0.18.0 (vst3-host 0.10.0)",
+    "arch": "x86_64"
+  },
+  "recipe_version": 1,
+  "oversampling": "2x",
+  "n": 20,
+  "statistic": "p95_abs_pairwise",
+  "recording_gain_db": 0.0,
+  "references": [
+    {
+      "id": "iso_init__chord_long_C4maj_v102",
+      "preset_id": "iso_init",
+      "bpm": 120.0,
+      "preset_sha256": "03745952ccd5946b38b0db5c7d6aadbc19630bd49f27c5af3ddec7fd4c4b611f",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "7369cde4ee7b39ef696fca5cb60f55686bd7a37def28f8652befec7603ab81d3",
+      "state_differences": null,
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.07154480493183968
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.211068690012998
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.001088435374149821
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.4184426409080833
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -14.429730698119862,
+          "renders": -12.231867877014846,
+          "difference": 2.1978628211050157,
+          "spread": 0.07154480493183968,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -3.670997270093091,
+          "renders": -0.8991930648122037,
+          "difference": 2.771804205280887,
+          "spread": 1.211068690012998,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.087891156462585,
+          "renders": 2.087641723356009,
+          "difference": 0.0002494331065761024,
+          "spread": 0.001088435374149821,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.215874652165735,
+          "spread": 1.4184426409080833,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_uni_v7_det40__chord_long_C4maj_v102",
+      "preset_id": "iso_uni_v7_det40",
+      "bpm": 120.0,
+      "preset_sha256": "8bf106466971962a4909ee8a3447e4980e5cde47e87636b694bd381c7dcac807",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "90f35d04f786adb3d599b363b949e7503994fbd591151d14ad0f0ad6120eebff",
+      "state_differences": null,
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.016958713846960904
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.7097690620036413
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0008390022675737185
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.3956660334560493
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -14.404249215707885,
+          "renders": -12.239074042112128,
+          "difference": 2.165175173595758,
+          "spread": 0.016958713846960904,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -1.7286118007664395,
+          "renders": 0.3296260571659414,
+          "difference": 2.058237857932381,
+          "spread": 0.7097690620036413,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.087732426303855,
+          "renders": 2.087981859410431,
+          "difference": 0.00034013605442151373,
+          "spread": 0.0008390022675737185,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.296663356596206,
+          "spread": 1.3956660334560493,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_chorus_mix100__chord_long_C4maj_v102",
+      "preset_id": "iso_chorus_mix100",
+      "bpm": 120.0,
+      "preset_sha256": "fc1eadeb0c92e00289810c73491d98bd38e79489efe25af98dcfafb355dc03d7",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "827510e5526be7dde0b483bf219e58e7c8e10cf8bead6afd1797aaf579dabb9c",
+      "state_differences": null,
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.1045614055830022
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.9821805207838405
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.01560090702947825
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.9201135902592289
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -11.903608774774295,
+          "renders": -9.770890018060054,
+          "difference": 2.1327187567142403,
+          "spread": 0.1045614055830022,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": 2.135392697564537,
+          "renders": 5.124821447055067,
+          "difference": 2.9894287494905294,
+          "spread": 1.9821805207838405,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.42015873015873,
+          "renders": 2.442925170068027,
+          "difference": 0.02276643990929683,
+          "spread": 0.01560090702947825,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.27520442574604,
+          "spread": 0.9201135902592289,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_amp_rel1__chord_short_C4maj_v102",
+      "preset_id": "iso_amp_rel1",
+      "bpm": 120.0,
+      "preset_sha256": "dfae5f0f85b81426265cde1011b8f6609ecc58117cab3faa9963153e923ac635",
+      "midi_sha256": "da18c71c9f26145260cf65a60b7a8549c84f381004db3094b5215651ee88e109",
+      "recording_sha256": "22be2f28d2d663e146d2545cd74b21a410e52b6f975bfc790fcce9a392ace383",
+      "state_differences": null,
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.4820093873754523
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.012487207695634
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0011337868480727487
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.4349796161677129
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -21.653547815243314,
+          "renders": -19.36280095208947,
+          "difference": 2.2907468631538457,
+          "spread": 0.4820093873754523,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -4.0904018953119845,
+          "renders": -1.9295649827068362,
+          "difference": 2.1608369126051485,
+          "spread": 1.012487207695634,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 1.0760317460317461,
+          "renders": 1.0809523809523809,
+          "difference": 0.00492063492063477,
+          "spread": 0.0011337868480727487,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3969877914426583,
+          "spread": 1.4349796161677129,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_reverb_d1__chord_short_C4maj_v102",
+      "preset_id": "iso_reverb_d1",
+      "bpm": 120.0,
+      "preset_sha256": "983d06798537732975dcfcaa6482aab8deb64946d6e90ee4b587e94b03bc28ea",
+      "midi_sha256": "da18c71c9f26145260cf65a60b7a8549c84f381004db3094b5215651ee88e109",
+      "recording_sha256": "7703afc8fa98349d1e13607d4c36cab577e8086f5d698a5e766dc8c48c998950",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.3505911845656229
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.9679295255598195
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.04224489795918385
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.2834271619725266
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -27.913230157284072,
+          "renders": -25.906139927528123,
+          "difference": 2.007090229755949,
+          "spread": 0.3505911845656229,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -5.7366131078258995,
+          "renders": -3.50072993938158,
+          "difference": 2.2358831684443197,
+          "spread": 1.9679295255598195,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 1.6718820861678005,
+          "renders": 1.7854195011337868,
+          "difference": 0.11353741496598624,
+          "spread": 0.04224489795918385,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.398932819155946,
+          "spread": 2.2834271619725266,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_lfo_amp_1_8__chord_long_C4maj_v102",
+      "preset_id": "iso_lfo_amp_1_8",
+      "bpm": 120.0,
+      "preset_sha256": "7a25da561bff4136f05d9351f00d9fe701fe40616298a3358ed2e4d8baa54ee7",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "0f155606083a4eeee42b18a00ac544225d4106f76e37c4c3bb1f6cfc051216c2",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.0874892187037446
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.0
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0007029478458049354
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.4844339964349011
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -11.299016708348034,
+          "renders": -9.130782997339747,
+          "difference": 2.1682337110082877,
+          "spread": 0.0874892187037446,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": 4.277884878846852,
+          "renders": 6.4443855002255255,
+          "difference": 2.166500621378673,
+          "spread": 0.0,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.087732426303855,
+          "renders": 2.0874829931972787,
+          "difference": 0.0002494331065761024,
+          "spread": 0.0007029478458049354,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2250262939911423,
+          "spread": 1.4844339964349011,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_comp_fast__chord_long_C4maj_v102",
+      "preset_id": "iso_comp_fast",
+      "bpm": 120.0,
+      "preset_sha256": "aefbe34ae18a710d1485218bff5cb4cd331fe5deeedf6eba4aef6133bbc10c44",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "450cef9945585ea6c8e496413c8752a777c9329da6e227eff367430915bff918",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.06327482332813972
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.0189150865684136
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0036054421768705325
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.6780171335305302
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -19.243184632834087,
+          "renders": -17.069362546339523,
+          "difference": 2.173822086494564,
+          "spread": 0.06327482332813972,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -8.925918437676996,
+          "renders": -6.839470292912463,
+          "difference": 2.0864481447645336,
+          "spread": 1.0189150865684136,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.0939909297052153,
+          "renders": 2.0967120181405896,
+          "difference": 0.0027210884353743303,
+          "spread": 0.0036054421768705325,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2012551581988617,
+          "spread": 0.6780171335305302,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_dist_soft_12db__chord_long_C4maj_v102",
+      "preset_id": "iso_dist_soft_12db",
+      "bpm": 120.0,
+      "preset_sha256": "a1e326a74a03188b12a713bba6e67b1ef0b6f4fef08dd69287bfba44412c3c9a",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "e7f78bc6036864eb6b4b328cc8ca9056fa9994e1b9fee05597b27fe05426eef1",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.016134894640368103
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.2443770376854575
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0006349206349209879
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.4246634598210735
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -10.24533657456573,
+          "renders": -8.069237572163736,
+          "difference": 2.176099002401994,
+          "spread": 0.016134894640368103,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -4.746060396050391,
+          "renders": -2.504081941295321,
+          "difference": 2.2419784547550696,
+          "spread": 0.2443770376854575,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.088185941043084,
+          "renders": 2.088843537414966,
+          "difference": 0.0006575963718820077,
+          "spread": 0.0006349206349209879,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2095894492424746,
+          "spread": 0.4246634598210735,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_delay_1_8_fb50__chord_short_C4maj_v102",
+      "preset_id": "iso_delay_1_8_fb50",
+      "bpm": 120.0,
+      "preset_sha256": "a58c8b6bf5ee7b67e1fdafdbca561aff62849971ff94dbef103ec5b4b1f54a0b",
+      "midi_sha256": "da18c71c9f26145260cf65a60b7a8549c84f381004db3094b5215651ee88e109",
+      "recording_sha256": "c69369617eaa1af5e26cf94d71a2f4badb997af7e67a57d42e1c7e133f66e17a",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.46999925925220865
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.067581422751056
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.008231292517006938
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.5439114573323147
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -27.146293084187228,
+          "renders": -27.256269178102404,
+          "difference": 0.1753552513073089,
+          "spread": 0.46999925925220865,
+          "within": true
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -5.771529338236459,
+          "renders": -3.420698800280302,
+          "difference": 2.3508305379561576,
+          "spread": 1.067581422751056,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.165532879818594,
+          "renders": 3.848526077097506,
+          "difference": 1.6829931972789116,
+          "spread": 0.008231292517006938,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.6735828858884814,
+          "spread": 1.5439114573323147,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_pad_00__chord_long_C4maj_v102",
+      "preset_id": "mus_pad_00",
+      "bpm": 120.0,
+      "preset_sha256": "8dfef435d48963d92914ccaf6f532a64296634704a100cd8cb78ade79ccf7b89",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "769d9828079d7be217d876cfd30cefdcc1b19f19613ac3875f032061e7c621bb",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.5398507996720987
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 2.445428718664825
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.21145124716553276
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.5967439146489504
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -28.52006646984009,
+          "renders": -27.006736292704314,
+          "difference": 1.5133301771357743,
+          "spread": 0.5398507996720987,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -9.54832961933478,
+          "renders": -6.978245754153867,
+          "difference": 2.570083865180913,
+          "spread": 2.445428718664825,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 9.519705215419501,
+          "renders": 10.569229024943311,
+          "difference": 1.0495238095238104,
+          "spread": 0.21145124716553276,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.7644011209072725,
+          "spread": 2.5967439146489504,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_supersaw_00__chord_long_C4maj_v102",
+      "preset_id": "mus_supersaw_00",
+      "bpm": 120.0,
+      "preset_sha256": "70cc1ba477caad09f18bde25dafd949e9d1ca9909cc19b03f89ae1101ec1e8ff",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "4dab2c6e197505b859247ca910989396aba2dce7850a43d79c41f6588941fb65",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.08780415993977542
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.7557226442699836
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.1681859410430837
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.0153830025255428
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -25.9063637638331,
+          "renders": -24.2999558925537,
+          "difference": 1.6064078712793979,
+          "spread": 0.08780415993977542,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -8.436826057961568,
+          "renders": -6.050034965784833,
+          "difference": 2.3867910921767352,
+          "spread": 0.7557226442699836,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 6.09907029478458,
+          "renders": 6.816439909297052,
+          "difference": 0.7173696145124717,
+          "spread": 0.1681859410430837,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.255828839951543,
+          "spread": 1.0153830025255428,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_keys_00__phrase_pad_chords_120bpm_v102",
+      "preset_id": "mus_keys_00",
+      "bpm": 120.0,
+      "preset_sha256": "36a9dfc05f7a3a3cf35e11bffd4116a00f9e090f32b83de343fc01993639f4ff",
+      "midi_sha256": "5a28a3d860631c8264942eb582d6e643f7b9c9ea7d032cf2e718a1a4db0c7cb9",
+      "recording_sha256": "3adfe16d79dd574ba7568d4dcf61bedc149f62c87b3cac96a724c39b161af384",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.6985465671123272
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.703877291855843
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.15712018140589556
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.4911612435319859
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -23.902392205655758,
+          "renders": -21.75289292394167,
+          "difference": 2.149499281714089,
+          "spread": 0.6985465671123272,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -5.539053789003857,
+          "renders": -3.3741512004855116,
+          "difference": 2.1649025885183453,
+          "spread": 1.703877291855843,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 9.751768707482993,
+          "renders": 9.826417233560091,
+          "difference": 0.07464852607709815,
+          "spread": 0.15712018140589556,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3335850260865736,
+          "spread": 1.4911612435319859,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_stab_00__chord_short_C4maj_v102",
+      "preset_id": "mus_stab_00",
+      "bpm": 120.0,
+      "preset_sha256": "502e6492de8f7fe7fffbce3d0c971f1819f1800f2ba55f102adf1b754a25ac53",
+      "midi_sha256": "da18c71c9f26145260cf65a60b7a8549c84f381004db3094b5215651ee88e109",
+      "recording_sha256": "273a6f90441f2c60775926e963d04bf864148126a0f636ba41fadefb2ace7de0",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.47272304014158095
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.1708961109656482
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.06514739229024924
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.4371344493070701
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -31.94558437356276,
+          "renders": -30.270359430229576,
+          "difference": 1.675224943333184,
+          "spread": 0.47272304014158095,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -8.812794123092939,
+          "renders": -6.61391390415674,
+          "difference": 2.198880218936199,
+          "spread": 1.1708961109656482,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.418730158730159,
+          "renders": 2.6739455782312924,
+          "difference": 0.2552154195011336,
+          "spread": 0.06514739229024924,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.11516842468977,
+          "spread": 1.4371344493070701,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_pluck_00__strum_120bpm",
+      "preset_id": "mus_pluck_00",
+      "bpm": 120.0,
+      "preset_sha256": "f672db2b83675900d76c4534e5c786ae7351b9ed8c7edf9d764c085f42ce39b3",
+      "midi_sha256": "69d31022b0e018c34494d2effa17b8fa0ae5326f167db05ddb95c5a31af959b2",
+      "recording_sha256": "ca7d90f90f0e4805a58f5a55060aa593d15c31a4bcd99afdd8e3c32ee269bce3",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.29818508596402893
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 2.10150577253229
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.006984126984127315
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.997690837433873
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -32.384885123678224,
+          "renders": -30.874799093750024,
+          "difference": 1.5100860299281997,
+          "spread": 0.29818508596402893,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -12.194321389541347,
+          "renders": -9.495506624658468,
+          "difference": 2.6988147648828793,
+          "spread": 2.10150577253229,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.232380952380953,
+          "renders": 4.8448526077097505,
+          "difference": 0.6124716553287977,
+          "spread": 0.006984126984127315,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.387510519709924,
+          "spread": 0.997690837433873,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_porta_force_0.1__chord_long_C4maj_v102",
+      "preset_id": "iso_porta_force_0.1",
+      "bpm": 120.0,
+      "preset_sha256": "76713df43487a55e0bbb4591c953ea80f9123a4095be0f473cc3fc78b35ec9f8",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "73b44aef72bef7c2532402749c384c496cba244396fc8018e5fcc1c899655dc9",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.0041343938913911416
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.03462982916221158
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0011564625850337684
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.15794935974007074
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -19.174331144411994,
+          "renders": -17.01197943431606,
+          "difference": 2.1623517100959333,
+          "spread": 0.0041343938913911416,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -11.09738155630872,
+          "renders": -8.972727731358091,
+          "difference": 2.124653824950629,
+          "spread": 0.03462982916221158,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.0870975056689343,
+          "renders": 2.086530612244898,
+          "difference": 0.0005668934240361523,
+          "spread": 0.0011564625850337684,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2397030820816584,
+          "spread": 0.15794935974007074,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_pad_00__pad_chords_120bpm",
+      "preset_id": "mus_pad_00",
+      "bpm": 120.0,
+      "preset_sha256": "8dfef435d48963d92914ccaf6f532a64296634704a100cd8cb78ade79ccf7b89",
+      "midi_sha256": "5a9db06ce301d7e317690646fd0f77722f40ad10b3eda4d5fcff4f273af55491",
+      "recording_sha256": "c10301d7758c1ff5b7ce72a618a3288c746c4bf02d1cf10795bf702da4a462c5",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.14034870724223225
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.7415467404820717
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.23582766439909264
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.6832273348478433
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -22.23553755887723,
+          "renders": -20.44272264225205,
+          "difference": 1.7928149166251792,
+          "spread": 0.14034870724223225,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -3.579417831439207,
+          "renders": -0.3921628161755384,
+          "difference": 3.187255015263669,
+          "spread": 1.7415467404820717,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 15.636961451247165,
+          "renders": 16.920430839002268,
+          "difference": 1.2834693877551029,
+          "spread": 0.23582766439909264,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 3.189801178425204,
+          "spread": 2.6832273348478433,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_arp_00__arp_120bpm",
+      "preset_id": "mus_arp_00",
+      "bpm": 120.0,
+      "preset_sha256": "8a5fcc6f75e42b4b443b5891e8265299d3960cf97150b94e373ce96c85532700",
+      "midi_sha256": "f4c8926e2cbcad4563c86d70ec0e53cacbe2db885353c512b790acfbbfc3cc1e",
+      "recording_sha256": "a41d5a8b17258ff69527e789e9c14bbdb3a009db9e87b9b0ccb69b65b3c6bb8d",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.15946081687171443
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 2.038634029189689
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0036054421768705325
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.7045967599015954
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -34.8461613837119,
+          "renders": -33.258655414368405,
+          "difference": 1.5875059693434963,
+          "spread": 0.15946081687171443,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -15.763827097303265,
+          "renders": -13.68790416845828,
+          "difference": 2.075922928844985,
+          "spread": 2.038634029189689,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 5.0967800453514736,
+          "renders": 5.8835374149659865,
+          "difference": 0.7867573696145129,
+          "spread": 0.0036054421768705325,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2934996622443635,
+          "spread": 0.7045967599015954,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_lead_00__lead_legato_120bpm",
+      "preset_id": "mus_lead_00",
+      "bpm": 120.0,
+      "preset_sha256": "e1e4393046b7998e40511e3057deff51dc38e415a2892c10a31342c523755c88",
+      "midi_sha256": "fc608177a3ba86b646db5b031f2fa86a6df065398f9cbf0792932778c6e8d206",
+      "recording_sha256": "cb6a5f60d6c55b2acf7058e4c5b9e759f6b342abc91bca0765f5a527fabc636d",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.025214422837592565
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.5500068386807051
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.018526077097504867
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.2917381905629215
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -26.72115731466822,
+          "renders": -24.71342958391694,
+          "difference": 2.0077277307512773,
+          "spread": 0.025214422837592565,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -14.341893053514333,
+          "renders": -12.12686910940634,
+          "difference": 2.215023944107994,
+          "spread": 0.5500068386807051,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 11.132993197278912,
+          "renders": 11.51859410430839,
+          "difference": 0.38560090702947747,
+          "spread": 0.018526077097504867,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.4244626977495174,
+          "spread": 2.2917381905629215,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_reese_bass_00__bass_octave_120bpm",
+      "preset_id": "mus_reese_bass_00",
+      "bpm": 120.0,
+      "preset_sha256": "22303e737f7c2521edccc763f1bc5675d3012ca5d7702d681f240d87c750c09d",
+      "midi_sha256": "4de9abe1504c6cb3028d7f43e4d39e6b7c0bb8a7f9ef7f015f9400d875c701b5",
+      "recording_sha256": "f3c33438adf15c0f5b8138c5b4fd79eb6060cc535605306ab9f3f43b29e282ca",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.47268197087776365
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.024170558596559033
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.13006802721088473
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.6115976299964345
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -13.237702430172455,
+          "renders": -11.352381909222117,
+          "difference": 1.8853205209503372,
+          "spread": 0.47268197087776365,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -8.187244785355404,
+          "renders": -6.027816294126458,
+          "difference": 2.1594284912289456,
+          "spread": 0.024170558596559033,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.4714512471655325,
+          "renders": 4.5429931972789115,
+          "difference": 0.07154195011337894,
+          "spread": 0.13006802721088473,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.287827558727649,
+          "spread": 1.6115976299964345,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "iso_porta_0.1__lead_glide_120bpm",
+      "preset_id": "iso_porta_0.1",
+      "bpm": 120.0,
+      "preset_sha256": "28331e083dbf18b71f51c1bca11ab91ca2779b93e2ef87adb9b9272259040775",
+      "midi_sha256": "1b609c857b89ea72aca30f5d0c1e1bf1dbf371e27d204b35db9251ec75701844",
+      "recording_sha256": "0af8d4b4ce43bf5c6b38dfd5d6ee80eb695bdc302592d3b6e52535089dea71f1",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.03225622569596709
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.2898815090046636
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.00043083900226736915
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.2284487822522484
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -19.02748860020822,
+          "renders": -16.90409439207867,
+          "difference": 2.1233942081295503,
+          "spread": 0.03225622569596709,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -6.594340781900939,
+          "renders": -5.577329517063338,
+          "difference": 1.0170112648376017,
+          "spread": 1.2898815090046636,
+          "within": true
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.149750566893424,
+          "renders": 4.149614512471655,
+          "difference": 0.00013605442176878313,
+          "spread": 0.00043083900226736915,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.165844660291857,
+          "spread": 0.2284487822522484,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_fx_00__chord_long_C4maj_v102",
+      "preset_id": "mus_fx_00",
+      "bpm": 120.0,
+      "preset_sha256": "a9bf530f17783336a7bd88b293b69f045158a62da66ba97a8d0d4ade6e3109d9",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "670e20487e5771e1d7c90e1ebc58513b40583e0ddcb7d13391f6dc25c1a365cf",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.30153319307907367
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.35158648569699524
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.2941496598639457
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.3939457804967004
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -23.739306612633207,
+          "renders": -21.927975077455457,
+          "difference": 1.8113315351777501,
+          "spread": 0.30153319307907367,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -3.4989645882566354,
+          "renders": -1.7682002086099649,
+          "difference": 1.7307643796466705,
+          "spread": 0.35158648569699524,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 12.959614512471655,
+          "renders": 14.10249433106576,
+          "difference": 1.1428798185941051,
+          "spread": 0.2941496598639457,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.7291240985722762,
+          "spread": 1.3939457804967004,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_cutoff_vs_wavetable_v1_a__chord_long_C4maj_v102",
+      "preset_id": "conf_cutoff_vs_wavetable_v1_a",
+      "bpm": 120.0,
+      "preset_sha256": "dd1ae29e9fe89788efb112eb1d43d99fe70060fd6fbc363b239f4fa252f134c0",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "ba76d4284d45731251a9d06aa4142cb7618f36d04b780af7e0c5860ec91167e5",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.04929505592288841
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.14519516065910576
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0009070294784581101
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.8577673574954998
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -16.520955339354643,
+          "renders": -14.369450200348595,
+          "difference": 2.151505139006048,
+          "spread": 0.04929505592288841,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -6.973468204642538,
+          "renders": -4.817626778965353,
+          "difference": 2.1558414256771847,
+          "spread": 0.14519516065910576,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.0873922902494333,
+          "renders": 2.087596371882086,
+          "difference": 0.0002494331065761024,
+          "spread": 0.0009070294784581101,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3484677064566286,
+          "spread": 1.8577673574954998,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_cutoff_vs_wavetable_v1_b__chord_long_C4maj_v102",
+      "preset_id": "conf_cutoff_vs_wavetable_v1_b",
+      "bpm": 120.0,
+      "preset_sha256": "63937d87c35c5c6720d67d840c3db8eeb90a6718a2ac97186e11394eaf74de55",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "5ffe5aed0df5c3e90bf5955e808236a7812e6e39653170407ff3fa750917c2ae",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.00412797430078804
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.021644580776392974
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0011111111111108407
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.2768389252317243
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -13.729672579581456,
+          "renders": -11.556724989712237,
+          "difference": 2.172947589869219,
+          "spread": 0.00412797430078804,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -5.754286643283573,
+          "renders": -3.5943855087230556,
+          "difference": 2.159901134560517,
+          "spread": 0.021644580776392974,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.087278911564626,
+          "renders": 2.0876190476190475,
+          "difference": 0.00034013605442151373,
+          "spread": 0.0011111111111108407,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.529675626240357,
+          "spread": 2.2768389252317243,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_phaser_flanger_chorus_v1_a__chord_long_C4maj_v102",
+      "preset_id": "conf_phaser_flanger_chorus_v1_a",
+      "bpm": 120.0,
+      "preset_sha256": "8d250f6a2a75530de792be62a65e125305167654cdbe28e2a4f4ccccac7249f0",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "4e860576372df1c4748b2c398c2c40ba0f59fa3b14a5b09719d9039426e3c1d5",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.04932975371085746
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.468350441924153
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0017687074829932925
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.9773023435794108
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -16.48744974747633,
+          "renders": -14.33813861165814,
+          "difference": 2.1493111358181896,
+          "spread": 0.04932975371085746,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -3.788083400264294,
+          "renders": -1.6505913764459446,
+          "difference": 2.1374920238183495,
+          "spread": 1.468350441924153,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.1083673469387754,
+          "renders": 2.1124489795918366,
+          "difference": 0.004081632653061273,
+          "spread": 0.0017687074829932925,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.293592314994701,
+          "spread": 0.9773023435794108,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_phaser_flanger_chorus_v1_b__chord_long_C4maj_v102",
+      "preset_id": "conf_phaser_flanger_chorus_v1_b",
+      "bpm": 120.0,
+      "preset_sha256": "146b6ac8ba8b97bca26e42a309f27c4eb237bc612f4068fa10dc06b810dfb657",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "85c08c2ae66897b5b5456d748580ac0be001b3660a7045889efde56e617dc18b",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.03642807151388361
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.9282372969809971
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0022222222222221255
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.086642857403507
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -13.748696337024866,
+          "renders": -11.630229759317686,
+          "difference": 2.1184665777071796,
+          "spread": 0.03642807151388361,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -3.0714935843735915,
+          "renders": -0.5239580214232121,
+          "difference": 2.5475355629503795,
+          "spread": 0.9282372969809971,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.1054648526077098,
+          "renders": 2.1089115646258505,
+          "difference": 0.0034467120181407296,
+          "spread": 0.0022222222222221255,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.205493009374386,
+          "spread": 1.086642857403507,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_phaser_flanger_chorus_v1_c__chord_long_C4maj_v102",
+      "preset_id": "conf_phaser_flanger_chorus_v1_c",
+      "bpm": 120.0,
+      "preset_sha256": "bb3bacfcb94305e858be068e29aba0db1495d0ba3830ff0ed806c54cc4211df3",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "23db91694144a81a830d22cd7b2feb617ca11fdbd4ecdae4db265c6b923eeb79",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.07879853412703319
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.9255222515628905
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.023469387755101767
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.0021152411248881
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -12.171735925926875,
+          "renders": -9.942579828310475,
+          "difference": 2.2291560976164,
+          "spread": 0.07879853412703319,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": 1.8650503996674581,
+          "renders": 4.825160735090018,
+          "difference": 2.9601103354225593,
+          "spread": 1.9255222515628905,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.3891609977324264,
+          "renders": 2.413151927437642,
+          "difference": 0.023990929705215436,
+          "spread": 0.023469387755101767,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3179837395884055,
+          "spread": 1.0021152411248881,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_spread_vs_stereo_fx_v1_a__chord_long_C4maj_v102",
+      "preset_id": "conf_spread_vs_stereo_fx_v1_a",
+      "bpm": 120.0,
+      "preset_sha256": "19f7e3a415a1111510a2db2fcdcb5cdbcd4e3d58bee79723a3135aaf9644ae99",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "d7bbc0a866dd7bea93fe3828a1178ae70b04de951b8424bd7c0aed6b243d1212",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.11784499995753528
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.5701446960437041
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0007482993197278631
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.6479800037806003
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -14.382415689406802,
+          "renders": -12.202496947450314,
+          "difference": 2.179918741956488,
+          "spread": 0.11784499995753528,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -1.8950868004036807,
+          "renders": 0.27270248364941074,
+          "difference": 2.1677892840530912,
+          "spread": 0.5701446960437041,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.087074829931973,
+          "renders": 2.087936507936508,
+          "difference": 0.0008616780045351824,
+          "spread": 0.0007482993197278631,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.232103667409322,
+          "spread": 1.6479800037806003,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "conf_spread_vs_stereo_fx_v1_b__chord_long_C4maj_v102",
+      "preset_id": "conf_spread_vs_stereo_fx_v1_b",
+      "bpm": 120.0,
+      "preset_sha256": "dc210b41e4f63977c0d7491088a74a6e0424c48fb86b0a1c4e1ae2ad7c9d6eb6",
+      "midi_sha256": "a6e3ef5be3c38111a650f9eba56c2f93e6628f6286f1930c95d7711a7d5919bd",
+      "recording_sha256": "72255b1971c955800e23574d8632d6a0ee93607b03ae6f814ae74b0a02cda232",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.14062811002429143
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.2936301240454218
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.013038548752834611
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.098213529426557
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -13.960558688873501,
+          "renders": -11.876792192416463,
+          "difference": 2.083766496457038,
+          "spread": 0.14062811002429143,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -1.4475618760734315,
+          "renders": 0.6010934120157302,
+          "difference": 2.0486552880891615,
+          "spread": 1.2936301240454218,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.8626303854875284,
+          "renders": 2.9219727891156464,
+          "difference": 0.059342403628118046,
+          "spread": 0.013038548752834611,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2415260266814623,
+          "spread": 1.098213529426557,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_pad_05__chord_long_C2maj_v102",
+      "preset_id": "mus_pad_05",
+      "bpm": 120.0,
+      "preset_sha256": "6708f45304ea1001b455499b5e26c146414fb0f6a465e53a2100574d85453e1f",
+      "midi_sha256": "ae60bfa0fa0397dfd2aef47676b17da7eba9ecccae5ae89d5f15e0722c19d987",
+      "recording_sha256": "b73e59b62be7a2717a9ed8d8da1c0927a723632444b250f87eb3c9eb67264b8c",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.3458126158268122
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.7684615748431982
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.18687074829932016
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 3.176614756947311
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -23.67786751528029,
+          "renders": -22.142305848495187,
+          "difference": 1.535561666785103,
+          "spread": 0.3458126158268122,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -6.632217402577144,
+          "renders": -4.3142284776887205,
+          "difference": 2.3179889248884233,
+          "spread": 0.7684615748431982,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 7.099455782312925,
+          "renders": 7.942222222222222,
+          "difference": 0.8427664399092967,
+          "spread": 0.18687074829932016,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 3.545608204434601,
+          "spread": 3.176614756947311,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_keys_04__chord_short_C5maj_v102",
+      "preset_id": "mus_keys_04",
+      "bpm": 120.0,
+      "preset_sha256": "aa7ba5f4ddf6c63ddacc15099d2cc287bcfda7dcb4d715154d429dfee6bdbbae",
+      "midi_sha256": "8069b06dbfc663dd11db79f7c1668c60865dd2fdc72aa28e23022f708d839018",
+      "recording_sha256": "5d938e15fab006900529defa6196d983a1ac7b537ffb1aee260cef4b030c8109",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.21642661487256376
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.8903089116506027
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.10265306122448958
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.3308810377407503
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -28.325708312711146,
+          "renders": -26.37059358058243,
+          "difference": 1.9551147321287168,
+          "spread": 0.21642661487256376,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -6.417580237382778,
+          "renders": -3.4600384720371475,
+          "difference": 2.957541765345631,
+          "spread": 0.8903089116506027,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 2.2854875283446714,
+          "renders": 2.4883219954648528,
+          "difference": 0.20283446712018138,
+          "spread": 0.10265306122448958,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3665181685730228,
+          "spread": 2.3308810377407503,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_bell_00__pad_chords_120bpm",
+      "preset_id": "mus_bell_00",
+      "bpm": 120.0,
+      "preset_sha256": "f1b88e6c6cd09e3a3726dbfc7b3051656bd5279f32de84d9241e9aab5c635834",
+      "midi_sha256": "5a9db06ce301d7e317690646fd0f77722f40ad10b3eda4d5fcff4f273af55491",
+      "recording_sha256": "d6626be83bb326a1b46a0af66bc3674159ad77c35d6d09be5958797fc54ba2f8",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.17812543497629107
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.351041988731129
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.18893424036281203
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.642928643810258
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -18.32820717912085,
+          "renders": -16.245597862939704,
+          "difference": 2.082609316181145,
+          "spread": 0.17812543497629107,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -0.6940643503369072,
+          "renders": 2.194365854352352,
+          "difference": 2.888430204689259,
+          "spread": 1.351041988731129,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 14.89374149659864,
+          "renders": 15.36156462585034,
+          "difference": 0.4678231292517001,
+          "spread": 0.18893424036281203,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3145576619245305,
+          "spread": 1.642928643810258,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "cplx_22__pad_chords_120bpm",
+      "preset_id": "cplx_22",
+      "bpm": 120.0,
+      "preset_sha256": "24ef52163f3c9cbd7631b2b522c7387e3088baeda2a843002ab5b66d8b0a63cf",
+      "midi_sha256": "5a9db06ce301d7e317690646fd0f77722f40ad10b3eda4d5fcff4f273af55491",
+      "recording_sha256": "d372d4d1f9c4baec72e9657242854e01783a86c7c0d478741073eb34939cf093",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.06936367922181397
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 3.1976182512975493
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.001088435374150265
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 3.1562646653202036
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -13.731438230199544,
+          "renders": -11.531322121940534,
+          "difference": 2.20011610825901,
+          "spread": 0.06936367922181397,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -1.0024618727035577,
+          "renders": 2.5099877642986703,
+          "difference": 3.512449637002228,
+          "spread": 3.1976182512975493,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 8.080498866213151,
+          "renders": 8.037528344671202,
+          "difference": 0.04297052154194958,
+          "spread": 0.001088435374150265,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 3.4469564260252707,
+          "spread": 3.1562646653202036,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_808_00__bass_glide_120bpm",
+      "preset_id": "mus_808_00",
+      "bpm": 120.0,
+      "preset_sha256": "64fbdb73d5fdab90ed0931015b44cfad3f685b88cad5572ab68446d40ead7754",
+      "midi_sha256": "414a8e5426a6b7765d48ee1fc9d46495db6b4d99152c3785f90fd9be9f7df649",
+      "recording_sha256": "1463067bca718761ef6d7d3a909707c713a771a0c063a18fa5aeafcef1ba2e6f",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.07503007435801834
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.337000163178125
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.00405895691609981
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.5839873635221443
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -21.925603330005295,
+          "renders": -19.78881834824923,
+          "difference": 2.1367849817560653,
+          "spread": 0.07503007435801834,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -10.774010429809152,
+          "renders": -8.531718939852837,
+          "difference": 2.2422914899563153,
+          "spread": 0.337000163178125,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.144489795918368,
+          "renders": 4.146462585034014,
+          "difference": 0.001972789115646023,
+          "spread": 0.00405895691609981,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.221959908039053,
+          "spread": 0.5839873635221443,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_reese_bass_05__bass_glide_120bpm",
+      "preset_id": "mus_reese_bass_05",
+      "bpm": 120.0,
+      "preset_sha256": "35411fbdcabe15bd7795ea2468586041d052968980e791f900e41321a6ee7dc7",
+      "midi_sha256": "414a8e5426a6b7765d48ee1fc9d46495db6b4d99152c3785f90fd9be9f7df649",
+      "recording_sha256": "30f2c14ba24a1236d1c236b5d2a65695e869e3e58238d043d883a1966366881f",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.7760921173214541
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.5977575137288227
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.001995464852607931
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.3787827040915004
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -20.75180281376685,
+          "renders": -19.023392066725055,
+          "difference": 1.7284107470417958,
+          "spread": 0.7760921173214541,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -12.994904736111849,
+          "renders": -11.15139681258668,
+          "difference": 1.8435079235251681,
+          "spread": 0.5977575137288227,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.118503401360544,
+          "renders": 4.118888888888889,
+          "difference": 0.000929705215419574,
+          "spread": 0.001995464852607931,
+          "within": true
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.550584109783005,
+          "spread": 2.3787827040915004,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_sub_bass_00__bass_octave_120bpm",
+      "preset_id": "mus_sub_bass_00",
+      "bpm": 120.0,
+      "preset_sha256": "25bcddddf590221bca78bf4d2f27f59ab9c1f39032c664f56f58c5f2303b2981",
+      "midi_sha256": "4de9abe1504c6cb3028d7f43e4d39e6b7c0bb8a7f9ef7f015f9400d875c701b5",
+      "recording_sha256": "9e1dba6838b5fe0170121711308db9bf6439f83ec36591aa949f8391dfc85033",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.01822703550937632
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.014753902889321324
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0005215419501132246
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.6952187646436062
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -14.858536608958893,
+          "renders": -12.61138742781977,
+          "difference": 2.2471491811391235,
+          "spread": 0.01822703550937632,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -9.955685348563566,
+          "renders": -7.795835678215744,
+          "difference": 2.159849670347822,
+          "spread": 0.014753902889321324,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.072947845804989,
+          "renders": 4.032244897959184,
+          "difference": 0.04070294784580497,
+          "spread": 0.0005215419501132246,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3965291871740093,
+          "spread": 0.6952187646436062,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "cplx_17__arp_120bpm",
+      "preset_id": "cplx_17",
+      "bpm": 120.0,
+      "preset_sha256": "80c422625eea62911e814a23d74ce1866239add5d8d6946a74edb54335a3db48",
+      "midi_sha256": "f4c8926e2cbcad4563c86d70ec0e53cacbe2db885353c512b790acfbbfc3cc1e",
+      "recording_sha256": "6d0f69b00b732a99ccbaf3d1cc205b5c42466f09c8c76976f446af531000ae6f",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.04088234461896434
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 0.6607619705324339
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.0003174603174596058
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 0.5603115621952214
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -20.585605278444994,
+          "renders": -18.34835959730029,
+          "difference": 2.237245681144703,
+          "spread": 0.04088234461896434,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -11.278109674477427,
+          "renders": -8.561133326642512,
+          "difference": 2.7169763478349154,
+          "spread": 0.6607619705324339,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.083945578231292,
+          "renders": 4.062471655328798,
+          "difference": 0.02147392290249428,
+          "spread": 0.0003174603174596058,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.2409171496681743,
+          "spread": 0.5603115621952214,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_arp_02__arp_140bpm",
+      "preset_id": "mus_arp_02",
+      "bpm": 140.0,
+      "preset_sha256": "3ae9cacb7d051d0a51dcfec5f25d2333c48849726a4e4230f3da177e9fe850ce",
+      "midi_sha256": "774ac703fa78d19d60d1a1254d32ac21ba8f3e5147718ca81e977f96185a1eb2",
+      "recording_sha256": "0d2620b301f99a9f6f7c9dd05fd1d3d8e9679e0dfea1393c146905b4c6563a93",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.4717788761187265
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 2.841755106780628
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.011247165532879855
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 1.334558483402448
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -34.94755988626332,
+          "renders": -33.27525649499729,
+          "difference": 1.672303391266027,
+          "spread": 0.4717788761187265,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -15.114176332677172,
+          "renders": -13.529665511898974,
+          "difference": 1.5845108207781973,
+          "spread": 2.841755106780628,
+          "within": true
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 4.260204081632653,
+          "renders": 4.613673469387755,
+          "difference": 0.3534693877551014,
+          "spread": 0.011247165532879855,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 2.3103973827801703,
+          "spread": 1.334558483402448,
+          "within": false
+        }
+      ],
+      "within": false
+    },
+    {
+      "id": "mus_lead_03__lead_glide_140bpm",
+      "preset_id": "mus_lead_03",
+      "bpm": 140.0,
+      "preset_sha256": "4f29f7d3f908f9ebef0320f2adca19be8b76d4846431ef1f0ff70c3243bcba36",
+      "midi_sha256": "db674a498f455e32807c429bc892e83254c03b2279c9bda03fd819fc5f318a23",
+      "recording_sha256": "57ab7ad944b68364b7bb3ac08863e6efc85149d0e2d2044c59b0e416116b578e",
+      "state_differences": [],
+      "spread": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "spread": 0.144659032126782
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "spread": 1.3085361458113303
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "spread": 0.048095238095238635
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "spread": 2.4586876460474563
+        }
+      ],
+      "comparisons": [
+        {
+          "output": "rms_db",
+          "unit": "dB",
+          "clip": -25.04615022550901,
+          "renders": -23.04579919771774,
+          "difference": 2.000351027791268,
+          "spread": 0.144659032126782,
+          "within": false
+        },
+        {
+          "output": "peak_db",
+          "unit": "dB",
+          "clip": -9.66034374991024,
+          "renders": -8.019829143907275,
+          "difference": 1.6405146060029647,
+          "spread": 1.3085361458113303,
+          "within": false
+        },
+        {
+          "output": "duration_s",
+          "unit": "s",
+          "clip": 6.629297052154195,
+          "renders": 6.986643990929705,
+          "difference": 0.3573469387755104,
+          "spread": 0.048095238095238635,
+          "within": false
+        },
+        {
+          "output": "envelope_distance_db",
+          "unit": "dB",
+          "difference": 3.030185515168719,
+          "spread": 2.4586876460474563,
+          "within": false
+        }
+      ],
+      "within": false
+    }
+  ]
+}
