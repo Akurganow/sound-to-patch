@@ -39,6 +39,7 @@
 //! | [`MidiPitch`] | `midi` |
 //!
 //! ```
+//! # extern crate sound_to_patch_core as sound_to_patch;
 //! use sound_to_patch::units::{Bipolar, Hz, Percent, Seconds};
 //!
 //! let cutoff: Hz = "1.2 kHz".parse()?;
@@ -85,7 +86,9 @@ pub struct RangeError {
 }
 
 impl RangeError {
-    pub(crate) fn new(what: &'static str, value: f64, range: Range) -> Self {
+    #[doc(hidden)]
+    #[must_use]
+    pub fn new(what: &'static str, value: f64, range: Range) -> Self {
         Self { what, value, range }
     }
 }
@@ -105,7 +108,8 @@ impl Error for RangeError {}
 
 /// The values a check accepts. Every range excludes NaN and both infinities.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Range {
+#[doc(hidden)]
+pub enum Range {
     Finite,
     AtLeast(f64),
     Above(f64),
@@ -113,20 +117,24 @@ pub(crate) enum Range {
 }
 
 impl Range {
-    pub(crate) fn contains(self, value: f64) -> bool {
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn contains(self, value: f64) -> bool {
         value.is_finite()
             && match self {
                 Self::Finite => true,
                 Self::AtLeast(min) => value >= min,
                 Self::Above(min) => value > min,
-                Self::Closed(min, max) => (min..=max).contains(&value),
+                Self::Closed(min, max) => value >= min && value <= max,
             }
     }
 
     /// Clamps a value into the range: NaN becomes the lower bound (zero for
     /// `Finite`), an infinity the nearest bound. For values that are valid by
     /// construction, where the clamp never acts.
-    pub(crate) fn clamp(self, value: f64) -> f64 {
+    #[doc(hidden)]
+    #[must_use]
+    pub fn clamp(self, value: f64) -> f64 {
         let (min, max) = match self {
             Self::Finite => (f64::MIN, f64::MAX),
             Self::AtLeast(min) => (min, f64::MAX),
@@ -146,7 +154,8 @@ impl Range {
 
     /// Returns the value, with `-0.0` stored as `+0.0`, or the error naming
     /// `what`.
-    pub(crate) fn check(self, what: &'static str, value: f64) -> Result<f64, RangeError> {
+    #[doc(hidden)]
+    pub fn check(self, what: &'static str, value: f64) -> Result<f64, RangeError> {
         if self.contains(value) {
             Ok(value + 0.0)
         } else {
@@ -168,6 +177,31 @@ impl fmt::Display for Range {
 
 /// Defines a unit newtype over a private `f64` with a checked constructor,
 /// a getter and serde through the constructor.
+///
+/// Its `from_const` checks the range at compile time in a `const` item:
+///
+/// ```
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::units::{Normalized, Seconds};
+///
+/// const HALF: Normalized = Normalized::from_const(0.5);
+/// const TAIL: Seconds = Seconds::from_const(30.0);
+/// assert_eq!((HALF.get(), TAIL.get()), (0.5, 30.0));
+/// ```
+///
+/// ```compile_fail
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::units::Seconds;
+///
+/// const NOT_A_NUMBER: Seconds = Seconds::from_const(f64::NAN);
+/// ```
+///
+/// ```compile_fail
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::units::Normalized;
+///
+/// const ABOVE: Normalized = Normalized::from_const(1.5);
+/// ```
 macro_rules! unit {
     ($(#[$doc:meta])* $name:ident, $range:expr) => {
         $(#[$doc])*
@@ -194,19 +228,29 @@ macro_rules! unit {
                 self.0
             }
 
-            /// Builds a value in a `const` item without the check. Every
-            /// caller passes a literal that a test also builds through
-            /// [`Self::new`].
-            #[allow(dead_code, reason = "not every unit type has a constant yet")]
-            pub(crate) const fn from_const(value: f64) -> Self {
+            /// Builds a value in a `const` item. Every caller passes a
+            /// literal that a test also builds through [`Self::new`].
+            ///
+            /// # Panics
+            ///
+            /// Panics for a value outside the range of the type, which in
+            /// a `const` item fails the build.
+            #[doc(hidden)]
+            #[must_use]
+            pub const fn from_const(value: f64) -> Self {
+                assert!(
+                    Self::RANGE.contains(value),
+                    concat!(stringify!($name), "::from_const: the value lies outside the range")
+                );
                 Self(value)
             }
 
             /// Builds a value that the computation guarantees to be in
             /// range, such as a bin frequency `k fs / N`. The clamp only
             /// guards against a bug; it never acts on a valid input.
-            #[allow(dead_code, reason = "not every unit type has such a caller yet")]
-            pub(crate) fn clamped(value: f64) -> Self {
+            #[doc(hidden)]
+            #[must_use]
+            pub fn clamped(value: f64) -> Self {
                 Self(Self::RANGE.clamp(value))
             }
         }
@@ -231,6 +275,7 @@ unit!(
     /// A frequency in hertz: a finite value of zero or more.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Hz;
     ///
     /// let a4 = Hz::new(440.0)?;
@@ -245,6 +290,7 @@ unit!(
     /// A duration in seconds: a finite value of zero or more.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Seconds;
     ///
     /// let attack = Seconds::new(0.25)?;
@@ -260,6 +306,7 @@ unit!(
     /// An interval in semitones: any finite value, sign allowed.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Semitones;
     ///
     /// let octave_down = Semitones::new(-12.0)?;
@@ -275,6 +322,7 @@ unit!(
     /// sign allowed.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Cents;
     ///
     /// let detune = Cents::new(-7.0)?;
@@ -289,6 +337,7 @@ unit!(
     /// An interval in octaves: any finite value, sign allowed.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Octaves;
     ///
     /// let spread = Octaves::new(0.3)?;
@@ -304,6 +353,7 @@ unit!(
     /// because levels are often relative to a peak.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Decibels;
     ///
     /// let level = Decibels::new(-6.0)?;
@@ -320,6 +370,7 @@ unit!(
     /// A value just above 1.0 from float rounding is rejected, not clamped.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Normalized;
     ///
     /// let cutoff_knob = Normalized::new(0.5)?;
@@ -335,6 +386,7 @@ unit!(
     /// carry a pitch between notes, such as a pitch track gives.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::MidiPitch;
     ///
     /// let a4 = MidiPitch::new(69.0)?;
@@ -351,6 +403,7 @@ unit!(
     /// correlation of two stereo channels.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Correlation;
     ///
     /// let mono = Correlation::new(1.0)?;
@@ -366,6 +419,7 @@ unit!(
     /// sign allowed.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Degrees;
     ///
     /// let quarter_turn = Degrees::new(90.0)?;
@@ -380,6 +434,7 @@ unit!(
     /// A tempo in beats per minute, from 4 to 1000 inclusive.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Bpm;
     ///
     /// let tempo = Bpm::new(140.0)?;
@@ -395,6 +450,7 @@ unit!(
     /// spectral centroid over the fundamental.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Ratio;
     ///
     /// let harmonic_rank = Ratio::new(6.5)?;
@@ -423,6 +479,7 @@ impl Seconds {
 /// [`TryFrom`].
 ///
 /// ```
+/// # extern crate sound_to_patch_core as sound_to_patch;
 /// use sound_to_patch::units::{Bipolar, Percent, Unipolar};
 ///
 /// let drive = Percent::<Unipolar>::new(25.0)?;
@@ -487,9 +544,35 @@ impl<P: Polarity> Percent<P> {
         self.value
     }
 
-    /// Builds a value in a `const` item without the check. Every caller
-    /// passes a literal that a test also builds through [`Self::new`].
-    pub(crate) const fn from_const(value: f64) -> Self {
+    /// Builds a value in a `const` item. Every caller passes a literal
+    /// that a test also builds through [`Self::new`].
+    ///
+    /// # Panics
+    ///
+    /// Panics for a value outside the range of the polarity, which in a
+    /// `const` item fails the build.
+    ///
+    /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
+    /// use sound_to_patch::units::{Bipolar, Percent};
+    ///
+    /// const DOWN: Percent<Bipolar> = Percent::from_const(-50.0);
+    /// assert_eq!(DOWN.get(), -50.0);
+    /// ```
+    ///
+    /// ```compile_fail
+    /// # extern crate sound_to_patch_core as sound_to_patch;
+    /// use sound_to_patch::units::{Percent, Unipolar};
+    ///
+    /// const BELOW: Percent<Unipolar> = Percent::from_const(-1.0);
+    /// ```
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn from_const(value: f64) -> Self {
+        assert!(
+            Range::Closed(P::MIN, 100.0).contains(value),
+            "Percent::from_const: the value lies outside the range"
+        );
         Self {
             value,
             polarity: PhantomData,

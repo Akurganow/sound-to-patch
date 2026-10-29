@@ -1,7 +1,8 @@
 //! Checks of the lock files. The ONNX Runtime binding of the transcription
 //! crate stays out of the build: it would pin an old release candidate and
-//! link a native library. The fuzz crate's lock names the crate version of
-//! the root lock, so a fuzz build after a release rewrites nothing.
+//! link a native library. The fuzz crate's lock names the versions of the
+//! library and its core that the root lock names, so a fuzz build after a
+//! release rewrites nothing.
 
 use std::fs;
 use std::path::Path;
@@ -22,30 +23,47 @@ pub(crate) fn check_no_ort(root: &Path) -> crate::Result<()> {
     }
 }
 
+/// The workspace crates that the fuzz crate builds.
+const FUZZED: [&str; 2] = ["sound-to-patch", "sound-to-patch-core"];
+
 /// Fails when `fuzz/Cargo.lock` and `Cargo.lock` name different versions of
-/// the `sound-to-patch` crate.
+/// the `sound-to-patch` or the `sound-to-patch-core` crate.
 pub(crate) fn check_fuzz_lock(root: &Path) -> crate::Result<()> {
-    let version = |path: &str| -> crate::Result<String> {
-        let lock = fs::read_to_string(root.join(path))?;
-        crate_version(&lock)
-            .map(str::to_owned)
-            .ok_or_else(|| format!("{path} has no `sound-to-patch` package").into())
-    };
-    let (main, fuzz) = (version("Cargo.lock")?, version("fuzz/Cargo.lock")?);
-    if main == fuzz {
+    let main = fs::read_to_string(root.join("Cargo.lock"))?;
+    let fuzz = fs::read_to_string(root.join("fuzz/Cargo.lock"))?;
+    let mut stale = Vec::new();
+    for name in FUZZED {
+        let version = |lock: &str, path: &str| -> crate::Result<String> {
+            crate_version(lock, name)
+                .map(str::to_owned)
+                .ok_or_else(|| format!("{path} has no `{name}` package").into())
+        };
+        let (want, got) = (
+            version(&main, "Cargo.lock")?,
+            version(&fuzz, "fuzz/Cargo.lock")?,
+        );
+        if want != got {
+            stale.push(format!(
+                "Cargo.lock names {name} {want}, but fuzz/Cargo.lock names {got}"
+            ));
+        }
+    }
+    if stale.is_empty() {
         Ok(())
     } else {
         Err(format!(
-            "Cargo.lock names sound-to-patch {main}, but fuzz/Cargo.lock names {fuzz}. Run `cargo update --manifest-path fuzz/Cargo.toml -p sound-to-patch`"
+            "{}. Run `cargo update --manifest-path fuzz/Cargo.toml -p sound-to-patch -p sound-to-patch-core`",
+            stale.join("; ")
         )
         .into())
     }
 }
 
-/// The `version` line that follows `name = "sound-to-patch"`.
-fn crate_version(lock: &str) -> Option<&str> {
+/// The `version` line that follows `name = "<name>"`.
+fn crate_version<'a>(lock: &'a str, name: &str) -> Option<&'a str> {
+    let header = format!("name = \"{name}\"");
     let mut lines = lock.lines();
-    lines.find(|line| *line == "name = \"sound-to-patch\"")?;
+    lines.find(|line| *line == header)?;
     lines
         .next()?
         .strip_prefix("version = \"")?
@@ -73,22 +91,38 @@ mod tests {
     fn the_crate_version_follows_its_name() {
         let lock = "[[package]]\nname = \"sound-to-patch-fuzz\"\nversion = \"0.0.0\"\n\n\
                     [[package]]\nname = \"sound-to-patch\"\nversion = \"0.15.0\"\n";
-        assert_eq!(crate_version(lock), Some("0.15.0"));
-        assert_eq!(crate_version("[[package]]\nname = \"other\"\n"), None);
+        assert_eq!(crate_version(lock, "sound-to-patch"), Some("0.15.0"));
+        assert_eq!(crate_version(lock, "sound-to-patch-core"), None);
+        assert_eq!(
+            crate_version("[[package]]\nname = \"other\"\n", "sound-to-patch"),
+            None
+        );
     }
 
     #[test]
     fn a_stale_fuzz_lock_names_both_versions() {
         let dir = tempfile::tempdir().unwrap();
         fs::create_dir(dir.path().join("fuzz")).unwrap();
-        let lock = |version: &str| {
-            format!("[[package]]\nname = \"sound-to-patch\"\nversion = \"{version}\"\n")
+        let lock = |library: &str, core: &str| {
+            format!(
+                "[[package]]\nname = \"sound-to-patch\"\nversion = \"{library}\"\n\n\
+                 [[package]]\nname = \"sound-to-patch-core\"\nversion = \"{core}\"\n"
+            )
         };
-        fs::write(dir.path().join("Cargo.lock"), lock("0.15.0")).unwrap();
-        fs::write(dir.path().join("fuzz/Cargo.lock"), lock("0.12.0")).unwrap();
+        fs::write(dir.path().join("Cargo.lock"), lock("0.15.0", "0.15.0")).unwrap();
+        fs::write(dir.path().join("fuzz/Cargo.lock"), lock("0.12.0", "0.15.0")).unwrap();
         let err = check_fuzz_lock(dir.path()).unwrap_err().to_string();
-        assert!(err.contains("0.15.0") && err.contains("0.12.0"), "{err}");
-        fs::write(dir.path().join("fuzz/Cargo.lock"), lock("0.15.0")).unwrap();
+        assert!(
+            err.contains("sound-to-patch 0.15.0") && err.contains("names 0.12.0"),
+            "{err}"
+        );
+        fs::write(dir.path().join("fuzz/Cargo.lock"), lock("0.15.0", "0.12.0")).unwrap();
+        let err = check_fuzz_lock(dir.path()).unwrap_err().to_string();
+        assert!(
+            err.contains("sound-to-patch-core 0.15.0, but fuzz/Cargo.lock names 0.12.0"),
+            "{err}"
+        );
+        fs::write(dir.path().join("fuzz/Cargo.lock"), lock("0.15.0", "0.15.0")).unwrap();
         check_fuzz_lock(dir.path()).unwrap();
     }
 

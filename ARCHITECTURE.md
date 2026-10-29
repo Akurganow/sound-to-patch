@@ -35,10 +35,11 @@ plugin and a project skill both read.
 ## Synth adapter seam
 
 Estimators speak physical units, and adapters speak synth parameters. The
-neutral core holds stem intake, notes, the estimators, the layer report,
-compare and refine. It never rounds an estimate to what one synth offers.
-Each synth has one adapter behind these traits. A fact that belongs to one
-synth lives in its adapter, never in the neutral core.
+synth-neutral part of the library holds stem intake, notes, the
+estimators, the layer report, compare and refine. It never rounds an
+estimate to what one synth offers. Each synth has one adapter behind
+these traits. A fact that belongs to one synth lives in its adapter,
+never in the synth-neutral part.
 
 - `PresetFormat` and `PresetModel` (`preset::format`): read and write the
   file, name its header fields and supply the template through a
@@ -74,7 +75,8 @@ joins `READY` when its adapter lands.
   onsets. The `Stem` adds the beat grid and note divisions, the band
   edge, the flat-top flag and the stereo screen.
 - `cast`: the audited numeric casts. Every `as` between number types goes
-  through one function here, with its reason and a test.
+  through one function here, with its reason and a test. It lives in
+  `core`.
 - `cli`: the command-line definition, one module per command. The binary
   parses it, and `xtask` renders the man page and the shell completions
   from the same tree.
@@ -106,7 +108,8 @@ joins `READY` when its adapter lands.
   word's sense by role or by default and writes the word's question.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
-  `"1.2 kHz"`. The conversions between units live here too.
+  `"1.2 kHz"`. The conversions between units live here too. The module
+  lives in `core`, and the library re-exports it.
 - `confidence`: the confidence of an estimate: a level, the reasons with
   their signal values and a spread in a unit type, or no estimate.
 - `preset`: preset files. `format`, `registry` and `template` hold the
@@ -130,7 +133,8 @@ joins `READY` when its adapter lands.
   every consumer renders through, `timing`
   the table of load and render times, `spread` the repeat-render spread,
   its sequential draws and the comparison against it, and the module
-  root the render job, the record and the `Renderer` trait.
+  root the render job, the record and the `Renderer` trait. `recipe`,
+  `wire`, the notes and the note events live in `core`.
   The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
   pipeline with `layers.json` and the spectrogram, and the `notes` command
@@ -142,16 +146,25 @@ joins `READY` when its adapter lands.
   60.
 - `src/lib.rs`: the crate root and the crate docs.
 - `src/main.rs`: the binary. It parses arguments and calls the library.
+- `core`: the crate `sound-to-patch-core`, the render core that the
+  library and the host share: `units`, `cast`, the audio types and the
+  WAV writer, the MIDI velocity, the `Synth` enum, the notes of a
+  render, the kinds of controller change and the frame events, the
+  recipe and `render::wire`. The library re-exports each at its own
+  path, such as `sound_to_patch::units` or
+  `sound_to_patch::render::Recipe`. It depends on `serde` and
+  `serde_json` only, and on `clap` for the library's command line.
 - `host`: the crate of `sound-to-patch-host`, the process that loads a
   VST3 plug-in headless through `vst3-host` and renders through it. Only
-  it depends on `vst3-host`. It speaks `render::wire` and uses the
-  library's recipe, note events and tail watch, so both sides render by
-  one rule. It points file descriptor 1 at standard error before it loads
-  a plug-in and writes replies to the saved standard output, so plug-in
-  output never mixes with a reply. A render holds the state several times
-  over: the preset, its JSON, the base64 request and the host's copies.
-  Memory peaks at about 20 times the preset size, about 800 MB for a
-  40 MB preset.
+  it depends on `vst3-host`. It speaks `render::wire` and uses the core
+  crate's recipe, note events and tail watch, so both sides render by
+  one rule. It depends on `core` and not on the library, so it links
+  none of the transcriber or the analysis. It points file descriptor 1
+  at standard error before it loads a plug-in and writes replies to the
+  saved standard output, so plug-in output never mixes with a reply. A
+  render holds the state several times over: the preset, its JSON, the
+  base64 request and the host's copies. Memory peaks at about 20 times
+  the preset size, about 800 MB for a 40 MB preset.
 - `xtask`: development tasks. It generates the man page and completions,
   fetches pinned datasets, runs the pinned golden-number generator and
   checks its vectors, scores the notes step on generated parts, checks
@@ -210,6 +223,8 @@ joins `READY` when its adapter lands.
 
 - Library: all logic, behind unit-typed public APIs.
 - Binary: argument parsing and printing.
+- Core: `core/`, the render core. It holds no logic that only the
+  library needs, so the host stays small.
 - Host: `host/`, the plug-in host process. A plug-in crash or hang ends
   that process, never the caller: the renderer kills a host that stops
   answering, and stops one that lingers after its pipes close or after

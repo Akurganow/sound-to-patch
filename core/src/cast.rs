@@ -8,7 +8,8 @@
     clippy::cast_precision_loss,
     reason = "counts stay far below 2^53, where f64 is exact"
 )]
-pub(crate) fn usize_to_f64(n: usize) -> f64 {
+#[must_use]
+pub fn usize_to_f64(n: usize) -> f64 {
     n as f64
 }
 
@@ -18,7 +19,8 @@ pub(crate) fn usize_to_f64(n: usize) -> f64 {
     clippy::cast_precision_loss,
     reason = "tick counts stay far below 2^53, where f64 is exact"
 )]
-pub(crate) fn u64_to_f64(n: u64) -> f64 {
+#[must_use]
+pub fn u64_to_f64(n: u64) -> f64 {
     n as f64
 }
 
@@ -28,7 +30,8 @@ pub(crate) fn u64_to_f64(n: u64) -> f64 {
     clippy::cast_precision_loss,
     reason = "a JSON integer beyond 2^53 has no exact f64 in any reader"
 )]
-pub(crate) fn i64_to_f64(n: i64) -> f64 {
+#[must_use]
+pub fn i64_to_f64(n: i64) -> f64 {
     n as f64
 }
 
@@ -38,7 +41,8 @@ pub(crate) fn i64_to_f64(n: i64) -> f64 {
     clippy::cast_precision_loss,
     reason = "after the shift the value has at most 53 bits, so it is exact"
 )]
-pub(crate) fn unit_interval(bits: u64) -> f64 {
+#[must_use]
+pub fn unit_interval(bits: u64) -> f64 {
     (bits >> 11) as f64 / (1_u64 << 53) as f64
 }
 
@@ -47,7 +51,8 @@ pub(crate) fn unit_interval(bits: u64) -> f64 {
     clippy::cast_possible_truncation,
     reason = "rounding to the nearest f32 is the intent"
 )]
-pub(crate) fn f64_to_f32(x: f64) -> f32 {
+#[must_use]
+pub fn f64_to_f32(x: f64) -> f32 {
     x as f32
 }
 
@@ -57,7 +62,8 @@ pub(crate) fn f64_to_f32(x: f64) -> f32 {
     clippy::cast_possible_truncation,
     reason = "the value is rounded and clamped to the i16 range first"
 )]
-pub(crate) fn pcm16(x: f64) -> i16 {
+#[must_use]
+pub fn pcm16(x: f64) -> i16 {
     (x.clamp(-1.0, 1.0) * 32767.0).round() as i16
 }
 
@@ -71,7 +77,8 @@ const EXACT_LIMIT: f64 = 9_007_199_254_740_992.0;
     clippy::cast_sign_loss,
     reason = "the guard admits only finite values in 0..2^53, which fit usize on 64-bit targets"
 )]
-pub(crate) fn floor_to_usize(value: f64) -> Option<usize> {
+#[must_use]
+pub fn floor_to_usize(value: f64) -> Option<usize> {
     (0.0..EXACT_LIMIT)
         .contains(&value)
         .then(|| value.floor() as usize)
@@ -79,13 +86,15 @@ pub(crate) fn floor_to_usize(value: f64) -> Option<usize> {
 
 /// Converts a non-negative `f64` to the nearest index, ties away from zero.
 /// Returns `None` where [`floor_to_usize`] does.
-pub(crate) fn round_to_usize(value: f64) -> Option<usize> {
+#[must_use]
+pub fn round_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.round())
 }
 
 /// Converts a non-negative `f64` to the next index up. Returns `None` where
 /// [`floor_to_usize`] does.
-pub(crate) fn ceil_to_usize(value: f64) -> Option<usize> {
+#[must_use]
+pub fn ceil_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.ceil())
 }
 

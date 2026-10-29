@@ -20,7 +20,7 @@ pub const TICKS_PER_BEAT: u16 = 480;
 
 /// The velocity that the `notes` command passes to
 /// [`Velocities::Constant`].
-pub const DEFAULT_VELOCITY: Velocity = Velocity(100);
+pub const DEFAULT_VELOCITY: Velocity = Velocity::from_const(100);
 
 /// The shortest note the file holds. A shorter note is lengthened to it,
 /// and to at least one tick.

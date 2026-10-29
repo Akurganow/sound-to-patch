@@ -39,7 +39,7 @@
 //!   conversions, serde and the unit-string parser.
 
 pub mod audio;
-mod cast;
+use sound_to_patch_core::cast;
 pub mod cli;
 pub mod confidence;
 pub mod dsp;
@@ -49,5 +49,6 @@ pub mod preset;
 pub mod render;
 pub mod report;
 pub mod synth;
-pub mod units;
+#[doc(inline)]
+pub use sound_to_patch_core::units;
 pub mod words;

@@ -1,7 +1,7 @@
 //! The shared `--synth` argument as a command sees it.
 
 use clap::{CommandFactory, Parser};
-use sound_to_patch::synth::{Synth, SynthArg, SynthError};
+use sound_to_patch::synth::{Synth, SynthArg, SynthError, capabilities};
 
 use crate::support::for_each_ready_synth;
 
@@ -48,6 +48,6 @@ fn help_names_both_values_and_the_default() {
 #[test]
 fn every_ready_synth_has_capabilities_that_hold() {
     for_each_ready_synth(|synth| {
-        synth.capabilities().unwrap().check().unwrap();
+        capabilities(synth).unwrap().check().unwrap();
     });
 }

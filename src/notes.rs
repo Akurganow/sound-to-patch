@@ -17,9 +17,6 @@
 //! stem's loudest passage. [`write_midi`] stores a list as a format 0
 //! file.
 
-use std::error::Error;
-use std::fmt;
-
 use crate::units::{Hz, MidiPitch, Seconds};
 
 mod cleanup;
@@ -55,6 +52,8 @@ pub use profile::{
     Profile, RangeError, min_note_frames,
 };
 pub use quiet::{HARMONICS, QUIET_FRAME, QUIET_GATE, StemLevels, drop_quiet, drop_quiet_with};
+#[doc(inline)]
+pub use sound_to_patch_core::notes::{NoteError, Velocity};
 pub use stem::{
     CleanupSteps, NotesError, TRANSCRIBER_VERSION, Transcription, TranscriptionRecord, clean_up,
     transcribe_stem,
@@ -69,38 +68,6 @@ pub use write::{
     DEFAULT_VELOCITY, MIN_NOTE_LENGTH, MidiWriteError, TICKS_PER_BEAT, Velocities, midi_track_name,
     write_midi, write_named_midi,
 };
-
-/// A MIDI velocity from 1 to 127. Velocity 0 means a note-off in MIDI, so
-/// it is not a velocity.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Velocity(u8);
-
-impl Velocity {
-    /// Checks the range 1 to 127.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [`NoteError`] for 0 or a value above 127.
-    pub fn new(value: u8) -> Result<Self, NoteError> {
-        if (1..=127).contains(&value) {
-            Ok(Self(value))
-        } else {
-            Err(NoteError::Velocity(value))
-        }
-    }
-
-    /// Builds a velocity in a `const` item. Every caller passes a literal
-    /// from 1 to 127 that a test also builds through [`Self::new`].
-    pub(crate) const fn from_const(value: u8) -> Self {
-        Self(value)
-    }
-
-    /// Returns the velocity.
-    #[must_use]
-    pub fn get(self) -> u8 {
-        self.0
-    }
-}
 
 /// One point of an f0 contour.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -358,46 +325,6 @@ impl NoteList {
         }
     }
 }
-
-/// A note or contour that breaks a rule.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum NoteError {
-    /// The offset is at or before the onset.
-    OffsetNotAfterOnset {
-        /// The onset.
-        onset: Seconds,
-        /// The offset.
-        offset: Seconds,
-    },
-    /// A velocity outside 1 to 127.
-    Velocity(u8),
-    /// A contour with no point.
-    EmptyContour,
-    /// A contour point with an f0 of 0 Hz.
-    ZeroF0,
-    /// Two contour points at the same time.
-    DuplicateTime,
-}
-
-impl fmt::Display for NoteError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::OffsetNotAfterOnset { onset, offset } => write!(
-                f,
-                "a note ends at {offset} but starts at {onset}; the offset must come after the onset"
-            ),
-            Self::Velocity(value) => write!(f, "velocity {value} is outside 1 to 127"),
-            Self::EmptyContour => write!(f, "an f0 contour needs at least one point"),
-            Self::ZeroF0 => write!(
-                f,
-                "an f0 contour point is at 0 Hz; every f0 must be above 0 Hz"
-            ),
-            Self::DuplicateTime => write!(f, "two f0 contour points share a time"),
-        }
-    }
-}
-
-impl Error for NoteError {}
 
 #[cfg(test)]
 mod tests {

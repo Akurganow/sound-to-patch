@@ -152,9 +152,11 @@ jobs:
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-about@0.9.2
-      # The host depends on the library, so its tree holds what both shipped
-      # binaries link, and none of what only xtask uses.
-      - run: cargo about generate --locked --fail -m host/Cargo.toml -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
+      # The two shipped binaries link the library and the host, which share
+      # only the core crate, so the scan covers the workspace. It adds a
+      # notice for the three crates that only xtask uses: clap_complete,
+      # clap_mangen and roff.
+      - run: cargo about generate --locked --fail --workspace -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
       - name: The notices name the host's own dependencies
         run: grep -q '>vst3-host ' THIRD-PARTY-LICENSES.html
 

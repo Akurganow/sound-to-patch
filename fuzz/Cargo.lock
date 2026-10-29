@@ -1191,8 +1191,18 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "sound-to-patch-core",
  "symphonia",
  "tempfile",
+]
+
+[[package]]
+name = "sound-to-patch-core"
+version = "0.23.0"
+dependencies = [
+ "clap",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

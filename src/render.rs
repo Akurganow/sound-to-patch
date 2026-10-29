@@ -21,7 +21,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::audio::{AudioError, SampleRate};
+use crate::audio::AudioError;
 use crate::cast;
 use crate::notes::{MidiError, NoteList, Velocity, read_midi_bytes};
 use crate::preset::format::FormatError;
@@ -32,178 +32,53 @@ pub mod check;
 pub mod fake;
 pub mod file;
 pub mod plugin;
-pub mod recipe;
 pub mod session;
 pub mod spread;
 pub mod state;
 pub mod timing;
 pub mod vita;
-pub mod wire;
 
-pub use recipe::{
-    ClipEnd, Material, Oversampling, PreRoll, ProcessMode, RECIPE_VERSION, Recipe, TailWatch,
+#[doc(inline)]
+pub use sound_to_patch_core::render::{
+    ClipEnd, ControlKind, EventKind, MAX_CONTROLLER, MAX_NOTE_END, MAX_PITCH_BEND, Material,
+    NoteEvent, Oversampling, PlayError, PreRoll, ProcessMode, RECIPE_VERSION, Recipe, RenderNote,
+    TailWatch, frame_of, note_events, recipe, wire,
 };
 
-/// The highest MIDI key.
-const MAX_KEY: u8 = 127;
 /// How far a pitch from a note list may lie from a whole key. The MIDI
 /// reader gives whole keys; a transcribed pitch with a bend is no key.
 const KEY_TOLERANCE: f64 = 1e-9;
-/// The latest time a note may end: 10 minutes. A clip holds every sample
-/// in memory, and a longer part than a stem takes splits into several
-/// renders.
-pub const MAX_NOTE_END: Seconds = Seconds::from_const(600.0);
 
-/// One note to play: a MIDI key, its start and end in the clip and its
-/// velocity.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RenderNote {
-    key: u8,
-    onset: Seconds,
-    offset: Seconds,
-    velocity: Velocity,
-}
-
-impl RenderNote {
-    /// Checks the key, that the note ends after it starts and that it ends
-    /// by [`MAX_NOTE_END`].
-    ///
-    /// # Errors
-    ///
-    /// Returns a [`RenderError`] for a key above 127, an offset that is not
-    /// after the onset or an offset after [`MAX_NOTE_END`].
-    pub fn new(
-        key: u8,
-        onset: Seconds,
-        offset: Seconds,
-        velocity: Velocity,
-    ) -> Result<Self, RenderError> {
-        if key > MAX_KEY {
-            return Err(RenderError::Note(format!(
-                "key {key} is above {MAX_KEY}; pass keys 0 to {MAX_KEY}"
-            )));
-        }
-        if offset <= onset {
-            return Err(RenderError::Note(format!(
-                "key {key} ends at {offset}, not after its start at {onset}; end each note after it starts"
-            )));
-        }
-        if offset > MAX_NOTE_END {
-            return Err(RenderError::Note(format!(
-                "key {key} ends at {offset}, after the longest clip of {MAX_NOTE_END}; split the part into several renders"
-            )));
-        }
-        Ok(Self {
-            key,
-            onset,
-            offset,
-            velocity,
-        })
-    }
-
-    /// Converts a note list, such as the one the MIDI reader gives. A note
-    /// without a velocity takes `default`.
-    ///
-    /// # Errors
-    ///
-    /// Returns a [`RenderError`] for a pitch that is not a whole key.
-    pub fn from_list(list: &NoteList, default: Velocity) -> Result<Vec<Self>, RenderError> {
-        list.notes()
-            .iter()
-            .map(|note| {
-                let pitch = note.pitch().get();
-                // A MIDI pitch lies in 0 to 127, so only a fractional pitch
-                // fails here.
-                let key = cast::round_to_usize(pitch)
-                    .and_then(|key| u8::try_from(key).ok())
-                    .filter(|key| (pitch - f64::from(*key)).abs() <= KEY_TOLERANCE)
-                    .ok_or_else(|| {
-                        RenderError::Note(format!(
-                            "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
-                            note.onset()
-                        ))
-                    })?;
-                Self::new(
-                    key,
-                    note.onset(),
-                    note.offset(),
-                    note.velocity().unwrap_or(default),
-                )
-            })
-            .collect()
-    }
-
-    /// Returns the MIDI key.
-    #[must_use]
-    pub fn key(self) -> u8 {
-        self.key
-    }
-
-    /// Returns the start in the clip.
-    #[must_use]
-    pub fn onset(self) -> Seconds {
-        self.onset
-    }
-
-    /// Returns the end in the clip.
-    #[must_use]
-    pub fn offset(self) -> Seconds {
-        self.offset
-    }
-
-    /// Returns the velocity.
-    #[must_use]
-    pub fn velocity(self) -> Velocity {
-        self.velocity
-    }
-}
-
-/// Whether a note event starts or ends a note.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum EventKind {
-    /// The note ends. It sorts first, so a key that ends and starts on one
-    /// frame plays again.
-    Off,
-    /// The note starts.
-    On,
-}
-
-/// A note-on or note-off at a sample frame of the clip.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NoteEvent {
-    /// The frame, `round(t × rate)`.
-    pub frame: usize,
-    /// Start or end.
-    pub kind: EventKind,
-    /// The MIDI key.
-    pub key: u8,
-    /// The velocity of the note.
-    pub velocity: Velocity,
-}
-
-/// Turns notes into events sorted by frame, a note-off before a note-on on
-/// the same frame.
+/// The render notes of a note list, such as the one the MIDI reader
+/// gives. A note without a velocity takes `default`.
 ///
-/// A frame is the note time times the rate, rounded to the nearest sample.
-/// A note shorter than half a frame still lasts one frame, so its note-off
-/// never comes before its own note-on.
-#[must_use]
-pub fn note_events(notes: &[RenderNote], rate: SampleRate) -> Vec<NoteEvent> {
-    let mut events: Vec<NoteEvent> = notes
+/// # Errors
+///
+/// Returns a [`RenderError`] for a pitch that is not a whole key.
+pub fn notes_of_list(list: &NoteList, default: Velocity) -> Result<Vec<RenderNote>, RenderError> {
+    list.notes()
         .iter()
-        .flat_map(|note| {
-            let on = frame_of(note.onset, rate);
-            let off = frame_of(note.offset, rate).max(on + 1);
-            [(on, EventKind::On), (off, EventKind::Off)].map(|(frame, kind)| NoteEvent {
-                frame,
-                kind,
-                key: note.key,
-                velocity: note.velocity,
-            })
+        .map(|note| {
+            let pitch = note.pitch().get();
+            // A MIDI pitch lies in 0 to 127, so only a fractional pitch
+            // fails here.
+            let key = cast::round_to_usize(pitch)
+                .and_then(|key| u8::try_from(key).ok())
+                .filter(|key| (pitch - f64::from(*key)).abs() <= KEY_TOLERANCE)
+                .ok_or_else(|| {
+                    RenderError::Play(PlayError::Note(format!(
+                        "pitch {pitch} at {} is not a whole MIDI key, so the list carries a transcribed or bent pitch; pass the notes of a MIDI file",
+                        note.onset()
+                    )))
+                })?;
+            Ok(RenderNote::new(
+                key,
+                note.onset(),
+                note.offset(),
+                note.velocity().unwrap_or(default),
+            )?)
         })
-        .collect();
-    events.sort_by_key(|event| (event.frame, event.kind, event.key));
-    events
+        .collect()
 }
 
 /// The SHA-256 of `bytes` in lower-case hex.
@@ -218,14 +93,13 @@ fn sha256_hex(bytes: &[u8]) -> String {
         })
 }
 
-/// The frame of a time: the time times the rate, rounded to the nearest
-/// sample.
-///
-/// A time too large for a frame index gives `usize::MAX`; note times are at
-/// most [`MAX_NOTE_END`], so the fallback does not act on them.
-#[must_use]
-pub fn frame_of(time: Seconds, rate: SampleRate) -> usize {
-    cast::round_to_usize(time.get() * f64::from(rate.get())).unwrap_or(usize::MAX)
+/// A controller change and its time.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Control {
+    /// When the change happens, from the start of the clip.
+    pub time: Seconds,
+    /// The change.
+    pub kind: ControlKind,
 }
 
 /// The plug-in state of a preset: the bytes a synth loads as its state, and
@@ -267,51 +141,6 @@ pub struct RenderJob {
     midi_sha256: Option<String>,
 }
 
-/// A MIDI controller change at a time of the clip. A plug-in in a VST3 host
-/// gets controllers only through its MIDI mapping; a controller it does not
-/// map is dropped without an error.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ControlKind {
-    /// Pitch bend, 0 to 16383 with the centre at 8192.
-    PitchBend(u16),
-    /// The mod wheel, MIDI controller 1, 0 to 127.
-    ModWheel(u8),
-}
-
-/// The largest pitch bend value: 14 bits.
-pub const MAX_PITCH_BEND: u16 = 16_383;
-/// The largest value of a MIDI controller: 7 bits.
-pub const MAX_CONTROLLER: u8 = 127;
-
-impl ControlKind {
-    /// Returns the change when its value fits its MIDI message.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`RenderError::Control`] for a pitch bend above
-    /// [`MAX_PITCH_BEND`] or a mod wheel above [`MAX_CONTROLLER`].
-    pub fn checked(self) -> Result<Self, RenderError> {
-        match self {
-            Self::PitchBend(value) if value > MAX_PITCH_BEND => Err(RenderError::Control(format!(
-                "pitch bend {value} is above {MAX_PITCH_BEND}; pass 0 to {MAX_PITCH_BEND}, with the centre at 8192"
-            ))),
-            Self::ModWheel(value) if value > MAX_CONTROLLER => Err(RenderError::Control(format!(
-                "mod wheel {value} is above {MAX_CONTROLLER}; pass 0 to {MAX_CONTROLLER}"
-            ))),
-            kind => Ok(kind),
-        }
-    }
-}
-
-/// A controller change and its time.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Control {
-    /// When the change happens, from the start of the clip.
-    pub time: Seconds,
-    /// The change.
-    pub kind: ControlKind,
-}
-
 impl RenderJob {
     /// Builds a job with the current recipe.
     ///
@@ -340,10 +169,10 @@ impl RenderJob {
     /// # Errors
     ///
     /// Returns [`RenderError::Midi`] for a file the MIDI reader refuses, and
-    /// the errors of [`RenderNote::from_list`] and [`RenderJob::new`].
+    /// the errors of [`notes_of_list`] and [`RenderJob::new`].
     pub fn from_midi(state: PresetState, path: &Path, bpm: Bpm) -> Result<Self, RenderError> {
         let (list, bytes) = read_midi_bytes(path, bpm).map_err(RenderError::Midi)?;
-        let notes = RenderNote::from_list(&list, Recipe::current().velocity())?;
+        let notes = notes_of_list(&list, Recipe::current().velocity())?;
         let mut job = Self::new(state, notes, bpm)?;
         job.midi_sha256 = Some(sha256_hex(&bytes));
         Ok(job)
@@ -392,7 +221,7 @@ impl RenderJob {
     ///
     /// # Errors
     ///
-    /// Returns [`RenderError::Control`] for a value that does not fit its
+    /// Returns [`RenderError::Play`] for a value that does not fit its
     /// MIDI message, as [`ControlKind::checked`] does.
     pub fn with_controls(mut self, controls: Vec<Control>) -> Result<Self, RenderError> {
         for control in &controls {
@@ -419,7 +248,7 @@ impl RenderJob {
     pub fn last_note_off(&self) -> Seconds {
         self.notes
             .iter()
-            .map(|note| note.offset)
+            .map(|note| note.offset())
             .fold(Seconds::from_const(0.0), |a, b| if b > a { b } else { a })
     }
 }
@@ -556,12 +385,10 @@ pub trait Renderer {
 /// A render that failed.
 #[derive(Debug)]
 pub enum RenderError {
-    /// A note cannot be played.
-    Note(String),
+    /// A note or a controller change cannot be played.
+    Play(PlayError),
     /// The job holds no note.
     NoNotes,
-    /// A controller change does not fit its MIDI message.
-    Control(String),
     /// The synth did not take the state.
     State(String),
     /// The state belongs to another synth than the renderer's.
@@ -601,8 +428,7 @@ pub enum RenderError {
 impl fmt::Display for RenderError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Note(cause) => write!(f, "cannot play a note: {cause}"),
-            Self::Control(cause) => write!(f, "cannot send a controller change: {cause}"),
+            Self::Play(source) => write!(f, "{source}"),
             Self::NoNotes => write!(
                 f,
                 "cannot render: the job has no notes. Pass a MIDI file with at least one note"
@@ -640,12 +466,19 @@ impl fmt::Display for RenderError {
 impl Error for RenderError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
+            Self::Play(source) => source.source(),
             Self::Audio(source) => Some(source),
             Self::Preset(source) => Some(source),
             Self::Synth(source) => Some(source),
             Self::Midi(source) => Some(source),
             _ => None,
         }
+    }
+}
+
+impl From<PlayError> for RenderError {
+    fn from(source: PlayError) -> Self {
+        Self::Play(source)
     }
 }
 
@@ -661,38 +494,25 @@ mod tests {
     use crate::notes::Note;
     use crate::units::MidiPitch;
 
+    #[test]
+    fn a_play_error_prints_the_same_text_as_a_render_error() {
+        for error in [
+            PlayError::Note("key 128".to_owned()),
+            PlayError::Control("bend 20000".to_owned()),
+        ] {
+            let text = error.to_string();
+            let render = RenderError::from(error);
+            assert_eq!(render.to_string(), text);
+            assert!(Error::source(&render).is_none());
+        }
+    }
+
     fn s(value: f64) -> Seconds {
         Seconds::new(value).unwrap()
     }
 
     fn v(value: u8) -> Velocity {
         Velocity::new(value).unwrap()
-    }
-
-    #[test]
-    fn a_note_must_end_after_it_starts_and_fit_the_key_range() {
-        let error = RenderNote::new(60, s(1.0), s(1.0), v(100)).unwrap_err();
-        assert!(
-            error.to_string().contains("end each note after it starts"),
-            "{error}"
-        );
-        let error = RenderNote::new(128, s(0.0), s(1.0), v(100)).unwrap_err();
-        assert!(error.to_string().contains("pass keys 0 to 127"), "{error}");
-        assert!(RenderNote::new(127, s(0.0), s(1.0), v(100)).is_ok());
-    }
-
-    #[test]
-    fn a_note_must_end_by_the_longest_clip() {
-        assert_eq!(Seconds::new(MAX_NOTE_END.get()).ok(), Some(MAX_NOTE_END));
-        assert!(RenderNote::new(60, s(0.0), MAX_NOTE_END, v(100)).is_ok());
-        let error = RenderNote::new(60, s(0.0), s(600.001), v(100)).unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .ends_with("split the part into several renders"),
-            "{error}"
-        );
-        assert!(RenderNote::new(60, s(0.0), s(1e300), v(100)).is_err());
     }
 
     #[test]
@@ -721,41 +541,6 @@ mod tests {
         assert_eq!(job().with_controls(edges).unwrap().controls().len(), 2);
     }
 
-    fn frames(notes: &[RenderNote]) -> Vec<(usize, EventKind)> {
-        note_events(notes, SampleRate::new(44_100).unwrap())
-            .iter()
-            .map(|e| (e.frame, e.kind))
-            .collect()
-    }
-
-    #[test]
-    fn a_note_shorter_than_half_a_frame_still_lasts_one_frame() {
-        let note = RenderNote::new(60, s(0.0), s(0.000_01), v(100)).unwrap();
-        assert_eq!(frames(&[note]), [(0, EventKind::On), (1, EventKind::Off)]);
-    }
-
-    #[test]
-    fn a_chain_of_one_key_keeps_every_off_after_its_on() {
-        let notes = [
-            RenderNote::new(60, s(0.0), s(1.0), v(100)).unwrap(),
-            RenderNote::new(60, s(1.0), s(1.000_01), v(100)).unwrap(),
-            RenderNote::new(60, s(1.000_01), s(2.0), v(100)).unwrap(),
-        ];
-        // The second note rounds to frame 44 100 at both ends and lasts one
-        // frame; the third starts on frame 44 100 too.
-        assert_eq!(
-            frames(&notes),
-            [
-                (0, EventKind::On),
-                (44_100, EventKind::Off),
-                (44_100, EventKind::On),
-                (44_100, EventKind::On),
-                (44_101, EventKind::Off),
-                (88_200, EventKind::Off),
-            ]
-        );
-    }
-
     #[test]
     fn the_wrong_synth_error_names_the_flag_to_pass() {
         let error = RenderError::WrongSynth {
@@ -763,30 +548,6 @@ mod tests {
             renderer: Synth::Serum2,
         };
         assert!(error.to_string().ends_with("Render it with --synth vital"));
-    }
-
-    #[test]
-    fn events_round_to_the_nearest_frame_and_put_offs_first() {
-        let rate = SampleRate::new(44_100).unwrap();
-        let notes = [
-            RenderNote::new(60, s(0.5), s(1.0), v(100)).unwrap(),
-            RenderNote::new(60, s(1.0), s(1.25), v(90)).unwrap(),
-        ];
-        let events = note_events(&notes, rate);
-        let frames: Vec<(usize, EventKind)> = events.iter().map(|e| (e.frame, e.kind)).collect();
-        assert_eq!(
-            frames,
-            [
-                (22_050, EventKind::On),
-                (44_100, EventKind::Off),
-                (44_100, EventKind::On),
-                (55_125, EventKind::Off),
-            ]
-        );
-        // 1/3 s is 14 700 frames exactly; 0.1 ms is 4.41 frames and rounds to 4.
-        let odd = [RenderNote::new(36, s(0.0001), s(1.0 / 3.0), v(1)).unwrap()];
-        let frames: Vec<usize> = note_events(&odd, rate).iter().map(|e| e.frame).collect();
-        assert_eq!(frames, [4, 14_700]);
     }
 
     #[test]
@@ -798,14 +559,14 @@ mod tests {
                 .unwrap()
                 .with_velocity(v(64)),
         ]);
-        let notes = RenderNote::from_list(&list, v(100)).unwrap();
+        let notes = notes_of_list(&list, v(100)).unwrap();
         let keys: Vec<(u8, u8)> = notes
             .iter()
             .map(|n| (n.key(), n.velocity().get()))
             .collect();
         assert_eq!(keys, [(36, 100), (48, 64)]);
         let bent = NoteList::new(vec![Note::new(s(0.0), s(1.0), pitch(36.4)).unwrap()]);
-        assert!(RenderNote::from_list(&bent, v(100)).is_err());
+        assert!(notes_of_list(&bent, v(100)).is_err());
     }
 
     #[test]
