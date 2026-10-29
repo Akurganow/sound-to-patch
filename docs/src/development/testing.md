@@ -215,7 +215,8 @@ patch, a slower attack on the init patch, a newer stamp, a preset with no
 sound source, a dropped key and a bundle that is no plug-in. Two more send
 a full pitch bend and a mod wheel move and measure their effect. A session
 of two workers renders four presets of rising level in order, and the
-timing table fills every row with two runs.
+timing table fills every row with two runs. Two fresh instances render the same first clip bit
+for bit, and an instance's second render differs from its first.
 
 What needs Serum 2: nothing yet. Its renderer follows in its own epic.
 

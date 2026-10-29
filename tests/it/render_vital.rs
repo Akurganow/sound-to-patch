@@ -388,3 +388,19 @@ fn the_timing_table_holds_every_row_on_vital() {
         assert!(row.median.is_finite() && row.p95.is_finite(), "{row:?}");
     }
 }
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_fresh_instance_renders_bit_identically_and_later_renders_differ() {
+    let job = lead(state(|_| {}));
+    let mut first = renderer();
+    let mut second = renderer();
+    let a = first.render(&job).unwrap().audio;
+    let b = second.render(&job).unwrap().audio;
+    assert_eq!(a, b, "two fresh instances rendered different first clips");
+    let later = first.render(&job).unwrap().audio;
+    assert_ne!(
+        a, later,
+        "an instance rendered its second clip like its first"
+    );
+}

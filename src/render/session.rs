@@ -18,6 +18,15 @@
 //! [`RenderError::WrongSynth`] is the caller's mistake, not a fault of
 //! the plug-in: it fails the job at once and keeps the renderer.
 //!
+//! # Repeat renders
+//!
+//! A fresh Vital instance renders bit-identically to any other fresh
+//! instance, and each later render on one instance differs from the ones
+//! before. So the n-th renders of two workers are equal. A consumer that
+//! needs repeat-render noise draws its renders in sequence on one
+//! instance. One that needs a repeatable render renders on a fresh
+//! instance.
+//!
 //! # Costs
 //!
 //! - Each worker holds one plug-in in its own host process. A Vital host
