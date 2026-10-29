@@ -79,9 +79,10 @@ run FFTs and trackers over whole stems, so unoptimised code made the suite
 take about 15 CPU-minutes. With the optimised build it takes about one,
 and the doc tests reuse the same build. Debug assertions and overflow
 checks stay on; `tests/it/profile.rs` fails if a change drops either from
-the test profile of the root package. The weekly
-coverage job builds with the test profile too, so its line attribution can
-shift slightly against an unoptimised build. Plain
+the test profile of the root package. It does not check a
+`[profile.test.package.<member>]` override. The weekly
+coverage job builds with the test profile too. Optimised code can shift
+the line attribution of a coverage report; that effect is not measured. Plain
 `cargo build` and `cargo run` keep the unoptimised dev profile.
 
 ## Continuous integration
@@ -119,8 +120,9 @@ would report skipped jobs, which hide earlier failures.
 
 The build cache of the dependencies comes from `Swatinem/rust-cache`,
 through `.github/actions/setup-rust`. A key holds the job, the lockfiles
-and manifests, and the compiler version, so a new stable release starts a
-fresh cache. Only a run on `main` saves a cache. A pull request restores
+and manifests, the compiler version and a hash of the `CARGO*`, `RUST*` and
+`CC*` environment variables, so a new stable release starts a fresh cache
+and the `env:` of `ci.yml` and `commits.yml` must stay equal. Only a run on `main` saves a cache. A pull request restores
 the newest cache of `main` and compiles its own crates on top; it saves
 nothing, so branches cannot fill the repository quota. The `docs`
 and `commits` jobs share one Linux cache (`linux-xtask`), because they

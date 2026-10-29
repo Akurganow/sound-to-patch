@@ -14,6 +14,8 @@ on:
 permissions:
   contents: read
 
+# Keep this env equal to ci.yml: rust-cache hashes CARGO*, RUST* and CC* vars
+# into its key, and the linux-xtask cache is shared with the docs job.
 env:
   CARGO_TERM_COLOR: always
 
