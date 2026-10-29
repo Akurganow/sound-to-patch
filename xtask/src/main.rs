@@ -15,6 +15,7 @@ mod music;
 mod plugins;
 mod pr;
 mod reference;
+mod vendor;
 mod version;
 mod vital;
 
@@ -79,6 +80,8 @@ enum Task {
     /// Check the agent plugins: manifests, the marketplace, skill sizes and
     /// frontmatter, reference files, banned phrases and probes.
     CheckPlugins,
+    /// Check that `vendor/pyin` equals the pyin archive on crates.io.
+    CheckVendor,
     /// Check that the docs name the manifest's `rust-version`.
     CheckRustVersion,
     /// Check a pull request description and title, read from the `PR_BODY`
@@ -129,6 +132,7 @@ fn main() -> ExitCode {
         Task::CheckFuzzLock => lock::check_fuzz_lock(root()),
         Task::CheckCredits => credits::check(root()),
         Task::CheckPlugins => plugins::check(root()),
+        Task::CheckVendor => vendor::check(root()),
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())

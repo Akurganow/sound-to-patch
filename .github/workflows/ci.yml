@@ -68,6 +68,7 @@ jobs:
       - run: cargo xtask golden-check
       - run: cargo xtask check-no-ort
       - run: cargo xtask check-fuzz-lock
+      - run: cargo xtask check-vendor
       # The plugin reference files are generated from the registry.
       - run: cargo xtask reference --check
 

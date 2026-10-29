@@ -18,4 +18,5 @@ Facts learned while working on this repository.
 - `vendor/pyin` is a copy of pyin 1.2.0 without the binary. The release
   pulled `zip` 0.5 through `ndarray-npy`, and no newer release exists.
   Cargo cannot switch off a feature of a transitive dependency. Keep the
-  library source equal to upstream.
+  library source equal to upstream; `cargo xtask check-vendor` enforces it.
+  Delete `vendor/pyin` once a pyin release after 1.2.0 drops `ndarray-npy`.

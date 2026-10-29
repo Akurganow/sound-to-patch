@@ -43,6 +43,7 @@ cp -R target/doc docs/book/api
 lychee --offline --no-progress --include-fragments --exclude-path docs/book/api --exclude-path docs/book/404.html docs/book
 cargo xtask check-architecture
 cargo xtask check-credits
+cargo xtask check-vendor
 cargo xtask check-rust-version
 ```
 

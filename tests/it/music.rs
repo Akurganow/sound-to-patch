@@ -151,8 +151,12 @@ fn offsets_of(id: &str) -> BTreeSet<u8> {
     }
 }
 
-// Offsets that `rust-music-theory` 0.4.0 returns for the same names. The
-// crate stays out of the build: it needs an old `clap` that pulls in `atty`.
+// Offsets recorded from `rust-music-theory` =0.4.0. A scale is
+// `Scale::from_regex("C <name>")`, then `absolute_intervals()` with each
+// `semitone_count % 12`, as a sorted set. A chord is
+// `Chord::try_chord_intervals(quality, number)` with a running sum of
+// `semitone_count` taken mod 12, plus 0, as a sorted set. The crate stays out
+// of the build: it needs an old `clap` that pulls in `atty`.
 #[test]
 fn the_scales_rust_music_theory_has_equal_the_dictionary() {
     let shared: [(&str, &[u8]); 13] = [

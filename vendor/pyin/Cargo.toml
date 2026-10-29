@@ -1,9 +1,12 @@
-# A copy of pyin 1.2.0 (https://github.com/Sytronik/pyin-rs, MIT) with the
-# command-line binary and the `ndarray-npy` dependency removed. The binary
-# alone used `ndarray-npy`, and that crate pulls in the `zip` 0.5 crate with
-# its known advisory. The library source is unchanged. The crate stays
-# publishable on purpose: `cargo about` skips unpublished crates, and the
-# MIT notice of pyin must ship.
+# A copy of pyin 1.2.0 (https://github.com/Sytronik/pyin-rs, MIT). The
+# binary alone used `ndarray-npy`, and that crate pulls in the `zip` 0.5
+# crate with its known advisory. The library source is unchanged.
+# This manifest drops the binary target, the `ndarray-npy` dependency, the
+# `[lib] crate-type = ["cdylib", "rlib"]` line (no cdylib now), the `blas` and
+# `build-binary` features with their optional dependencies, and `readme`,
+# `keywords`, `categories`, `documentation` and `exclude`.
+# The crate stays publishable on purpose: `cargo about` skips unpublished
+# crates, and the MIT notice of pyin must ship.
 [package]
 name = "pyin"
 version = "1.2.0"

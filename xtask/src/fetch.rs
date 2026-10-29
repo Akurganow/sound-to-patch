@@ -85,7 +85,7 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
     Ok(())
 }
 
-fn digest_of(path: &Path) -> io::Result<Sha256Digest> {
+pub(crate) fn digest_of(path: &Path) -> io::Result<Sha256Digest> {
     let mut file = File::open(path)?;
     let mut hasher = Sha256::new();
     let mut buf = vec![0; 1 << 20];

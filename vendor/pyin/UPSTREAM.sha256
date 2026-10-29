@@ -1,0 +1,12 @@
+# SHA-256 of each file of the pyin 1.2.0 archive on crates.io that this copy
+# keeps, as `<hash> <path under vendor/pyin>`. `cargo xtask check-vendor`
+# compares them. `src/main.rs` is absent on purpose.
+# archive pyin-1.2.0.crate 17b211ba2207b64a535af6fb35ee5c469a636c366ae6ed2f8968116e1f0e5102
+01d0c6efc07c5c6093424816eac8b701b21398e2241e0c6f8c86ca33ab99a739 LICENSE
+a351ac85b3589236642bb605319ac1064881d81def731e2b192a79b870faf235 src/lib.rs
+0da8e7d18087b27d0a5314b4e7f67fa6c11724029067ee3fe4d5d3e549ca6eb3 src/pad.rs
+d6952abfa45726762a03baea71f8e3a3df810fbdeee5a14cdf1d559253815aff src/pyin.rs
+63dce02f44d8d2ed22ca39d86b8c677ea637802e48f614b2f507e3f28c453ebe src/roll.rs
+3cc4598d53a9512cecfbcfe1d0b0ce0e946586b82554c6cb75652d4f27491407 src/util.rs
+72862d52bbdf7bc075bce5905f103db96f24f0df34a9b87f34074b956e6097cc src/viterbi.rs
+6c1a0469c4332f1e3e925f894e4989d60304ac7c86e2a0cd990f159a1a7a1171 src/windows.rs
