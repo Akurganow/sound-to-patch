@@ -698,7 +698,8 @@ fn unison_glides_never_read_above_low_confidence() {
     // Voices that start in phase beat hardest, and the track goes unvoiced
     // for up to 75 ms inside the glide. Bridged, the gap keeps the glide
     // whole; read from silence, it once gave 3.9 semitones of 7 at high.
-    // At 44.1 kHz a unison jittered 3.45 cents, the least of both rates.
+    // The least unison jitter of these fixtures is 3.54 cents, 0.14 over
+    // the cut.
     let mut read_any = 0;
     for (name, signal) in cases() {
         let (Signal::Glide(glide) | Signal::Glide44(glide)) = signal else {
@@ -1608,16 +1609,26 @@ fn a_step_and_settle_across_a_gap_is_no_glide() {
 #[test]
 fn a_low_sweep_with_strong_overtones_reads_on_the_note_line() {
     // From 68.7 Hz into C1 with a slow attack, and the second to fourth
-    // harmonics 8, 6 and 3 dB under the fundamental, all inside the band.
-    // The 20 to 200 Hz line follows them: its fit settles near 62 Hz, a
-    // fall of the wrong sign, and misses on its size. The note line reads
-    // the fall.
-    for tau in [0.06, 0.09] {
+    // harmonics inside the band. At 8, 6 and 3 dB under the fundamental
+    // the 20 to 200 Hz line follows them: its fit settles near 62 Hz, a
+    // fall of the wrong sign, and misses on its size. At 14, 12 and 7 dB
+    // under it the fit there settles on the note and misses on a residual
+    // of 0.16. The note line reads each fall.
+    for (tau, harmonics) in [
+        (0.06, [0.4, 0.5, 0.7]),
+        (0.09, [0.4, 0.5, 0.7]),
+        (0.06, [0.2, 0.25, 0.45]),
+    ] {
         let read = drop_layer(
-            &sweep(32.7, 36.0, tau, &[0.4, 0.5, 0.7], 0.08, 0.6),
+            &sweep(32.7, 36.0, tau, &harmonics, 0.08, 0.6),
             &note_list(&[(0.25, 0.75, 24.0)]),
         );
-        assert_eq!(read.drops.len(), 1, "{tau}: {:?}", read.counts);
+        assert_eq!(
+            read.drops.len(),
+            1,
+            "{tau} {harmonics:?}: {:?}",
+            read.counts
+        );
         let fit = &read.drops[0].value;
         assert!((fit.f_end.get() - 32.7).abs() < 1.0, "{tau}: {fit:?}");
         assert!((fit.tau.get() / tau - 1.0).abs() < 0.2, "{tau}: {fit:?}");
@@ -1625,7 +1636,7 @@ fn a_low_sweep_with_strong_overtones_reads_on_the_note_line() {
 }
 
 #[test]
-fn a_sweep_with_a_strong_second_harmonic_reads_on_the_note_line_up_to_133_hz() {
+fn sweeps_into_82_and_104_hz_with_a_strong_second_harmonic_read_on_the_note_line() {
     // Octave falls with a tau of 60 ms into 82.4 Hz, with a second harmonic
     // as strong as the fundamental, and into 103.8 Hz, with one 5.6 dB
     // stronger, under the 6 dB of a weak fundamental. The 20 to 200 Hz
@@ -1684,10 +1695,11 @@ fn cast_len(n: usize) -> f64 {
 #[test]
 fn a_same_pitch_retrigger_that_barely_rises_reads_no_drop_on_the_note_line() {
     // The third hit lands while the second rings at twice its level, so
-    // the full band rises about 1 dB. The phase restart swings the 20 to
-    // 200 Hz line, and the fit there misses on its residual; on the note
-    // line the swing smooths into a fall that settles on the note. Without
-    // the 6 dB strike the note line read it as a drop.
+    // the full band rises 0.6 dB, and the fourth 1.6 dB. The phase restart
+    // swings the 20 to 200 Hz line, and the fit there misses on its
+    // residual; on the note line the swing smooths into a fall that
+    // settles on the note. Without the 6 dB strike the note line read it
+    // as a drop.
     let hits = [
         (0.5032, 4.1357, 0.3, 4.1103),
         (0.9138, 2.3518, 0.3, 1.8045),
@@ -1753,29 +1765,34 @@ fn a_low_sweep_reads_up_to_a_restrike_inside_its_note() {
 #[test]
 fn a_tone_an_octave_above_the_note_reads_no_drop_on_the_note_line() {
     // A tone at 123.5 Hz struck at 0.2 s, and the note's 61.7 Hz entering
-    // 70 ms later. The note line keeps the upper tone 18 dB down, and its
+    // 70 to 75 ms later. The note line keeps the upper tone down, and its
     // line falls from it to the lower one as that enters: a step between
-    // two tones, not a fall. A real tone of this shape read as a drop.
+    // two tones, not a fall. Over that fall the note line lies 7.4 and
+    // 6.6 dB under the band, and without the 6 dB cap each read as a drop.
+    // A real tone of this shape read as one.
     let rate = f64::from(RATE);
-    let mono: Vec<f64> = (0..round_to_usize(1.2 * rate))
-        .map(|n| {
-            let t = f64::from(u32::try_from(n).unwrap()) / rate - 0.2;
-            if t < 0.0 {
-                return 0.0;
-            }
-            let tone = |f: f64, at: f64, attack: f64, level: f64| {
-                let u = t - at;
-                if u < 0.0 {
-                    0.0
-                } else {
-                    level * (u / attack).min(1.0) * (std::f64::consts::TAU * f * u).sin()
+    for (at, attack, level) in [(0.075, 0.03, 0.6), (0.07, 0.05, 0.7)] {
+        let mono: Vec<f64> = (0..round_to_usize(1.2 * rate))
+            .map(|n| {
+                let t = f64::from(u32::try_from(n).unwrap()) / rate - 0.2;
+                if t < 0.0 {
+                    return 0.0;
                 }
-            };
-            0.4 * (-t / 0.8).exp() * (tone(123.47, 0.0, 0.003, 1.0) + tone(61.74, 0.075, 0.03, 0.6))
-        })
-        .collect();
-    let read = drop_layer(&mono, &note_list(&[(0.35, 0.6, 35.0)]));
-    assert_eq!(read.drops, [], "{:?}", read.counts);
+                let tone = |f: f64, at: f64, attack: f64, level: f64| {
+                    let u = t - at;
+                    if u < 0.0 {
+                        0.0
+                    } else {
+                        level * (u / attack).min(1.0) * (std::f64::consts::TAU * f * u).sin()
+                    }
+                };
+                0.4 * (-t / 0.8).exp()
+                    * (tone(123.47, 0.0, 0.003, 1.0) + tone(61.74, at, attack, level))
+            })
+            .collect();
+        let read = drop_layer(&mono, &note_list(&[(0.35, 0.6, 35.0)]));
+        assert_eq!(read.drops, [], "{at}: {:?}", read.counts);
+    }
 }
 
 #[test]
@@ -1818,4 +1835,41 @@ fn a_kick_drop_faster_than_a_period_reads_no_drop_on_the_note_line() {
         );
         assert_eq!(read.drops, [], "{attack}: {:?}", read.counts);
     }
+}
+
+#[test]
+fn drops_struck_250_ms_apart_read_each() {
+    // Three 808 hits of 0.25 s, each with an octave drop of tau 60 ms: each
+    // strike comes 4.2 time constants after the one before, while that
+    // drop still settles. Each is a strike of its own and reads a drop; a
+    // skip of every onset inside the settling read two.
+    const LINE: [f64; 3] = [28.0, 31.0, 26.0];
+    const DROPS: [(usize, f64, f64); 3] = [(0, 1.0, 0.06), (1, 1.0, 0.06), (2, 1.0, 0.06)];
+    let hits = Hits {
+        hit_s: 0.25,
+        drops: &DROPS,
+        ..Hits::new(&LINE, 0.0)
+    };
+    let read = drop_layer(&hits.render(f64::from(RATE)), &note_list(&hits.notes()));
+    assert_eq!(read.drops.len(), 3, "{:?}", read.counts);
+    for (drop, pitch) in read.drops.iter().zip(LINE) {
+        let cents = 1200.0 * (drop.value.f_end.get() / 440.0).log2() + 6900.0 - 100.0 * pitch;
+        assert!(cents.abs() <= 100.0, "{cents}: {:?}", drop.value);
+    }
+}
+
+#[test]
+fn a_fast_sweep_into_c1_reads_on_the_note_line_above_the_tau_floor() {
+    // From 68.7 Hz into C1 with a tau of 12 ms and a second harmonic 4 dB
+    // under the fundamental, struck sharply. The 20 to 200 Hz line reads
+    // no drop; the note line reads one with a tau of 17 ms, above the
+    // 10 ms floor, its low-pass slowing the fall it follows.
+    let read = drop_layer(
+        &sweep(32.7, 36.0, 0.012, &[0.6, 0.3, 0.2], 0.003, 0.6),
+        &note_list(&[(0.2, 0.75, 24.0)]),
+    );
+    assert_eq!(read.drops.len(), 1, "{:?}", read.counts);
+    let fit = &read.drops[0].value;
+    assert!((fit.f_end.get() - 32.7).abs() < 1.0, "{fit:?}");
+    assert!((0.012..0.02).contains(&fit.tau.get()), "{fit:?}");
 }

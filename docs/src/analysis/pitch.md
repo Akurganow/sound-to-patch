@@ -184,9 +184,9 @@ settled pitch.
   [synthetic]. Octave falls into 82.4 and 103.8 Hz whose second harmonic
   is as strong as the fundamental or 5.6 dB stronger settle 120 and 130
   cents sharp on the 20 to 200 Hz line and read on the note line
-  [synthetic]. At 1.2 times the note a generated sweep into C1 read
-  $\tau$ 28 % short, and at 3 times one with a strong second harmonic
-  read none [synthetic].
+  [synthetic]. At 1.2 times the note a generated sweep into C1 with
+  strong overtones read $\tau$ 24 % long and one struck again inside its
+  note read none; at 3 times both read none [synthetic].
 - Note line span. The refit's span ends one period of the note before
   the first point where the note line's frequency falls to 0 Hz or below
   [proposal]. The phase of a line that holds one tone never runs
@@ -212,15 +212,22 @@ settled pitch.
   tone at 127 Hz over a note at 61.7 Hz, with the note's own tone
   entering 80 ms after the strike, lay 10.8 dB below: the note line held
   the upper tone 18 dB down and fell from it to the lower one as that
-  entered, a step between two tones [fact]. Without a strike the note
+  entered, a step between two tones [fact]. Generated tones of that
+  shape lie 4.8 to 7.6 dB under; the two in the tests, 6.6 and 7.4 dB,
+  read as drops without the cap, so the margins are 2.2 dB under it and
+  0.6 dB over it [synthetic]. Without a strike the note
   line smooths the swing where a retriggered tone restarts its phase into
   a fall: three generated retriggers that rose 0.6 to 1.6 dB read one
   [synthetic].
-- Same strike. An onset before the drop read last has settled, five time
-  constants after its onset, is the same strike [proposal]. Each note's
-  onset search starts where the one before ended, and a strike on that
-  border rises across it: the next search found it again 5 ms later and
-  read it as a second drop [synthetic].
+- Same strike. Each note's onset search starts where the one before
+  ended, and a strike on that border rises across it: the next search
+  found it again 5 ms later and read it as a second drop [synthetic]. So
+  an onset within 20 ms of a search that starts on that border, before
+  the drop read last has settled, five time constants after its onset,
+  is the same strike [proposal]. A strike later in the search is a strike
+  of its own: 808 hits struck every 250 ms with drops of $\tau$ = 60 ms
+  read three drops, where skipping every onset inside the settling read
+  two [synthetic].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
@@ -265,15 +272,14 @@ settled pitch.
   before the strike and on none that started 200 ms before [synthetic].
   A slow fall not settled by the end of the span needs the note at its
   end: with $\tau$ = 90 ms on a 350 ms note, five time constants end after
-  the note, and the sweep read as a glide from silence [synthetic]. At a
-  saw's onset several partials share the band and the line swings; on a
-  generated 55 Hz saw that swing fitted a fall of 62 semitones with
-  $\tau$ = 2 ms settling at 49.7 Hz, which this rule rejects
-  [synthetic].
+  the note, and the sweep read as a glide from silence [synthetic]. At a saw's onset
+  several partials share the band and the line swings; on a generated 55
+  Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
+  settling at 49.7 Hz, which this rule rejects [synthetic].
 - Skips. The summary line `drop skips` counts the low notes the search
-  read no drop at, by the first gate that stopped each: no onset, quiet,
-  no strike, weak fundamental, no fall, tau on bound, residual and off
-  note [fact].
+  read no drop at, by the first gate that stopped each: no onset,
+  settling, quiet, no strike, weak fundamental, no fall, tau on bound,
+  residual and off note [fact].
 - Confidence. Low when the attack exceeds 30 ms: a slow swell is no
   strike [proposal]. High needs a residual below 5 %,
   $\tau$ of 10 ms or more and an attack of 12 ms or less, else medium
@@ -393,9 +399,9 @@ A glide is pitch moving from one stable pitch to another.
   the settle after it keep moving the way the step jumped, at 5 to 17
   cents per millisecond, so neither the slope limit nor the motion test
   tells them from a glide [fact]. On real stems steps of 3 to 10.5
-  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real
-  stem jumped 200 of its 210 cents across a gap while the level rose
-  17.5 dB, and reads none [fact]. Unison glides whose voices leave the track
+  semitones read so [fact]. A 2.1-semitone fall near 44 Hz on a real stem jumped
+  200 of its 210 cents across a gap while the level rose 17.5 dB, and
+  reads none [fact]. Unison glides whose voices leave the track
   unvoiced for 75 ms jump 0.53 and 0.54 of the interval across the gap; a
   step between 808 notes jumped 0.72 [synthetic].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
@@ -473,9 +479,12 @@ A glide is pitch moving from one stable pitch to another.
     11 % off at $p$ 4.4, while high-confidence glides read their rise
     within 7.1 % [synthetic].
   - A unison beats and the track wanders on the stable pitches, but the
-    jitter tells a unison only roughly. On the generated sets the unison
-    glides jitter 3.77 to 7.07 cents at 22.05 kHz and 3.45 to 6.93 at
-    44.1 kHz, the mono ones 0.66 to 8.03 at both rates [synthetic]. All
+    jitter tells a unison only roughly. On a larger generated set the
+    unison glides jitter 3.77 to 7.07 cents at 22.05 kHz and 3.45 to 6.93
+    at 44.1 kHz, the mono ones 0.66 to 8.03 at both rates; one unison sets
+    the 3.45, 0.05 cents over the cut [synthetic]. In the committed
+    fixtures the unison glides jitter 3.54 cents or more, 0.14 over the
+    cut, and no glide falls from 3 to 3.4 cents [synthetic]. All
     unison glides read low; from 3 to 3.4 cents only mono glides fall, and
     they read medium, and a mono glide above 3.4 cents reads low too
     [synthetic]. One threshold would raise those mono glides to high on no
@@ -546,9 +555,9 @@ Limits:
   independent f0 confirmed most of them: their confidence is pessimistic
   [fact].
 - A slide on the bound whose track keeps drifting for over 2.5 times its
-  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem,
-  which an independent f0 confirmed, drifted for 4.3 times its fitted
-  time [fact].
+  fitted time is not read: a 2-semitone slide near 69 Hz on a real stem, which
+  an independent f0 confirmed, drifted for 4.3 times its fitted time
+  [fact].
 - Where the tracker reads a tone's second harmonic, a glide still reads
   its interval: on a real stem a tone rose 2.2 semitones from 921 Hz,
   the track followed its second harmonic from 1845 to 2100 Hz, and the

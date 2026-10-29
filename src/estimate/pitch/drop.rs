@@ -76,7 +76,8 @@ drop is fitted again on the note line, whose low-pass sits at 1.5 times the note
 that lies under 200 Hz, with its span ending one period of the note before the note line's \
 frequency first falls to 0 Hz, and the refit counts with tau of 10 ms or more and an RMS \
 envelope over its fall, from 7 ms to 5 tau, at most 6 dB below the line the first fit read; an \
-onset before the drop read last has settled, 5 tau after its onset, is the same strike";
+onset within 20 ms of a search that starts where the previous note's search ended, before the \
+drop read last has settled, 5 tau after its onset, is the same strike";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -100,6 +101,13 @@ pub struct DropFit {
 }
 
 impl DropFit {
+    /// Five time constants after the onset, where 99.3 % of the fall is
+    /// done: the drop has settled.
+    #[must_use]
+    pub fn settled(&self) -> Seconds {
+        Seconds::clamped(self.onset.get() + 5.0 * self.tau.get())
+    }
+
     /// The drop in semitones, `12 log2((f_end + df) / f_end)`, or `None`
     /// when `f_end + df` is not above zero.
     #[must_use]
@@ -359,8 +367,8 @@ mod tests {
     fn the_convention_states_the_constants() {
         use super::super::line::{LINE_HI, LINE_LO, LINE_LO_FAST};
         use super::super::{
-            DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, NOTE_LINE_EDGE, NOTE_LINE_LOSS,
-            RUN_START_RISE, STRIKE_ATTACK, STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
+            DROP_BAND_GATE, DROP_NOTE_LEAD, DROP_NOTE_MATCH, RUN_START_RISE, STRIKE_ATTACK,
+            STRIKE_RISE, STRIKE_SPANS, num, ratio_db, says,
         };
         use crate::dsp::ACTIVE_GATE_DB;
         use crate::notes::QUIET_FRAME;
@@ -440,6 +448,19 @@ mod tests {
                     num(DROP_NOTE_MATCH.get()),
                     num(1000.0 * DROP_NOTE_LEAD.get())
                 ),
+            ],
+        );
+    }
+
+    #[test]
+    fn the_convention_states_the_note_line_constants() {
+        use super::super::line::LINE_HI;
+        use super::super::{BORDER_SPAN, FAST_TAU, NOTE_LINE_EDGE, NOTE_LINE_LOSS, STRIKE_RISE};
+        use super::super::{num, ratio_db, says};
+        let ms = |s: f64| num(1000.0 * s);
+        says(
+            DROP_CONVENTION,
+            &[
                 format!(
                     "a fit after a {} strike that is no drop is fitted again on the note line, \
                      whose low-pass sits at {} times the note's pitch, when that lies under {} Hz",
@@ -453,6 +474,11 @@ mod tests {
                     ms(FAST_TAU.get()),
                     ms(DROP_FIT_START.get()),
                     num(NOTE_LINE_LOSS.get())
+                ),
+                format!(
+                    "an onset within {} ms of a search that starts where the previous note's \
+                     search ended",
+                    ms(BORDER_SPAN)
                 ),
             ],
         );
