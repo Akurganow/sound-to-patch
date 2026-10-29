@@ -380,9 +380,12 @@ The cleanup runs four steps and prints the note count after each [fact].
   splits into 12 notes where the onset rule gives 7 [synthetic].
 - Why the stem start counts as unknown: a stem can start in the trough of
   a tremolo, and its first climb then follows a dip that the search
-  cannot see the start of [synthetic]. Read as silence, that dip held,
-  and an A2 under a 14 Hz square off half its cycle, with 12 ms edges,
-  split into 4 notes where the onset rule gives 2 [synthetic].
+  cannot see the start of [synthetic]. Read as silence, that dip held.
+  On the third set one stem split that way: an A2 under a full-depth
+  14 Hz square loud for half its cycle, with 12 ms edges, that turns
+  off 2 ms after the stem starts. It gave 4 notes where the onset rule
+  gives 2, with the detected profile and with the bass profile
+  [synthetic].
 - Why the onset rule alone fails: the decoder can fill the gap before a
   low repeat and read its onset weak [synthetic]. A 55 Hz saw gated on
   for 0.2 s in every 0.25 s decodes as 16 notes that touch, 12 of them on
@@ -469,7 +472,10 @@ The cleanup runs four steps and prints the note count after each [fact].
     for less than 1.5 times the dip [fact]. Staccato eighths at half
     length, gated for 125 ms in every 250 ms, keep 3 of 16 repeats at E1
     in the bass profile, as the onset rule does; with 100 ms gaps they
-    keep 8 where it keeps 3 [synthetic].
+    keep 8 where it keeps 3 [synthetic]. Sixteenths pay it too: A1
+    sixteenths with 41 to 44 ms gaps and a 10 ms attack keep 3 to 6 of
+    32 repeats where a hold of 60 ms alone kept 7 or 8. With 44 ms gaps
+    that is the onset rule's 3 [synthetic].
   - Most bowed, blown and sung re-attacks rise slower than about 10 ms,
     and such a re-attack joins when the decoder reads its onset weak
     [proposal]. The rule reads only the stem's level, and a slow

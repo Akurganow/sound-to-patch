@@ -134,7 +134,10 @@ pub const HOLD_SEARCH: Seconds = Seconds::from_const(0.4);
 /// cycle. At 1.25 a square at 9.1 Hz on C2 splits a held note into 10
 /// where the onset rule gives 5. At 2 eighths on E1 with a 10 ms attack
 /// and a 10 ms tail over a -40 dB floor keep 3 of 16 repeats in the bass
-/// profile, as the onset rule does, where 1.5 keeps 12.
+/// profile, as the onset rule does, where 1.5 keeps 12. The cost of 1.5:
+/// a gap longer than about two thirds of the note before it joins, and
+/// A1 sixteenths with 44 ms gaps and a 10 ms attack keep 3 of 32 repeats,
+/// as the onset rule does, where a hold of 60 ms alone kept 7.
 pub const HOLD_RATIO: f64 = 1.5;
 
 /// What the octave check did.

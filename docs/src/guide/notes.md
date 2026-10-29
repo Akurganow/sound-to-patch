@@ -115,26 +115,31 @@ velocity 100. Then check what the model cannot get right:
   and is only flagged. A chord part keeps its octave copies: three
   generated triads give 10 notes for 9.
 - A repeated note can merge into the one before it when the model misses
-  its onset and the stem has no clear attack before it: a fall of 19 dB
-  or more, to 20 dB below the note for a steady floor, and a rise back
-  about as fast as a step, after the note before it held for 60 ms and
-  for 1.5 times the gap. A legato repeat, an attack slower than about
-  10 ms, a repeat after a note shorter than about 60 ms, a gap longer
-  than about two thirds of the note before it, such as staccato eighths
-  at half length, or a gap that a tail or reverb fills merges this way. Most natural attacks are slower: a bowed, blown or
-  sung re-attack rises like a tremolo, and the cleanup reads only the
-  level. A low repeat
-  with a short gap can be lost in the model itself: a 55 Hz saw gated
-  with 30 ms gaps gives 9 notes for 16.
+  its onset and the stem has no clear attack before it. A clear attack
+  is a fall of 19 dB or more and a rise back about as fast as a step.
+  Over a steady floor the fall must reach 20 dB below the note. The
+  note before it must also have held for 60 ms and for 1.5 times the
+  gap. These repeats merge this way:
+  - a legato repeat;
+  - an attack slower than about 10 ms;
+  - a repeat after a note shorter than about 60 ms;
+  - a gap longer than about two thirds of the note before it, such as
+    staccato eighths at half length;
+  - a gap that a tail or reverb fills.
+
+  Most natural attacks are slower than 10 ms: a bowed, blown or sung
+  re-attack rises like a tremolo, and the cleanup reads only the level.
+  A low repeat with a short gap can be lost in the model itself. A 55 Hz
+  saw gated with 30 ms gaps gives 9 notes for 16.
 - A square LFO that cuts the level for 20 to 40 % of each cycle looks,
   by level, like a gated note with short gaps. The cleanup reads it as a
   gate and can split a held note into repeats: an A1 under a 6 Hz square
   off for 30 % of each cycle gives 22 notes where the model's onsets
   alone give 6. A vibrato under such a square splits the same way. Only
   a cue such as a phase reset at each repeat could tell the two apart. A
-  square off half of each cycle holds only as long as it dips, and no
-  generated one, and no sine tremolo of 2 to 20 Hz, split a held note
-  further than the model's onsets do.
+  square off half of each cycle holds only as long as it dips. No
+  generated one split a held note further than the model's onsets do,
+  and no sine tremolo of 2 to 20 Hz did.
 
 Plan a manual pass in the piano roll. The [pipeline
 page](../analysis/pipeline.md#evaluation) gives the scores on generated
