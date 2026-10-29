@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/agreement.schema.json",
+  "title": "dictionary/words/agreement.json",
+  "description": "Derived listener numbers per word, written by `cargo xtask agreement` from the pinned listener data. No curve, parameter set or row text: band means and reverb numbers need five rows.",
+  "type": "object",
+  "required": [
+    "source",
+    "revision",
+    "tools",
+    "eq_curves",
+    "reverb_rows",
+    "reverb_distinct_settings",
+    "eq",
+    "reverb"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "source": {
+      "const": "crowd-eq"
+    },
+    "revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "eq_curves": {
+      "type": "integer"
+    },
+    "reverb_rows": {
+      "type": "integer"
+    },
+    "reverb_distinct_settings": {
+      "type": "integer"
+    },
+    "eq": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "word",
+          "n",
+          "value",
+          "class",
+          "few_sample"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "word": {
+            "type": "string",
+            "minLength": 1
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": -1,
+            "maximum": 1
+          },
+          "class": {
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "unknown"
+            ]
+          },
+          "few_sample": {
+            "type": "boolean"
+          },
+          "bands": {
+            "type": "object",
+            "required": [
+              "low",
+              "low_mid",
+              "mid",
+              "high",
+              "air"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "low_mid": {
+                "type": "number"
+              },
+              "mid": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              },
+              "air": {
+                "type": "number"
+              }
+            }
+          },
+          "peak_hz": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "reverb": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "word",
+          "n",
+          "spread_ratio",
+          "effects"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "word": {
+            "type": "string",
+            "minLength": 1
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 5
+          },
+          "spread_ratio": {
+            "type": "number",
+            "minimum": 0
+          },
+          "effects": {
+            "type": "object",
+            "required": [
+              "delay_time",
+              "decay",
+              "stereo_spread",
+              "cutoff_freq",
+              "wet_gain"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "delay_time": {
+                "type": "number"
+              },
+              "decay": {
+                "type": "number"
+              },
+              "stereo_spread": {
+                "type": "number"
+              },
+              "cutoff_freq": {
+                "type": "number"
+              },
+              "wet_gain": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/ranks.schema.json",
+  "title": "dictionary/words/ranks.json",
+  "description": "Counts of the lexicon words in the pinned public inputs, written by `cargo xtask word-ranks`. Counts only: no name, tag, caption or comment text. A tier is W1 for ranks 1 to 25 and W2 for ranks 26 to 60.",
+  "type": "object",
+  "required": ["inputs", "tools", "presets", "banks", "sounds", "uploaders", "captions", "describing", "style", "technique"],
+  "additionalProperties": false,
+  "properties": {
+    "inputs": {
+      "type": "array",
+      "description": "Every downloaded file with the revision it is pinned to and its SHA-256.",
+      "items": {
+        "type": "object",
+        "required": ["source", "revision", "sha256"],
+        "additionalProperties": false,
+        "properties": {
+          "source": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "The id in `dictionary/sources.json`." },
+          "revision": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      },
+      "minItems": 1
+    },
+    "tools": { "type": "object", "additionalProperties": { "type": "string" }, "required": ["python"] },
+    "presets": { "type": "integer", "minimum": 0, "description": "Presets in all banks." },
+    "banks": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "Presets per bank source id." },
+    "sounds": { "type": "integer", "minimum": 0, "description": "Sounds that carry a synth tag." },
+    "uploaders": { "type": "integer", "minimum": 0, "description": "Distinct uploaders of those sounds." },
+    "captions": { "type": "integer", "minimum": 0, "description": "Clips whose caption mentions synth." },
+    "describing": {
+      "type": "array",
+      "description": "Every lexicon describing word, ranked words first.",
+      "items": {
+        "type": "object",
+        "required": ["word", "preset_hits", "banks", "uploaders", "sounds", "captions", "score", "rank", "tier"],
+        "additionalProperties": false,
+        "properties": {
+          "word": { "type": "string", "minLength": 1 },
+          "preset_hits": { "type": "integer", "minimum": 0 },
+          "banks": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "uploaders": { "type": "integer", "minimum": 0 },
+          "sounds": { "type": "integer", "minimum": 0 },
+          "captions": { "type": "integer", "minimum": 0 },
+          "score": { "type": ["number", "null"], "minimum": 0, "description": "Reciprocal rank fusion score; null when the word did not enter the main list." },
+          "rank": { "type": ["integer", "null"], "minimum": 1 },
+          "tier": { "enum": ["W1", "W2", null] }
+        }
+      }
+    },
+    "style": { "$ref": "#/$defs/groups" },
+    "technique": { "$ref": "#/$defs/groups" }
+  },
+  "$defs": {
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "preset_hits", "banks", "uploaders", "sounds", "captions"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "preset_hits": { "type": "integer", "minimum": 0 },
+          "banks": { "type": "integer", "minimum": 0, "maximum": 6 },
+          "uploaders": { "type": "integer", "minimum": 0 },
+          "sounds": { "type": "integer", "minimum": 0 },
+          "captions": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

@@ -18,11 +18,26 @@ fn validator(schema: &str) -> jsonschema::Validator {
     jsonschema::validator_for(&schema).unwrap()
 }
 
+/// The data files of `dictionary/words/` that are not axis files, each with
+/// its schema.
+const WORD_DATA: [(&str, &str); 6] = [
+    ("agreement.json", "agreement.schema.json"),
+    ("ladder.json", "ladder.schema.json"),
+    ("lexicon.json", "lexicon.schema.json"),
+    ("ranks.json", "ranks.schema.json"),
+    ("style.json", "ranked.schema.json"),
+    ("technique.json", "ranked.schema.json"),
+];
+
 fn word_files() -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = fs::read_dir("dictionary/words")
         .unwrap()
         .map(|entry| entry.unwrap().path())
         .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
+        .filter(|path| {
+            let name = path.file_name().unwrap().to_str().unwrap();
+            !WORD_DATA.iter().any(|(file, _)| *file == name)
+        })
         .collect();
     files.sort();
     files
@@ -65,6 +80,14 @@ fn the_dictionary_files_match_their_schemas() {
         let errors: Vec<String> = words.iter_errors(&value).map(|e| e.to_string()).collect();
         assert!(errors.is_empty(), "{}: {errors:?}", path.display());
     }
+    for (file, schema) in WORD_DATA {
+        let value: Value =
+            serde_json::from_str(&fs::read_to_string(format!("dictionary/words/{file}")).unwrap())
+                .unwrap();
+        let checker = validator(&format!("schemas/{schema}"));
+        let errors: Vec<String> = checker.iter_errors(&value).map(|e| e.to_string()).collect();
+        assert!(errors.is_empty(), "{file}: {errors:?}");
+    }
     let sources: Value =
         serde_json::from_str(&fs::read_to_string("dictionary/sources.json").unwrap()).unwrap();
     assert!(validator("schemas/sources.schema.json").is_valid(&sources));
@@ -103,7 +126,7 @@ fn a_measure_outside_the_fixed_list_fails() {
         "sense": "spectral", "meaning": "More upper harmonics.", "roles": [], "conflicts": [],
         "default": true, "agreement": {"value": 0.34, "n": 19, "class": "medium"},
         "few_sample": false, "measure": {"key": "loudness", "direction": "up"},
-        "tag": "crowd data", "sources": []
+        "values": [], "tag": "crowd data", "sources": ["crowd-eq"]
     }]);
     let words = validator("schemas/words.schema.json");
     assert!(!words.is_valid(&entry));

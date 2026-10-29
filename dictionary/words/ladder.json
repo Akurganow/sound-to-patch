@@ -1,0 +1,37 @@
+{
+  "tag": "inferred",
+  "meaning": "No source quantifies modifier words such as slightly or very. A modifier picks one of three steps per control, and the anchors below set each step in the control's own unit. No modifier picks the medium step. Strong modifiers past very still pick the strong step and add a warning about harshness, muddiness or mono loss. Negating modifiers move the control one step against the word's direction and never clear it. Scale per control, not per word: a very warm bass moves a few decibels, not a whole knob. Cents steps are uncalibrated on a synth whose detune control has no published cents map. The steps hold until a render check confirms them.",
+  "modifiers": [
+    { "words": ["a touch of", "slightly", "a bit", "subtle"], "step": "mild" },
+    { "words": ["some"], "step": "medium" },
+    { "words": ["very", "really", "quite"], "step": "strong" },
+    { "words": ["super", "extremely", "insanely"], "step": "strong", "warn": true },
+    { "words": ["less", "not", "not too"], "step": "against" }
+  ],
+  "anchors": [
+    { "control": "eq gain", "step": "mild", "value": { "what": "the smallest audible change of level", "low": 1, "high": 1, "unit": "dB", "sources": ["snip-jnd"], "tag": "snippet" } },
+    { "control": "eq gain", "step": "medium", "value": { "what": "a barely perceptible change of level", "low": 3, "high": 3, "unit": "dB", "sources": ["snip-level-chart"], "tag": "snippet" } },
+    { "control": "eq gain", "step": "strong", "value": { "what": "a clearly noticeable change of level", "low": 5, "high": 5, "unit": "dB", "sources": ["snip-level-chart"], "tag": "snippet" } },
+    { "control": "detune", "step": "mild", "value": { "what": "detune that beats slowly", "low": 1, "high": 1, "unit": "cents", "sources": ["pulse-guide"], "tag": "single source" } },
+    { "control": "detune", "step": "medium", "value": { "what": "unison detune for a pluck", "low": 2, "high": 5, "unit": "cents", "sources": ["pluck-guide"], "tag": "single source" } },
+    { "control": "detune", "step": "strong", "value": { "what": "detune of a reese bass", "low": 5, "high": 15, "unit": "cents", "sources": ["bass-guide"], "tag": "single source" } },
+    { "control": "detune", "step": "strong", "value": { "what": "detune that beats rapidly", "low": 10, "high": 10, "unit": "cents", "sources": ["pulse-guide"], "tag": "single source" } },
+    { "control": "pitch difference", "step": "mild", "value": { "what": "the smallest audible pitch step between sine tones above a kilohertz", "low": 10, "high": 10, "unit": "cents", "sources": ["snip-pitch-jnd"], "tag": "snippet" } },
+    { "control": "analog drift", "step": "mild", "value": { "what": "one oscillator tuned flat against another", "low": 1, "high": 2, "unit": "cents", "sources": ["analog-guide"], "tag": "single source" } },
+    { "control": "tape pitch wobble", "step": "medium", "value": { "what": "total pitch depth of wow and flutter", "low": 5, "high": 10, "unit": "cents", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "tape wow rate", "step": "medium", "value": { "what": "the slow pitch cycle of tape wow", "low": 0.2, "high": 0.4, "unit": "Hz", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "tape flutter rate", "step": "medium", "value": { "what": "the fast pitch cycle of tape flutter", "low": 4, "high": 6, "unit": "Hz", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "saturation drive", "step": "medium", "value": { "what": "soft saturation drive", "low": 20, "high": 30, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "filter resonance", "step": "mild", "value": { "what": "resonance of a lo-fi low-pass", "low": 10, "high": 15, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "filter resonance", "step": "medium", "value": { "what": "resonance of a wobble bass", "low": 30, "high": 50, "unit": "%", "sources": ["dubstep-guide"], "tag": "single source" } },
+    { "control": "bit depth", "step": "mild", "value": { "what": "bit depth of a subtle crush", "low": 12, "high": 14, "unit": "bits", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "crush blend", "step": "mild", "value": { "what": "blend of the crushed signal", "low": 30, "high": 50, "unit": "%", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "bit depth", "step": "strong", "value": { "what": "bit depth of an audible crush", "low": 6, "high": 12, "unit": "bits", "sources": ["snip-bitcrush"], "tag": "snippet" } },
+    { "control": "bit depth", "step": "edge", "value": { "what": "bit depth below which the sound breaks up", "low": 10, "high": 12, "unit": "bits", "sources": ["lofi-piano"], "tag": "single source" } },
+    { "control": "pluck decay", "step": "mild", "value": { "what": "a short pluck decay", "low": 150, "high": 150, "unit": "ms", "sources": ["pluck-guide"], "tag": "single source" } },
+    { "control": "pluck decay", "step": "medium", "value": { "what": "a typical pluck decay", "low": 200, "high": 300, "unit": "ms", "sources": ["pluck-guide"], "tag": "single source" } },
+    { "control": "pluck decay", "step": "strong", "value": { "what": "a long pluck decay", "low": 500, "high": 500, "unit": "ms", "sources": ["pluck-guide"], "tag": "single source" } },
+    { "control": "mono crossover", "step": "mild", "value": { "what": "the frequency below which the bass stays mono", "low": 80, "high": 100, "unit": "Hz", "sources": ["bass-guide"], "tag": "single source" } },
+    { "control": "mono crossover", "step": "medium", "value": { "what": "the frequency below which the mix stays mono", "low": 100, "high": 150, "unit": "Hz", "sources": ["width-guide"], "tag": "single source" } }
+  ]
+}

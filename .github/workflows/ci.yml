@@ -1,13 +1,13 @@
 name: CI
 
-# The job names fmt, clippy, test, doc, commits, licenses and docs are
-# required checks in the main ruleset; test-linux, pages and release are
-# not. No `paths:` filter: a skipped workflow never reports, and its
-# required check stays pending.
+# The job names fmt, clippy, test, doc, licenses and docs are required
+# checks in the main ruleset, with `commits` from commits.yml; test-linux,
+# pages and release are not. No `paths:` filter: a skipped workflow never
+# reports, and its required check stays pending.
 on:
   pull_request:
-    # `edited` re-runs `commits` when the title or description changes.
-    types: [opened, edited, synchronize, reopened]
+    # Not `edited`: a title or description change re-runs only commits.yml.
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 
@@ -16,6 +16,13 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+
+# A new push to a pull request cancels the run of the older commit. A push to
+# main never cancels: every merged commit keeps its run, and the release job
+# needs it. The run id keeps the groups of those runs apart.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   fmt:
@@ -39,6 +46,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
+          workspaces: |
+            . -> target
+            fuzz -> target
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       # The host loads x86_64-only plug-ins under Rosetta, so it also builds
       # for x86_64.
@@ -55,6 +67,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-nextest@0.9.149
@@ -80,6 +94,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-nextest@0.9.149
@@ -98,39 +114,12 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
       # The plain run catches private_intra_doc_links; the second catches
       # broken links inside internal docs.
       - run: cargo doc --workspace --no-deps
       - run: cargo doc --workspace --no-deps --document-private-items
-
-  # The squash merge turns the title into the commit subject and the
-  # description into the commit body, so both are checked here.
-  commits:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/setup-cog
-      # The title is untrusted text: it reaches the script through env only.
-      # cog verify reads the git author, which a fresh runner lacks.
-      - name: Check the title
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          printf '%s\n' "$PR_TITLE" | cog verify --file -
-      # Dependabot writes its own description, so only the title applies.
-      - if: github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: ./.github/actions/setup-rust
-      - name: Check the description
-        if: github.event.pull_request.user.login != 'dependabot[bot]'
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: cargo xtask check-pr-body
 
   licenses:
     runs-on: ubuntu-latest
@@ -157,6 +146,9 @@ jobs:
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
+        with:
+          cache: "true"
+          cache-key: linux-xtask
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: mdbook@0.5.4
@@ -223,6 +215,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # No build cache here: this job holds the deploy key.
       - uses: ./.github/actions/setup-rust
       - uses: ./.github/actions/setup-cog
       # cog bumps only on the branch listed in cog.toml.

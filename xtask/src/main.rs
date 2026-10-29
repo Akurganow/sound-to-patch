@@ -3,6 +3,7 @@
 //! Nothing here ships. The tasks generate release artifacts, run repository
 //! checks and fetch pinned datasets.
 
+mod agreement;
 mod architecture;
 mod credits;
 mod dist;
@@ -14,9 +15,11 @@ mod lock;
 mod music;
 mod plugins;
 mod pr;
+mod ranks;
 mod reference;
 mod version;
 mod vital;
+mod words;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -64,6 +67,14 @@ enum Task {
         #[arg(long)]
         part: Option<String>,
     },
+    /// Recompute the listener agreement of the producer words from the
+    /// pinned listener data (needs uv and network).
+    Agreement {
+        /// The download folder for the listener tables, outside the
+        /// repository.
+        #[arg(long)]
+        data: PathBuf,
+    },
     /// Regenerate the golden vectors with the pinned Python tools (needs uv).
     Golden,
     /// Check the golden vectors against the pinned tool versions.
@@ -76,6 +87,15 @@ enum Task {
     CheckFuzzLock,
     /// Check that every cited source has a credit with a licence.
     CheckCredits,
+    /// Recompute the ranked list of describing words from the pinned preset
+    /// banks, sound tags and captions; local only (needs uv and network,
+    /// downloads about 2.4 GB).
+    WordRanks {
+        /// The download folder for the pinned inputs, outside the
+        /// repository.
+        #[arg(long)]
+        data: PathBuf,
+    },
     /// Check the agent plugins: manifests, the marketplace, skill sizes and
     /// frontmatter, reference files, banned phrases and probes.
     CheckPlugins,
@@ -122,6 +142,7 @@ fn main() -> ExitCode {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
         Task::Eval { part } => eval::run(part.as_deref()),
+        Task::Agreement { data } => agreement::run(root(), &data),
         Task::Golden => golden::generate(root()),
         Task::GoldenCheck => golden::check(root()),
         Task::CheckArchitecture => architecture::check(root()),
@@ -129,6 +150,7 @@ fn main() -> ExitCode {
         Task::CheckFuzzLock => lock::check_fuzz_lock(root()),
         Task::CheckCredits => credits::check(root()),
         Task::CheckPlugins => plugins::check(root()),
+        Task::WordRanks { data } => ranks::run(root(), &data),
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())
