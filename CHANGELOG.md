@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.23.1](https://github.com/Akurganow/sound-to-patch/compare/31f81d953f46e4a1cfc6824fdeb389aea7a0941a..v0.23.1) - 2026-10-29
+#### Bug Fixes
+- (**notes**) keep repeated gated notes apart in the split join (#279) - ([f9db972](https://github.com/Akurganow/sound-to-patch/commit/f9db97269029abcf673c69b3ca13a70afe0f71dc)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.23.0](https://github.com/Akurganow/sound-to-patch/compare/aa8c2306e603fcf590b8501fd8ec035d8b4ee486..v0.23.0) - 2026-10-29
 #### Features
 - (**render**) render single notes in the open Vital engine (#298) - ([aa8c230](https://github.com/Akurganow/sound-to-patch/commit/aa8c2306e603fcf590b8501fd8ec035d8b4ee486)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
