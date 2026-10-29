@@ -26,6 +26,7 @@ use crate::cast;
 use crate::preset::format::{FormatError, PresetFormat, Stored};
 use crate::preset::vital;
 use crate::synth::{Synth, SynthError};
+use crate::units::Bpm;
 
 /// The Vital control that sets oversampling.
 const OVERSAMPLING: &str = "oversampling";
@@ -33,6 +34,11 @@ const OVERSAMPLING: &str = "oversampling";
 const MAX_STARTS: usize = 64;
 /// The top-level key of the tuning in a Vital state.
 const TUNING: &str = "tuning";
+/// The tempo control of a Vital preset, in beats per second despite its
+/// name.
+const TEMPO: &str = "beats_per_minute";
+/// The path of the tempo control in a [`Mismatch`].
+pub const TEMPO_PATH: &str = "settings.beats_per_minute";
 /// The highest MIDI note.
 const MAX_MIDI_NOTE: u64 = 127;
 /// How many characters of a value a mismatch message shows.
@@ -193,7 +199,8 @@ pub fn saved_preset(state: &[u8]) -> Option<Map<String, Value>> {
 pub struct Mismatch {
     /// The path of the value, such as `settings.filter_1_cutoff`.
     pub path: String,
-    /// The sent value.
+    /// The sent value. For the tempo control it is the value expected
+    /// from the render tempo, in beats per second.
     pub sent: Value,
     /// The saved value, or `None` when the key is missing.
     pub saved: Option<Value>,
@@ -227,10 +234,23 @@ fn short(value: &Value) -> String {
 /// state: the name, the tuning and every control, a number under
 /// `settings`. Keys the plug-in adds on save are ignored.
 ///
+/// The tempo control, `beats_per_minute` in beats per second, is compared
+/// with `bpm` instead of the sent value. A plug-in in a host sets it from
+/// the host's tempo on every block, so the saved value shows the tempo the
+/// render played at. The expected value is the one Vital computes,
+/// [`vital_beats_per_second`].
+///
+/// The comparison is Vital-shaped: the tempo key is a Vital key. A Serum 2
+/// read-back needs its own rule.
+///
 /// # Errors
 ///
 /// Returns [`RenderError::State`] when either state holds no preset JSON.
-pub fn readback_mismatches(sent: &PresetState, saved: &[u8]) -> Result<Vec<Mismatch>, RenderError> {
+pub fn readback_mismatches(
+    sent: &PresetState,
+    saved: &[u8],
+    bpm: Bpm,
+) -> Result<Vec<Mismatch>, RenderError> {
     let sent = saved_preset(sent.bytes())
         .ok_or_else(|| RenderError::State("the sent state holds no preset JSON".to_owned()))?;
     let saved = saved_preset(saved).ok_or_else(|| {
@@ -273,12 +293,32 @@ pub fn readback_mismatches(sent: &PresetState, saved: &[u8]) -> Result<Vec<Misma
     let controls =
         |root: &Map<String, Value>| root.get("settings").and_then(Value::as_object).cloned();
     let saved_controls = controls(&saved).unwrap_or_default();
-    for (key, value) in controls(&sent).unwrap_or_default() {
-        if value.is_number() {
-            check(format!("settings.{key}"), &value, saved_controls.get(&key));
+    let sent_controls = controls(&sent).unwrap_or_default();
+    for (key, value) in &sent_controls {
+        if value.is_number() && key != TEMPO {
+            check(format!("settings.{key}"), value, saved_controls.get(key));
         }
     }
+    if sent_controls.contains_key(TEMPO) || saved_controls.contains_key(TEMPO) {
+        let beats_per_second = Value::from(vital_beats_per_second(bpm));
+        check(
+            format!("settings.{TEMPO}"),
+            &beats_per_second,
+            saved_controls.get(TEMPO),
+        );
+    }
     Ok(mismatches)
+}
+
+/// The tempo Vital stores for a host tempo of `bpm`, in beats per second.
+///
+/// `SoundEngine::setBpm` divides by 60 in 32-bit floats. The shipped
+/// 1.0.7 plug-in computes it as `f32(bpm) * f32(1 / 60)`, a multiply by the
+/// reciprocal, which can lie one or two `f32` steps from the correctly
+/// rounded `bpm / 60` on a fractional tempo.
+#[must_use]
+pub fn vital_beats_per_second(bpm: Bpm) -> f64 {
+    f64::from(cast::f64_to_f32(bpm.get()) * cast::f64_to_f32(1.0 / 60.0))
 }
 
 /// Whether two numbers are the same `f32` or neighbours.
@@ -355,7 +395,10 @@ mod tests {
         let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
         saved["added_on_save"] = true.into();
         saved["settings"]["filter_1_cutoff"] = f64::from(cast::f64_to_f32(60.1)).into();
-        assert_eq!(readback_mismatches(&sent, &wrapped(&saved)).unwrap(), []);
+        assert_eq!(
+            readback_mismatches(&sent, &wrapped(&saved), bpm()).unwrap(),
+            []
+        );
     }
 
     #[test]
@@ -365,7 +408,7 @@ mod tests {
         saved["preset_name"] = "Other".into();
         saved["settings"][OVERSAMPLING] = 0.0.into();
         saved["settings"].as_object_mut().unwrap().remove("volume");
-        let paths: Vec<String> = readback_mismatches(&sent, &wrapped(&saved))
+        let paths: Vec<String> = readback_mismatches(&sent, &wrapped(&saved), bpm())
             .unwrap()
             .iter()
             .map(|m| m.path.clone())
@@ -440,7 +483,7 @@ mod tests {
         let sent = tuned(up_two()).unwrap();
         let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
         saved[TUNING] = default_tuning();
-        let paths: Vec<String> = readback_mismatches(&sent, &wrapped(&saved))
+        let paths: Vec<String> = readback_mismatches(&sent, &wrapped(&saved), bpm())
             .unwrap()
             .iter()
             .map(|m| m.path.clone())
@@ -464,18 +507,72 @@ mod tests {
         );
     }
 
+    fn bpm() -> Bpm {
+        Bpm::new(120.0).unwrap()
+    }
+
+    /// Vital's tempo for `bpm`: `f32(bpm) * f32(1 / 60)`.
+    fn vital(bpm: f64) -> f64 {
+        f64::from(cast::f64_to_f32(bpm) * cast::f64_to_f32(1.0 / 60.0))
+    }
+
+    #[test]
+    fn the_saved_tempo_is_compared_with_the_render_tempo() {
+        let sent = state();
+        let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
+        // Vital 1.0.7 read back 2.3333334922790527 at 140 BPM.
+        assert_eq!(vital(140.0), 2.333_333_492_279_052_7);
+        saved["settings"][TEMPO] = vital(140.0).into();
+        let at = |tempo: f64| {
+            readback_mismatches(&sent, &wrapped(&saved), Bpm::new(tempo).unwrap()).unwrap()
+        };
+        assert_eq!(at(140.0), []);
+        let mismatches = at(120.0);
+        assert_eq!(mismatches.len(), 1, "{mismatches:?}");
+        assert_eq!(
+            mismatches[0].to_string(),
+            "settings.beats_per_minute is 2.3333334922790527, not 2.0"
+        );
+        let mut sent_root = Value::Object(saved_preset(sent.bytes()).unwrap());
+        sent_root["settings"][TEMPO] = 2.0.into();
+        let with_tempo = PresetState::new(Synth::Vital, serde_json::to_vec(&sent_root).unwrap());
+        let mut lost = saved.clone();
+        lost["settings"].as_object_mut().unwrap().remove(TEMPO);
+        let mismatches =
+            readback_mismatches(&with_tempo, &wrapped(&lost), Bpm::new(140.0).unwrap()).unwrap();
+        assert_eq!(
+            mismatches[0].to_string(),
+            "settings.beats_per_minute is missing"
+        );
+    }
+
+    #[test]
+    fn a_fractional_tempo_matches_the_reciprocal_multiply() {
+        let sent = state();
+        let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
+        saved["settings"][TEMPO] = vital(100.3).into();
+        // The correctly rounded 100.3 / 60 lies two f32 steps away.
+        assert!(!same_f32(vital(100.3), 100.3 / 60.0));
+        let mismatches =
+            readback_mismatches(&sent, &wrapped(&saved), Bpm::new(100.3).unwrap()).unwrap();
+        assert_eq!(mismatches, []);
+    }
+
     #[test]
     fn structured_parts_are_not_compared() {
         let sent = state();
         let mut saved = Value::Object(saved_preset(sent.bytes()).unwrap());
         saved["settings"]["sample"]["samples"] = "AAAA".into();
-        assert_eq!(readback_mismatches(&sent, &wrapped(&saved)).unwrap(), []);
+        assert_eq!(
+            readback_mismatches(&sent, &wrapped(&saved), bpm()).unwrap(),
+            []
+        );
     }
 
     #[test]
     fn a_state_with_no_json_is_an_error() {
         assert!(matches!(
-            readback_mismatches(&state(), b"VstW\0\0{"),
+            readback_mismatches(&state(), b"VstW\0\0{", bpm()),
             Err(RenderError::State(_))
         ));
     }

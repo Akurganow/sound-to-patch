@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.21.0](https://github.com/Akurganow/sound-to-patch/compare/95440bf6104ac8d7de391daa56d71d64026a5249..v0.21.0) - 2026-10-29
+#### Features
+- (**render**) run renders in a render session and time them (#295) - ([95440bf](https://github.com/Akurganow/sound-to-patch/commit/95440bf6104ac8d7de391daa56d71d64026a5249)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
+## [v0.20.1](https://github.com/Akurganow/sound-to-patch/compare/9f723672a040b7a8bf0be3ea54a6647fb4638069..v0.20.1) - 2026-10-29
+#### Bug Fixes
+- (**render**) check the saved tempo against the render tempo (#296) - ([9f72367](https://github.com/Akurganow/sound-to-patch/commit/9f723672a040b7a8bf0be3ea54a6647fb4638069)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.20.0](https://github.com/Akurganow/sound-to-patch/compare/f6870991a3a8e29d2876702fda2ca964748a038d..v0.20.0) - 2026-10-29
 #### Features
 - (**skill**) add the word dictionary (#289) - ([f687099](https://github.com/Akurganow/sound-to-patch/commit/f6870991a3a8e29d2876702fda2ca964748a038d)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5

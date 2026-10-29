@@ -128,6 +128,7 @@ mod tests {
             Reply::Rendered {
                 frames: self.0,
                 capped: false,
+                state_load_s: None,
             }
         }
     }
@@ -155,7 +156,8 @@ mod tests {
             [
                 Reply::Rendered {
                     frames: 1,
-                    capped: false
+                    capped: false,
+                    state_load_s: None,
                 },
                 Reply::Bye
             ]
