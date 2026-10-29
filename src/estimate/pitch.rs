@@ -15,15 +15,15 @@ mod vibrato;
 
 pub use drop::{
     ATTACK_FROM, ATTACK_TO, DROP_CONVENTION, DROP_FIT_END, DROP_FIT_START, DROP_MAX,
-    DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE, DROP_TAU_MIN, DropFit, ONSET_SMOOTHING,
-    band_attack, band_onset, fit_drop,
+    DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE, DROP_TAU_MIN, DropFit, DropMiss,
+    ONSET_SMOOTHING, band_attack, band_onset, fit_drop,
 };
 pub use glide::{
     BOUND_MAX_RESIDUAL, BOUND_MIN_INTERVAL, CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX,
-    GAP_MOTION_MIN, GAP_SLOPE_MAX, GLIDE_CONVENTION, GLIDE_INTERVAL_MIN, GLIDE_MAX_RESIDUAL,
-    GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN, GlideFit, GlideRead, NOTE_MATCH,
-    ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES, STEADY_SPLIT, find_glides,
-    steady_spans, track_lag,
+    GAP_MOTION_MIN, GAP_SHARE_MAX, GAP_SLOPE_MAX, GLIDE_CONVENTION, GLIDE_INTERVAL_MIN,
+    GLIDE_MAX_RESIDUAL, GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN, GlideFit, GlideRead,
+    NOTE_MATCH, ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES, STEADY_SPLIT,
+    find_glides, steady_spans, track_lag,
 };
 pub use line::{
     LINE_CONVENTION, LINE_HI, LINE_LO, LINE_LO_FAST, LINE_MEDIAN, SubBandLine, median_filter,
@@ -38,7 +38,9 @@ pub use vibrato::{
 use crate::audio::SampleRate;
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
-use crate::dsp::{ACTIVE_GATE_DB, FilterError, StftParams, band_magnitude, frame_rms};
+use crate::dsp::{
+    ACTIVE_GATE_DB, FilterError, StftParams, band_magnitude, band_pass_zero_phase, frame_rms,
+};
 use crate::notes::{NoteList, PitchTrack, QUIET_FRAME, Voicing};
 use crate::units::{Cents, Decibels, Hz, MidiPitch, Seconds, Semitones};
 
@@ -87,6 +89,31 @@ const RUN_START_SPANS: [(f64, f64); 2] = [(-0.06, -0.03), (0.0, 0.03)];
 pub const RUN_START_RISE: f64 = 10.0;
 /// The step at which the glide search looks for the start of a sound.
 const ONSET_STEP: f64 = 0.005;
+/// A gap of the track whose full-band RMS, over 10 ms, falls this far
+/// below the 20 ms before or after it is not bridged.
+///
+/// The dip breaks the sound, and the glide search reads the runs apart. So
+/// does a gap that falls more than [`ACTIVE_GATE_DB`] below the loudest
+/// frame of the stem.
+pub const GAP_DIP_DB: Decibels = Decibels::from_const(20.0);
+/// The RMS window of the dip check.
+const DIP_WINDOW: f64 = 0.01;
+/// The span before and after a gap that the dip check compares with.
+const DIP_SIDE: f64 = 0.02;
+/// A small glide on the curve bound whose full-band RMS, over two
+/// adjacent windows of one period of its lower pitch or 10 ms, whichever
+/// is longer, changes by this much or more is a step struck again.
+///
+/// Steps between generated 808 notes struck again changed by 3.4 to
+/// 5.0 dB, RC slides of 1 and 2 semitones on sines and saws by 2.2 dB at
+/// most.
+pub const LEVEL_JUMP_DB: Decibels = Decibels::from_const(3.0);
+/// The level-jump check starts this long before a glide.
+const JUMP_LEAD: f64 = 0.03;
+/// The level-jump check reads at most this much of a glide.
+const JUMP_SPAN: f64 = 0.15;
+/// The step of the level-jump check.
+const JUMP_STEP: f64 = 0.001;
 /// The line keeps this much signal after the fit span, so the cut end of
 /// the analytic signal stays far from it.
 const LINE_TAIL: f64 = 0.5;
@@ -116,6 +143,15 @@ pub const JITTER_LOW: f64 = 3.5;
 /// Struck 808 notes read 9 to 13 ms; a unison falling into the band from
 /// above reads 190 ms.
 pub const STRIKE_ATTACK: Seconds = Seconds::from_const(0.03);
+/// A strike whose RMS in the band of the line, over the 20 ms after the
+/// onset, lies more than this below the loudest [`QUIET_FRAME`] of that
+/// band in the stem is no candidate.
+///
+/// Checked against an independent IF on real stems, the drops of a line's
+/// own low notes read 3 to 12 dB below the loudest passage of the band.
+/// Quiet falls under a louder line in the band, and a fall in a noise
+/// floor, read 22 to 33 dB below it.
+pub const DROP_BAND_GATE: Decibels = Decibels::from_const(18.0);
 /// The longest attack of a high-confidence drop.
 ///
 /// The pitch falls during a slower attack, before the fit span starts, and
@@ -216,10 +252,59 @@ pub struct PitchCounts {
     pub too_short: usize,
     /// Low notes whose strike the drop fit read.
     pub drop_candidates: usize,
+    /// Why the drop search read no drop at a low note, per gate.
+    pub drop_skips: DropSkips,
     /// Steady spans long enough for the vibrato search.
     pub vibrato_candidates: usize,
     /// Voiced frames of the track.
     pub voiced_frames: usize,
+}
+
+/// The low notes the drop search read no drop at, by the first gate that
+/// stopped each.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DropSkips {
+    /// No attack inside the onset search, or the attack of an earlier
+    /// note.
+    pub no_onset: usize,
+    /// The strike lies more than [`ACTIVE_GATE_DB`] below the loudest
+    /// frame of the stem, or more than [`DROP_BAND_GATE`] below the
+    /// loudest frame of the band.
+    pub quiet: usize,
+    /// The full-band level does not rise as the fall needs.
+    pub no_strike: usize,
+    /// The second harmonic exceeds the fundamental.
+    pub weak_fundamental: usize,
+    /// The fit failed, or its drop lies outside [`DROP_MIN`] to
+    /// [`DROP_MAX`] in full or inside its span.
+    pub no_fall: usize,
+    /// The fit's `tau` sits on the bound of the search.
+    pub tau_bound: usize,
+    /// The fit's residual reaches [`DROP_MAX_RESIDUAL`].
+    pub residual: usize,
+    /// No note sounds at `f_end` while the drop is settled.
+    pub off_note: usize,
+}
+
+impl DropSkips {
+    /// The gates that skipped a note, as `count gate` items.
+    #[must_use]
+    pub fn items(&self) -> Vec<String> {
+        [
+            (self.no_onset, "no onset"),
+            (self.quiet, "quiet"),
+            (self.no_strike, "no strike"),
+            (self.weak_fundamental, "weak fundamental"),
+            (self.no_fall, "no fall"),
+            (self.tau_bound, "tau on bound"),
+            (self.residual, "residual"),
+            (self.off_note, "off note"),
+        ]
+        .into_iter()
+        .filter(|(n, _)| *n > 0)
+        .map(|(n, gate)| format!("{n} {gate}"))
+        .collect()
+    }
 }
 
 impl PitchLayer {
@@ -273,9 +358,10 @@ impl PitchLayer {
         let note_frames = note_frames(input.track, input.notes);
         let mut flags = PitchFlags::default();
         let mut counts = counts;
-        let struck = strikes(input, &mut flags, &mut counts)?;
+        let loudest = loudest_frame(input.mono, input.rate);
+        let struck = strikes(input, loudest, &mut flags, &mut counts)?;
         let drops: Vec<DropFit> = struck.iter().map(|s| s.fit).collect();
-        let read = glides(input, &drops);
+        let read = glides(input, loudest, &drops);
         counts.too_short = read.too_short;
         flags.glide_too_short = read.too_short > 0;
         let vibrato = vibratos(input.track, &read.glides, &drops, &mut counts);
@@ -380,15 +466,17 @@ impl PitchLayer {
                 list(&glides)
             ),
             format!(
-                "pitch drops: {} of {} low strikes{}{}",
+                "pitch drops: {} of {} low strikes{}",
                 self.drops.len(),
                 self.counts.drop_candidates,
-                if self.flags.weak_fundamental {
-                    ", a weak fundamental skipped"
-                } else {
-                    ""
-                },
                 list(&drops)
+            ),
+            format!(
+                "drop skips: {}",
+                match self.counts.drop_skips.items() {
+                    items if items.is_empty() => "none".to_owned(),
+                    items => items.join(", "),
+                }
             ),
             format!(
                 "vibrato: {} of {} steady spans{}",
@@ -400,9 +488,10 @@ impl PitchLayer {
     }
 }
 
-/// Finds the glides, with the audio telling where a sound starts or is
-/// struck again, and the drops where a glide from silence is a drop.
-fn glides(input: &PitchInput<'_>, drops: &[DropFit]) -> GlideRead {
+/// Finds the glides, with the audio telling where a sound starts, breaks
+/// or jumps in level, and the drops where a glide from silence is a drop.
+/// `loudest` is the RMS of the loudest frame of the stem.
+fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead {
     let near_drop = |time: Seconds| {
         drops
             .iter()
@@ -425,12 +514,57 @@ fn glides(input: &PitchInput<'_>, drops: &[DropFit]) -> GlideRead {
         }
         false
     };
+    let rms = |at: f64, span: (f64, f64)| {
+        span_rms(
+            input.mono,
+            input.rate,
+            Seconds::clamped(0.0),
+            Seconds::clamped(at),
+            span,
+        )
+    };
+    let floor = loudest * gain_below(ACTIVE_GATE_DB);
+    let dips = |from: Seconds, to: Seconds| {
+        let window = (-0.5 * DIP_WINDOW, 0.5 * DIP_WINDOW);
+        let side = rms(from.get(), (-DIP_SIDE, 0.0)).max(rms(to.get(), (0.0, DIP_SIDE)));
+        let mut low = rms(f64::midpoint(from.get(), to.get()), window);
+        let mut at = from.get();
+        while at <= to.get() {
+            low = low.min(rms(at, window));
+            at += ONSET_STEP;
+        }
+        low < side * gain_below(GAP_DIP_DB) || low < floor
+    };
+    let jumps = |from: Seconds, to: Seconds, pitch: Hz| {
+        let window = (1.0 / pitch.get()).max(DIP_WINDOW);
+        let gate = Decibels::clamped(LEVEL_JUMP_DB.get())
+            .to_amplitude_gain()
+            .unwrap_or(f64::INFINITY);
+        let end = to.get().min(from.get() + JUMP_SPAN);
+        let mut at = from.get() - JUMP_LEAD;
+        while at <= end {
+            let (before, after) = (rms(at, (-window, 0.0)), rms(at, (0.0, window)));
+            if before > 0.0 && after > 0.0 && (after / before).max(before / after) >= gate {
+                return true;
+            }
+            at += JUMP_STEP;
+        }
+        false
+    };
     find_glides(
         input.track,
         input.notes,
-        |from, to| starts(from, to, STRIKE_SPANS, STRIKE_RISE),
+        |from, to| starts(from, to, STRIKE_SPANS, STRIKE_RISE) || dips(from, to),
         |from, to| starts(from, to, RUN_START_SPANS, RUN_START_RISE) && !near_drop(to),
+        jumps,
     )
+}
+
+/// The amplitude gain of `gate` below a level.
+fn gain_below(gate: Decibels) -> f64 {
+    Decibels::clamped(-gate.get())
+        .to_amplitude_gain()
+        .unwrap_or(0.0)
 }
 
 /// The share of the track frames inside the notes that are voiced within
@@ -476,9 +610,11 @@ fn count(n: usize) -> u64 {
 /// Fits a drop at the strike of each low note. A note that continues the
 /// one before it, with no fall of the band envelope between them, has no
 /// onset and so no fit; nor has a band onset where the full-band level
-/// does not rise as [`struck_enough`] asks.
+/// does not rise as [`struck_enough`] asks. `loudest` is the RMS of the
+/// loudest frame of the stem.
 fn strikes(
     input: &PitchInput<'_>,
+    loudest: f64,
     flags: &mut PitchFlags,
     counts: &mut PitchCounts,
 ) -> Result<Vec<Strike>, PitchError> {
@@ -487,10 +623,11 @@ fn strikes(
     // The search of each note starts after the previous note's search
     // ended, so it never finds the previous strike again.
     let mut previous_to = 0.0_f64;
-    let floor = loudest_frame(input.mono, input.rate)
-        * Decibels::clamped(-ACTIVE_GATE_DB.get())
-            .to_amplitude_gain()
-            .unwrap_or(0.0);
+    let floor = loudest * gain_below(ACTIVE_GATE_DB);
+    let band = band_pass_zero_phase(input.mono, input.rate, LINE_LO, LINE_HI)?;
+    let band_floor = loudest_frame(&band, input.rate) * gain_below(DROP_BAND_GATE);
+    let origin = Seconds::clamped(0.0);
+    let skips = &mut counts.drop_skips;
     for note in input.notes.notes() {
         let (note_on, note_off) = (note.onset().get(), note.offset().get());
         let settled = Hz::from(note.pitch());
@@ -514,17 +651,20 @@ fn strikes(
             &line,
             Seconds::clamped(search_from),
             Seconds::clamped(search_to),
-        ) else {
+        )
+        .filter(|onset| {
+            !drops
+                .iter()
+                .any(|d| (d.fit.onset.get() - onset.get()).abs() < 1e-9)
+        }) else {
+            skips.no_onset += 1;
             continue;
         };
-        if drops
-            .iter()
-            .any(|d| (d.fit.onset.get() - onset.get()).abs() < 1e-9)
-        {
-            continue;
-        }
         let rise = rise_ratio(segment, input.rate, start, onset, STRIKE_SPANS);
-        if span_rms(segment, input.rate, start, onset, STRIKE_SPANS[1]) < floor {
+        if span_rms(segment, input.rate, start, onset, STRIKE_SPANS[1]) < floor
+            || span_rms(&band, input.rate, origin, onset, STRIKE_SPANS[1]) < band_floor
+        {
+            skips.quiet += 1;
             continue;
         }
         let attack = band_attack(
@@ -535,29 +675,36 @@ fn strikes(
         .unwrap_or(Seconds::clamped(0.0));
         counts.drop_candidates += 1;
         let span_end = Seconds::clamped(note_off.max(onset.get()));
-        let Some(mut fit) = fit_drop(&line, onset, span_end) else {
+        let mut fit = fit_drop(&line, onset, span_end);
+        if fit.is_some_and(|fit| fit.tau < FAST_TAU) || rise >= RUN_START_RISE {
+            let low = SubBandLine::with_low_edge(segment, input.rate, start, LINE_LO_FAST)?;
+            fit = fit_drop(&low, onset, span_end);
+        }
+        let Some(fit) = fit else {
+            skips.no_fall += 1;
             continue;
         };
-        if fit.tau < FAST_TAU || rise >= RUN_START_RISE {
-            let low = SubBandLine::with_low_edge(segment, input.rate, start, LINE_LO_FAST)?;
-            let Some(refit) = fit_drop(&low, onset, span_end) else {
-                continue;
-            };
-            fit = refit;
-        }
         if !struck_enough(&fit, rise, attack) {
+            skips.no_strike += 1;
             continue;
         }
         let window = (
-            Seconds::clamped(onset.get().max(note_on) + WEAK_FROM.get()),
+            Seconds::clamped(
+                (onset.get().max(note_on) + WEAK_FROM.get()).max(onset.get() + in_band(&fit)),
+            ),
             Seconds::clamped((onset.get() + DROP_FIT_END.get()).min(note_off)),
         );
         if weak_fundamental(segment, input.rate, start, window, settled)? {
             flags.weak_fundamental = true;
+            skips.weak_fundamental += 1;
             continue;
         }
-        if fit.accepted() && settles_on_a_note(input.notes, &fit) {
-            drops.push(Strike { fit, attack });
+        match fit.miss() {
+            Some(DropMiss::Size) => skips.no_fall += 1,
+            Some(DropMiss::TauBound) => skips.tau_bound += 1,
+            Some(DropMiss::Residual) => skips.residual += 1,
+            None if !settles_on_a_note(input.notes, &fit, span_end) => skips.off_note += 1,
+            None => drops.push(Strike { fit, attack }),
         }
     }
     Ok(drops)
@@ -566,7 +713,9 @@ fn strikes(
 /// Whether the strike under a drop rises enough for its fit.
 ///
 /// A fall with `tau` under [`FAST_TAU`] needs [`STRIKE_RISE`], since the
-/// line swings where a ringing tone restarts its phase. So does a fall
+/// line swings where a ringing tone restarts its phase, and an attack of
+/// [`STRIKE_ATTACK`] or less, since it ends inside a slower attack, where
+/// the line wanders on a rising level. So does a fall
 /// that starts at [`LINE_HI`] or above, since a pitch falling into the band
 /// from above raises the band envelope with no strike. A slower fall that
 /// starts inside the band, with an attack of [`STRIKE_ATTACK`] or less,
@@ -574,23 +723,25 @@ fn strikes(
 /// rises by that note's decay alone, under 3 dB with 0.4 s notes and a 1 s
 /// decay.
 fn struck_enough(fit: &DropFit, rise: f64, attack: Seconds) -> bool {
-    rise >= STRIKE_RISE
-        || fit.tau >= FAST_TAU
-            && fit.f_end.get() + fit.df_hz < LINE_HI.get()
-            && attack <= STRIKE_ATTACK
+    if fit.tau < FAST_TAU {
+        return rise >= STRIKE_RISE && attack <= STRIKE_ATTACK;
+    }
+    rise >= STRIKE_RISE || fit.f_end.get() + fit.df_hz < LINE_HI.get() && attack <= STRIKE_ATTACK
 }
 
 /// Whether a drop settles on a note: a note sounds while the drop is
 /// settled, from five time constants after the onset to the end of the fit
-/// span, with its pitch within [`DROP_NOTE_MATCH`] of `f_end`. Several
-/// partials inside the band make the line swing at a saw's onset into a
-/// fall that settles off the note.
-fn settles_on_a_note(notes: &NoteList, fit: &DropFit) -> bool {
-    let from = fit.onset.get() + 5.0 * fit.tau.get();
-    let to = fit.onset.get() + DROP_FIT_END.get();
+/// span at `span_end` or [`DROP_FIT_END`], with its pitch within
+/// [`DROP_NOTE_MATCH`] of `f_end`. A slow fall that is not settled by then
+/// needs the note at the end of the span. Several partials inside the band
+/// make the line swing at a saw's onset into a fall that settles off the
+/// note.
+fn settles_on_a_note(notes: &NoteList, fit: &DropFit, span_end: Seconds) -> bool {
+    let to = (fit.onset.get() + DROP_FIT_END.get()).min(span_end.get());
+    let from = (fit.onset.get() + 5.0 * fit.tau.get()).min(to);
     notes.notes().iter().any(|note| {
-        note.onset().get() < to
-            && note.offset().get() > from
+        note.onset().get() <= to
+            && note.offset().get() >= from
             && (100.0 * note.pitch().get()
                 - 100.0 * MidiPitch::try_from(fit.f_end).map_or(f64::NAN, MidiPitch::get))
             .abs()
@@ -667,11 +818,24 @@ fn loudest_frame(mono: &[f64], rate: SampleRate) -> f64 {
         .fold(0.0, f64::max)
 }
 
+/// The time after the onset at which a fit's pitch falls inside the
+/// half-octave band around `f_end`, so a slow fall no longer reads as the
+/// band around twice the note.
+fn in_band(fit: &DropFit) -> f64 {
+    let edge = fit.f_end.get() * (2f64.powf(0.25) - 1.0);
+    if fit.df_hz > edge {
+        fit.tau.get() * (fit.df_hz / edge).ln()
+    } else {
+        0.0
+    }
+}
+
 /// Whether the fundamental of a struck note is weaker than its second
 /// harmonic: the median of the half-octave band around twice the note's
 /// pitch exceeds [`WEAK_RATIO`] times the band around the pitch, over
 /// `window`: from 50 ms after the onset or the note's start, whichever is
-/// later, to the end of the fit span or of the note. The line follows the
+/// later, and not before the fit's pitch lies inside the band around the
+/// note, to the end of the fit span or of the note. The line follows the
 /// strongest partial of its band, so it would read the second harmonic as
 /// the note.
 fn weak_fundamental(

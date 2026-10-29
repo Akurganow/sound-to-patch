@@ -95,7 +95,12 @@ settled pitch.
   against the RMS from 45 to 25 ms before it [fact]. A drop needs a rise
   of 6 dB when its $\tau$ is under 10 ms, when its fall starts at 200 Hz
   or above, or when the band envelope takes over 30 ms from 10 to 90 % of
-  its peak; otherwise it needs no rise [proposal].
+  its peak; otherwise it needs no rise [proposal]. A drop with $\tau$
+  under 10 ms also needs an attack of 30 ms or less: the fall ends inside
+  a slower attack, where the line wanders on the rising level [proposal].
+  On a real stem a fall with $\tau$ = 5.8 ms in the noise floor read an
+  attack of 208 ms; of the generated drops, only a false one at a soft
+  retrigger had both [fact, synthetic].
   - A saw falling from 220 Hz into the band raises the band envelope with
     no strike; without the rule its 4-semitone glide also read as a drop
     of 4.6 semitones [synthetic]. A 7-voice unison falling the same way
@@ -115,7 +120,15 @@ settled pitch.
   gate of active frames [proposal]. On a real stem a fast fall settling
   on a note two octaves under the line read as a drop at -60 dB, where an
   independent f0 found no voice [fact]. A generated drop 60 dB below a
-  loud passage reads none, 30 dB below it reads [synthetic].
+  loud passage reads none, 30 dB below it reads [synthetic]. A strike
+  whose 20 to 200 Hz RMS over those 20 ms lies more than 18 dB below the
+  loudest 25 ms frame of that band is no candidate either [proposal].
+  Checked against an independent IF on real stems, the drops of a line's
+  own low notes read 3 to 12 dB below the loudest passage of the band;
+  two quiet falls under a louder line in the band read 22 and 28.5 dB below
+  it, and the fall in the noise floor 33 dB [fact]. A generated drop
+  24 dB under an 87 Hz line reads none, 10 dB under it reads
+  [synthetic].
 - Fit. $f(t) = f_\text{end} + \Delta f\, e^{-t/\tau}$ is fitted by least
   squares to the line from 7 ms to 400 ms after the onset, or to the end of
   the note [fact]. For each $\tau$ the fit is linear in $f_\text{end}$ and
@@ -147,7 +160,12 @@ settled pitch.
   retrigger restarts the phase: two same-pitch retriggers read falls of 4
   and 11 semitones with $\tau$ of 12 ms [synthetic]. A fall faster than
   10 ms ends inside one period, and the average would spread its misfit,
-  so it keeps the raw RMS [fact].
+  so it keeps the raw RMS [fact]. A fall whose $\tau$ spans 1.5 periods
+  of $f_\text{end}$ or more changes little within one, so its error is
+  averaged over a full period, which removes the swing of a second
+  harmonic too [proposal]. A sweep into 32.7 Hz with $\tau$ = 90 ms and a
+  second harmonic at half the fundamental failed on the residual with half
+  a period and reads with a full one [synthetic].
 - Rule. A drop counts when $\Delta f$ in semitones,
   $12 \log_2((f_\text{end} + \Delta f) / f_\text{end})$, is above 2, when
   the fitted fall from 7 ms on, $\Delta f\, e^{-7\ \mathrm{ms}/\tau}$, is
@@ -166,10 +184,14 @@ settled pitch.
   semitones with $\tau$ of 0.7 ms [synthetic]. The line reads up to
   200 Hz, so a fall from more than three octaves above a low note starts
   far outside the band and is extrapolated from its tail [fact].
-- Weak fundamental. Before the fit, the medians of the half-octave bands
+- Weak fundamental. After the fit, the medians of the half-octave bands
   around the note's pitch and twice it are read from 50 ms after the onset
   or the note's start, whichever is later, to 400 ms after the onset or the
-  note's end, whichever is earlier [fact, proposal for the window]. When
+  note's end, whichever is earlier [fact, proposal for the window]. The
+  window starts no earlier than the time the fitted pitch falls inside
+  the band around $f_\text{end}$: a slow sweep from 80 Hz into 32.7 Hz
+  crosses the band around twice the note, and without that start a pure
+  sine read as a weak fundamental [synthetic]. When
   the upper band exceeds the lower by a factor of 2, 6 dB, the line would
   follow the second harmonic: the layer fits nothing for that note and sets
   the flag `weak_fundamental` [proposal]. White noise reads the upper band
@@ -177,14 +199,20 @@ settled pitch.
   a fit that reads the harmonic settles 1200 cents off the note and fails
   the settling rule [fact].
 - Settling. A drop also settles on a note: one note sounds while the drop
-  is settled, from five time constants after the onset to 400 ms, with its
-  pitch within 100 cents of $f_\text{end}$ [proposal]. At a saw's onset
+  is settled, from five time constants after the onset to the end of the
+  fit span, with its pitch within 100 cents of $f_\text{end}$ [proposal].
+  A slow fall not settled by the end of the span needs the note at its
+  end: with $\tau$ = 90 ms on a 350 ms note, five time constants end after
+  the note, and the sweep read as a glide from silence [synthetic]. At a saw's onset
   several partials share the band and the line swings; on a generated 55
   Hz saw that swing fitted a fall of 62 semitones with $\tau$ = 2 ms
   settling at 49.7 Hz, which this rule rejects [synthetic].
+- Skips. The summary line `drop skips` counts the low notes the search
+  read no drop at, by the first gate that stopped each: no onset, quiet,
+  no strike, weak fundamental, no fall, tau on bound, residual and off
+  note [fact].
 - Confidence. Low when the attack exceeds 30 ms: a slow swell is no
-  strike, and a drop in a real stem's noise floor read an attack of
-  208 ms [proposal, fact for the stem]. High needs a residual below 5 %,
+  strike [proposal]. High needs a residual below 5 %,
   $\tau$ of 10 ms or more and an attack of 12 ms or less, else medium
   [proposal]. The reasons are `fit_residual` and `attack_time` [fact].
   - The fit sees $e^{-7\ \mathrm{ms}/\tau}$ of the fall, a quarter at
@@ -223,8 +251,13 @@ Limits:
   drop with $\tau$ = 30 ms on a driven sine at 41.2, 55 and 82.4 Hz reads
   within 0.7 semitones and 7 % on $\tau$, at high confidence
   [synthetic]. On a saw the second harmonic swings the line at the note
-  itself, which half a period does not average out, and no drop is read
-  [synthetic].
+  itself, which half a period does not average out, and no drop with
+  $\tau$ under 1.5 periods is read [synthetic]. A second harmonic stronger
+  than the fundamental takes the line: of 36 generated sweeps from silence
+  with one 3.5 dB above it, none read [synthetic].
+- A fall under a louder line in the band, or under a louder passage of
+  the same line, is not read 18 dB or more below it, so a soft note after
+  loud ones loses its drop [fact].
 - A note above 200 Hz is not read: the band stops there [fact].
 - A kick with no pitch drop and a noise click, over a sub, reads a fast
   drop of 9 to 27 semitones at medium when it starts from silence, like a
@@ -272,7 +305,21 @@ A glide is pitch moving from one stable pitch to another.
   [proposal]: a 50 ms glide of 7 semitones jumps 20 across two unvoiced
   frames, the unison above 3.6 [synthetic]. On a real stem a note struck
   again 10 semitones lower, across three unvoiced frames, read as a glide;
-  that is about 40 cents per millisecond [fact].
+  that is about 40 cents per millisecond [fact]. Nor is a gap bridged
+  where the full-band RMS, over 10 ms, falls 20 dB below the 20 ms before
+  or after it, or 40 dB below the loudest frame of the stem [proposal]: on
+  real stems steps read as glides across a dip of 41 dB and at a noise
+  floor of -60 dB [fact].
+- Steps across a gap. Two stable pitches with a bridged gap between them
+  join no glide when the pitch jumps across the gap against the interval
+  by 20 cents or more, or by more than 60 % of it [proposal]. A step and
+  the settle after it keep moving the way the step jumped, at 5 to 17
+  cents per millisecond, so neither the slope limit nor the motion test
+  tells them from a glide [fact]. On real stems steps of 3 to 10.5
+  semitones read so, and one read +2 semitones where the f0 fell 6.7
+  across the gap [fact]. Unison glides whose voices leave the track
+  unvoiced for 75 ms jump 0.53 and 0.54 of the interval across the gap; a
+  step between 808 notes jumped 0.72 [synthetic].
 - A stable pitch is a span of 50 ms or more whose smoothed pitch stays
   within 30 cents of its running mean and whose least-squares slope stays
   at 86 cents per second or less [proposal]. 86 cents per second is the
@@ -306,15 +353,24 @@ A glide is pitch moving from one stable pitch to another.
 - Curve bound. An exponential (RC) portamento, $1 - e^{-t/\tau}$,
   approaches its target slower than any power of the curve, so its $p$
   sits on the upper bound of 5 [fact]. A fit within 5 % of that bound
-  counts when its residual is 20 cents or less, its interval is 2
-  semitones or more, its detected span lasts 90 ms or more, and it does
-  not come from silence; it reads low with the reason `curve_bound`
-  [proposal]. Without those conditions a melody step on a sine and two
-  driven drops read as glides on the bound [synthetic]. So does a
-  semitone step between 808 notes on one oscillator that keeps its phase:
-  the track smears it into a fast curve that fits the bound within
-  5 cents [synthetic]. The RC glides read span 4.8 to 9 semitones
-  [synthetic]; an RC glide under 2 semitones is not read [fact].
+  counts when its residual is 20 cents or less, its detected span lasts
+  90 ms or more, and it does not come from silence; it reads low with the
+  reason `curve_bound` [proposal]. Without those conditions a melody step
+  on a sine and two driven drops read as glides on the bound [synthetic].
+- Level jump. A glide on the bound under 2 semitones also needs a steady
+  level: the full-band RMS of two adjacent windows, each one period of the
+  lower pitch or 10 ms if longer, must differ by under 3 dB from 30 ms
+  before the fitted start to the end of the motion or 150 ms into it
+  [proposal]. A semitone step between 808 notes struck again on one
+  oscillator that keeps its phase fits the bound within 5 cents; at such
+  steps the level jumped 3.4 to 5.0 dB, on RC slides of 1 and 2 semitones
+  over sines and saws by 2.2 dB at most [synthetic]. A 2-semitone slide
+  often reads 1.9 on the tracker's 10-cent grid, so a hard cut at 2
+  semitones lost those too, as it lost 20 small slides of 1 to 1.8
+  semitones on real stems that an independent f0 confirmed [synthetic,
+  fact]. An RC slide of 1.2 semitones at 110 Hz reads on the bound
+  [synthetic]; one of a semitone reads 90 cents on the grid, under the
+  100-cent interval, and is not read [synthetic].
 - `time_s` is the full 0 to 100 % time [fact]. `start_s` is the fitted
   start less the track's lag at the start pitch [fact].
 - From silence. When a voiced run starts away from its first stable pitch
@@ -407,6 +463,13 @@ Limits:
 - Short glides of 1 to 3 semitones on real stems mostly read low, yet an
   independent f0 confirmed most of them: their confidence is pessimistic
   [fact].
+- A step between notes struck again at a matched level, with no jump of
+  3 dB, still reads as a small glide on the bound [synthetic]. A slide
+  over a level that swings 3 dB within a period, as a tremolo can, reads
+  none [fact].
+- A glide that moves more than 60 % of its interval inside an unvoiced
+  gap is not read: a 7-voice unison with a fast start jumped 0.76 of it
+  across 75 ms [synthetic].
 
 ## Vibrato
 

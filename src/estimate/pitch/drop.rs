@@ -45,6 +45,9 @@ const TAU_MAX: f64 = 1.0;
 /// A fit whose `tau` lies within this factor of [`DROP_TAU_MIN`] sits on
 /// the bound of the search.
 const TAU_EDGE: f64 = 1.01;
+/// A fit whose `tau` spans this many periods of `f_end` or more has its
+/// error averaged over a full period.
+const FULL_PERIODS: f64 = 1.5;
 /// Points of the log grid over `tau` before the golden-section refinement.
 const TAU_GRID: usize = 240;
 
@@ -54,18 +57,21 @@ the sub-band line from 7 ms to 400 ms after the onset, or to the end of the note
 grid and golden-section search from 3.04 ms, where exp(-7 ms / tau) = 0.1, to 1 s, f_end and \
 df linear for each tau; a fit with tau under 10 ms, or after a strike whose full-band RMS rises \
 20 dB, is fitted again on the line with its high-pass at 10 Hz, and the refit counts; \
-df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample \
-after the lowest point of the onset search where the 20 to 200 Hz envelope, averaged over a \
-centred 10 ms, reaches half the peak that follows; a strike whose full-band RMS over the 20 ms \
-after the onset lies more than 40 dB below the loudest 25 ms frame of the stem is no candidate; \
-a drop with tau under 10 ms, one that \
-starts at 200 Hz or above, or one whose envelope takes over 30 ms from 10 to 90 % of its peak \
-needs the full-band RMS over the 20 ms after the onset 6 dB or more above the 20 ms that end \
-25 ms before it; residual is the RMS of the fit's error, averaged over half a period of f_end when \
-tau is 10 ms or more, over \
-the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when df_st is above 2 and at \
-most 36, that fall is above 2 semitones too, tau is above the bound of the search, residual is \
-below 0.15, and f_end lies within 100 cents of a sounding note";
+df_st = 12 log2((f_end + df) / f_end); onset_s is the first sample after the lowest point of \
+the onset search where the 20 to 200 Hz envelope, averaged over a centred 10 ms, reaches half \
+the peak that follows; a strike whose full-band RMS over the 20 ms after the onset lies more \
+than 40 dB below the loudest 25 ms frame of the stem, or whose 20 to 200 Hz RMS over those \
+20 ms lies more than 18 dB below the loudest 25 ms frame of that band, is no candidate; a drop \
+with tau under 10 ms needs an envelope that takes 30 ms or less from 10 to 90 % of its peak; a \
+drop with tau under 10 ms, one that starts at 200 Hz or above, or one whose envelope takes over \
+30 ms from 10 to 90 % of its peak needs the full-band RMS over the 20 ms after the onset 6 dB or \
+more above the 20 ms that end 25 ms before it; residual is the RMS of the fit's error, averaged \
+over half a period of f_end when tau is 10 ms or more and over a full period when tau spans 1.5 \
+periods or more, over the fitted fall from 7 ms on, df exp(-7 ms / tau); a drop counts when \
+df_st is above 2 and at most 36, that fall is above 2 semitones too, tau is above the bound of \
+the search, residual is below 0.15, and f_end lies within 100 cents of a note that sounds from \
+5 tau after the onset, or from the end of the fit span if that comes first, to the end of the \
+fit span";
 
 /// A fitted drop.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -115,11 +121,37 @@ impl DropFit {
     /// `tau` on the bound means the best fit lies below it.
     #[must_use]
     pub fn accepted(&self) -> bool {
-        self.df().is_some_and(|df| df > DROP_MIN && df <= DROP_MAX)
-            && self.visible().is_some_and(|visible| visible > DROP_MIN)
-            && self.tau.get() > TAU_EDGE * DROP_TAU_MIN.get()
-            && self.residual < DROP_MAX_RESIDUAL
+        self.miss().is_none()
     }
+
+    /// The first condition of [`Self::accepted`] the fit misses, or `None`
+    /// when it counts as a drop.
+    #[must_use]
+    pub fn miss(&self) -> Option<DropMiss> {
+        if !(self.df().is_some_and(|df| df > DROP_MIN && df <= DROP_MAX)
+            && self.visible().is_some_and(|visible| visible > DROP_MIN))
+        {
+            Some(DropMiss::Size)
+        } else if self.tau.get() <= TAU_EDGE * DROP_TAU_MIN.get() {
+            Some(DropMiss::TauBound)
+        } else if self.residual >= DROP_MAX_RESIDUAL {
+            Some(DropMiss::Residual)
+        } else {
+            None
+        }
+    }
+}
+
+/// Why a fit does not count as a drop.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DropMiss {
+    /// The drop, in full or inside the fit span, lies outside
+    /// [`DROP_MIN`] to [`DROP_MAX`].
+    Size,
+    /// `tau` sits on the bound of the search.
+    TauBound,
+    /// The residual reaches [`DROP_MAX_RESIDUAL`].
+    Residual,
 }
 
 /// The onset of a strike inside `from..to`, from the band envelope.
@@ -239,15 +271,18 @@ pub fn fit_drop(line: &SubBandLine, onset: Seconds, end: Seconds) -> Option<Drop
     })
 }
 
-/// The RMS of the fit's error averaged over half a period of `f_end`,
+/// The RMS of the fit's error averaged over half a period of `f_end`, or
+/// over a full period when `tau` spans [`FULL_PERIODS`] periods or more,
 /// centred and shortened at the ends.
 ///
 /// The third harmonic of a driven note beats with the fundamental and
 /// swings the line at twice the note: a driven 808 left a raw residual of
-/// 23 % of its fall. The average removes that swing and keeps a slower
+/// 23 % of its fall. Half a period removes that swing and keeps a slower
 /// error, from a wrong model or from the phase restart of a retrigger,
 /// which a full period hid: two same-pitch retriggers then read falls of
-/// 4 and 11 semitones with a `tau` of 12 ms.
+/// 4 and 11 semitones with a `tau` of 12 ms. A second harmonic swings the
+/// line once per period, and a sweep with one at half the fundamental
+/// failed on the residual, at a `tau` of 50 to 150 ms.
 fn period_rms(points: &[(f64, f64)], f_end: f64, df: f64, tau: f64, rate: SampleRate) -> f64 {
     let errors: Vec<f64> = points
         .iter()
@@ -258,7 +293,13 @@ fn period_rms(points: &[(f64, f64)], f_end: f64, df: f64, tau: f64, rate: Sample
     } else {
         1
     };
-    let half = period.max(1) / 4;
+    // A fall over FULL_PERIODS periods or longer changes little within
+    // one, so a full period removes the swing of the second harmonic too.
+    let half = if tau * f_end >= FULL_PERIODS {
+        period.max(1) / 2
+    } else {
+        period.max(1) / 4
+    };
     let mut sums = vec![0.0; errors.len() + 1];
     for (k, e) in errors.iter().enumerate() {
         sums[k + 1] = sums[k] + e;

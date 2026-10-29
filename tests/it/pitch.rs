@@ -320,6 +320,7 @@ fn review_glides() -> Vec<(String, Signal)> {
     for (name, start_hz, semitones, tau) in [
         ("rc-glide-110hz-7st-tau50ms", 110.0, 7.0, 0.05),
         ("rc-glide-196hz-down-5st-tau80ms", 196.0, -5.0, 0.08),
+        ("rc-glide-110hz-1.2st-tau30ms", 110.0, 1.2, 0.03),
     ] {
         cases.push((
             name.to_owned(),
@@ -835,14 +836,23 @@ fn steps_between_808_notes_report_no_glide_or_drop() {
 }
 
 #[test]
-fn a_semitone_step_on_one_808_oscillator_is_no_glide() {
+fn a_semitone_step_on_one_808_oscillator_is_no_glide_but_a_semitone_slide_is() {
     // One sine keeps its phase through every step, and each note strikes
     // its envelope again. The track smears the step from 43 to 44 into a
-    // fast curve that fits the upper bound of p within 5 cents.
+    // fast curve that fits the upper bound of p within 5 cents; the level
+    // jumps at the strike.
     let name = "steps-808-continuous-semitone";
     let read = layer(name, case(name));
     assert_eq!(read.glides, []);
     assert_eq!(read.drops, []);
+    // An RC slide of 1.2 semitones fits the same bound at a steady level.
+    let name = "rc-glide-110hz-1.2st-tau30ms";
+    let read = layer(name, case(name));
+    assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
+    let glide = &read.glides[0];
+    assert!(glide.value.on_bound, "{glide:?}");
+    assert!((glide.value.interval.get() - 1.2).abs() < 0.15, "{glide:?}");
+    assert_eq!(glide.confidence.level(), Some(Level::Low));
 }
 
 #[test]
@@ -1084,6 +1094,17 @@ fn a_low_first_note_from_silence_reads_no_drop() {
 /// The pitch layer of a synthetic track that follows `cents(t)` from 0.2
 /// to 1.4 s at the tracker's hop, over silence, with `notes`.
 fn track_layer(cents: impl Fn(f64) -> f64, notes: &[(f64, f64, f64)]) -> PitchLayer {
+    let mono = vec![0.0; round_to_usize(1.6 * f64::from(RATE))];
+    audio_track_layer(&mono, |t| Some(cents(t)), notes)
+}
+
+/// The pitch layer of a synthetic track as [`track_layer`] reads it, voiced
+/// where `cents(t)` gives a pitch, over `mono`.
+fn audio_track_layer(
+    mono: &[f64],
+    cents: impl Fn(f64) -> Option<f64>,
+    notes: &[(f64, f64, f64)],
+) -> PitchLayer {
     let hop = 128.0 / f64::from(RATE);
     let frames = (0..round_to_usize(1.6 / hop))
         .map(|k| {
@@ -1092,14 +1113,15 @@ fn track_layer(cents: impl Fn(f64) -> f64, notes: &[(f64, f64, f64)]) -> PitchLa
                 time: s(t),
                 f0: (0.2..1.4)
                     .contains(&t)
-                    .then(|| Hz::new(440.0 * 2f64.powf((cents(t) - 6900.0) / 1200.0)).unwrap()),
+                    .then(|| cents(t))
+                    .flatten()
+                    .map(|c| Hz::new(440.0 * 2f64.powf((c - 6900.0) / 1200.0)).unwrap()),
                 level: Decibels::new(0.0).unwrap(),
             }
         })
         .collect();
-    let mono = vec![0.0; round_to_usize(1.6 * f64::from(RATE))];
     PitchLayer::of(&PitchInput {
-        mono: &mono,
+        mono,
         rate: rate(),
         track: &PitchTrack::from_frames(frames),
         notes: &note_list(notes),
@@ -1391,4 +1413,141 @@ fn a_saw_struck_from_silence_reports_no_drop() {
     let read = drop_layer(&mono, &notes);
     assert_eq!(read.counts.drop_candidates, 1);
     assert_eq!(read.drops, []);
+}
+
+#[test]
+fn a_quiet_fall_under_a_louder_line_in_the_band_is_not_read() {
+    // A line at 87.3 Hz, inside the band, plays for 1 s; after 1 s of
+    // silence a drop follows 24 dB under it, as a fall under a louder line
+    // in the band reads on a real stem, or 10 dB under it. The full-band
+    // gate of 40 dB passes both.
+    let rate = f64::from(RATE);
+    let notes = note_list(&[(0.2, 0.9, 41.0), (2.418, 3.091, 28.0)]);
+    for (down_db, drops) in [(24.0, 0), (10.0, 1)] {
+        let mut mono: Vec<f64> = (0..round_to_usize(rate))
+            .map(|n| {
+                0.8 * (std::f64::consts::TAU * 87.3 * f64::from(u32::try_from(n).unwrap()) / rate)
+                    .sin()
+            })
+            .collect();
+        mono.extend(std::iter::repeat_n(0.0, round_to_usize(rate)));
+        let gain = 10_f64.powf(-down_db / 20.0);
+        mono.extend(
+            PitchDrop::row(41.2, 41.2, 0.03)
+                .render(rate)
+                .iter()
+                .map(|x| gain * x),
+        );
+        let read = drop_layer(&mono, &notes);
+        assert_eq!(read.drops.len(), drops, "{down_db} dB: {:?}", read.counts);
+        assert_eq!(read.counts.drop_skips.quiet, 1 - drops, "{down_db} dB");
+    }
+}
+
+#[test]
+fn a_fast_fall_inside_a_slow_attack_is_not_read() {
+    // A fall with tau 5 ms ends inside a 60 ms attack, where the line
+    // wanders on the rising level: a fall in a real stem's noise floor
+    // read so, with an attack of 208 ms. The same fall struck sharply
+    // reads.
+    for (attack_s, drops) in [(0.06, 0), (0.0, 1)] {
+        let drop = PitchDrop {
+            attack_s,
+            ..PitchDrop::row(45.0, 100.0, 0.005)
+        };
+        let read = drop_layer(
+            &drop.render(f64::from(RATE)),
+            &note_list(&[(0.25, 1.2, 30.0)]),
+        );
+        assert_eq!(read.drops.len(), drops, "{attack_s}: {:?}", read.counts);
+        assert_eq!(read.counts.drop_skips.no_strike, 1 - drops, "{attack_s}");
+    }
+}
+
+/// A sweep from 0.2 s of silence, `f_end + df exp(-t / tau)`, with a
+/// second harmonic of `h2`, a 3 ms attack and a 1 s decay, `length_s`
+/// long and followed by 0.3 s of silence.
+fn sweep(f_end: f64, df: f64, tau: f64, h2: f64, length_s: f64) -> Vec<f64> {
+    let rate = f64::from(RATE);
+    (0..round_to_usize((0.5 + length_s) * rate))
+        .map(|n| {
+            let t = f64::from(u32::try_from(n).unwrap()) / rate - 0.2;
+            if !(0.0..length_s).contains(&t) {
+                return 0.0;
+            }
+            let phase = std::f64::consts::TAU * (f_end * t + df * tau * (1.0 - (-t / tau).exp()));
+            0.5 * (t / 0.003).min(1.0) * (phase.sin() + h2 * (2.0 * phase + 1.0).sin()) * (-t).exp()
+        })
+        .collect()
+}
+
+#[test]
+fn a_slow_sweep_from_silence_into_a_short_low_note_reads_as_a_drop() {
+    // From 80.7 Hz into C1, tau 90 ms, under a 350 ms note: five time
+    // constants end after the note, and the fall crosses the band around
+    // twice the note. A second harmonic at half the fundamental swings the
+    // line once per period. A real sweep of this shape read as a glide
+    // from silence.
+    for h2 in [0.0, 0.5] {
+        let read = drop_layer(
+            &sweep(32.7, 48.0, 0.09, h2, 0.6),
+            &note_list(&[(0.2, 0.55, 24.0)]),
+        );
+        assert_eq!(read.drops.len(), 1, "{h2}: {:?}", read.counts);
+        let fit = &read.drops[0].value;
+        assert!((fit.f_end.get() - 32.7).abs() < 1.0, "{h2}: {fit:?}");
+        assert!((fit.tau.get() / 0.09 - 1.0).abs() < 0.25, "{h2}: {fit:?}");
+    }
+}
+
+#[test]
+fn a_step_and_settle_across_a_gap_is_no_glide() {
+    // A4 to F#4 with the track unvoiced from 0.8 to 0.83 s. A step lands
+    // 500 cents down across the gap and settles 200 more after it: the
+    // pitch keeps moving the way it jumped, yet the jump carries most of
+    // the interval. A glide jumps 100 cents across the same gap.
+    let notes = [(0.2, 0.8, 69.0), (0.8, 1.4, 62.0)];
+    let gap = |t: f64| (0.8..0.83).contains(&t);
+    let step = |t: f64| {
+        (!gap(t)).then(|| {
+            if t < 0.8 {
+                6900.0
+            } else {
+                6200.0 + 200.0 * (-(t - 0.83) / 0.02).exp()
+            }
+        })
+    };
+    let glide = |t: f64| {
+        (!gap(t)).then(|| {
+            let x = ((t - 0.7) / 0.3).clamp(0.0, 1.0);
+            let jump = if t >= 0.83 { 100.0 } else { 0.0 };
+            6900.0 - jump - 600.0 * x.min(1.0)
+        })
+    };
+    let silent = vec![0.0; round_to_usize(1.6 * f64::from(RATE))];
+    let read = audio_track_layer(&silent, step, &notes);
+    assert_eq!(read.glides, [], "{:?}", read.glides);
+    let read = audio_track_layer(&silent, glide, &notes);
+    assert_eq!(read.glides.len(), 1, "{:?}", read.glides);
+    // A dip of 30 dB in the audio under the gap breaks the sound, and the
+    // gap is not bridged.
+    let rate = f64::from(RATE);
+    let lag = 0.0232 - 0.5 / 400.0;
+    let mono: Vec<f64> = (0..round_to_usize(1.6 * rate))
+        .map(|n| {
+            let t = f64::from(u32::try_from(n).unwrap()) / rate;
+            let dip = if (0.805 - lag..0.825 - lag).contains(&t) {
+                0.03
+            } else {
+                1.0
+            };
+            0.5 * dip * (std::f64::consts::TAU * 400.0 * t).sin()
+        })
+        .collect();
+    let read = audio_track_layer(&mono, glide, &notes);
+    assert!(
+        read.glides.iter().all(|g| g.value.start.get() > 0.8),
+        "{:?}",
+        read.glides
+    );
 }

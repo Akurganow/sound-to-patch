@@ -80,13 +80,15 @@ fn analyze_writes_both_files_for_a_generated_wav() {
     // 0.3 s at 120 BPM is shorter than a beat; `report.rs` and `tempo.rs`
     // check the tempo lines of longer stems. The given A1 starts at
     // 0.25 s under the held saw: the band envelope rises at the stem's
-    // cut end, a candidate strike, but no drop fits.
+    // cut end, a candidate strike, but the level does not rise as a drop
+    // there needs.
     assert_eq!(
         stdout,
         format!(
             "tempo: 120 BPM as given; the stem is shorter than one beat\n\
              glides: 0, 0 too short\n\
              pitch drops: 0 of 1 low strikes\n\
+             drop skips: 1 no strike\n\
              vibrato: 0 of 0 steady spans\n\
              wrote {}\nwrote {}\n",
             out.join("layers.json").display(),

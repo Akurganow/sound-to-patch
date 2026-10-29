@@ -143,7 +143,7 @@ A glide:
 | `start_s` | seconds | 0 or more | The fitted start of the motion. |
 | `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
 | `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
-| `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, needs an interval of 2 semitones or more and reads low with `curve_bound`. |
+| `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, needs a steady level across its motion when its interval is under 2 semitones, and reads low with `curve_bound`. |
 | `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. |
 
 Its reasons are `motion_span` (seconds), `fit_residual` (cents),
@@ -158,7 +158,7 @@ A drop:
 | `df_st` | semitones | above 2, at most 36 | The drop at the onset, `12 log2((f_end + df) / f_end)`. |
 | `df_hz` | hertz | above 0 | The same in hertz above `f_end_hz`. |
 | `tau_s` | seconds | above 0.003 | The time constant of `f_end + df exp(-t / tau)`, above the 3.04 ms floor of the search. |
-| `residual` | share | 0 to 0.15 | The RMS residual of the fit over the fall it shows from 7 ms on, `df_hz exp(-7 ms / tau_s)`; with `tau_s` of 0.01 or more, of the error averaged over half a period of `f_end_hz`. |
+| `residual` | share | 0 to 0.15 | The RMS residual of the fit over the fall it shows from 7 ms on, `df_hz exp(-7 ms / tau_s)`; with `tau_s` of 0.01 or more, of the error averaged over half a period of `f_end_hz`, or over a full period when `tau_s` spans 1.5 periods or more. |
 
 Its reasons are `fit_residual` and `attack_time` (seconds): the time the
 band envelope of the strike takes from 10 % to 90 % of its peak. A drop
