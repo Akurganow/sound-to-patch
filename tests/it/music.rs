@@ -151,94 +151,70 @@ fn offsets_of(id: &str) -> BTreeSet<u8> {
     }
 }
 
+// Offsets recorded from `rust-music-theory` =0.4.0. A scale is
+// `Scale::from_regex("C <name>")`, then `absolute_intervals()` with each
+// `semitone_count % 12`, as a sorted set. A chord is
+// `Chord::try_chord_intervals(quality, number)` with a running sum of
+// `semitone_count` taken mod 12, plus 0, as a sorted set. The crate stays out
+// of the build: it needs an old `clap` that pulls in `atty`.
 #[test]
 fn the_scales_rust_music_theory_has_equal_the_dictionary() {
-    let shared = [
-        ("C ionian", "scale.major"),
-        ("C dorian", "scale.dorian"),
-        ("C phrygian", "scale.phrygian"),
-        ("C lydian", "scale.lydian"),
-        ("C mixolydian", "scale.mixolydian"),
-        ("C aeolian", "scale.natural-minor"),
-        ("C locrian", "scale.locrian"),
-        ("C harmonic minor", "scale.harmonic-minor"),
-        ("C melodic minor", "scale.melodic-minor"),
-        ("C pentatonic major", "scale.major-pentatonic"),
-        ("C pentatonic minor", "scale.minor-pentatonic"),
-        ("C blues", "scale.minor-blues"),
-        ("C whole tone", "scale.whole-tone"),
+    let shared: [(&str, &[u8]); 13] = [
+        ("scale.major", &[0, 2, 4, 5, 7, 9, 11]),
+        ("scale.dorian", &[0, 2, 3, 5, 7, 9, 10]),
+        ("scale.phrygian", &[0, 1, 3, 5, 7, 8, 10]),
+        ("scale.lydian", &[0, 2, 4, 6, 7, 9, 11]),
+        ("scale.mixolydian", &[0, 2, 4, 5, 7, 9, 10]),
+        ("scale.natural-minor", &[0, 2, 3, 5, 7, 8, 10]),
+        ("scale.locrian", &[0, 1, 3, 5, 6, 8, 10]),
+        ("scale.harmonic-minor", &[0, 2, 3, 5, 7, 8, 11]),
+        ("scale.melodic-minor", &[0, 2, 3, 5, 7, 9, 11]),
+        ("scale.major-pentatonic", &[0, 2, 4, 7, 9]),
+        ("scale.minor-pentatonic", &[0, 3, 5, 7, 10]),
+        ("scale.minor-blues", &[0, 3, 5, 6, 7, 10]),
+        ("scale.whole-tone", &[0, 2, 4, 6, 8, 10]),
     ];
-    for (name, id) in shared {
-        let scale = rust_music_theory::scale::Scale::from_regex(name).unwrap();
-        let oracle: BTreeSet<u8> = scale
-            .absolute_intervals()
-            .iter()
-            .map(|interval| interval.semitone_count % 12)
-            .collect();
-        assert_eq!(oracle, offsets_of(id), "{name}");
+    for (id, oracle) in shared {
+        assert_eq!(
+            oracle.iter().copied().collect::<BTreeSet<u8>>(),
+            offsets_of(id),
+            "{id}"
+        );
     }
 }
 
 #[test]
 fn the_chords_rust_music_theory_has_differ_only_by_policy() {
-    use rust_music_theory::chord::{Chord, Number, Quality};
-    let shared = [
-        (Quality::Major, Number::Triad, "chord.major-triad"),
-        (Quality::Minor, Number::Triad, "chord.minor-triad"),
-        (Quality::Suspended2, Number::Triad, "chord.suspended-2nd"),
-        (Quality::Suspended4, Number::Triad, "chord.suspended-4th"),
-        (Quality::Augmented, Number::Triad, "chord.augmented-triad"),
-        (Quality::Diminished, Number::Triad, "chord.diminished-triad"),
-        (Quality::Major, Number::MajorSeventh, "chord.major-seventh"),
-        (Quality::Minor, Number::Seventh, "chord.minor-seventh"),
-        (
-            Quality::Augmented,
-            Number::Seventh,
-            "chord.augmented-seventh",
-        ),
-        (
-            Quality::Augmented,
-            Number::MajorSeventh,
-            "chord.augmented-major-seventh",
-        ),
-        (
-            Quality::Diminished,
-            Number::Seventh,
-            "chord.diminished-seventh",
-        ),
-        (
-            Quality::HalfDiminished,
-            Number::Seventh,
-            "chord.half-diminished",
-        ),
-        (
-            Quality::Minor,
-            Number::MajorSeventh,
-            "chord.minor-major-seventh",
-        ),
-        (Quality::Dominant, Number::Seventh, "chord.dominant-seventh"),
-        (Quality::Dominant, Number::Ninth, "chord.dominant-9"),
-        (Quality::Major, Number::Ninth, "chord.major-9"),
-        (Quality::Minor, Number::Ninth, "chord.minor-9"),
-        (Quality::Dominant, Number::Eleventh, "chord.dominant-11"),
-        (Quality::Major, Number::Eleventh, "chord.major-11"),
-        (Quality::Minor, Number::Eleventh, "chord.minor-11"),
-        (Quality::Dominant, Number::Thirteenth, "chord.dominant-13"),
-        (Quality::Major, Number::Thirteenth, "chord.major-13"),
-        (Quality::Minor, Number::Thirteenth, "chord.minor-13"),
+    let shared: [(&str, &[u8]); 23] = [
+        ("chord.major-triad", &[0, 4, 7]),
+        ("chord.minor-triad", &[0, 3, 7]),
+        ("chord.suspended-2nd", &[0, 2, 7]),
+        ("chord.suspended-4th", &[0, 5, 7]),
+        ("chord.augmented-triad", &[0, 4, 8]),
+        ("chord.diminished-triad", &[0, 3, 6]),
+        ("chord.major-seventh", &[0, 4, 7, 11]),
+        ("chord.minor-seventh", &[0, 3, 7, 10]),
+        ("chord.augmented-seventh", &[0, 4, 8, 10]),
+        ("chord.augmented-major-seventh", &[0, 4, 8, 11]),
+        ("chord.diminished-seventh", &[0, 3, 6, 9]),
+        ("chord.half-diminished", &[0, 3, 6, 10]),
+        ("chord.minor-major-seventh", &[0, 3, 7, 11]),
+        ("chord.dominant-seventh", &[0, 4, 7, 10]),
+        ("chord.dominant-9", &[0, 2, 4, 7, 10]),
+        ("chord.major-9", &[0, 2, 4, 7, 11]),
+        ("chord.minor-9", &[0, 2, 3, 7, 10]),
+        ("chord.dominant-11", &[0, 2, 4, 5, 7, 10]),
+        ("chord.major-11", &[0, 2, 4, 5, 7, 11]),
+        ("chord.minor-11", &[0, 2, 3, 5, 7, 10]),
+        ("chord.dominant-13", &[0, 2, 4, 5, 7, 9, 10]),
+        ("chord.major-13", &[0, 2, 4, 5, 7, 9, 11]),
+        ("chord.minor-13", &[0, 2, 3, 5, 7, 9, 10]),
     ];
-    let mut differ = Vec::new();
-    for (quality, number, id) in shared {
-        let mut tone = 0;
-        let mut oracle = BTreeSet::from([0]);
-        for interval in Chord::try_chord_intervals(quality, number).unwrap() {
-            tone += interval.semitone_count;
-            oracle.insert(tone % 12);
-        }
-        if oracle != offsets_of(id) {
-            differ.push(id);
-        }
-    }
+    let differ: Vec<&str> = shared
+        .into_iter()
+        .filter(|(id, oracle)| oracle.iter().copied().collect::<BTreeSet<u8>>() != offsets_of(id))
+        .map(|(id, _)| id)
+        .collect();
     // The dictionary's policy: a 13 chord has no eleventh.
     assert_eq!(
         differ,

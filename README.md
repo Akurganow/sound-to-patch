@@ -265,7 +265,7 @@ and ideas, from which we copy no code, text or data.
 - [kymatio](https://github.com/kymatio/kymatio) (BSD-3-Clause): scattering transform implementation, read for joint time-frequency scattering.
 - [LAION-CLAP](https://github.com/LAION-AI/CLAP) (CC0-1.0): 48 kHz, 10 s, 64-band log-mel recipe.
 - [libf0](https://github.com/groupmm/libf0) (MIT): YIN, pYIN and salience f0 estimator definitions.
-- [librosa](https://github.com/librosa/librosa) (ISC): MFCC, mel and spectral descriptor definitions, reimplemented in Rust.
+- [librosa](https://github.com/librosa/librosa) (ISC): MFCC, mel and spectral descriptor definitions, reimplemented in Rust, and the `pyin` function that the f0 tracker follows step by step.
 - [llama-cpp-2](https://github.com/utilityai/llama-cpp-rs) (MIT OR Apache-2.0): Rust binding facts for local audio language models.
 - [LTU](https://github.com/YuanGongND/ltu) (no license): audio language model judged weak on timbre attributes. Inspiration only.
 - [MERT](https://github.com/yizhilll/MERT) (Apache-2.0 code, CC BY-NC 4.0 weights): music embedding model, surveyed for pitch and reverb probes. Inspiration only.
@@ -292,12 +292,13 @@ and ideas, from which we copy no code, text or data.
 - [producer-pal](https://github.com/adamjmurray/producer-pal) (GPL-3.0-or-later): how an agent server assembles its skill text from fragments. Inspiration only.
 - [pychord](https://github.com/yuma-m/pychord) (MIT): a chord-quality table in the pinned golden tools, a local oracle of the chord tones of the music dictionary.
 - [pYIN and Tony](https://github.com/c4dm/pyin) (GPL-2.0-or-later): pYIN note-tracking HMM on the pitch track. Inspiration only.
+- [pyin-rs](https://github.com/Sytronik/pyin-rs) (MIT): the Rust port of librosa's `pyin`. The f0 tracker in `src/notes/pyin.rs` ports its numerics and returns the same frames, with a banded Viterbi search. Its notice ships in `THIRD-PARTY-LICENSES.html`.
 - [Qwen2-Audio](https://github.com/QwenLM/Qwen2-Audio) (no license, Apache-2.0 weights): audio language model tested on timbre attributes. Inspiration only.
 - [rack](https://github.com/sinkingsugar/rack) (MIT OR Apache-2.0): reference for plug-in state and MIDI mapping across formats.
 - [RecklessSerum2Bank](https://github.com/RecklessBoise/RecklessSerum2Bank) (MIT code, presets free to use per its README): 250 generated Serum 2 presets, the one open bank of parser fixtures.
 - [RemFx](https://github.com/mhrice/RemFx) (Apache-2.0 code, non-commercial weights): effect detection and removal chain, surveyed for the effects layer. Inspiration only.
 - [RMVPE](https://github.com/Dream-High/RMVPE) (Apache-2.0): local weighted-average decode over 9 bins.
-- [rust-music-theory](https://github.com/ozankasikci/rust-music-theory) (MIT): scales and chords, a test-only oracle of the music dictionary.
+- [rust-music-theory](https://github.com/ozankasikci/rust-music-theory) (MIT): scales and chords, the source of the offsets a test of the music dictionary pins.
 - [SALMONN](https://github.com/bytedance/SALMONN) (Apache-2.0): audio language model judged weak on synth attributes.
 - [SciPy](https://github.com/scipy/scipy) (BSD-3-Clause): reference signal-processing routines, such as Hilbert and Butterworth filters.
 - [serum (rich6feet)](https://github.com/rich6feet/serum) (no license found): an index of Serum 2 factory table names and content paths. Inspiration only.

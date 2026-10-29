@@ -5,16 +5,16 @@
 //! the octave check of the notes and the f0 contour of each note. It runs
 //! at the model rate with frames of 2048 samples, a hop of 128 samples
 //! (5.8 ms) and pitch bins of a tenth of a semitone, over the whole stem
-//! at once. Its cost grows with the stem: #64 reports its memory and time,
-//! which this epic does not reduce.
+//! at once. The tracker is the in-repo port of pYIN in `pyin.rs`; its cost
+//! grows with the length of the stem.
 
 use std::error::Error;
 use std::fmt;
 
-use pyin::{Framing, PYINExecutor, PadMode};
-
+use super::pyin::{Pyin, PyinError, Settings};
 use super::{Contour, ContourPoint, MODEL_RATE, Note, NoteList};
 use crate::audio::{ResampleError, SampleRate, resample};
+use crate::cast;
 use crate::dsp::{StftParams, frame_rms};
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
@@ -74,17 +74,18 @@ impl PitchTrack {
         for x in &mut samples {
             *x /= peak;
         }
-        let mut executor = PYINExecutor::new(
-            TRACK_FMIN.get(),
-            TRACK_FMAX.get(),
-            MODEL_RATE.get(),
-            TRACK_FRAME,
-            None,
-            Some(TRACK_HOP),
-            Some(1.0 / BINS_PER_SEMITONE),
-        );
-        let (times, f0, voiced, _) =
-            executor.pyin(&samples, f64::NAN, Framing::Center(PadMode::Constant(0.0)));
+        let tracker = Pyin::new(Settings {
+            fmin: TRACK_FMIN.get(),
+            fmax: TRACK_FMAX.get(),
+            rate: MODEL_RATE.get(),
+            frame: TRACK_FRAME,
+            hop: TRACK_HOP,
+            bins_per_semitone: cast::round_to_usize(BINS_PER_SEMITONE).unwrap_or(1),
+        })
+        .map_err(|PyinError(reason)| TrackError::Tracker(reason))?;
+        let f0s = tracker
+            .run(&samples)
+            .map_err(|PyinError(reason)| TrackError::Tracker(reason))?;
         // The same centred frames as the tracker's, so frame m lines up.
         let rms = frame_rms(
             &samples,
@@ -94,14 +95,15 @@ impl PitchTrack {
                 .unwrap_or(StftParams::fixed(TRACK_FRAME)),
         );
         let loudest = rms.iter().copied().fold(0.0, f64::max);
-        let frames = times
+        let frames = f0s
             .into_iter()
-            .zip(f0)
-            .zip(voiced)
             .enumerate()
-            .map(|(m, ((time, f0), voiced))| TrackFrame {
-                time: Seconds::clamped(time),
-                f0: (voiced && f0.is_finite() && f0 > 0.0).then(|| Hz::clamped(f0)),
+            .map(|(m, f0)| TrackFrame {
+                time: Seconds::clamped(
+                    cast::usize_to_f64(m) * cast::usize_to_f64(TRACK_HOP)
+                        / f64::from(MODEL_RATE.get()),
+                ),
+                f0: f0.filter(|hz| hz.is_finite() && *hz > 0.0).map(Hz::clamped),
                 level: rms
                     .get(m)
                     .and_then(|&value| Decibels::from_amplitude_gain(value / loudest).ok())
@@ -184,6 +186,8 @@ pub enum TrackError {
     Resample(ResampleError),
     /// A sample at this index is NaN or infinite.
     NotFinite(usize),
+    /// The tracker could not run, for the reason given.
+    Tracker(&'static str),
 }
 
 impl fmt::Display for TrackError {
@@ -193,6 +197,7 @@ impl fmt::Display for TrackError {
                 write!(f, "cannot prepare the stem for the f0 track: {source}")
             }
             Self::NotFinite(index) => write!(f, "cannot track f0: sample {index} is not finite"),
+            Self::Tracker(reason) => write!(f, "cannot track f0: {reason}"),
         }
     }
 }
@@ -201,7 +206,7 @@ impl Error for TrackError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             Self::Resample(source) => Some(source),
-            Self::NotFinite(_) => None,
+            Self::NotFinite(_) | Self::Tracker(_) => None,
         }
     }
 }
