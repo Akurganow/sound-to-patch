@@ -1084,7 +1084,7 @@ mod tests {
             } else if t < -0.06 {
                 0.0
             } else if t < -0.04 {
-                0.5 * (t + 0.06) / 0.02
+                25.0 * (t + 0.06)
             } else if (0.013..0.019).contains(&t) {
                 0.0
             } else {
