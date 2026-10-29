@@ -1,4 +1,4 @@
 ---
 type: regex
-pattern: 'osc_1_unison_detune'
+pattern: 'osc_1_unison_detune\b'
 ---

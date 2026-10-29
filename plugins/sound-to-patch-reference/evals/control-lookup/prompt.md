@@ -6,4 +6,4 @@ max_turns: 10
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-I am writing a sound-to-patch edit list for a Vital preset. Which preset key sets the unison detune of oscillator 1, in which unit does the edit list take its value, and what is its default? Answer in three short lines: key, unit, default.
+I am writing a sound-to-patch edit list for a Vital preset. Which preset key sets the unison detune of oscillator 1, in which unit does the edit list take its value, and what is its default? Answer in three lines that start with `Key:`, `Unit:` and `Default:`.

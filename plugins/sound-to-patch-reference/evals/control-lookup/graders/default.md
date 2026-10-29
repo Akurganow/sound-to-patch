@@ -1,5 +1,5 @@
 ---
 type: regex
-pattern: 'default\W[^\n]*\b20 ?(%|percent)'
-flags: i
+pattern: '^\W*default\W*:\W*20(\.0+)?\s?(%|percent)'
+flags: im
 ---

@@ -1,5 +1,5 @@
 ---
 type: regex
-pattern: 'unit\W[^\n]*(percent|%)'
-flags: i
+pattern: '^\W*unit\W*:\W*(percent|%)'
+flags: im
 ---

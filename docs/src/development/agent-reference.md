@@ -318,43 +318,55 @@ Which install paths carry `reference/`:
 
 Windows: with symbolic links off in git (`core.symlinks=false`), both links
 check out as small text files. The plugin then installs with no reference,
-and the project skill does not load. Before you clone or install from
-GitHub, let git create symbolic links: enable Developer Mode (or run the
-shell elevated), then clone with `git clone -c core.symlinks=true …`, or
-set `git config --global core.symlinks true` so the clone the agent
-harness makes gets it too. `cargo xtask check-plugins` reports such a file
-as "symlink not checked out".
+and the project skill does not load. The
+[guide](../guide/synth-reference.md#install-it) gives the git settings
+that avoid it. `cargo xtask check-plugins` reports such a file as
+"symlink not checked out".
 
 ## Evaluation
 
 Three eval cases under `plugins/sound-to-patch-reference/evals/` measure
-how far the reference helps an agent: a control lookup in the Vital
-catalogue, a sound-word lookup and a note-rule lookup in the music
-dictionary. Each case asks for facts that only the reference states, and
-regex graders check them in the last message. The note-rule case also has
-a judge grader for the slot list. A `tool_used: Skill` grader shows
-whether the skill fired. It counts toward no score.
+how far the reference helps an agent. Each is a single-fact lookup:
 
-Each run starts in an empty folder. The run without the plugin therefore
-sees no reference file, and the run with it reads the skill's `reference`
-link. The plugin loads in place, so the run needs read access to the
-plugin folder and to `reference/`, which the link points at. Run the
-cases from the repository root:
+- `control-lookup` asks for the key, unit and default of a Vital control;
+- `word-lookup` asks for the bass sense of "warm", the report key that
+  checks it and how far listeners agree on it;
+- `rhythm-lookup` asks for the slots and note length of a bass grid in
+  the music dictionary.
 
-```sh
+The cases check that the agent reaches the reference and uses it. They do
+not check every rule of `SKILL.md`. Most of the answers appear only in the
+reference; the control key is general knowledge of the open Vital source.
+Regex graders check each value next to its label or unit in the last
+message. A `tool_used: Skill` grader shows whether the skill fired, and it
+counts toward no score.
+
+Each run starts in an empty folder, so the run without the plugin sees no
+reference file. The plugin loads in place from the repository. The run
+with it therefore needs read access to the skill folder and to
+`reference/`, the target of the skill's `reference` link. The grant leaves
+out the plugin's `evals/` folder, which holds the expected answers. In a
+permission rule, a path that starts with `//` is absolute, so `/$PWD`
+gives `//` plus the repository path. Run the cases from the repository
+root:
+
+```bash
 P=plugins/sound-to-patch-reference
-A=(); for t in Read Glob Grep; do A+=("$t(/$PWD/$P/**)" "$t(/$PWD/reference/**)"); done
+A=(); for t in Read Glob Grep; do A+=("$t(/$PWD/$P/skills/**)" "$t(/$PWD/reference/**)"); done
 claude plugin eval $P --tag baseline --runs 3 --model <model> \
   --no-publish --threshold 0 --allow-tools "${A[@]}"
 ```
 
-`--ablation with-without` is the default for a plugin path: every case
-runs three times without the plugin and three times with it, and the
-report gives both scores and their difference. The results go to
-`evals/results/`, which git ignores. A pull request that reruns the cases
+`--ablation with-without` is the default for a plugin path. Every case
+runs three times without the plugin and three times with it, in the same
+eval run. The verdict of each grader in each run is in
+`aggregate-result.json` and `report.html` under `evals/results/`, which
+git ignores. `--threshold 0` lets the command pass whatever the scores, so
+the comparison is read by hand. A change to the skill passes when, in one
+eval run, its with-plugin score beats the no-plugin score of the same run
+on at least two of the three cases. A pull request that reruns the cases
 records the score of each run, the model and the date, and nothing about
-the machine or the account. A later change to the skill must beat the
-baseline on at least two of the three cases.
+the machine or the account.
 
 ## Sources
 

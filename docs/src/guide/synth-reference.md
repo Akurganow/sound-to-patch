@@ -8,6 +8,8 @@ label, the preset key, the unit, the range and how to tune each control by
 ear. It also holds the music dictionary and the word dictionary: what
 words such as warm or plucky mean, and how far listeners agree on them.
 
+Only Vital is covered today. Serum 2 follows with its adapter.
+
 ## Install it
 
 Add the repository as a marketplace, then install the plugin:
@@ -25,8 +27,10 @@ the same skill under `.claude/skills/`.
 
 On Windows, let git create symbolic links before you install from GitHub
 or clone the repository. Enable Developer Mode (or run the shell
-elevated), then run `git config --global core.symlinks true`. Without
-them the plugin installs with no reference. The
+elevated). Then run `git config --global core.symlinks true`, or clone
+with `git clone -c core.symlinks=true …`. Without symbolic links the
+plugin installs with no reference, and a clone of the repository loads no
+skill. The
 [agent reference page](../development/agent-reference.md#plugin-loading)
 lists which install paths carry the reference.
 
