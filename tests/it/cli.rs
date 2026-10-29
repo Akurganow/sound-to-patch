@@ -53,12 +53,11 @@ fn a_closed_pipe_is_not_an_error() {
 /// folder, which a trycmd case cannot name: the tempo line, the pitch
 /// lines, then both written files. The notes come from a file, so the
 /// model does not run; the report tests check the notes-step lines. The f0
-/// track still runs for the pitch layer, and it takes most of the time.
+/// track still runs for the pitch layer.
 #[test]
 fn analyze_writes_both_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
-    // A 0.3 s saw keeps the debug f0 track, about 40 s per second of
-    // audio, short.
+    // A 0.3 s saw keeps the debug f0 track short.
     let rate = 22_050.0;
     let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
     let saw = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0);

@@ -10,8 +10,9 @@ and tolerance. `cargo xtask golden-check` enforces it.
 Pitch fixtures under `pitch/` are generated too, by this repository's own
 transcriber and f0 track on generated glides, vibratos and a bass line.
 Each file names its generator and carries its signal's recipe, the notes
-and the track frames. The f0 track takes about 40 s per second of audio in
-a debug build, so the pitch tests read these files.
+and the track frames. The f0 track takes about half a second per second
+of audio in a debug build, which adds up over the signals, so the pitch
+tests read these files.
 `pitch_fixtures_are_current`, an ignored test, rebuilds every file in a
 release build and fails when one differs:
 `cargo nextest run --release --run-ignored only -E 'test(pitch_fixtures_are_current)'`,

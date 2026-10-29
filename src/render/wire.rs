@@ -128,6 +128,10 @@ pub enum Reply {
         frames: usize,
         /// Whether the tail reached its cap.
         capped: bool,
+        /// How long the plug-in took to load the state, in seconds. Absent
+        /// for a render of the init patch, which loads no state.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        state_load_s: Option<f64>,
     },
     /// The plug-in state, base64.
     Saved {
@@ -191,11 +195,13 @@ mod tests {
         let line = reply_line(&Reply::Rendered {
             frames: 176_400,
             capped: false,
+            state_load_s: None,
         })
         .unwrap();
         let rendered = Reply::Rendered {
             frames: 176_400,
             capped: false,
+            state_load_s: None,
         };
         let (output, reply) = parse_reply(&line).unwrap();
         assert_eq!((output, reply.unwrap()), ("", rendered.clone()));

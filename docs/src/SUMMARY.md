@@ -8,6 +8,7 @@
 - [Transcribing a stem](guide/notes.md)
 - [Presets](guide/preset.md)
 - [Rendering a preset](guide/render.md)
+- [Using the synth reference](guide/synth-reference.md)
 
 # Analysis
 

@@ -33,7 +33,9 @@ pub mod fake;
 pub mod file;
 pub mod plugin;
 pub mod recipe;
+pub mod session;
 pub mod state;
+pub mod timing;
 pub mod wire;
 
 pub use recipe::{
@@ -541,6 +543,12 @@ pub trait Renderer {
     ///
     /// Returns a [`RenderError`] when the plug-in fails.
     fn save_state(&mut self) -> Result<Vec<u8>, RenderError>;
+
+    /// Returns how long the state load of the last render took, when the
+    /// backend measures it. A render of the init patch loads no state.
+    fn last_state_load(&self) -> Option<Seconds> {
+        None
+    }
 }
 
 /// A render that failed.

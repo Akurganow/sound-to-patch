@@ -9,17 +9,21 @@
 //! hang is simulated: the render returns [`RenderError::TimedOut`] at once
 //! and never waits.
 //!
-//! The fake keeps no sound between renders, so it plays no pre-roll. It
-//! remembers the last state it loaded, which [`Renderer::save_state`]
-//! returns; before any load it holds [`FakePatch::init`].
+//! The fake keeps no sound between renders, so the pre-roll changes
+//! nothing in its clip. It still steps through the state load and the
+//! pre-roll of each render, and [`FakeRenderer::with_log`] records the
+//! steps. It remembers the last state it loaded, which
+//! [`Renderer::save_state`] returns; before any load it holds
+//! [`FakePatch::init`].
 
 use std::f64::consts::TAU;
+use std::sync::{Arc, Mutex};
 
 use serde::{Deserialize, Serialize};
 
 use super::{
-    EventKind, HostIdentity, PresetState, RenderError, RenderJob, RenderRecord, Rendered, Renderer,
-    note_events,
+    EventKind, HostIdentity, PreRoll, PresetState, RenderError, RenderJob, RenderRecord, Rendered,
+    Renderer, note_events,
 };
 use crate::audio::Audio;
 use crate::cast;
@@ -93,6 +97,20 @@ pub enum Fault {
     Rename,
 }
 
+/// A step the fake played, in the order a plug-in host plays them.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FakeStep {
+    /// The job's state loaded.
+    Load,
+    /// A step of the recipe's pre-roll.
+    PreRoll(PreRoll),
+    /// The clip of a job, named by the end of its last note.
+    Clip(Seconds),
+}
+
+/// The steps that renderers played, shared between renderers.
+pub type FakeLog = Arc<Mutex<Vec<FakeStep>>>;
+
 /// A seeded additive synth behind the [`Renderer`] trait.
 #[derive(Clone, Debug)]
 pub struct FakeRenderer {
@@ -102,6 +120,8 @@ pub struct FakeRenderer {
     faults: Vec<(u64, Fault)>,
     loaded: Option<Vec<u8>>,
     fixed: Option<FakePatch>,
+    log: Option<FakeLog>,
+    last_state_load: Option<Seconds>,
 }
 
 impl FakeRenderer {
@@ -116,6 +136,8 @@ impl FakeRenderer {
             faults: Vec::new(),
             loaded: None,
             fixed: None,
+            log: None,
+            last_state_load: None,
         }
     }
 
@@ -124,6 +146,13 @@ impl FakeRenderer {
     #[must_use]
     pub fn with_patch(mut self, patch: FakePatch) -> Self {
         self.fixed = Some(patch);
+        self
+    }
+
+    /// Records each step it plays in `log`.
+    #[must_use]
+    pub fn with_log(mut self, log: FakeLog) -> Self {
+        self.log = Some(log);
         self
     }
 
@@ -165,6 +194,10 @@ impl Renderer for FakeRenderer {
         self.play_job(job, false)
     }
 
+    fn last_state_load(&self) -> Option<Seconds> {
+        self.last_state_load
+    }
+
     fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
         match &self.loaded {
             Some(state) => Ok(state.clone()),
@@ -204,6 +237,8 @@ impl FakeRenderer {
                 renderer: self.synth,
             });
         }
+        self.last_state_load = None;
+        let loading = std::time::Instant::now();
         let patch = if load && fault != Some(Fault::KeepInit) {
             let patch = match &self.fixed {
                 Some(patch) => patch.clone(),
@@ -225,6 +260,25 @@ impl FakeRenderer {
             }
             FakePatch::init()
         };
+        if load {
+            self.last_state_load = Seconds::new(loading.elapsed().as_secs_f64()).ok();
+        }
+        if let Some(log) = &self.log {
+            let mut log = log
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            if load {
+                log.push(FakeStep::Load);
+            }
+            log.extend(
+                job.recipe()
+                    .pre_roll()
+                    .iter()
+                    .copied()
+                    .map(FakeStep::PreRoll),
+            );
+            log.push(FakeStep::Clip(job.last_note_off()));
+        }
         let mut rng = SplitMix::for_render(self.seed, index);
         let (mono, end) = play(&patch, job, &mut rng, fault == Some(Fault::Silence))?;
         let audio = Audio::new(job.recipe().sample_rate(), vec![mono.clone(), mono])?;

@@ -23,7 +23,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
-use super::state::{Mismatch, readback_mismatches, saved_preset};
+use super::state::{Mismatch, TEMPO_PATH, readback_mismatches, saved_preset};
 use super::{PresetState, RenderError, RenderJob, Rendered, Renderer};
 use crate::audio::{Audio, SampleRate};
 use crate::cast;
@@ -202,9 +202,14 @@ impl fmt::Display for LoadFault {
                     .map(ToString::to_string)
                     .collect();
                 let more = mismatches.len().saturating_sub(SHOWN);
+                let tempo = if mismatches.iter().any(|m| m.path == TEMPO_PATH) {
+                    ". The plug-in sets settings.beats_per_minute from the host tempo, --bpm / 60 in beats per second, so an edit of the preset cannot fix that value; report it with the tempo"
+                } else {
+                    ""
+                };
                 write!(
                     f,
-                    "the plug-in did not keep the preset: {}{}. Check that the preset loads in the synth with these values",
+                    "the plug-in did not keep the preset: {}{}{tempo}. Check that the preset loads in the synth with these values",
                     shown.join("; "),
                     if more > 0 {
                         format!(" and {more} more")
@@ -253,7 +258,7 @@ pub fn render_checked(
             reasons: silence_reasons(job.state()),
         });
     }
-    let mismatches = readback_mismatches(job.state(), &saved)?;
+    let mismatches = readback_mismatches(job.state(), &saved, job.bpm())?;
     if !mismatches.is_empty() {
         let fell_back = matches!(
             (saved_preset(&saved), saved_preset(&init_state)),
@@ -312,6 +317,28 @@ fn vital_silence_reasons(settings: &Map<String, Value>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_tempo_mismatch_says_the_preset_cannot_fix_it() {
+        let tempo = Mismatch {
+            path: TEMPO_PATH.to_owned(),
+            sent: 2.0.into(),
+            saved: Some(2.5.into()),
+        };
+        let message = LoadFault::Readback(vec![tempo]).to_string();
+        assert!(
+            message.contains("from the host tempo, --bpm / 60 in beats per second"),
+            "{message}"
+        );
+        assert!(message.contains("cannot fix that value"), "{message}");
+        let other = Mismatch {
+            path: "settings.volume".to_owned(),
+            sent: 1.0.into(),
+            saved: None,
+        };
+        let message = LoadFault::Readback(vec![other]).to_string();
+        assert!(!message.contains("host tempo"), "{message}");
+    }
 
     fn tone(hz: f64, gain: f64) -> Audio {
         let rate = SampleRate::new(44_100).unwrap();

@@ -1,8 +1,9 @@
 //! The pitch layer (#114, #66, #67, #148): the sub-band line, pitch drops,
 //! glides and vibrato on generated signals.
 //!
-//! The f0 track takes about 40 s per second of audio in a debug build, so
-//! the glide and vibrato cases read committed fixtures: the notes and the
+//! The f0 track takes about half a second per second of audio in a debug
+//! build, which adds up over the generated signals, so the glide and
+//! vibrato cases read committed fixtures: the notes and the
 //! track that the transcriber and the f0 track give for each generated
 //! signal. `pitch_fixtures_are_current` rebuilds them in a release build
 //! and fails when one differs. It compares the printed floats byte for
