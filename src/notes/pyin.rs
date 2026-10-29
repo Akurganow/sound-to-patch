@@ -14,8 +14,9 @@
 //!
 //! The numerics are those of pyin 1.2.0, not of librosa 1.0: a window of
 //! half a frame, no pruned moves, and the last bits of its sums and logs. A
-//! change to any of them moves frames, so `tests/it/track.rs` and the
-//! evaluation of the notes step pin the result.
+//! change to any of them moves frames, and the pinned bins of the three
+//! stems catch it. `tests/it/track.rs` and the local evaluation of the notes
+//! step check tolerances only.
 //!
 //! The code ports pyin-rs (MIT) and the `pyin` function of librosa (ISC).
 //! Their notices ship in `THIRD-PARTY-LICENSES.html`, from `about.hbs`.
