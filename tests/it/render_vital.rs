@@ -79,7 +79,7 @@ fn vital_saves_the_state_it_loaded() {
     renderer.render(&lead(sent.clone())).unwrap();
     let saved = renderer.save_state().unwrap();
     assert_eq!(saved_preset(&saved).unwrap()["preset_name"], "Probe");
-    let mismatches = readback_mismatches(&sent, &saved).unwrap();
+    let mismatches = readback_mismatches(&sent, &saved, Bpm::new(120.0).unwrap()).unwrap();
     assert!(
         mismatches.is_empty(),
         "{}",
@@ -260,7 +260,10 @@ fn a_tuning_does_not_carry_over_to_the_next_preset() {
     let tuned = renderer.render(&lead(up_two.clone())).unwrap();
     assert!(magnitude(&tuned.audio, 293.66) > 10.0 * magnitude(&tuned.audio, 261.63));
     let saved = renderer.save_state().unwrap();
-    assert_eq!(readback_mismatches(&up_two, &saved).unwrap(), []);
+    assert_eq!(
+        readback_mismatches(&up_two, &saved, Bpm::new(120.0).unwrap()).unwrap(),
+        []
+    );
     // A preset without a tuning plays in the default tuning, not the last one.
     let plain = renderer.render(&lead(state(|_| {}))).unwrap();
     assert!(
@@ -327,4 +330,19 @@ fn the_mod_wheel_reaches_a_route() {
         rms(&moved.audio),
         rms(&still.audio)
     );
+}
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn a_render_at_another_tempo_passes_the_load_check() {
+    // The preset holds 120 BPM; the render plays at 140 BPM.
+    let sent = state(|settings| {
+        settings.insert("beats_per_minute".into(), 2.0.into());
+    });
+    let mut renderer = renderer();
+    let job = RenderJob::for_material(sent, Material::Lead, Bpm::new(140.0).unwrap());
+    render_checked(&mut renderer, &job).unwrap();
+    let saved = saved_preset(&renderer.save_state().unwrap()).unwrap();
+    let tempo = saved["settings"]["beats_per_minute"].as_f64().unwrap();
+    assert!((tempo - 140.0 / 60.0).abs() < 1e-6, "{tempo}");
 }

@@ -253,7 +253,7 @@ pub fn render_checked(
             reasons: silence_reasons(job.state()),
         });
     }
-    let mismatches = readback_mismatches(job.state(), &saved)?;
+    let mismatches = readback_mismatches(job.state(), &saved, job.bpm())?;
     if !mismatches.is_empty() {
         let fell_back = matches!(
             (saved_preset(&saved), saved_preset(&init_state)),

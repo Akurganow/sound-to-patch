@@ -74,7 +74,8 @@ So a render counts only when two checks pass:
    no oscillator and no sample being on.
 2. The state the plug-in saves after the render holds the preset: its
    name, its tuning and every numeric control, each number within one step
-   of a 32-bit float. A preset without a tuning plays in Vital's default
+   of a 32-bit float. The tempo control is the exception: the plug-in sets
+   it from `--bpm`, so it must hold that tempo, in beats per second. A preset without a tuning plays in Vital's default
    tuning, never in the tuning of the preset rendered before it. When
    the saved state is the init patch, the plug-in did not load the preset
    at all, as with a preset saved by a newer build of Vital.
