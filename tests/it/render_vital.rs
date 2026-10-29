@@ -490,3 +490,18 @@ fn the_saved_tempo_follows_the_model_over_a_sweep() {
     println!("{} tempos, {} failures", tempos.len(), failures.len());
     assert!(failures.is_empty(), "{failures:?}");
 }
+
+#[test]
+#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]
+fn the_draws_of_a_spread_on_vital_are_distinct() {
+    use sound_to_patch::render::session::BoxedRenderer;
+    use sound_to_patch::render::spread::{SPREAD_RUNS, draw};
+
+    let renders = draw(
+        |_| Ok(Box::new(renderer()) as BoxedRenderer),
+        &lead(state(|_| {})),
+        SPREAD_RUNS,
+    )
+    .unwrap();
+    assert_eq!(renders.len(), SPREAD_RUNS);
+}

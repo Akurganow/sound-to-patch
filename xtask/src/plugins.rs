@@ -17,9 +17,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 
-use crate::fetch::Sha256Digest;
+use crate::fetch::sha256_hex;
 use crate::reference::{CONTENTS_ABOVE, REFERENCE};
 
 /// The line every plugin manifest description, plugin README and
@@ -94,7 +93,7 @@ fn hashed_names(text: &str, digests: &[&str]) -> Vec<String> {
     for size in 1..=CORE_NAME_WORDS {
         for run in words.windows(size) {
             let phrase = run.join(" ");
-            let digest = Sha256Digest(Sha256::digest(phrase.as_bytes()).into()).to_string();
+            let digest = sha256_hex(phrase.as_bytes());
             if digests.contains(&digest.as_str()) {
                 found.insert(phrase);
             }
@@ -637,7 +636,7 @@ mod tests {
 
     #[test]
     fn hashed_names_match_runs_of_one_to_three_words() {
-        let digest = |text: &str| Sha256Digest(Sha256::digest(text.as_bytes()).into()).to_string();
+        let digest = |text: &str| sha256_hex(text.as_bytes());
         let one = digest("zorblax");
         let three = digest("mixed nuts here");
         let digests = [one.as_str(), three.as_str()];

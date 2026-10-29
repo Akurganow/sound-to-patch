@@ -308,6 +308,85 @@ The table also names the synth, its build, the host, the architecture of
 the host process, the recipe version and the number of runs. It measures
 only: nothing in it tunes a render.
 
+### Repeat-render spread
+
+`cargo run --release -p xtask -- render-spread --out spread.json` renders
+one preset 20 times and writes its spread, the noise floor every later
+comparison cites. The
+[render spread page](../reference/formats/render-spread.md) lists the
+outputs, the statistic and the tolerance. `--preset`, `--midi` and
+`--bpm` name what it renders, by default the `routes.vital` fixture and
+`tests/cmd/data/three-notes.mid` at 120 BPM. The load check runs first on
+a fresh renderer, so a spread never measures a preset the plug-in did
+not load.
+
+A fresh Vital instance renders bit-identically to any other fresh
+instance, and each later render on one instance differs. So the 20
+draws render in sequence on one fresh instance, through
+`render::spread::draw`. A draw whose samples repeat another's, by their
+SHA-256, fails the run: a repeat would count as a draw. `--runs` takes 3
+to 256 renders, the most one instance renders before the session
+restarts it. Each output's row counts the renders that lie within the
+limit of the others, each held out in turn, and records two diagnostics
+of the draws: the adjacent ratio and the lag-1 autocorrelation.
+
+Each render is stored as a WAV file in a folder beside the output, named
+after it with `-renders`, and measured from the stored file, as a
+consumer reads it. `analyze` writes each render's layer report there,
+with the MIDI file and the exact tempo. The file is local: the spread
+depends on the synth's build and its quality setting. The repository
+keeps no spread of record; the per-recording metrics are on the
+[reference recordings](reference-recordings.md) page only.
+
+On the fake, `render_spread` checks that a spread's 20 draws are
+distinct, that a draw refuses fewer than 3 renders and more than 256,
+and that the distinct check refuses the renders of two workers that
+start alike. It recomputes the 95th percentile of the 190 pairs and the
+largest leave-one-out median from 20 stored renders with its own
+quantile and median. It checks that a render of the same preset matches
+while a louder one does not. After the gain fit, a louder render and one
+8 dB quieter match on the shape, the quieter one flagged beyond ±3 dB,
+and a longer release does not match. Two more tests read the committed
+reference report: one checks its ids, hashes, gains and verdicts, the
+other recomputes every count, range and table of the reference page. On
+Vital, `the_draws_of_a_spread_on_vital_are_distinct` draws 20 renders of
+one lead note on the plug-in and finds all of them distinct.
+
+### Reference recordings
+
+`cargo run --release -p xtask -- render-reference --root DIR --manifest FILE --out report.json`
+compares reference recordings with automatic renders. A reference
+recording is a render of a generated preset and MIDI file made in a
+standard DAW host, not by our host, so the comparison is not circular.
+Each manifest line names the `preset_id`, the `preset_file`, the
+`midi_file`, the `bpm` and the `render_file`, with paths from `--root`,
+and a `state_file` when the DAW exported the state it played.
+
+The task reads every manifest line first: the preset, the MIDI file, the
+recording and the exported state. It refuses two lines with one id, the
+preset id and the MIDI file's name, since both would write one renders
+folder. Then, for each recording, it runs the load check, draws 20
+renders of the preset with the same MIDI file and tempo, and measures
+their spread. `--workers` recordings render at once, 4 by default, each
+on its own fresh instance. The recording compares with the renders on
+the clip outputs of the spread page, against the tolerance. An
+exported state is read back against the preset as the load check does,
+the tempo against the recording's tempo. The name and the tuning are
+left out, because the DAW names the export and saves no tuning in a
+preset file. A recording that differs beyond the tolerance is reported
+with its numbers. Nothing is tuned to make it match.
+
+Recordings and renders stay local. The repository holds the preset ids,
+the hashes and the metrics of the comparison, on the
+[reference recordings](reference-recordings.md) page.
+
+The verdict comes after a gain fit, as the
+[render spread page](../reference/formats/render-spread.md#comparing-with-the-spread)
+describes: one gain per recording matches its level to the renders, and
+the recording matches on the peak-to-RMS ratio, the duration and the
+envelope. The report records each gain, flags one beyond ±3 dB, and
+keeps the comparison as recorded on all five outputs for information.
+
 ## Fuzzing
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated

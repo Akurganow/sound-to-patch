@@ -42,6 +42,11 @@ impl fmt::Display for Sha256Digest {
     }
 }
 
+/// The SHA-256 of `bytes` as 64 lower-case hex digits.
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256Digest(Sha256::digest(bytes).into()).to_string()
+}
+
 /// Downloads `url` to `out` and keeps the file only if its SHA-256 equals
 /// `expected`.
 ///

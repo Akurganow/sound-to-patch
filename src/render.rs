@@ -34,6 +34,7 @@ pub mod file;
 pub mod plugin;
 pub mod recipe;
 pub mod session;
+pub mod spread;
 pub mod state;
 pub mod timing;
 pub mod wire;
