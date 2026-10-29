@@ -28,23 +28,24 @@ one tags or uploads by hand.
    which only `main` may deploy to, so a workflow on another branch cannot
    read it.
 5. The tag starts the publish workflow. It stops unless the tag is
-   `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64 binary,
-   the universal plug-in host, the man page, the shell completions and
-   `THIRD-PARTY-LICENSES.html`. It checks that the host holds both slices
-   and that both binaries print the tag's version. The host's x86_64
-   slice runs only where the runner has Rosetta; without it, the workflow
-   warns and checks the arm64 slice alone. The notices cover what the
-   host's dependency tree holds, which includes the library's, and the
-   workflow checks that they name `vst3-host`. The job packs each folder
-   in `plugins/` as its own zip archive and publishes a release with the
-   changelog section as its notes. The notes end with a line that names
-   both binaries.
+   `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64
+   binary, the universal plug-in host, the man page, the shell
+   completions and `THIRD-PARTY-LICENSES.html`. It checks that the host
+   holds both slices and that both binaries print the tag's version. The
+   host's x86_64 slice runs only where the runner has Rosetta; without
+   it, the workflow warns and checks the arm64 slice alone. The notices
+   cover the workspace: both binaries, which share only the core crate,
+   and the three crates that only xtask uses. The workflow checks that
+   they name `vst3-host`. The job packs each folder in `plugins/` as its
+   own zip archive and publishes a release with the changelog section as
+   its notes. The notes end with a line that names both binaries.
 
 The version commit starts the CI workflow again. The `release` job skips a
 commit whose subject starts with `chore(version)`, so the loop stops there.
 
 The `test` job runs `cargo xtask check-fuzz-lock`, which fails when
-`Cargo.lock` and `fuzz/Cargo.lock` name different versions of the crate.
+`Cargo.lock` and `fuzz/Cargo.lock` name different versions of the
+library or its core.
 
 ## The release archive
 

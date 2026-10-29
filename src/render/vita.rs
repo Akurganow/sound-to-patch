@@ -29,8 +29,8 @@ use serde_json::{Value, json};
 
 use super::state::saved_preset;
 use super::{
-    ClipEnd, HostIdentity, PreRoll, RenderError, RenderJob, RenderNote, RenderRecord, Rendered,
-    Renderer, frame_of,
+    ClipEnd, HostIdentity, PlayError, PreRoll, RenderError, RenderJob, RenderNote, RenderRecord,
+    Rendered, Renderer, frame_of,
 };
 use crate::audio::{Audio, SampleRate, decode};
 use crate::synth::Synth;
@@ -219,15 +219,17 @@ fn single_note(job: &RenderJob) -> Result<&RenderNote, RenderError> {
         });
     }
     let [note] = job.notes() else {
-        return Err(RenderError::Note(format!(
+        return Err(PlayError::Note(format!(
             "the open engine plays one note per render, and the job has {}; render a MIDI file with one note, or render through the plug-in",
             job.notes().len()
-        )));
+        ))
+        .into());
     };
     if !job.controls().is_empty() {
-        return Err(RenderError::Control(
+        return Err(PlayError::Control(
             "the open engine takes no controller changes; render through the plug-in".to_owned(),
-        ));
+        )
+        .into());
     }
     Ok(note)
 }
@@ -442,7 +444,10 @@ mod tests {
         assert!(matches!(error, RenderError::WrongSynth { .. }), "{error}");
         let two = RenderJob::new(vital.clone(), vec![note(60), note(64)], bpm()).unwrap();
         let error = renderer.render(&two).unwrap_err();
-        assert!(matches!(error, RenderError::Note(_)), "{error}");
+        assert!(
+            matches!(error, RenderError::Play(PlayError::Note(_))),
+            "{error}"
+        );
         assert!(error.to_string().contains("the job has 2"), "{error}");
         let wheel = RenderJob::new(vital, vec![note(60)], bpm())
             .unwrap()
@@ -452,7 +457,10 @@ mod tests {
             }])
             .unwrap();
         let error = renderer.render(&wheel).unwrap_err();
-        assert!(matches!(error, RenderError::Control(_)), "{error}");
+        assert!(
+            matches!(error, RenderError::Play(PlayError::Control(_))),
+            "{error}"
+        );
         let tuned = probe(|preset| {
             preset["tuning"] = json!({
                 "scale_start_midi_note": 60, "reference_midi_note": 2, "tuning_name": "",

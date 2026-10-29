@@ -2536,9 +2536,21 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "sound-to-patch-core",
  "symphonia",
  "tempfile",
  "trycmd",
+]
+
+[[package]]
+name = "sound-to-patch-core"
+version = "0.21.0"
+dependencies = [
+ "approx",
+ "clap 4.6.7",
+ "proptest",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2548,7 +2560,7 @@ dependencies = [
  "base64",
  "rustix",
  "serde_json",
- "sound-to-patch",
+ "sound-to-patch-core",
  "vst3-host",
 ]
 

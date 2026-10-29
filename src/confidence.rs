@@ -856,11 +856,16 @@ mod tests {
         assert_eq!(Level::High.min(Level::Low), Level::Low);
     }
 
+    /// Finite values of both signs, subnormals and zero included.
+    fn finite() -> impl Strategy<Value = f64> {
+        prop::num::f64::NORMAL | prop::num::f64::SUBNORMAL | prop::num::f64::ZERO
+    }
+
     fn reason() -> impl Strategy<Value = Reason> {
         let code = prop::sample::select(ReasonCode::ALL);
         let signal = prop_oneof![
             any::<u64>().prop_map(Signal::Count),
-            crate::units::tests::finite().prop_map(Signal::Number),
+            finite().prop_map(Signal::Number),
             any::<bool>().prop_map(Signal::Flag),
         ];
         (code, signal).prop_map(|(code, signal)| Reason::new(code, signal).unwrap())
@@ -868,9 +873,7 @@ mod tests {
 
     fn confidence() -> impl Strategy<Value = Confidence<Cents>> {
         let level = prop_oneof![Just(Level::Low), Just(Level::Medium), Just(Level::High)];
-        let spread = prop::option::of(
-            crate::units::tests::finite().prop_map(|v| Cents::new(v.abs()).unwrap()),
-        );
+        let spread = prop::option::of(finite().prop_map(|v| Cents::new(v.abs()).unwrap()));
         let reasons = prop::collection::vec(reason(), 1..4);
         (any::<bool>(), level, spread, reasons).prop_map(|(estimate, level, spread, reasons)| {
             if estimate {

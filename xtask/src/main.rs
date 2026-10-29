@@ -87,7 +87,8 @@ enum Task {
     Golden,
     /// Check the golden vectors against the pinned tool versions.
     GoldenCheck,
-    /// Check that `ARCHITECTURE.md` names every top-level module of `src/`.
+    /// Check that `ARCHITECTURE.md` names every top-level module of `src/`
+    /// and every workspace crate.
     CheckArchitecture,
     /// Check that `Cargo.lock` holds no ONNX Runtime crate.
     CheckNoOrt,

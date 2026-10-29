@@ -11,17 +11,17 @@ use std::time::Instant;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
-use sound_to_patch::audio::{Audio, write_wav};
-use sound_to_patch::notes::Velocity;
-use sound_to_patch::render::wire::{
+use sound_to_patch_core::audio::{Audio, write_wav};
+use sound_to_patch_core::notes::Velocity;
+use sound_to_patch_core::render::wire::{
     PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote,
 };
-use sound_to_patch::render::{
+use sound_to_patch_core::render::{
     ControlKind, EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of,
     note_events,
 };
-use sound_to_patch::synth::Synth;
-use sound_to_patch::units::Seconds;
+use sound_to_patch_core::synth::Synth;
+use sound_to_patch_core::units::Seconds;
 use vst3_host::{
     AudioBuffers, BusDirection, MediaType, MidiChannel, MidiEvent, Plugin, ProcessMode,
     TransportPosition, Vst3Host,

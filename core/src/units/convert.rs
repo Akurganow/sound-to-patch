@@ -60,6 +60,7 @@ impl Cents {
     /// Returns the frequency ratio `2^(c / 1200)`.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Cents;
     ///
     /// assert_eq!(Cents::new(1200.0)?.to_ratio()?, 2.0);
@@ -123,6 +124,7 @@ impl Decibels {
     /// magnitude such as a sample value or a spectral magnitude weight.
     ///
     /// ```
+    /// # extern crate sound_to_patch_core as sound_to_patch;
     /// use sound_to_patch::units::Decibels;
     ///
     /// let gain = Decibels::new(-20.0)?.to_amplitude_gain()?;

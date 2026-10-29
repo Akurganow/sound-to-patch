@@ -2,17 +2,18 @@
 //! and renders notes through it, for `sound-to-patch`.
 //!
 //! It reads one request per line on standard input and answers each with
-//! one reply line on standard output; `sound_to_patch::render::wire` holds
-//! the protocol. Before it loads a plug-in, it points file descriptor 1 at
-//! standard error and keeps the real standard output for replies, so
-//! nothing a plug-in prints can split or swallow a reply. It opens no
-//! window and needs no run loop. Plug-ins load on macOS only; on other
-//! systems every request fails with that reason.
+//! one reply line on standard output;
+//! `sound_to_patch_core::render::wire` holds the protocol. Before it
+//! loads a plug-in, it points file descriptor 1 at standard error and
+//! keeps the real standard output for replies, so nothing a plug-in
+//! prints can split or swallow a reply. It opens no window and needs no
+//! run loop. Plug-ins load on macOS only; on other systems every request
+//! fails with that reason.
 
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;
 
-use sound_to_patch::render::wire::{Reply, Request, reply_line};
+use sound_to_patch_core::render::wire::{Reply, Request, reply_line};
 
 #[cfg(target_os = "macos")]
 mod session;
@@ -140,7 +141,7 @@ mod tests {
             .unwrap()
             .lines()
             .map(|line| {
-                sound_to_patch::render::wire::parse_reply(line)
+                sound_to_patch_core::render::wire::parse_reply(line)
                     .unwrap()
                     .1
                     .unwrap()
