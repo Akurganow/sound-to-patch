@@ -931,8 +931,11 @@ fn in_band(fit: &DropFit) -> f64 {
 /// later, and not before the fit's pitch lies inside the band around the
 /// note, to the end of the fit span or of the note. The line follows the
 /// strongest partial of its band, so it would read the second harmonic as
-/// the note. At a rate whose Nyquist frequency lies under the band around
-/// twice the pitch, the harmonic cannot be measured and the test passes.
+/// the note. Each band stops at 0.99 of the Nyquist frequency. When twice
+/// the pitch lies above that, at rates under about 4 times the pitch, the
+/// harmonic cannot be measured and the test passes. The cut band then
+/// narrows towards nothing, and the filter's padding grows as the inverse
+/// of its width.
 fn weak_fundamental(
     segment: &[f64],
     rate: SampleRate,
@@ -944,13 +947,20 @@ fn weak_fundamental(
     let index = |t: f64| cast::round_to_usize(((t - start.get()) * r).max(0.0)).unwrap_or(0);
     let from = index(window.0.get());
     let to = index(window.1.get()).min(segment.len());
-    if from >= to || 2.0 * pitch.get() * 2f64.powf(-0.25) >= 0.99 * rate.nyquist().get() {
+    let nyquist = rate.nyquist().get();
+    let edges = |centre: f64| {
+        (
+            centre * 2f64.powf(-0.25),
+            (centre * 2f64.powf(0.25)).min(0.99 * nyquist),
+        )
+    };
+    if from >= to || 2.0 * pitch.get() >= 0.99 * nyquist {
         return Ok(false);
     }
     let band = |centre: f64| -> Result<f64, PitchError> {
-        let lo = Hz::clamped(centre * 2f64.powf(-0.25));
-        let hi = Hz::clamped((centre * 2f64.powf(0.25)).min(0.99 * rate.nyquist().get()));
-        let mut values = band_magnitude(segment, rate, lo, hi)?[from..to].to_vec();
+        let (lo, hi) = edges(centre);
+        let mut values =
+            band_magnitude(segment, rate, Hz::clamped(lo), Hz::clamped(hi))?[from..to].to_vec();
         values.sort_by(f64::total_cmp);
         Ok(values[values.len() / 2])
     };
@@ -1167,21 +1177,34 @@ mod tests {
 
     #[test]
     fn a_second_harmonic_above_nyquist_leaves_the_fundamental_alone() {
-        // At 600 Hz a 190 Hz note's second harmonic band starts at 319.5 Hz,
-        // above the 300 Hz Nyquist frequency.
-        let rate = SampleRate::new(600).unwrap();
-        let segment: Vec<f64> = (0..600)
-            .map(|n| (std::f64::consts::TAU * 190.0 * cast::usize_to_f64(n) / 600.0).sin())
-            .collect();
-        let window = (Seconds::clamped(0.1), Seconds::clamped(0.9));
-        let weak = weak_fundamental(
-            &segment,
-            rate,
-            Seconds::clamped(0.0),
-            window,
-            Hz::clamped(190.0),
-        );
-        assert!(!weak.unwrap());
+        // A 190 Hz note's second harmonic band starts at 319.5 Hz. At 600 Hz
+        // it lies above the 300 Hz Nyquist frequency. At 646 Hz it is cut
+        // to 0.24 Hz under 0.99 of Nyquist, below the 380 Hz harmonic, so a
+        // strong tone inside it passes too. At 800 Hz the band holds the
+        // harmonic, and one four times the fundamental reads weak.
+        let weak = |rate: u32, upper: f64| {
+            let r = f64::from(rate);
+            let segment: Vec<f64> = (0..rate)
+                .map(|n| {
+                    let t = f64::from(n) / r;
+                    (std::f64::consts::TAU * 190.0 * t).sin()
+                        + 4.0 * (std::f64::consts::TAU * upper * t).sin()
+                })
+                .collect();
+            let window = (Seconds::clamped(0.1), Seconds::clamped(0.9));
+            let rate = SampleRate::new(rate).unwrap();
+            weak_fundamental(
+                &segment,
+                rate,
+                Seconds::clamped(0.0),
+                window,
+                Hz::clamped(190.0),
+            )
+            .unwrap()
+        };
+        assert!(!weak(600, 250.0));
+        assert!(!weak(646, 319.65));
+        assert!(weak(800, 380.0));
     }
 
     #[test]

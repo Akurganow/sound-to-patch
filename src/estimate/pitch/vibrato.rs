@@ -160,7 +160,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
     if power <= 0.0 {
         return None;
     }
-    let explained = |rate: f64| sine_fit(&times, &cents, rate).0;
+    let explained = |rate: f64| power - sine_fit(&times, &cents, rate).0;
     let lo = SEARCH_LO.max(SEARCH_CYCLES / span);
     let steps = cast::floor_to_usize((SEARCH_HI - lo) / SEARCH_STEP)?;
     let (best, _) = (0..=steps)
@@ -173,7 +173,8 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         (best + SEARCH_STEP).min(SEARCH_HI),
         1e-6,
     );
-    let (explained_power, amplitude) = sine_fit(&times, &cents, rate);
+    let (left, amplitude) = sine_fit(&times, &cents, rate);
+    let explained_power = power - left;
     let kurtosis = kurtosis(&residuals);
     let rate = Hz::new(rate).ok()?;
     Some(VibratoFit {
@@ -189,9 +190,11 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
 }
 
 /// The least-squares fit of `a + b t + c cos(2 pi f t) + d sin(2 pi f t)`
-/// to `y`: the power the sine explains beyond the line, and its amplitude
-/// `sqrt(c^2 + d^2)`. Fitting the line and the sine together keeps a
-/// sine over a fraction of a cycle from leaking into the line.
+/// to `y`: the power left after the joint fit, and the sine's amplitude
+/// `sqrt(c^2 + d^2)`. Fitting the line and the sine together keeps a sine
+/// over a fraction of a cycle from leaking into the line. The sine term
+/// can share power with the line, so the power it explains beyond the line
+/// is the line's residual less the joint one, not the term's own power.
 fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
     let mut normal = [[0.0; 5]; 4];
     for (&time, &value) in times.iter().zip(values) {
@@ -204,17 +207,18 @@ fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
             row[4] += u * value;
         }
     }
-    let Some([_, _, along_cos, along_sin]) = solve4(normal) else {
-        return (0.0, 0.0);
+    let Some([offset, slope, along_cos, along_sin]) = solve4(normal) else {
+        return (f64::INFINITY, 0.0);
     };
-    let explained: f64 = times
+    let left = times
         .iter()
-        .map(|&time| {
+        .zip(values)
+        .map(|(&time, &value)| {
             let (sine, cosine) = (std::f64::consts::TAU * rate * time).sin_cos();
-            (along_cos * cosine + along_sin * sine).powi(2)
+            (value - offset - slope * time - along_cos * cosine - along_sin * sine).powi(2)
         })
         .sum();
-    (explained, along_cos.hypot(along_sin))
+    (left, along_cos.hypot(along_sin))
 }
 
 /// `y` less its least-squares line over `t`; a flat line when `t` holds a
@@ -280,6 +284,46 @@ fn solve4(mut m: [[f64; 5]; 4]) -> Option<[f64; 4]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_share_counts_only_the_power_beyond_the_line() {
+        // Three cycles of a 20-cent sine from phase 0 under uniform noise.
+        // Such a sine leans with time, so its term shares power with the
+        // line's slope. Its own power read a share of 0.524 at 20.6 cents of
+        // noise and passed; the power it adds beyond the line reads 0.490.
+        // At 18 cents both pass.
+        let reads = |noise: f64| fit_vibrato(&noisy(0.0, noise)).unwrap();
+        let clear = reads(18.0);
+        assert!(
+            clear.accepted() && (0.55..0.59).contains(&clear.share),
+            "{clear:?}"
+        );
+        let borderline = reads(20.6);
+        assert!((0.48..0.5).contains(&borderline.share), "{borderline:?}");
+        assert!(!borderline.accepted(), "{borderline:?}");
+    }
+
+    /// Three cycles of a 20-cent sine at 5.5 Hz starting at `phase`, plus
+    /// uniform noise of up to `noise` cents from a fixed seed.
+    fn noisy(phase: f64, noise: f64) -> Vec<(Seconds, Hz)> {
+        let hop = 128.0 / 22_050.0;
+        let mut seed: u64 = 7;
+        let count = cast::floor_to_usize(3.0 / 5.5 / hop).unwrap();
+        (0..=count)
+            .map(|k| {
+                seed = seed
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                let u = cast::u64_to_f64(seed >> 11) / cast::u64_to_f64(1 << 53) * 2.0 - 1.0;
+                let t = cast::usize_to_f64(k) * hop;
+                let cents = 20.0 * (std::f64::consts::TAU * 5.5 * t + phase).sin() + noise * u;
+                (
+                    Seconds::new(0.2 + t).unwrap(),
+                    Hz::new(220.0 * 2f64.powf(cents / 1200.0)).unwrap(),
+                )
+            })
+            .collect()
+    }
 
     #[test]
     fn the_convention_states_the_constants() {

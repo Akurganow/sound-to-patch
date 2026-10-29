@@ -445,9 +445,9 @@ A glide is pitch moving from one stable pitch to another.
   `glide_too_short`, from 90 ms on a glide [proposal]. A fit off the
   curve bound that passes every test of a glide over a detected span of
   35 to 90 ms is too short as well, and so is a motion whose fit fails
-  over such a span [proposal]. The track
-  smears a step between two 808 notes over a detected span of 100 to
-  450 ms, while the fit finds the motion short [synthetic].
+  over such a span [proposal]. The track smears a step between two 808
+  notes over a detected span of 100 to 450 ms, while the fit finds the
+  motion short [synthetic].
 - Fit. $s(x) = 1 - (1 - x)^p$ between the two stable pitches is fitted by
   least squares over the motion and 50 ms of each stable pitch, with the
   start, the full time and $p$ free [fact]. $p > 1$ starts fast, $p < 1$
@@ -486,11 +486,14 @@ A glide is pitch moving from one stable pitch to another.
   start less the track's lag at the start pitch [fact].
 - From silence. When a voiced run starts above or below its first stable
   pitch by 100 cents or more, and the motion into it lasts 90 ms or more,
-  the glide carries `from_silence: true` [fact]. A generated fall from
-  150 Hz into 50 Hz under a 300 ms attack fails the strike rule as a drop
-  and reads as a fall of 14.6 semitones from silence at medium
-  [synthetic]. The sound must start up to
-  100 ms before the run: the full-band RMS over 30 ms rises 20 dB above
+  the glide carries `from_silence: true` [fact]. A shorter motion from
+  silence is neither read nor counted toward `glide_too_short`, which
+  names a motion between two notes [fact]. A generated fall from 150 Hz
+  into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
+  rule as a drop [synthetic]. It reads as a fall from silence at medium,
+  14.6 of its 19.0 semitones: it starts at 115 Hz, where the fall stands
+  17 ms after the onset [synthetic]. The sound must start up to 100 ms
+  before the run: the full-band RMS over 30 ms rises 20 dB above
   the RMS from 60 to 30 ms before, searched in 5 ms steps [proposal]. The
   track voices a run some frames after the sound starts, and a beating
   unison dips without falling silent [synthetic]. The run's first frame
@@ -627,7 +630,12 @@ Limits:
   cycle from leaking into the line [fact].
 - `extent_raw_ct` is the sine's amplitude, half the peak-to-peak swing
   [fact]. `share` is the power the sine explains over the power left after
-  the line alone [fact].
+  the line alone [fact]. The power it explains is the line's residual less
+  that of the line and sine fitted together [fact]. The sine term alone
+  can share power with the line: a 20-cent sine over three cycles under
+  20.6 cents of noise read a share of 0.524 that way and 0.490 by the
+  residuals [synthetic]. On the generated sets the residuals drop 4 false
+  vibratos of 26 and keep every true one [synthetic].
 - Rule. A vibrato counts at 3 to 12 Hz with 1 % slack, an extent of 10
   cents or more after the correction, a share of 0.5 or more and 2.5
   cycles or more over the span [fact, proposal for the share and the
@@ -650,7 +658,9 @@ Limits:
   1.66, a semitone trill at 6 Hz 1.06 [synthetic].
   - On real stems every vibrato above 100 Hz with 4 cycles or more matched
     an independent f0, at a share of 0.51 to 0.64; the share did not tell
-    the real ones from the rest, which read 0.52 to 0.70 [fact].
+    the real ones from the rest, which read 0.52 to 0.70 [fact]. Those
+    shares were read from the sine term's own power, which reads up to
+    0.06 higher on generated contours [synthetic].
   - Below 100 Hz few matched, and the extent read up to 5 times too wide
     [fact]. A generated low saw with amplitude modulation, two beating
     voices or none reads no vibrato, and one with a ±30-cent vibrato reads

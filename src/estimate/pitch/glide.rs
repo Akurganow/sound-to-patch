@@ -1022,5 +1022,15 @@ mod tests {
             (read.glides[0].interval.get() + 5.0).abs() < 0.3,
             "{read:?}"
         );
+        // A rise from silence over 60 ms is too short to read, and it is no
+        // motion between two notes, so it is not counted either.
+        let short = track(1.0, |t| {
+            (0.2..1.0).contains(&t).then(|| {
+                let x = ((t - 0.2) / 0.06).clamp(0.0, 1.0);
+                4500.0 + 500.0 * x
+            })
+        });
+        let read = find_glides(&short, &line, |_, _| false, |_, _| true);
+        assert_eq!(read, GlideRead::default());
     }
 }

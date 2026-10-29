@@ -184,7 +184,9 @@ does, and so does a vibrato on a pitch below 100 Hz.
 `flags` holds four booleans: `chord_skipped`, `glide_too_short` (a motion
 between two notes lasted 35 to 90 ms, over its detected span or its fitted
 time), `weak_fundamental` (a low note's second harmonic exceeded its
-fundamental by 6 dB, so its drop was not reported) and `no_notes`.
+fundamental by 6 dB, so its drop was not reported) and `no_notes`. At a
+sample rate under about 4 times a note's pitch the second harmonic
+cannot be measured, and that note is not tested for `weak_fundamental`.
 `needs_render` is `false`.
 
 ## Conventions
