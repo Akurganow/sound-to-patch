@@ -1,1 +1,1159 @@
-[]
+[
+  {
+    "id": "fat.weight-detune",
+    "word": "fat",
+    "aliases": [
+      "phat",
+      "fatty"
+    ],
+    "axis": "body",
+    "sense": "weight-detune",
+    "label": "weight in the lows plus detune",
+    "meaning": "Weight in the lows plus a small detune between layers. Saturation helps. Fat is not wide, because a mono layer can be fat. A paper finds no single control for fatness.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "thin.synthesis"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.33,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "detune between layers of a pluck",
+        "low": 2,
+        "high": 5,
+        "unit": "cents",
+        "sources": [
+          "pluck-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "detune between layers of a reese bass",
+        "low": 5,
+        "high": 15,
+        "unit": "cents",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "analog-guide",
+      "pluck-guide",
+      "bass-guide",
+      "forum-words",
+      "nl-params"
+    ]
+  },
+  {
+    "id": "fat.width",
+    "word": "fat",
+    "aliases": [],
+    "axis": "body",
+    "sense": "width",
+    "label": "a wide stack of voices",
+    "meaning": "Some producers use fat for a wide stack of voices. The word does not require stereo width, so this sense is a loose usage.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.33,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "sm_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "fat.movement",
+    "word": "fat",
+    "aliases": [],
+    "axis": "body",
+    "sense": "movement",
+    "label": "slow movement",
+    "meaning": "Fatness from movement: tiny pitch instability and slow filter or pulse-width motion, not extra layers. A pulse sweeping from wide to narrow moves between fat and thin.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.33,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [
+      {
+        "what": "bars that one slow modulation cycle spans",
+        "low": 8,
+        "high": 8,
+        "unit": "count",
+        "sources": [
+          "snip-fat-movement"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "snippet",
+    "sources": [
+      "snip-fat-movement",
+      "snip-pwm"
+    ]
+  },
+  {
+    "id": "thick.stacked",
+    "word": "thick",
+    "aliases": [
+      "dense",
+      "rich"
+    ],
+    "axis": "body",
+    "sense": "stacked",
+    "label": "stacked dense voices",
+    "meaning": "A stack of detuned voices with a second oscillator. Rich adds chorus and dense adds more voices. In synthesis thick is a good thing.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [
+      {
+        "what": "detuned saw voices stacked",
+        "low": 2,
+        "high": 3,
+        "unit": "voices",
+        "sources": [
+          "dubstep-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "dubstep-guide",
+      "pad-guide"
+    ]
+  },
+  {
+    "id": "thick.poor-articulation",
+    "word": "thick",
+    "aliases": [],
+    "axis": "body",
+    "sense": "poor-articulation",
+    "label": "a bass that blurs",
+    "meaning": "In a mix, thick is a defect: a bass without clear articulation.",
+    "roles": [],
+    "conflicts": [
+      "tight.low-end"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "crest_db",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "full.low-body",
+    "word": "full",
+    "aliases": [
+      "fuller"
+    ],
+    "axis": "body",
+    "sense": "low-body",
+    "meaning": "Good weight in the low range without mud.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "tinny.narrow"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.65,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "low range where one glossary places fullness",
+        "low": 100,
+        "high": 300,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low range where another glossary places fullness",
+        "low": 150,
+        "high": 400,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll"
+    ]
+  },
+  {
+    "id": "deep.strong-lows",
+    "word": "deep",
+    "aliases": [
+      "deeper"
+    ],
+    "axis": "body",
+    "sense": "strong-lows",
+    "label": "strong lows",
+    "meaning": "Strong lows. Listener curves for deep raise the lows strongly and cut the mids and highs.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "tinny.narrow"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.73,
+      "n": 6,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "deep.distance",
+    "word": "deep",
+    "aliases": [],
+    "axis": "body",
+    "sense": "distance",
+    "label": "far away in a dark space",
+    "meaning": "Depth as distance: the sound sits far back in a long, dark space. Listener reverb settings for deep cut the highs of the tail.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.73,
+      "n": 6,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 257,
+      "spread_ratio": 0.83,
+      "effects": {
+        "delay_time": 0.13,
+        "decay": 0.1,
+        "stereo_spread": -0.03,
+        "cutoff_freq": -0.3,
+        "wet_gain": -0.02
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "deep.genre",
+    "word": "deep",
+    "aliases": [],
+    "axis": "body",
+    "sense": "genre",
+    "label": "the deep house style",
+    "meaning": "A genre prefix, as in deep house. It names a style, not a timbre.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.73,
+      "n": 6,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "genre.deep-house"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "heavy.low-weight",
+    "word": "heavy",
+    "aliases": [
+      "weighty"
+    ],
+    "axis": "body",
+    "sense": "low-weight",
+    "label": "more lows and fewer highs",
+    "meaning": "Lows up and highs down. Weighty names the region below the bass band. Listener curves for heavy raise the lows strongly and cut the highs, and listeners agree well.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "tinny.narrow"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.46,
+      "n": 15,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "sub",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "region called weighty, from the floor up",
+        "low": 0,
+        "high": 50,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "heavy.distorted",
+    "word": "heavy",
+    "aliases": [],
+    "axis": "body",
+    "sense": "distorted",
+    "label": "heavier and more distorted",
+    "meaning": "Heavier music means more distortion: an angrier, grittier sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.46,
+      "n": 15,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "snip-bass-tips"
+    ]
+  },
+  {
+    "id": "big.reverberant-wide",
+    "word": "big",
+    "aliases": [
+      "huge",
+      "large",
+      "massive",
+      "bigger"
+    ],
+    "axis": "body",
+    "sense": "reverberant-wide",
+    "label": "wide and reverberant",
+    "meaning": "Large and spacious: a long reverb and a wide stereo image. Listener reverb settings for big lengthen the delay and decay. Width makes a mix feel big.",
+    "roles": [
+      "pad"
+    ],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 155,
+      "spread_ratio": 0.7,
+      "effects": {
+        "delay_time": 0.14,
+        "decay": 0.2,
+        "stereo_spread": -0.01,
+        "cutoff_freq": 0.15,
+        "wet_gain": -0.12
+      }
+    },
+    "measure": {
+      "key": "sm_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "crowd-eq",
+      "width-guide"
+    ]
+  },
+  {
+    "id": "big.low",
+    "word": "big",
+    "aliases": [],
+    "axis": "body",
+    "sense": "low",
+    "label": "low and heavy",
+    "meaning": "Big as low weight: a bass that fills the low end.",
+    "roles": [
+      "bass"
+    ],
+    "conflicts": [
+      "thin.light-bass"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "boomy.low-boom",
+    "word": "boomy",
+    "aliases": [
+      "booming"
+    ],
+    "axis": "body",
+    "sense": "low-boom",
+    "meaning": "A defect: too much energy in the lowest bass, so the sound rumbles and loses definition. It overlaps muddy in the upper bass. Cut the band, and let one layer carry the lows.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "tight.low-end"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where the glossaries place boominess",
+        "low": 60,
+        "high": 125,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter",
+          "gloss-cll"
+        ],
+        "tag": "source states"
+      },
+      {
+        "what": "high-pass corner for the non-bass layers",
+        "low": 80,
+        "high": 120,
+        "unit": "Hz",
+        "sources": [
+          "bass-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "limit below which one layer should carry the lows",
+        "low": 100,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "snip-mixing-bass"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "bass-guide",
+      "snip-mixing-bass"
+    ]
+  },
+  {
+    "id": "muddy.low-mid-mush",
+    "word": "muddy",
+    "aliases": [
+      "tubby",
+      "bloated",
+      "woolly"
+    ],
+    "axis": "body",
+    "sense": "low-mid-mush",
+    "meaning": "A defect: a clogged low-mid region with unclear detail. Tubby and bloated sit near its bottom, and woolly names a loose low end. It overlaps boomy in the upper bass.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass",
+      "tight.low-end"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.89,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "low_mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where two glossaries place mud",
+        "low": 200,
+        "high": 500,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter",
+          "gloss-cll"
+        ],
+        "tag": "source states"
+      },
+      {
+        "what": "point where another source names mud",
+        "low": 250,
+        "high": 250,
+        "unit": "Hz",
+        "sources": [
+          "gloss-bands"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "point where a glossary places tubby and bloated",
+        "low": 250,
+        "high": 250,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "gloss-bands"
+    ]
+  },
+  {
+    "id": "boxy.boxed-mids",
+    "word": "boxy",
+    "aliases": [],
+    "axis": "body",
+    "sense": "boxed-mids",
+    "meaning": "A defect: a closed, cardboard-box colour in the lower mids. Cut the band when a wobble sounds boxy.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "low_mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where two sources place boxiness",
+        "low": 300,
+        "high": 500,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter",
+          "wobble-guide"
+        ],
+        "tag": "source states"
+      },
+      {
+        "what": "band where another glossary places boxiness",
+        "low": 300,
+        "high": 600,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "wobble-guide"
+    ]
+  },
+  {
+    "id": "thin.synthesis",
+    "word": "thin",
+    "aliases": [
+      "lean",
+      "weak",
+      "small"
+    ],
+    "axis": "body",
+    "sense": "synthesis",
+    "label": "a narrow pulse",
+    "meaning": "A narrow pulse or a missing low octave, made on purpose. A single voice or a high-pass makes it. A pulse sweeping from narrow to wide moves between thin and fat.",
+    "roles": [],
+    "conflicts": [
+      "fat.weight-detune"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "source states",
+    "sources": [
+      "pulse-guide",
+      "forum-words",
+      "snip-pwm"
+    ]
+  },
+  {
+    "id": "thin.light-bass",
+    "word": "thin",
+    "aliases": [],
+    "axis": "body",
+    "sense": "light-bass",
+    "label": "light bass lacking lows",
+    "meaning": "A light bass that lacks lows, a mix defect. Add a sub layer or a low shelf and keep the lows mono.",
+    "roles": [
+      "bass"
+    ],
+    "conflicts": [
+      "big.low",
+      "boomy.low-boom",
+      "deep.strong-lows",
+      "fat.weight-detune",
+      "full.low-body",
+      "heavy.low-weight",
+      "muddy.low-mid-mush",
+      "warm.mid-bass-excess"
+    ],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "band lacking in one glossary",
+        "low": 250,
+        "high": 250,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "band cut in another glossary",
+        "low": 100,
+        "high": 400,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll"
+    ]
+  },
+  {
+    "id": "thin.mono-collapse",
+    "word": "thin",
+    "aliases": [],
+    "axis": "body",
+    "sense": "mono-collapse",
+    "label": "thin when played in mono",
+    "meaning": "Wide content that cancels when the mix sums to mono, which leaves a thin or hollow sound.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "width-guide"
+    ]
+  },
+  {
+    "id": "tight.low-end",
+    "word": "tight",
+    "aliases": [],
+    "axis": "body",
+    "sense": "low-end",
+    "label": "a short controlled low end",
+    "meaning": "A controlled low end with good transient response. Short notes, a short reverb and no detune on the sub keep it tight. The opposite is loose, flabby or sloppy.",
+    "roles": [],
+    "conflicts": [
+      "boomy.low-boom",
+      "muddy.low-mid-mush",
+      "thick.poor-articulation"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "low band with transient shaping in one glossary",
+        "low": 80,
+        "high": 250,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "limit below which one layer should carry the lows",
+        "low": 100,
+        "high": 100,
+        "unit": "Hz",
+        "sources": [
+          "snip-mixing-bass"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "snip-mixing-bass"
+    ]
+  },
+  {
+    "id": "tight.timing",
+    "word": "tight",
+    "aliases": [],
+    "axis": "body",
+    "sense": "timing",
+    "label": "rhythmically precise",
+    "meaning": "Rhythmically precise, with no drag or looseness in the timing.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": null,
+      "n": 1,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "feel.quantized"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "punchy.low-onset",
+    "word": "punchy",
+    "aliases": [],
+    "axis": "body",
+    "sense": "low-onset",
+    "label": "lows with a short onset",
+    "meaning": "Lows with a short onset. One article suggests that holding the first envelope stage at full level before the decay may add punch.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.66,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "low band where one article places punch",
+        "low": 60,
+        "high": 200,
+        "unit": "Hz",
+        "sources": [
+          "gloss-au"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "hold of the first envelope stages before the decay",
+        "low": 20,
+        "high": 30,
+        "unit": "ms",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-au"
+    ]
+  },
+  {
+    "id": "punchy.transient-body",
+    "word": "punchy",
+    "aliases": [],
+    "axis": "body",
+    "sense": "transient-body",
+    "label": "a click in the upper mids",
+    "meaning": "A transient body in the upper mids, a click that cuts through.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.66,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places the punch",
+        "low": 2000,
+        "high": 5000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-cll"
+    ]
+  },
+  {
+    "id": "punchy.dynamics",
+    "word": "punchy",
+    "aliases": [],
+    "axis": "body",
+    "sense": "dynamics",
+    "label": "strong dynamics and impact",
+    "meaning": "Strong dynamics and impact, with a large gap between the peaks and the body.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.66,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "loud.level",
+    "word": "loud",
+    "aliases": [],
+    "axis": "body",
+    "sense": "level",
+    "meaning": "A high level. Listener curves for loud lift the low mids and cut the highs and air, and listeners agree at a medium level. The analyzer's spectrum cannot check loudness.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.4,
+      "n": 26,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "hard.upper-mids",
+    "word": "hard",
+    "aliases": [],
+    "axis": "body",
+    "sense": "upper-mids",
+    "label": "an upper-mid edge",
+    "meaning": "Default sense. Hard is an upper-mid edge or a hard transient. It is the default because a mix glossary uses it so, while the listener sense rests on guitar, piano and drum tests. It conflicts with the bass-heavy listener sense.",
+    "roles": [],
+    "conflicts": [
+      "hard.bass-heavy"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.32,
+      "n": 10,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "upper-mid point where one glossary places hardness",
+        "low": 3000,
+        "high": 3000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "hard.bass-heavy",
+    "word": "hard",
+    "aliases": [],
+    "axis": "body",
+    "sense": "bass-heavy",
+    "label": "heavy lows",
+    "meaning": "Listener curves for hard are bass-heavy: they raise the lows and cut the highs and air. This conflicts with the glossary sense in the upper mids.",
+    "roles": [],
+    "conflicts": [
+      "hard.upper-mids"
+    ],
+    "default": false,
+    "agreement": {
+      "value": 0.32,
+      "n": 10,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "crowd data",
+    "sources": [
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "hard.character",
+    "word": "hard",
+    "aliases": [],
+    "axis": "body",
+    "sense": "character",
+    "label": "a firm character",
+    "meaning": "A character tag next to soft: firm and forceful. It names a feel, not a band.",
+    "roles": [],
+    "conflicts": [
+      "soft.gentle-tone"
+    ],
+    "default": false,
+    "agreement": {
+      "value": 0.32,
+      "n": 10,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "hard.genre",
+    "word": "hard",
+    "aliases": [],
+    "axis": "body",
+    "sense": "genre",
+    "meaning": "A genre prefix, as in hard dance or hard techno. It names a style, not a timbre.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.32,
+      "n": 10,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "genre.hardstyle"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "strong.character",
+    "word": "strong",
+    "aliases": [
+      "powerful"
+    ],
+    "axis": "body",
+    "sense": "character",
+    "meaning": "A forceful, powerful presence. No source defines it as a sound change, so it names no control. Read it with the other words of the request, such as loud or heavy.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": 0.82,
+      "n": 2,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "inferred",
+    "sources": []
+  }
+]

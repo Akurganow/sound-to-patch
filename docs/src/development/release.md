@@ -5,7 +5,9 @@ one tags or uploads by hand.
 
 ## What a merge does
 
-1. The CI workflow runs every check on the merged commit.
+1. The CI workflow runs every check on the merged commit. The `commits`
+   check belongs to a pull request and has its own workflow, so it does
+   not run here.
 2. If `fmt`, `clippy`, `test`, `doc`, `licenses` and `docs` pass, the
    `release` job runs `cog bump --auto`. It reads the commit subjects since
    the last tag:

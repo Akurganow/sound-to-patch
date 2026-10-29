@@ -33,6 +33,8 @@ mod modulation;
 mod music;
 mod preset;
 #[cfg(test)]
+mod profile;
+#[cfg(test)]
 mod reference;
 #[cfg(test)]
 mod render;
@@ -62,3 +64,5 @@ mod track;
 #[cfg(test)]
 mod transcribe;
 mod vita;
+#[cfg(test)]
+mod words;

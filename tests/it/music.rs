@@ -446,12 +446,9 @@ fn music_ids_never_collide_with_word_ids() {
         .iter()
         .map(|entry| entry.id.as_str())
         .collect();
-    for path in fs::read_dir("dictionary/words").unwrap() {
-        let path = path.unwrap().path();
-        for entry in load(path.to_str().unwrap()).as_array().unwrap() {
-            let id = entry["id"].as_str().unwrap();
-            assert!(!music.contains(id), "{id} is a music id and a word id");
-        }
+    for entry in &sound_to_patch::words::dictionary().unwrap().entries {
+        let id = entry.id.as_str();
+        assert!(!music.contains(id), "{id} is a music id and a word id");
     }
 }
 

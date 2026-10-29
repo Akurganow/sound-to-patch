@@ -90,7 +90,7 @@ pub(crate) fn check_coverage() -> crate::Result<()> {
     }
 }
 
-fn page(title: &str, intro: &str, sections: &[(String, String)]) -> String {
+pub(crate) fn page(title: &str, intro: &str, sections: &[(String, String)]) -> String {
     let mut text = format!("{HEADER}\n\n# {title}\n\n{intro}\n");
     let mut body = String::new();
     for (heading, section) in sections {

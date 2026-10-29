@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/lexicon.schema.json",
+  "title": "dictionary/words/lexicon.json",
+  "description": "The word lexicon behind the ranked list: the describing words with their spelling variants, and the style and technique groups with the words each group matches. A word that is not listed is not counted. `cargo xtask word-ranks` reads this file and writes the counts to `ranks.json`.",
+  "type": "object",
+  "required": ["describing", "style", "technique"],
+  "additionalProperties": false,
+  "properties": {
+    "describing": {
+      "type": "array",
+      "description": "Describing words in the order of the published lexicon. Each variant counts for its word.",
+      "items": {
+        "type": "object",
+        "required": ["word", "variants"],
+        "additionalProperties": false,
+        "properties": {
+          "word": { "$ref": "#/$defs/word" },
+          "variants": { "type": "array", "items": { "$ref": "#/$defs/word" }, "uniqueItems": true }
+        }
+      },
+      "minItems": 1
+    },
+    "style": {
+      "type": "array",
+      "description": "Style groups in rank order of the published style table.",
+      "items": { "$ref": "#/$defs/group" },
+      "minItems": 1
+    },
+    "technique": {
+      "type": "array",
+      "description": "Technique groups in rank order of the published technique table.",
+      "items": { "$ref": "#/$defs/group" },
+      "minItems": 1
+    }
+  },
+  "$defs": {
+    "word": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+([ -][a-z0-9]+)*$",
+      "description": "Lowercase letters and digits. A space or hyphen joins the words of a phrase."
+    },
+    "group": {
+      "type": "object",
+      "required": ["label", "matches"],
+      "additionalProperties": false,
+      "properties": {
+        "label": { "type": "string", "minLength": 1, "description": "The group name as the published table shows it." },
+        "matches": { "type": "array", "items": { "$ref": "#/$defs/word" }, "uniqueItems": true, "minItems": 1, "description": "The words and phrases that count for the group. An item counts once per group." }
+      }
+    }
+  }
+}

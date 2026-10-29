@@ -1,1 +1,962 @@
-[]
+[
+  {
+    "id": "bright.high-energy",
+    "word": "bright",
+    "aliases": [
+      "brighter"
+    ],
+    "axis": "tone",
+    "sense": "high-energy",
+    "label": "more energy in the highs",
+    "meaning": "More energy in the upper harmonics. One glossary puts it in the upper mids and lower treble, another higher up. Listener curves for bright raise the mids and highs and cut the lows. A mix glossary also uses bright for too much high end.",
+    "roles": [],
+    "conflicts": [
+      "dark.few-highs",
+      "dull.high-cut",
+      "warm.high-cut"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.34,
+      "n": 19,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places the extra energy",
+        "low": 5000,
+        "high": 12000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "bright.mood",
+    "word": "bright",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "mood",
+    "label": "a cheerful mood",
+    "meaning": "A cheerful, open mood, not a spectrum. A bright patch usually also has bright tone, but the mood needs no control of its own.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.34,
+      "n": 19,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "music": [
+      "mood.bright"
+    ],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "dark.few-highs",
+    "word": "dark",
+    "aliases": [
+      "darker"
+    ],
+    "axis": "tone",
+    "sense": "few-highs",
+    "label": "few highs",
+    "meaning": "Few highs. One glossary puts the energy below a ceiling, another reports cut treble. Listener curves for dark add lows and cut the mids.",
+    "roles": [],
+    "conflicts": [
+      "airy.spectral",
+      "bright.high-energy",
+      "crisp.extended-highs",
+      "glassy.bell-like"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.57,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "rolloff85_hz",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "ceiling below which the energy sits in one glossary",
+        "low": 5000,
+        "high": 5000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "treble band reduced in another glossary",
+        "low": 4000,
+        "high": 16000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "dark.mood",
+    "word": "dark",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "mood",
+    "label": "a gloomy mood",
+    "meaning": "A gloomy or ominous mood, not a spectrum. Evil or dark patches use frequency modulation and noise as well as a dull tone.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.57,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "atmosphere",
+    "music": [
+      "mood.dark"
+    ],
+    "tag": "snippet",
+    "sources": [
+      "snip-evil"
+    ]
+  },
+  {
+    "id": "dull.high-cut",
+    "word": "dull",
+    "aliases": [
+      "muffled",
+      "veiled",
+      "blanketed",
+      "muted"
+    ],
+    "axis": "tone",
+    "sense": "high-cut",
+    "meaning": "A strong cut of the highs. A veiled sound has weak highs and lost detail. Listener curves for muffled raise the lows and cut the mids.",
+    "roles": [],
+    "conflicts": [
+      "airy.spectral",
+      "bright.high-energy",
+      "crisp.extended-highs",
+      "glassy.bell-like"
+    ],
+    "default": true,
+    "agreement": {
+      "value": -0.07,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "rolloff85_hz",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "low-pass corner of a darker lo-fi tone",
+        "low": 2500,
+        "high": 3500,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "low-pass corner of a lighter lo-fi tone",
+        "low": 8000,
+        "high": 10000,
+        "unit": "Hz",
+        "sources": [
+          "lofi-piano"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "lofi-piano",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "warm.low-mid",
+    "word": "warm",
+    "aliases": [
+      "warmer",
+      "warmth"
+    ],
+    "axis": "tone",
+    "sense": "low-mid",
+    "label": "more low-mid weight",
+    "meaning": "More weight in the low mids. Listener curves for warm raise the lows and cut the mids. Soft saturation also reads as warm. A bass takes this sense.",
+    "roles": [
+      "bass"
+    ],
+    "conflicts": [
+      "cold.sterile"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.25,
+      "n": 64,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places warmth",
+        "low": 200,
+        "high": 400,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "point where another source names warmth",
+        "low": 125,
+        "high": 125,
+        "unit": "Hz",
+        "sources": [
+          "gloss-bands"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-cll",
+      "gloss-bands",
+      "crowd-eq",
+      "snip-bass-tips"
+    ]
+  },
+  {
+    "id": "warm.high-cut",
+    "word": "warm",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "high-cut",
+    "label": "duller highs",
+    "meaning": "Fewer highs: the warmth comes from softening the top. The same source pairs it with slight pitch drift between oscillators, and a second video with a small fine-tune between two oscillators.",
+    "roles": [],
+    "conflicts": [
+      "bright.high-energy"
+    ],
+    "default": false,
+    "agreement": {
+      "value": 0.25,
+      "n": 64,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "rolloff85_hz",
+      "direction": "down"
+    },
+    "values": [
+      {
+        "what": "pitch drift between oscillators for an analog feel",
+        "low": 1,
+        "high": 2,
+        "unit": "cents",
+        "sources": [
+          "analog-guide"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "fine-tune between two oscillators for an analog feel",
+        "low": 0,
+        "high": 4,
+        "unit": "cents",
+        "sources": [
+          "snip-analog"
+        ],
+        "tag": "snippet"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "analog-guide",
+      "snip-analog"
+    ]
+  },
+  {
+    "id": "warm.mid-bass-excess",
+    "word": "warm",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "mid-bass-excess",
+    "label": "too much mid-bass",
+    "meaning": "A mix defect: too much mid-bass, which makes the sound heavy and unclear. The same glossary also praises warm as a good bass that is not thin.",
+    "roles": [],
+    "conflicts": [
+      "thin.light-bass"
+    ],
+    "default": false,
+    "agreement": {
+      "value": 0.25,
+      "n": 64,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "bass",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  },
+  {
+    "id": "cold.sterile",
+    "word": "cold",
+    "aliases": [
+      "sterile"
+    ],
+    "axis": "tone",
+    "sense": "sterile",
+    "meaning": "Missing warmth, with no body or colour. Listener curves for cold cut the lows a little and lift the mids, and listeners agree weakly. The word follows reputation as much as sound. Saturating a cold bass warms it.",
+    "roles": [],
+    "conflicts": [
+      "warm.low-mid"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.05,
+      "n": 34,
+      "class": "low"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "crowd-eq",
+      "snip-bass-tips",
+      "snip-adjectives"
+    ]
+  },
+  {
+    "id": "cool.lacking-body",
+    "word": "cool",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "lacking-body",
+    "meaning": "Lacks body and sounds thin, in one mix glossary. Listener curves for cool show almost no shared shape, so the word has no reliable spectrum.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": -0.03,
+      "n": 15,
+      "class": "low"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "mellow.round",
+    "word": "mellow",
+    "aliases": [
+      "round",
+      "sweet"
+    ],
+    "axis": "tone",
+    "sense": "round",
+    "meaning": "Smooth, with reduced highs and no edge. Listener curves for mellow raise the lows and cut the mids. Soft is no synonym, because its curves raise the highs and air.",
+    "roles": [],
+    "conflicts": [
+      "harsh.upper-mids",
+      "sharp.upper-mids"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.34,
+      "n": 8,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "rolloff85_hz",
+      "direction": "down"
+    },
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "gentle.smooth",
+    "word": "gentle",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "smooth",
+    "meaning": "Smooth and not aggressive. Saturation gives a gentle feel. Listener curves for gentle cut the lows and lift the highs and air, and listeners agree weakly.",
+    "roles": [],
+    "conflicts": [
+      "harsh.upper-mids"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.1,
+      "n": 8,
+      "class": "low"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "snippet",
+    "sources": [
+      "crowd-eq",
+      "snip-bass-tips"
+    ]
+  },
+  {
+    "id": "soft.gentle-tone",
+    "word": "soft",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "gentle-tone",
+    "meaning": "A gentle, unforced tone. Listener curves for soft cut the low mids and lift the highs and air, so soft is no tone synonym of mellow. Producers call a triangle soft against a bright saw.",
+    "roles": [],
+    "conflicts": [
+      "hard.character"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.2,
+      "n": 29,
+      "class": "medium"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "crowd-eq",
+      "pluck-guide"
+    ]
+  },
+  {
+    "id": "crisp.extended-highs",
+    "word": "crisp",
+    "aliases": [
+      "crispy"
+    ],
+    "axis": "tone",
+    "sense": "extended-highs",
+    "meaning": "Extended highs and a clear attack on cymbals and snare. Listener curves for crisp cut the lows and lift the highs. Some producers use crispy for distortion instead.",
+    "roles": [],
+    "conflicts": [
+      "dark.few-highs",
+      "dull.high-cut"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.47,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "high",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places crispness",
+        "low": 6000,
+        "high": 10000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "sharp.upper-mids",
+    "word": "sharp",
+    "aliases": [
+      "piercing",
+      "shrill",
+      "edgy",
+      "steely"
+    ],
+    "axis": "tone",
+    "sense": "upper-mids",
+    "label": "too much upper midrange",
+    "meaning": "Too much upper midrange, a piercing edge. Listener curves for sharp lift the mids and highs and cut the lows, and listeners agree well. A filter peak set too high adds to it.",
+    "roles": [],
+    "conflicts": [
+      "mellow.round"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.5,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band called steely in one glossary",
+        "low": 3000,
+        "high": 6000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "centre of an equaliser cut applied after distortion",
+        "low": 3000,
+        "high": 5000,
+        "unit": "Hz",
+        "sources": [
+          "wobble-guide"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "wobble-guide",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "sharp.fast-attack",
+    "word": "sharp",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "fast-attack",
+    "label": "a fast hard attack",
+    "meaning": "On percussion, sharp means a very fast, clean attack, not a spectral peak.",
+    "roles": [
+      "drums"
+    ],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.5,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "crest_db",
+      "direction": "up"
+    },
+    "values": [],
+    "tag": "inferred",
+    "sources": []
+  },
+  {
+    "id": "harsh.upper-mids",
+    "word": "harsh",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "upper-mids",
+    "meaning": "An unpleasant peak in the upper mids. A filter resonance set too high turns harsh, and far too high it screams. Listener curves for harsh differ a lot between people.",
+    "roles": [],
+    "conflicts": [
+      "gentle.smooth",
+      "mellow.round"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.08,
+      "n": 16,
+      "class": "low"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places harshness",
+        "low": 2000,
+        "high": 6000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-carter"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "dubstep-guide",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "tinny.narrow",
+    "word": "tinny",
+    "aliases": [
+      "telephone"
+    ],
+    "axis": "tone",
+    "sense": "narrow",
+    "meaning": "A narrow band with weak lows and peaky mids and highs, like a small speaker. Listener curves for tinny cut the lows strongly and lift the highs and air. Listeners agree well, from a small sample.",
+    "roles": [],
+    "conflicts": [
+      "deep.strong-lows",
+      "full.low-body",
+      "heavy.low-weight"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.82,
+      "n": 8,
+      "class": "high"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one article places the tinny sound",
+        "low": 3000,
+        "high": 7000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-au"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-au",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "airy.spectral",
+    "word": "airy",
+    "aliases": [
+      "air",
+      "open"
+    ],
+    "axis": "tone",
+    "sense": "spectral",
+    "label": "energy in the top octaves",
+    "meaning": "Energy above the presence range, in the top octaves. The sources disagree on where it starts. Listeners also call a quiet high noise tail with reverb airy, so this sense overlaps the spatial one.",
+    "roles": [],
+    "conflicts": [
+      "dark.few-highs",
+      "dull.high-cut"
+    ],
+    "default": true,
+    "agreement": {
+      "value": 0.63,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "measure": {
+      "key": "band_share",
+      "band": "air",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places air",
+        "low": 10000,
+        "high": 16000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "band where one article places air",
+        "low": 7000,
+        "high": 20000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-au"
+        ],
+        "tag": "single source"
+      },
+      {
+        "what": "point where another source names air",
+        "low": 16000,
+        "high": 16000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-bands"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-cll",
+      "gloss-au",
+      "gloss-bands"
+    ]
+  },
+  {
+    "id": "airy.spatial",
+    "word": "airy",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "spatial",
+    "label": "spacious like a large room",
+    "meaning": "Spacious, like a large reflective room. Listener reverb settings for airy lengthen the delay. A high noise tail plus reverb covers both airy senses.",
+    "roles": [],
+    "conflicts": [],
+    "default": false,
+    "agreement": {
+      "value": 0.63,
+      "n": 3,
+      "class": "unknown"
+    },
+    "few_sample": true,
+    "reverb": {
+      "n": 29,
+      "spread_ratio": 0.89,
+      "effects": {
+        "delay_time": 0.38,
+        "decay": -0.09,
+        "stereo_spread": -0.03,
+        "cutoff_freq": 0.04,
+        "wet_gain": -0.11
+      }
+    },
+    "measure": null,
+    "values": [],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter",
+      "crowd-eq"
+    ]
+  },
+  {
+    "id": "glassy.bell-like",
+    "word": "glassy",
+    "aliases": [
+      "crystalline",
+      "shimmery"
+    ],
+    "axis": "tone",
+    "sense": "bell-like",
+    "meaning": "Bell-like, inharmonic, or very bright and clean. Frequency modulation is the usual way to build it.",
+    "roles": [],
+    "conflicts": [
+      "dark.few-highs",
+      "dull.high-cut"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "centroid_over_f0",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places glassiness",
+        "low": 8000,
+        "high": 14000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-cll",
+      "snip-glassy"
+    ]
+  },
+  {
+    "id": "silky.smooth",
+    "word": "silky",
+    "aliases": [
+      "creamy",
+      "buttery",
+      "velvety"
+    ],
+    "axis": "tone",
+    "sense": "smooth",
+    "meaning": "A smooth, soft tone. These are opinion words with no synth definition. Creamy is applied to the sound of a classic chorus.",
+    "roles": [],
+    "conflicts": [],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "control": "no control",
+    "card_hint": "unmapped",
+    "tag": "snippet",
+    "sources": [
+      "snip-adjectives"
+    ]
+  },
+  {
+    "id": "present.forward",
+    "word": "present",
+    "aliases": [
+      "forward"
+    ],
+    "axis": "tone",
+    "sense": "forward",
+    "meaning": "Projects and sits in the middle of the mix. One glossary places presence in the upper mids. A mix word more than a patch word.",
+    "roles": [],
+    "conflicts": [
+      "laid-back.relaxed"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": {
+      "key": "band_share",
+      "band": "mid",
+      "direction": "up"
+    },
+    "values": [
+      {
+        "what": "band where one glossary places presence",
+        "low": 2000,
+        "high": 5000,
+        "unit": "Hz",
+        "sources": [
+          "gloss-cll"
+        ],
+        "tag": "single source"
+      }
+    ],
+    "tag": "source states",
+    "sources": [
+      "gloss-carter",
+      "gloss-cll"
+    ]
+  },
+  {
+    "id": "laid-back.relaxed",
+    "word": "laid-back",
+    "aliases": [],
+    "axis": "tone",
+    "sense": "relaxed",
+    "meaning": "Relaxed and set back from the listener, the opposite of forward. A mix word more than a patch word.",
+    "roles": [],
+    "conflicts": [
+      "present.forward"
+    ],
+    "default": true,
+    "agreement": {
+      "value": null,
+      "n": 0,
+      "class": "no data"
+    },
+    "few_sample": false,
+    "measure": null,
+    "values": [],
+    "music": [
+      "feel.laid-back"
+    ],
+    "tag": "single source",
+    "sources": [
+      "gloss-carter"
+    ]
+  }
+]

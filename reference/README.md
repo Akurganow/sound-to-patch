@@ -4,7 +4,7 @@ The controls of each synth that sound-to-patch writes presets for, by synth laye
 
 Vital and Serum 2 are trademarks of their owners. This project is not affiliated with or endorsed by them.
 
-The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row. The files under `core/` are generated from the music dictionary of sound-to-patch, the data its note checks read.
+The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row. The files under `core/` are generated from the music and word dictionaries of sound-to-patch.
 
 ## Which file answers what
 
@@ -25,6 +25,20 @@ The music files under `core/` serve every synth. Each entry has a checkable note
 | Words with several senses and the one question that picks a sense | [core/senses.md](core/senses.md) |
 | Corpus shares of chords and progressions | [core/statistics-harmony.md](core/statistics-harmony.md) |
 | Corpus shares of keys, modes, melody and rhythm | [core/statistics-keys.md](core/statistics-keys.md) |
+
+The word files under `core/` serve every synth too. Each row is one sense of a producer word with its meaning, sourced numbers, listener agreement and the analyzer number that checks it; the synth files bind the sense to controls.
+
+| Question | Core file |
+| :-- | :-- |
+| Brightness and balance words: bright, dark, warm, crisp | [core/words-tone.md](core/words-tone.md) |
+| Weight and low-end words: fat, deep, punchy, boomy | [core/words-body.md](core/words-body.md) |
+| Grit, noise and era words: gritty, clean, lo-fi, analog | [core/words-texture.md](core/words-texture.md) |
+| Harmonic and resonance words: hollow, nasal, metallic | [core/words-structure.md](core/words-structure.md) |
+| Width, room and distance words: wide, spacious, wet | [core/words-space.md](core/words-space.md) |
+| Words for change over time: wobble, evolving, glide | [core/words-movement.md](core/words-movement.md) |
+| Attack, decay and dynamics words: plucky, sustained | [core/words-envelope.md](core/words-envelope.md) |
+| Mood and character words, which name no control | [core/words-mood.md](core/words-mood.md) |
+| Slightly, very and other modifiers; style and technique words | [core/words-lists.md](core/words-lists.md) |
 
 | Question | Vital |
 | :-- | :-- |

@@ -98,6 +98,12 @@ joins `READY` when its adapter lands.
   meets, and holds the key, note-name, Roman-numeral and chord-symbol
   parsers, Camelot and Open Key, the snap rule, Euclidean patterns, swing
   and tick arithmetic. The binary reads nothing else from the dictionary.
+- `words`: the word dictionary for sounds. It embeds the axis files of
+  `dictionary/words/` with the listener numbers, the intensity ladder and
+  the style and technique lists, and parses them once. Its check
+  recomputes each agreement class and few-sample flag from the stored
+  numbers and matches every number's tag to its source count. It picks a
+  word's sense by role or by default and writes the word's question.
 - `units`: unit newtypes such as `Hz`, `Cents` and `Normalized`. Each is
   checked once when built, from a number, JSON or a unit string such as
   `"1.2 kHz"`. The conversions between units live here too.
@@ -152,12 +158,13 @@ joins `READY` when its adapter lands.
   descriptions, writes the release version, regenerates the Vital
   registry data from a local checkout of the open source, generates
   the Vital test fixtures, writes the catalogue files of the agent
-  reference from the registry and the music files from the music
-  dictionary, runs the chord oracles of the music dictionary with the
+  reference from the registry and the music and word files from their
+  dictionaries, recomputes the listener agreement of the sound words
+  from the pinned listener data, runs the chord oracles of the music dictionary with the
   golden tools, and checks the agent plugins.
 - `reference`: the agent reference, one folder of plain files: the router
   `README.md`, the generated catalogue files per synth and layer, the
-  generated music files under `core/`, and example edit lists. Nothing
+  generated music and word files under `core/`, and example edit lists. Nothing
   else holds a copy.
 - `plugins`: the agent plugins, each folder shipped as its own release
   archive and listed in `.claude-plugin/marketplace.json`.
@@ -166,7 +173,8 @@ joins `READY` when its adapter lands.
   a session on a clone of the repository finds it too.
 - `dictionary`: the data of the agent reference: the music entries per
   topic with their stated shares and planned counts, the word entries per
-  axis, the source list and the probe questions, with their schemas in
+  axis with the derived listener numbers, the intensity ladder, the style
+  and technique lists, the source list and the probe questions, with their schemas in
   `schemas/`.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
