@@ -12,18 +12,18 @@ use crate::dsp::{AnalyticSignal, FilterError, band_pass_zero_phase};
 use crate::units::{Hz, Seconds};
 
 /// The low edge of the band.
-pub const LINE_LO: Hz = Hz::from_const(20.0);
+pub(crate) const LINE_LO: Hz = Hz::from_const(20.0);
 /// The low edge of the band for the refit of a fast fall.
 ///
 /// Where a tone below 40 Hz starts from silence or rises, the 20 Hz high-pass raises
 /// the line for about 10 ms, which fits as a fast fall; an octave below
 /// the band it does not.
-pub const LINE_LO_FAST: Hz = Hz::from_const(10.0);
+pub(crate) const LINE_LO_FAST: Hz = Hz::from_const(10.0);
 /// The high edge of the band.
-pub const LINE_HI: Hz = Hz::from_const(200.0);
+pub(crate) const LINE_HI: Hz = Hz::from_const(200.0);
 /// The length of the median filter, about 1.4 ms: 31 samples at 22,050 Hz,
 /// 63 at 44,100 Hz and 67 at 48,000 Hz.
-pub const LINE_MEDIAN: Seconds = Seconds::from_const(0.0014);
+pub(crate) const LINE_MEDIAN: Seconds = Seconds::from_const(0.0014);
 
 /// The convention of the line, as `layers.json` names it.
 pub const LINE_CONVENTION: &str = "fourth-order Butterworth high-pass at 20 Hz and low-pass at \
@@ -124,7 +124,7 @@ impl SubBandLine {
 
 /// The median length at `rate`: `round(1.4 ms fs)`, plus one when even.
 #[must_use]
-pub fn median_len(rate: SampleRate) -> usize {
+pub(crate) fn median_len(rate: SampleRate) -> usize {
     let len = cast::round_to_usize(LINE_MEDIAN.get() * rate.hz().get()).unwrap_or(1);
     len.max(1) | 1
 }
@@ -133,7 +133,7 @@ pub fn median_len(rate: SampleRate) -> usize {
 /// shrinks to the samples that exist, so the ends are not pulled towards a
 /// padding value.
 #[must_use]
-pub fn median_filter(x: &[f64], len: usize) -> Vec<f64> {
+pub(crate) fn median_filter(x: &[f64], len: usize) -> Vec<f64> {
     let half = len / 2;
     let mut window = Vec::with_capacity(len);
     (0..x.len())
@@ -154,6 +154,23 @@ pub fn median_filter(x: &[f64], len: usize) -> Vec<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_convention_states_the_constants() {
+        use super::super::{num, says};
+        says(
+            LINE_CONVENTION,
+            &[
+                format!(
+                    "high-pass at {} Hz and low-pass at {} Hz",
+                    num(LINE_LO.get()),
+                    num(LINE_HI.get())
+                ),
+                format!("round({} ms fs)", num(1000.0 * LINE_MEDIAN.get())),
+                format!("uses a high-pass at {} Hz", num(LINE_LO_FAST.get())),
+            ],
+        );
+    }
 
     #[test]
     fn the_median_length_is_odd_and_near_1_4_ms() {

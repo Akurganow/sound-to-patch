@@ -20,7 +20,7 @@ use crate::dsp::{StftParams, describe};
 use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
 use crate::notes::{
     DEFAULT_VELOCITY, MidiError, MidiWriteError, NoteList, NotesError, PitchTrack, Profile,
-    QUIET_GATE, Transcriber, Transcription, Velocities, midi_track_name, read_midi_near,
+    QUIET_GATE, Transcriber, Transcription, Velocities, Voicing, midi_track_name, read_midi_near,
     transcribe_stem, voicing_of_notes, write_named_midi,
 };
 use crate::synth::Synth;
@@ -124,6 +124,22 @@ impl Analysis {
     }
 }
 
+/// The f0 track for given notes: the pitch layer reads it, and skips a
+/// list that is empty or plays chords without it.
+fn given_track(
+    transcriber: &Transcriber,
+    mono: &[f64],
+    rate: audio::SampleRate,
+    notes: &NoteList,
+) -> Result<PitchTrack, AnalyzeError> {
+    if notes.is_empty() || voicing_of_notes(notes) == Voicing::Polyphonic {
+        return Ok(PitchTrack::default());
+    }
+    transcriber
+        .track(mono, rate)
+        .map_err(|error| AnalyzeError::Transcription(NotesError::Track(error)))
+}
+
 /// Analyses a stem and writes `layers.json` and `spectrogram.png` into the
 /// output folder, creating it.
 ///
@@ -164,11 +180,7 @@ pub fn analyze(
     let (notes, transcription, track) = if let Some(path) = request.notes {
         let notes =
             read_midi_near(path, tempo.given(), tempo.trusted()).map_err(AnalyzeError::Notes)?;
-        // The given notes replace the model run; the f0 track still reads
-        // the audio, for the pitch layer.
-        let track = transcriber
-            .track(&mono, stem_audio.sample_rate())
-            .map_err(|error| AnalyzeError::Transcription(NotesError::Track(error)))?;
+        let track = given_track(transcriber, &mono, stem_audio.sample_rate(), &notes)?;
         (Some(notes), None, Some(track))
     } else {
         let transcription = transcribe_stem(

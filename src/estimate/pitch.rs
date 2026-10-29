@@ -14,26 +14,16 @@ mod line;
 mod vibrato;
 
 pub use drop::{
-    ATTACK_FROM, ATTACK_TO, DROP_CONVENTION, DROP_FIT_END, DROP_FIT_START, DROP_MAX,
-    DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE, DROP_TAU_MIN, DropFit, DropMiss,
-    ONSET_SMOOTHING, band_attack, band_onset, fit_drop,
+    DROP_CONVENTION, DROP_FIT_START, DROP_MAX, DROP_MAX_RESIDUAL, DROP_MIN, DROP_ONSET_SHARE,
+    DROP_TAU_MIN, DropFit, DropMiss, ONSET_SMOOTHING, band_onset, fit_drop,
 };
-pub use glide::{
-    BOUND_MAX_RESIDUAL, BOUND_MIN_INTERVAL, CURVE_EDGE, CURVE_RANGE, GAP_BRIDGE_MAX,
-    GAP_MOTION_MIN, GAP_SHARE_MAX, GAP_SLOPE_MAX, GLIDE_CONVENTION, GLIDE_INTERVAL_MIN,
-    GLIDE_MAX_RESIDUAL, GLIDE_SLOPE_MIN, GLIDE_STEP_MAX, GLIDE_TIME_MIN, GlideFit, GlideRead,
-    NOTE_MATCH, ONSET_LOOKBACK, PLATEAU_MIN, PLATEAU_RANGE, SMOOTH_FRAMES, STEADY_SPLIT,
-    find_glides, steady_spans, track_lag,
-};
-pub use line::{
-    LINE_CONVENTION, LINE_HI, LINE_LO, LINE_LO_FAST, LINE_MEDIAN, SubBandLine, median_filter,
-    median_len,
-};
-pub use vibrato::{
-    EXTENT_SHARE, RATE_SLACK, VIBRATO_CONVENTION, VIBRATO_CYCLES_MIN, VIBRATO_EXTENT_MIN,
-    VIBRATO_RATE_MAX, VIBRATO_RATE_MIN, VIBRATO_SHARE_MIN, VIBRATO_SPAN_MIN, VibratoFit,
-    extent_factor, fit_vibrato,
-};
+pub use glide::{CURVE_RANGE, GLIDE_CONVENTION, GLIDE_SLOPE_MIN, GlideFit};
+pub use line::{LINE_CONVENTION, SubBandLine};
+pub use vibrato::{EXTENT_SHARE, VIBRATO_CONVENTION, VIBRATO_SPAN_MIN, VibratoFit, fit_vibrato};
+
+use drop::{DROP_FIT_END, band_attack};
+use glide::{GlideRead, find_glides, steady_spans, track_lag};
+use line::{LINE_HI, LINE_LO, LINE_LO_FAST};
 
 use crate::audio::SampleRate;
 use crate::cast;
@@ -51,6 +41,9 @@ pub const STRIKE_LOOKBACK: Seconds = Seconds::from_const(0.5);
 pub const STRIKE_LOOKAHEAD: Seconds = Seconds::from_const(0.1);
 /// The vibrato search skips this much at each end of a steady span.
 pub const RUN_TRIM: Seconds = Seconds::from_const(0.05);
+/// The vibrato search skips at least this much after a drop's onset, and
+/// five time constants when that is longer.
+const SETTLE_MIN: f64 = 0.1;
 /// A glide from silence is a drop when its run starts this close to the
 /// onset of an accepted drop.
 pub const DROP_GLIDE_DISTANCE: Seconds = Seconds::from_const(0.2);
@@ -135,10 +128,12 @@ pub const CURVE_HIGH: f64 = 3.0;
 pub const SPAN_HIGH: Seconds = Seconds::from_const(0.15);
 /// The jitter above which a glide reads at low confidence.
 ///
-/// The unison glides of the generated sets jitter 3.5 to 7.1 cents, the
-/// mono ones 0 to 5.6, so the jitter alone cannot tell the two apart: a
-/// mono glide above it reads low too.
-pub const JITTER_LOW: f64 = 3.5;
+/// The unison glides of the generated sets jitter 3.77 to 7.07 cents at
+/// 22.05 kHz and 3.45 to 6.93 at 44.1 kHz, the mono ones 0.66 to 8.03 at
+/// both rates, so the jitter alone cannot tell the two apart: a mono glide
+/// above it reads low too. From [`JITTER_HIGH`] to here only mono glides
+/// fall, and they read medium.
+pub const JITTER_LOW: f64 = 3.4;
 /// A drop without a full-band rise needs an attack this short or shorter.
 /// Struck 808 notes read 9 to 13 ms; a unison falling into the band from
 /// above reads 190 ms.
@@ -264,8 +259,7 @@ pub struct PitchCounts {
 /// stopped each.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DropSkips {
-    /// No attack inside the onset search, or the attack of an earlier
-    /// note.
+    /// No attack inside the onset search.
     pub no_onset: usize,
     /// The strike lies more than [`ACTIVE_GATE_DB`] below the loudest
     /// frame of the stem, or more than [`DROP_BAND_GATE`] below the
@@ -498,21 +492,15 @@ fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead 
             .any(|d| (d.onset.get() - time.get()).abs() <= DROP_GLIDE_DISTANCE.get())
     };
     let starts = |from: Seconds, to: Seconds, spans: [(f64, f64); 2], rise: f64| {
-        let mut at = from.get();
-        while at <= to.get() {
-            if rises(
+        scan(from.get(), to.get(), ONSET_STEP).any(|at| {
+            rise_ratio(
                 input.mono,
                 input.rate,
                 Seconds::clamped(0.0),
                 Seconds::clamped(at),
                 spans,
-                rise,
-            ) {
-                return true;
-            }
-            at += ONSET_STEP;
-        }
-        false
+            ) >= rise
+        })
     };
     let rms = |at: f64, span: (f64, f64)| {
         span_rms(
@@ -527,12 +515,9 @@ fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead 
     let dips = |from: Seconds, to: Seconds| {
         let window = (-0.5 * DIP_WINDOW, 0.5 * DIP_WINDOW);
         let side = rms(from.get(), (-DIP_SIDE, 0.0)).max(rms(to.get(), (0.0, DIP_SIDE)));
-        let mut low = rms(f64::midpoint(from.get(), to.get()), window);
-        let mut at = from.get();
-        while at <= to.get() {
-            low = low.min(rms(at, window));
-            at += ONSET_STEP;
-        }
+        let low = scan(from.get(), to.get(), ONSET_STEP)
+            .map(|at| rms(at, window))
+            .fold(rms(f64::midpoint(from.get(), to.get()), window), f64::min);
         low < side * gain_below(GAP_DIP_DB) || low < floor
     };
     let jumps = |from: Seconds, to: Seconds, pitch: Hz| {
@@ -541,15 +526,10 @@ fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead 
             .to_amplitude_gain()
             .unwrap_or(f64::INFINITY);
         let end = to.get().min(from.get() + JUMP_SPAN);
-        let mut at = from.get() - JUMP_LEAD;
-        while at <= end {
+        scan(from.get() - JUMP_LEAD, end, JUMP_STEP).any(|at| {
             let (before, after) = (rms(at, (-window, 0.0)), rms(at, (0.0, window)));
-            if before > 0.0 && after > 0.0 && (after / before).max(before / after) >= gate {
-                return true;
-            }
-            at += JUMP_STEP;
-        }
-        false
+            before > 0.0 && after > 0.0 && (after / before).max(before / after) >= gate
+        })
     };
     find_glides(
         input.track,
@@ -558,6 +538,12 @@ fn glides(input: &PitchInput<'_>, loudest: f64, drops: &[DropFit]) -> GlideRead 
         |from, to| starts(from, to, RUN_START_SPANS, RUN_START_RISE) && !near_drop(to),
         jumps,
     )
+}
+
+/// The times from `from` to `to`, both included, `step` apart, each the
+/// previous plus `step`.
+fn scan(from: f64, to: f64, step: f64) -> impl Iterator<Item = f64> {
+    std::iter::successors(Some(from), move |at| Some(at + step)).take_while(move |&at| at <= to)
 }
 
 /// The amplitude gain of `gate` below a level.
@@ -651,12 +637,7 @@ fn strikes(
             &line,
             Seconds::clamped(search_from),
             Seconds::clamped(search_to),
-        )
-        .filter(|onset| {
-            !drops
-                .iter()
-                .any(|d| (d.fit.onset.get() - onset.get()).abs() < 1e-9)
-        }) else {
+        ) else {
             skips.no_onset += 1;
             continue;
         };
@@ -726,7 +707,7 @@ fn struck_enough(fit: &DropFit, rise: f64, attack: Seconds) -> bool {
     if fit.tau < FAST_TAU {
         return rise >= STRIKE_RISE && attack <= STRIKE_ATTACK;
     }
-    rise >= STRIKE_RISE || fit.f_end.get() + fit.df_hz < LINE_HI.get() && attack <= STRIKE_ATTACK
+    rise >= STRIKE_RISE || (fit.f_end.get() + fit.df_hz < LINE_HI.get() && attack <= STRIKE_ATTACK)
 }
 
 /// Whether a drop settles on a note: a note sounds while the drop is
@@ -747,19 +728,6 @@ fn settles_on_a_note(notes: &NoteList, fit: &DropFit, span_end: Seconds) -> bool
             .abs()
                 <= DROP_NOTE_MATCH.get()
     })
-}
-
-/// Whether the full-band level rises at `at` by `rise` or more, as
-/// [`rise_ratio`] reads it.
-fn rises(
-    samples: &[f64],
-    rate: SampleRate,
-    start: Seconds,
-    at: Seconds,
-    spans: [(f64, f64); 2],
-    rise: f64,
-) -> bool {
-    rise_ratio(samples, rate, start, at, spans) >= rise
 }
 
 /// The full-band RMS over `after` over the RMS over `before`, both spans in
@@ -881,7 +849,7 @@ fn vibratos(
         let mut from = first.get() + RUN_TRIM.get();
         let to = last.get() - RUN_TRIM.get();
         for drop in drops {
-            let settled = drop.onset.get() + (5.0 * drop.tau.get()).max(0.1) + lag;
+            let settled = drop.onset.get() + (5.0 * drop.tau.get()).max(SETTLE_MIN) + lag;
             if drop.onset.get() + lag <= to && settled > from {
                 from = settled;
             }
@@ -1025,5 +993,64 @@ impl From<FilterError> for PitchError {
 impl From<ConfidenceError> for PitchError {
     fn from(error: ConfidenceError) -> Self {
         Self::Confidence(error)
+    }
+}
+
+/// `x` with at most two decimals and no trailing zeros, as the convention
+/// strings print their numbers.
+#[cfg(test)]
+fn num(x: f64) -> String {
+    let text = format!("{x:.2}");
+    text.trim_end_matches('0').trim_end_matches('.').to_owned()
+}
+
+/// The convention `text` holds each phrase of `phrases`.
+#[cfg(test)]
+fn says(text: &str, phrases: &[String]) {
+    for phrase in phrases {
+        assert!(
+            text.contains(phrase.as_str()),
+            "missing {phrase:?} in {text:?}"
+        );
+    }
+}
+
+/// A full-band RMS ratio in whole decibels.
+#[cfg(test)]
+fn ratio_db(ratio: f64) -> String {
+    format!("{:.0} dB", 20.0 * ratio.log10())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_least_jitter_of_a_unison_reads_low() {
+        let glide = GlideFit {
+            start: Seconds::clamped(0.5),
+            interval: Semitones::clamped(7.0),
+            time: Seconds::clamped(0.2),
+            curve: 1.0,
+            from_silence: false,
+            detected: Seconds::clamped(0.2),
+            residual: Cents::clamped(5.0),
+            jitter: Cents::clamped(3.45),
+            on_bound: false,
+        };
+        let level = |jitter: f64| {
+            rate_glide(GlideFit {
+                jitter: Cents::clamped(jitter),
+                ..glide
+            })
+            .unwrap()
+            .confidence
+            .level()
+        };
+        // A unison of the generated sets jittered 3.45 cents at 44.1 kHz;
+        // mono glides from 3.06 to 3.40 read medium.
+        assert_eq!(level(3.45), Some(Level::Low));
+        assert_eq!(level(3.4), Some(Level::Medium));
+        assert_eq!(level(JITTER_HIGH), Some(Level::High));
     }
 }

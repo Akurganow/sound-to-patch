@@ -13,7 +13,7 @@ use crate::units::{Hz, Seconds, Semitones};
 /// 7 ms, at 30 to 150 Hz, and settles within 1 Hz by 30 ms.
 pub const DROP_FIT_START: Seconds = Seconds::from_const(0.007);
 /// The fit ends this long after the onset, or at the end of the note.
-pub const DROP_FIT_END: Seconds = Seconds::from_const(0.4);
+pub(crate) const DROP_FIT_END: Seconds = Seconds::from_const(0.4);
 /// The smallest drop that counts.
 pub const DROP_MIN: Semitones = Semitones::from_const(2.0);
 /// The largest drop that counts: three octaves. The line reads up to
@@ -35,9 +35,9 @@ pub const DROP_MAX_RESIDUAL: f64 = 0.15;
 pub const DROP_ONSET_SHARE: f64 = 0.5;
 /// The attack of a strike starts where the band envelope reaches this
 /// share of its peak.
-pub const ATTACK_FROM: f64 = 0.1;
+pub(crate) const ATTACK_FROM: f64 = 0.1;
 /// The attack ends where the band envelope reaches this share of its peak.
-pub const ATTACK_TO: f64 = 0.9;
+pub(crate) const ATTACK_TO: f64 = 0.9;
 /// The centred average of the band envelope that the onset search reads.
 pub const ONSET_SMOOTHING: Seconds = Seconds::from_const(0.01);
 /// The largest `tau` the search covers.
@@ -99,9 +99,7 @@ impl DropFit {
     /// when `f_end + df` is not above zero.
     #[must_use]
     pub fn df(&self) -> Option<Semitones> {
-        let start = self.f_end.get() + self.df_hz;
-        (start > 0.0 && self.f_end.get() > 0.0)
-            .then(|| Semitones::clamped(12.0 * (start / self.f_end.get()).log2()))
+        self.above_end(self.f_end.get() + self.df_hz)
     }
 
     /// The drop the line shows inside the fit span, in semitones: from the
@@ -110,7 +108,14 @@ impl DropFit {
     /// the overshoot of the line at a tone's onset.
     #[must_use]
     pub fn visible(&self) -> Option<Semitones> {
-        let start = self.f_end.get() + self.df_hz * (-DROP_FIT_START.get() / self.tau.get()).exp();
+        self.above_end(
+            self.f_end.get() + self.df_hz * (-DROP_FIT_START.get() / self.tau.get()).exp(),
+        )
+    }
+
+    /// `start` above `f_end` in semitones, `12 log2(start / f_end)`, or
+    /// `None` when either is not above zero.
+    fn above_end(&self, start: f64) -> Option<Semitones> {
         (start > 0.0 && self.f_end.get() > 0.0)
             .then(|| Semitones::clamped(12.0 * (start / self.f_end.get()).log2()))
     }
@@ -181,7 +186,7 @@ pub fn band_onset(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seco
 /// from [`ATTACK_FROM`] to [`ATTACK_TO`] of the peak that follows its
 /// lowest point. `None` when no attack lies inside the span.
 #[must_use]
-pub fn band_attack(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
+pub(crate) fn band_attack(line: &SubBandLine, from: Seconds, to: Seconds) -> Option<Seconds> {
     let (_, smooth) = smoothed_envelope(line, from, to)?;
     let (low, peak) = low_and_peak(&smooth)?;
     let after = &smooth[low..];
@@ -241,9 +246,10 @@ pub fn fit_drop(line: &SubBandLine, onset: Seconds, end: Seconds) -> Option<Drop
     let (lo, hi) = (DROP_TAU_MIN.get().ln(), TAU_MAX.ln());
     let step = (hi - lo) / cast::usize_to_f64(TAU_GRID - 1);
     let sse = |log_tau: f64| solve(&points, log_tau.exp()).2;
-    let best = (0..TAU_GRID)
+    let (best, _) = (0..TAU_GRID)
         .map(|k| lo + step * cast::usize_to_f64(k))
-        .min_by(|a, b| sse(*a).total_cmp(&sse(*b)))?;
+        .map(|log_tau| (log_tau, sse(log_tau)))
+        .min_by(|a, b| a.1.total_cmp(&b.1))?;
     let (log_tau, _) = golden_section(sse, (best - step).max(lo), (best + step).min(hi), 1e-9);
     let tau = log_tau.exp();
     let (f_end, df, sse) = solve(&points, tau);
@@ -317,9 +323,9 @@ fn period_rms(points: &[(f64, f64)], f_end: f64, df: f64, tau: f64, rate: Sample
 /// squared residuals.
 fn solve(points: &[(f64, f64)], tau: f64) -> (f64, f64, f64) {
     let n = cast::usize_to_f64(points.len());
+    let g: Vec<f64> = points.iter().map(|&(t, _)| (-t / tau).exp()).collect();
     let (mut sg, mut sgg, mut sy, mut sgy) = (0.0, 0.0, 0.0, 0.0);
-    for &(t, y) in points {
-        let g = (-t / tau).exp();
+    for (&(_, y), &g) in points.iter().zip(&g) {
         sg += g;
         sgg += g * g;
         sy += y;
@@ -333,7 +339,8 @@ fn solve(points: &[(f64, f64)], tau: f64) -> (f64, f64, f64) {
     };
     let sse = points
         .iter()
-        .map(|&(t, y)| (y - a - b * (-t / tau).exp()).powi(2))
+        .zip(&g)
+        .map(|(&(_, y), &g)| (y - a - b * g).powi(2))
         .sum();
     (a, b, sse)
 }
@@ -342,6 +349,94 @@ fn solve(points: &[(f64, f64)], tau: f64) -> (f64, f64, f64) {
 mod tests {
     use super::*;
     use crate::audio::SampleRate;
+
+    #[test]
+    fn the_convention_states_the_constants() {
+        use super::super::line::{LINE_HI, LINE_LO, LINE_LO_FAST};
+        use super::super::{
+            DROP_BAND_GATE, DROP_NOTE_MATCH, RUN_START_RISE, STRIKE_ATTACK, STRIKE_RISE,
+            STRIKE_SPANS, num, ratio_db, says,
+        };
+        use crate::dsp::ACTIVE_GATE_DB;
+        use crate::notes::QUIET_FRAME;
+        let ms = |s: f64| num(1000.0 * s);
+        let [before, after] = STRIKE_SPANS;
+        assert!((DROP_ONSET_SHARE - 0.5).abs() < 1e-12, "half the peak");
+        says(
+            DROP_CONVENTION,
+            &[
+                format!(
+                    "from {} ms to {} ms after the onset",
+                    ms(DROP_FIT_START.get()),
+                    ms(DROP_FIT_END.get())
+                ),
+                format!(
+                    "search from {} ms, where exp(-{} ms / tau) = 0.1, to {} s",
+                    ms(DROP_TAU_MIN.get()),
+                    ms(DROP_FIT_START.get()),
+                    num(TAU_MAX)
+                ),
+                format!(
+                    "a fit with tau under {} ms, or after a strike whose full-band RMS rises {}, \
+                     is fitted again on the line with its high-pass at {} Hz",
+                    ms(FAST_TAU.get()),
+                    ratio_db(RUN_START_RISE),
+                    num(LINE_LO_FAST.get())
+                ),
+                format!(
+                    "where the {} to {} Hz envelope, averaged over a centred {} ms, reaches half",
+                    num(LINE_LO.get()),
+                    num(LINE_HI.get()),
+                    ms(ONSET_SMOOTHING.get())
+                ),
+                format!(
+                    "RMS over the {} ms after the onset lies more than {} dB below the loudest \
+                     {} ms frame of the stem",
+                    ms(after.1 - after.0),
+                    num(ACTIVE_GATE_DB.get()),
+                    ms(QUIET_FRAME.get())
+                ),
+                format!(
+                    "lies more than {} dB below the loudest {} ms frame of that band",
+                    num(DROP_BAND_GATE.get()),
+                    ms(QUIET_FRAME.get())
+                ),
+                format!(
+                    "a drop with tau under {} ms needs an envelope that takes {} ms or less from \
+                     {} to {} % of its peak",
+                    ms(FAST_TAU.get()),
+                    ms(STRIKE_ATTACK.get()),
+                    num(100.0 * ATTACK_FROM),
+                    num(100.0 * ATTACK_TO)
+                ),
+                format!("one that starts at {} Hz or above", num(LINE_HI.get())),
+                format!(
+                    "the {} ms after the onset {} or more above the {} ms that end {} ms before it",
+                    ms(after.1 - after.0),
+                    ratio_db(STRIKE_RISE),
+                    ms(before.1 - before.0),
+                    ms(-before.1)
+                ),
+                format!(
+                    "half a period of f_end when tau is {} ms or more and over a full period \
+                     when tau spans {} periods or more",
+                    ms(FAST_TAU.get()),
+                    num(FULL_PERIODS)
+                ),
+                format!(
+                    "df_st is above {} and at most {}, that fall is above {} semitones too",
+                    num(DROP_MIN.get()),
+                    num(DROP_MAX.get()),
+                    num(DROP_MIN.get())
+                ),
+                format!("residual is below {}", num(DROP_MAX_RESIDUAL)),
+                format!(
+                    "within {} cents of a note that sounds",
+                    num(DROP_NOTE_MATCH.get())
+                ),
+            ],
+        );
+    }
 
     #[test]
     fn the_fit_recovers_an_exact_exponential() {

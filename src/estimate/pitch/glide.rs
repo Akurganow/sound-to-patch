@@ -11,62 +11,62 @@ use crate::units::{Cents, Hz, Seconds, Semitones};
 /// Untuned.
 pub const GLIDE_SLOPE_MIN: f64 = 86.0;
 /// The shortest glide, over its detected span and over its fitted time.
-pub const GLIDE_TIME_MIN: Seconds = Seconds::from_const(0.09);
+pub(crate) const GLIDE_TIME_MIN: Seconds = Seconds::from_const(0.09);
 /// Motion shorter than this over its detected span is a step between two
 /// notes.
 ///
 /// From here up to [`GLIDE_TIME_MIN`] it is a glide too short to read. Six
 /// hops: the moving average alone spreads a jump over five.
-pub const GLIDE_STEP_MAX: Seconds = Seconds::from_const(0.035);
+pub(crate) const GLIDE_STEP_MAX: Seconds = Seconds::from_const(0.035);
 /// Two stable pitches this far apart split a steady span, so the vibrato
 /// search never reads a step between two notes. A vibrato of ±60 cents
 /// moves its stable pitches 120 cents apart and stays whole.
-pub const STEADY_SPLIT: Cents = Cents::from_const(150.0);
+pub(crate) const STEADY_SPLIT: Cents = Cents::from_const(150.0);
 /// The smallest interval between the two stable pitches.
-pub const GLIDE_INTERVAL_MIN: Cents = Cents::from_const(100.0);
+pub(crate) const GLIDE_INTERVAL_MIN: Cents = Cents::from_const(100.0);
 /// A stable pitch lasts at least this long.
-pub const PLATEAU_MIN: Seconds = Seconds::from_const(0.05);
+pub(crate) const PLATEAU_MIN: Seconds = Seconds::from_const(0.05);
 /// A stable pitch stays within this many cents of its mean.
-pub const PLATEAU_RANGE: Cents = Cents::from_const(30.0);
+pub(crate) const PLATEAU_RANGE: Cents = Cents::from_const(30.0);
 /// A stable pitch belongs to a note whose pitch lies within this many
 /// cents of it.
-pub const NOTE_MATCH: Cents = Cents::from_const(50.0);
+pub(crate) const NOTE_MATCH: Cents = Cents::from_const(50.0);
 /// Frames of the centred moving average that the slope reads: 5 hops,
 /// 29 ms.
-pub const SMOOTH_FRAMES: usize = 5;
+pub(crate) const SMOOTH_FRAMES: usize = 5;
 /// The range of the curve power `p`.
 pub const CURVE_RANGE: (f64, f64) = (0.2, 5.0);
 /// A fitted `p` within this factor of a bound of [`CURVE_RANGE`] sits on
 /// the bound.
-pub const CURVE_EDGE: f64 = 1.05;
+pub(crate) const CURVE_EDGE: f64 = 1.05;
 /// The largest RMS residual of a glide whose `p` sits on the upper bound
 /// of [`CURVE_RANGE`]. Exponential portamento, `1 - exp(-t / tau)`, fits
 /// the bound within 20 cents; a smeared step on that bound fits worse.
-pub const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
+pub(crate) const BOUND_MAX_RESIDUAL: Cents = Cents::from_const(20.0);
 /// A glide whose `p` sits on the upper bound of [`CURVE_RANGE`] and whose
 /// interval is under this needs a steady level across its motion.
 ///
 /// The track smears a 1 semitone step between two 808 notes struck again
 /// into a fast curve that fits the bound within 5 cents. Real small slides
 /// of 1 to 1.8 semitones fit the same bound.
-pub const BOUND_MIN_INTERVAL: Semitones = Semitones::from_const(2.0);
+pub(crate) const BOUND_MIN_INTERVAL: Semitones = Semitones::from_const(2.0);
 /// The largest RMS residual of a glide of 90 ms or more. The glides of the
 /// generated set fit within 22 cents.
-pub const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
+pub(crate) const GLIDE_MAX_RESIDUAL: Cents = Cents::from_const(40.0);
 /// The longest unvoiced gap between two voiced runs that the glide search
 /// bridges. A beating unison can leave the track unvoiced for 75 ms inside
 /// a glide.
-pub const GAP_BRIDGE_MAX: Seconds = Seconds::from_const(0.1);
+pub(crate) const GAP_BRIDGE_MAX: Seconds = Seconds::from_const(0.1);
 /// The smallest jump across a bridged gap, and the smallest motion over
 /// the two frames after it: two steps of the tracker's 10-cent grid.
-pub const GAP_MOTION_MIN: Cents = Cents::from_const(20.0);
+pub(crate) const GAP_MOTION_MIN: Cents = Cents::from_const(20.0);
 /// The fastest jump across a bridged gap, in cents per second.
 ///
 /// A 50 ms glide of 7 semitones jumps 20 cents per millisecond across its two
 /// unvoiced frames, a unison whose voices start in phase 3.6 across its
 /// 75 ms gap; a note struck again 10 semitones lower jumps about 40 across
 /// three unvoiced frames.
-pub const GAP_SLOPE_MAX: f64 = 30_000.0;
+pub(crate) const GAP_SLOPE_MAX: f64 = 30_000.0;
 /// A gap whose jump carries more than this share of the interval between
 /// two stable pitches, or a jump against it, is a step: the track lands
 /// on the new pitch and the settle after it reads as motion.
@@ -74,10 +74,10 @@ pub const GAP_SLOPE_MAX: f64 = 30_000.0;
 /// Unison glides whose voices beat the track unvoiced for 75 ms jump 0.53
 /// and 0.54 of their interval across the gap; a step between two 808
 /// notes jumped 0.72 across 58 ms, and a fast-start unison 0.76.
-pub const GAP_SHARE_MAX: f64 = 0.6;
+pub(crate) const GAP_SHARE_MAX: f64 = 0.6;
 /// A glide from silence needs a sound to start at most this long before
 /// its voiced run.
-pub const ONSET_LOOKBACK: Seconds = Seconds::from_const(0.1);
+pub(crate) const ONSET_LOOKBACK: Seconds = Seconds::from_const(0.1);
 /// The fit reads this much of each stable pitch next to the motion.
 const FIT_MARGIN: f64 = 0.05;
 
@@ -89,7 +89,7 @@ const FIT_MARGIN: f64 = 0.05;
 /// period after it: the lag is a quarter frame, 23.2 ms, less half a
 /// period, so 18.7 ms at 110 Hz and 14.1 ms at 55 Hz.
 #[must_use]
-pub fn track_lag(f0: Hz) -> Seconds {
+pub(crate) fn track_lag(f0: Hz) -> Seconds {
     let rate = MODEL_RATE.hz().get();
     let quarter = cast::usize_to_f64(TRACK_FRAME / 4) / rate;
     let half_period = if f0.get() > 0.0 { 0.5 / f0.get() } else { 0.0 };
@@ -153,13 +153,11 @@ pub struct GlideFit {
     /// that approaches its target exponentially, as an RC portamento does,
     /// runs past the curve family.
     pub on_bound: bool,
-    /// The number of frames the fit read.
-    pub frames: usize,
 }
 
 /// What the search found.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct GlideRead {
+pub(crate) struct GlideRead {
     /// The glides, in time order.
     pub glides: Vec<GlideFit>,
     /// Motions between two stable pitches that lasted from
@@ -195,7 +193,7 @@ struct Plateau {
 /// it: the track can go unvoiced inside a glide, and at a step between two
 /// notes.
 #[must_use]
-pub fn find_glides(
+pub(crate) fn find_glides(
     track: &PitchTrack,
     notes: &NoteList,
     breaks: impl Fn(Seconds, Seconds) -> bool,
@@ -305,7 +303,7 @@ pub fn find_glides(
 /// pitches lie [`STEADY_SPLIT`] or more apart and without the frames of
 /// each glide, as `(time, f0)` frames in track time.
 #[must_use]
-pub fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds, Hz)>> {
+pub(crate) fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds, Hz)>> {
     let in_glide = |frame: &Frame| {
         let audio = frame.time - lag_at(frame.cents);
         glides
@@ -323,10 +321,11 @@ pub fn steady_spans(track: &PitchTrack, glides: &[GlideFit]) -> Vec<Vec<(Seconds
             }
         }
         cuts.push(run.len());
-        for bounds in cuts.chunks(2) {
-            let [from, to] = [bounds[0], *bounds.get(1).unwrap_or(&run.len())];
+        // The cuts come in pairs: each split ends one span and starts the
+        // next, between 0 and the end of the run.
+        for &[from, to] in cuts.as_chunks::<2>().0 {
             let mut span = Vec::new();
-            for frame in &run[from..to.max(from)] {
+            for frame in &run[from..to] {
                 if in_glide(frame) {
                     if !span.is_empty() {
                         spans.push(std::mem::take(&mut span));
@@ -543,10 +542,12 @@ impl LineSums {
 /// The first and last time between frames `from` and `to` whose signed
 /// slope reaches [`GLIDE_SLOPE_MIN`], or `None` when none does.
 fn detected(run: &[Frame], signed: &[f64], from: usize, to: usize) -> Option<(f64, f64)> {
-    let moving: Vec<usize> = (from..=to.min(run.len() - 1))
-        .filter(|&k| signed[k] >= GLIDE_SLOPE_MIN)
-        .collect();
-    Some((run[*moving.first()?].time, run[*moving.last()?].time))
+    let moving = |&k: &usize| signed[k] >= GLIDE_SLOPE_MIN;
+    let mut span = from..=to.min(run.len() - 1);
+    Some((
+        run[span.clone().find(moving)?].time,
+        run[span.rfind(moving)?].time,
+    ))
 }
 
 /// The curve between `c0` and `c1` at time `t` for a start `t0`, a full
@@ -584,25 +585,22 @@ fn fit_between(run: &[Frame], a: Plateau, b: Plateau, span: (f64, f64)) -> Optio
     );
     let (c0, c1) = (a.median, b.median);
     let length = span.1 - span.0;
-    let mut start = (f64::INFINITY, [span.0, length.ln(), 0.0]);
-    for &p in &P_GRID {
-        for &share in &TIME_GRID {
-            for shift in -8..=4 {
-                let t0 = span.0 + 0.005 * f64::from(shift);
-                let point = [t0, (length * share).ln(), p.ln()];
-                let value = sse(window, c0, c1, point[0], point[1], point[2]);
-                if value < start.0 {
-                    start = (value, point);
-                }
-            }
-        }
-    }
-    let ([t0, log_time, log_p], value) = nelder_mead(
+    let grid = P_GRID.iter().flat_map(|&p| {
+        TIME_GRID.iter().flat_map(move |&share| {
+            (-8..=4).map(move |shift| {
+                [
+                    span.0 + 0.005 * f64::from(shift),
+                    (length * share).ln(),
+                    p.ln(),
+                ]
+            })
+        })
+    });
+    let ([t0, log_time, log_p], value) = seeded_fit(
         |x: &[f64; 3]| sse(window, c0, c1, x[0], x[1], x[2]),
-        start.1,
+        [span.0, length.ln(), 0.0],
+        grid,
         [0.005, 0.1, 0.1],
-        2_000,
-        1e-10,
     );
     let jitter = jitter(&run[a.first..=a.last], c0, &run[b.first..=b.last], c1);
     glide(
@@ -627,22 +625,16 @@ fn fit_from_silence(run: &[Frame], b: Plateau, span: (f64, f64)) -> Option<Glide
     let c1 = b.median;
     let t0 = run[0].time;
     let length = span.1 - t0;
-    let mut start = (f64::INFINITY, [run[0].cents, length.ln(), 0.0]);
-    for &p in &P_GRID {
-        for &share in &TIME_GRID {
-            let point = [run[0].cents, (length * share).ln(), p.ln()];
-            let value = sse(window, point[0], c1, t0, point[1], point[2]);
-            if value < start.0 {
-                start = (value, point);
-            }
-        }
-    }
-    let ([c0, log_time, log_p], value) = nelder_mead(
+    let grid = P_GRID.iter().flat_map(|&p| {
+        TIME_GRID
+            .iter()
+            .map(move |&share| [run[0].cents, (length * share).ln(), p.ln()])
+    });
+    let ([c0, log_time, log_p], value) = seeded_fit(
         |x: &[f64; 3]| sse(window, x[0], c1, t0, x[1], x[2]),
-        start.1,
+        [run[0].cents, length.ln(), 0.0],
+        grid,
         [10.0, 0.1, 0.1],
-        2_000,
-        1e-10,
     );
     let jitter = jitter(&[], c1, &run[b.first..=b.last], c1);
     glide(
@@ -657,6 +649,25 @@ fn fit_from_silence(run: &[Frame], b: Plateau, span: (f64, f64)) -> Option<Glide
         span.1 - span.0,
         jitter,
     )
+}
+
+/// Runs a Nelder-Mead simplex from the first point of `grid` with the
+/// smallest `objective`, or from `fallback` when none is below infinity,
+/// with initial steps `step`.
+fn seeded_fit(
+    objective: impl Fn(&[f64; 3]) -> f64,
+    fallback: [f64; 3],
+    grid: impl IntoIterator<Item = [f64; 3]>,
+    step: [f64; 3],
+) -> ([f64; 3], f64) {
+    let mut start = (f64::INFINITY, fallback);
+    for point in grid {
+        let value = objective(&point);
+        if value < start.0 {
+            start = (value, point);
+        }
+    }
+    nelder_mead(&objective, start.1, step, 2_000, 1e-10)
 }
 
 /// The frames of `run` from `from` to `to`.
@@ -698,7 +709,6 @@ fn glide(
         detected: Seconds::new(detected).ok()?,
         residual: Cents::new((sse / cast::usize_to_f64(frames)).sqrt()).ok()?,
         jitter: Cents::new(jitter).ok()?,
-        frames,
         on_bound: false,
     })
 }
@@ -708,6 +718,99 @@ mod tests {
     use super::*;
     use crate::notes::{Note, TrackFrame};
     use crate::units::{Decibels, MidiPitch};
+
+    #[test]
+    fn the_convention_states_the_constants() {
+        use super::super::{
+            DIP_SIDE, DIP_WINDOW, GAP_DIP_DB, JUMP_LEAD, JUMP_SPAN, LEVEL_JUMP_DB, RUN_START_RISE,
+            STRIKE_RISE, num, ratio_db, says,
+        };
+        use crate::dsp::ACTIVE_GATE_DB;
+        let ms = |s: f64| num(1000.0 * s);
+        let quarter = 1000.0 * cast::usize_to_f64(TRACK_FRAME / 4) / MODEL_RATE.hz().get();
+        says(
+            GLIDE_CONVENTION,
+            &[
+                format!(
+                    "a span of {} ms or more within {} cents of its running mean whose \
+                     least-squares slope stays at {} cents per second or less",
+                    ms(PLATEAU_MIN.get()),
+                    num(PLATEAU_RANGE.get()),
+                    num(GLIDE_SLOPE_MIN)
+                ),
+                format!(
+                    "{} cents or more apart that match notes of different pitch within {} cents, \
+                     where the slope of the {}-frame moving average stays at {} cents per second",
+                    num(GLIDE_INTERVAL_MIN.get()),
+                    num(NOTE_MATCH.get()),
+                    SMOOTH_FRAMES,
+                    num(GLIDE_SLOPE_MIN)
+                ),
+                format!("over {} ms or more;", ms(GLIDE_TIME_MIN.get())),
+                format!("over the motion and {} ms of each", ms(FIT_MARGIN)),
+                format!("a quarter frame, {quarter:.1} ms"),
+                format!(
+                    "the full-band RMS rising {}, up to {} ms before it",
+                    ratio_db(RUN_START_RISE),
+                    ms(ONSET_LOOKBACK.get())
+                ),
+                format!(
+                    "within {} ms of the one before joins it when the full-band RMS does not \
+                     rise {} in the gap, its {} ms RMS stays within {} dB of the {} ms before or \
+                     after the gap and within {} dB of the loudest frame",
+                    ms(GAP_BRIDGE_MAX.get()),
+                    ratio_db(STRIKE_RISE),
+                    ms(DIP_WINDOW),
+                    num(GAP_DIP_DB.get()),
+                    ms(DIP_SIDE),
+                    num(ACTIVE_GATE_DB.get())
+                ),
+                format!(
+                    "at {} cents per millisecond or slower",
+                    num(GAP_SLOPE_MAX / 1000.0)
+                ),
+                format!(
+                    "against the interval by {} cents or more, or carries more than {} % of it",
+                    num(GAP_MOTION_MIN.get()),
+                    num(100.0 * GAP_SHARE_MAX)
+                ),
+                format!(
+                    "motion of {} to {} ms",
+                    ms(GLIDE_STEP_MAX.get()),
+                    ms(GLIDE_TIME_MIN.get())
+                ),
+                format!(
+                    "a fit of {} ms or more with p within {} % of {}",
+                    ms(GLIDE_TIME_MIN.get()),
+                    num(100.0 * (CURVE_EDGE - 1.0)),
+                    num(CURVE_RANGE.0)
+                ),
+                format!(
+                    "with p within {} % of {} and an RMS residual above {} cents, a detected \
+                     span under {} ms",
+                    num(100.0 * (CURVE_EDGE - 1.0)),
+                    num(CURVE_RANGE.1),
+                    num(BOUND_MAX_RESIDUAL.get()),
+                    ms(GLIDE_TIME_MIN.get())
+                ),
+                format!(
+                    "an interval under {} semitones where the full-band RMS of two adjacent \
+                     windows of one period of the lower pitch, or {} ms if longer, differs by {} \
+                     dB or more anywhere from {} ms before the fitted start to the end of the \
+                     motion or {} ms into it",
+                    num(BOUND_MIN_INTERVAL.get()),
+                    ms(DIP_WINDOW),
+                    num(LEVEL_JUMP_DB.get()),
+                    ms(JUMP_LEAD),
+                    ms(JUMP_SPAN)
+                ),
+                format!(
+                    "an RMS residual above {} cents, is no glide",
+                    num(GLIDE_MAX_RESIDUAL.get())
+                ),
+            ],
+        );
+    }
 
     const HOP: f64 = 128.0 / 22_050.0;
 

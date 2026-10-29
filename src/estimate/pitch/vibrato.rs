@@ -5,29 +5,32 @@ use crate::cast;
 use crate::units::{Cents, Hz, Seconds};
 
 /// The slowest vibrato that counts.
-pub const VIBRATO_RATE_MIN: Hz = Hz::from_const(3.0);
+pub(crate) const VIBRATO_RATE_MIN: Hz = Hz::from_const(3.0);
 /// The fastest vibrato that counts.
-pub const VIBRATO_RATE_MAX: Hz = Hz::from_const(12.0);
+pub(crate) const VIBRATO_RATE_MAX: Hz = Hz::from_const(12.0);
 /// The share by which a rate may read outside 3 to 12 Hz and still count.
 ///
 /// Through the f0 track the generated rates read within 0.8 % of the
 /// truth, so a vibrato at either edge stays in.
-pub const RATE_SLACK: f64 = 0.01;
+pub(crate) const RATE_SLACK: f64 = 0.01;
 /// The smallest extent that counts, after the correction.
-pub const VIBRATO_EXTENT_MIN: Cents = Cents::from_const(10.0);
+pub(crate) const VIBRATO_EXTENT_MIN: Cents = Cents::from_const(10.0);
 /// The shortest voiced span the search reads.
 pub const VIBRATO_SPAN_MIN: Seconds = Seconds::from_const(0.5);
 /// The smallest share of the detrended contour's power that the sine
 /// must explain, so jitter does not read as a vibrato.
-pub const VIBRATO_SHARE_MIN: f64 = 0.5;
+pub(crate) const VIBRATO_SHARE_MIN: f64 = 0.5;
 /// The fewest cycles of the sine over the span.
 ///
 /// Checked against an independent f0 on real stems, every vibrato of 2.5 cycles or more
 /// matched it; the shorter ones, 1.6 to 2.4 cycles at 3 to 4.7 Hz, did not
 /// or held under 2 cycles of it.
-pub const VIBRATO_CYCLES_MIN: f64 = 2.5;
-/// The search runs from this rate, or from 1.5 cycles over the span.
+pub(crate) const VIBRATO_CYCLES_MIN: f64 = 2.5;
+/// The search runs from this rate, or from [`SEARCH_CYCLES`] over the
+/// span.
 const SEARCH_LO: f64 = 1.0;
+/// The fewest cycles over the span the search reads.
+const SEARCH_CYCLES: f64 = 1.5;
 /// The search runs up to this rate.
 const SEARCH_HI: f64 = 20.0;
 /// The step of the search grid before the refinement.
@@ -65,8 +68,6 @@ pub struct VibratoFit {
     pub kurtosis: f64,
     /// The mean pitch of the span.
     pub pitch: Hz,
-    /// The number of frames read.
-    pub frames: usize,
 }
 
 impl VibratoFit {
@@ -117,7 +118,7 @@ pub const EXTENT_SHARE: [(f64, f64); 9] = [
 /// The factor that undoes the track's smoothing at `rate`: one over the
 /// interpolated [`EXTENT_SHARE`].
 #[must_use]
-pub fn extent_factor(rate: Hz) -> f64 {
+pub(crate) fn extent_factor(rate: Hz) -> f64 {
     let r = rate.get();
     let share = match EXTENT_SHARE.iter().position(|&(at, _)| at >= r) {
         None => EXTENT_SHARE[EXTENT_SHARE.len() - 1].1,
@@ -153,16 +154,18 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
     for c in &mut cents {
         *c -= mean;
     }
-    let power = residual_power(&times, &cents);
+    let residuals = detrend(&times, &cents);
+    let power: f64 = residuals.iter().map(|r| r * r).sum();
     if power <= 0.0 {
         return None;
     }
     let explained = |rate: f64| sine_fit(&times, &cents, rate).0;
-    let lo = SEARCH_LO.max(1.5 / span);
+    let lo = SEARCH_LO.max(SEARCH_CYCLES / span);
     let steps = cast::floor_to_usize((SEARCH_HI - lo) / SEARCH_STEP)?;
-    let best = (0..=steps)
+    let (best, _) = (0..=steps)
         .map(|k| lo + SEARCH_STEP * cast::usize_to_f64(k))
-        .max_by(|a, b| explained(*a).total_cmp(&explained(*b)))?;
+        .map(|rate| (rate, explained(rate)))
+        .max_by(|a, b| a.1.total_cmp(&b.1))?;
     let (rate, _) = golden_section(
         |rate| -explained(rate),
         (best - SEARCH_STEP).max(lo),
@@ -170,7 +173,7 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         1e-6,
     );
     let (explained_power, amplitude) = sine_fit(&times, &cents, rate);
-    let kurtosis = kurtosis(&times, &cents);
+    let kurtosis = kurtosis(&residuals);
     let rate = Hz::new(rate).ok()?;
     Some(VibratoFit {
         start: first.0,
@@ -181,7 +184,6 @@ pub fn fit_vibrato(frames: &[(Seconds, Hz)]) -> Option<VibratoFit> {
         share: (explained_power / power).min(1.0),
         kurtosis,
         pitch: Hz::new(2_f64.powf(mean / 1200.0)).ok()?,
-        frames: cents.len(),
     })
 }
 
@@ -214,9 +216,9 @@ fn sine_fit(times: &[f64], values: &[f64], rate: f64) -> (f64, f64) {
     (explained, along_cos.hypot(along_sin))
 }
 
-/// The kurtosis of `y` after its least-squares line, the fourth moment
-/// over the squared second, or 0 when nothing is left.
-fn kurtosis(t: &[f64], y: &[f64]) -> f64 {
+/// `y` less its least-squares line over `t`; a flat line when `t` holds a
+/// single time.
+fn detrend(t: &[f64], y: &[f64]) -> Vec<f64> {
     let n = cast::usize_to_f64(t.len());
     let (st, sy) = (t.iter().sum::<f64>(), y.iter().sum::<f64>());
     let stt: f64 = t.iter().map(|t| t * t).sum();
@@ -228,32 +230,22 @@ fn kurtosis(t: &[f64], y: &[f64]) -> f64 {
         0.0
     };
     let intercept = (sy - slope * st) / n;
+    t.iter()
+        .zip(y)
+        .map(|(t, y)| y - intercept - slope * t)
+        .collect()
+}
+
+/// The kurtosis of `residuals`, the fourth moment over the squared second,
+/// or 0 when nothing is left.
+fn kurtosis(residuals: &[f64]) -> f64 {
+    let n = cast::usize_to_f64(residuals.len());
     let (mut m2, mut m4) = (0.0, 0.0);
-    for (&t, &y) in t.iter().zip(y) {
-        let r = y - intercept - slope * t;
+    for r in residuals {
         m2 += r * r;
         m4 += r.powi(4);
     }
     if m2 > 0.0 { n * m4 / (m2 * m2) } else { 0.0 }
-}
-
-/// The power of `y` left after its least-squares line.
-fn residual_power(t: &[f64], y: &[f64]) -> f64 {
-    let n = cast::usize_to_f64(t.len());
-    let (st, sy) = (t.iter().sum::<f64>(), y.iter().sum::<f64>());
-    let stt: f64 = t.iter().map(|t| t * t).sum();
-    let sty: f64 = t.iter().zip(y).map(|(t, y)| t * y).sum();
-    let det = n * stt - st * st;
-    let slope = if det == 0.0 {
-        0.0
-    } else {
-        (n * sty - st * sy) / det
-    };
-    let intercept = (sy - slope * st) / n;
-    t.iter()
-        .zip(y)
-        .map(|(t, y)| (y - intercept - slope * t).powi(2))
-        .sum()
 }
 
 /// Solves four linear equations, the augmented rows of `m`, by Gaussian
@@ -287,6 +279,39 @@ fn solve4(mut m: [[f64; 5]; 4]) -> Option<[f64; 4]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_convention_states_the_constants() {
+        use super::super::glide::STEADY_SPLIT;
+        use super::super::{RUN_TRIM, SETTLE_MIN, num, says};
+        let ms = |s: f64| num(1000.0 * s);
+        says(
+            VIBRATO_CONVENTION,
+            &[
+                format!("lie {} cents or more apart", num(STEADY_SPLIT.get())),
+                format!("without {} ms at each end", ms(RUN_TRIM.get())),
+                format!("five time constants and at least {} ms", ms(SETTLE_MIN)),
+                format!(
+                    "searched from {} Hz or {} cycles over the span up to {} Hz in {} Hz steps",
+                    num(SEARCH_LO),
+                    num(SEARCH_CYCLES),
+                    num(SEARCH_HI),
+                    num(SEARCH_STEP)
+                ),
+                format!(
+                    "counts at {} to {} Hz, {} to {} Hz with {} % slack",
+                    num(VIBRATO_RATE_MIN.get() * (1.0 - RATE_SLACK)),
+                    num(VIBRATO_RATE_MAX.get() * (1.0 + RATE_SLACK)),
+                    num(VIBRATO_RATE_MIN.get()),
+                    num(VIBRATO_RATE_MAX.get()),
+                    num(100.0 * RATE_SLACK)
+                ),
+                format!("extent_ct of {} or more", num(VIBRATO_EXTENT_MIN.get())),
+                format!("of {} or more, over", num(VIBRATO_SHARE_MIN)),
+                format!("over {} cycles or more", num(VIBRATO_CYCLES_MIN)),
+            ],
+        );
+    }
 
     fn frames(rate: f64, extent: f64, span: f64) -> Vec<(Seconds, Hz)> {
         let hop = 128.0 / 22_050.0;

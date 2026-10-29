@@ -39,7 +39,7 @@
   "analytic": "scipy.signal.hilbert of the band zero-padded by its own length on each side",
   "band": "fourth-order Butterworth high-pass at 20 Hz, then low-pass at 200 Hz, each by sosfiltfilt with odd padding of ceil(3 fs / 20) samples",
   "decay_s": 0.5,
-  "fit": "scipy.optimize.least_squares of line - (f_end + df exp(-t / tau)) over the line values from 7 ms to 400 ms after the onset, t from the onset to halfway between two samples, tau bounded to 0.5 ms to 1 s",
+  "fit": "scipy.optimize.least_squares of line - (f_end + df exp(-t / tau)) over the line values from 7 ms to 400 ms after the onset, t from the onset to halfway between two samples, tau bounded to 7 ms / ln 10, about 3.04 ms, to 1 s",
   "frequency": "angle(z[n+1] conj(z[n])) fs / 2 pi",
   "lead_s": 0.25,
   "length_s": 1.25,

@@ -34,6 +34,8 @@ use crate::support::rng::gaussian;
 use crate::support::signals::write_wav16;
 
 const RATE: u32 = 22_050;
+/// The rate of the fixtures that check the unison glides at 44.1 kHz.
+const RATE_44: u32 = 44_100;
 const FIXTURES: &str = "tests/fixtures/pitch";
 
 fn rate() -> SampleRate {
@@ -48,6 +50,8 @@ fn s(value: f64) -> Seconds {
 #[derive(Clone, Copy, Debug)]
 enum Signal {
     Glide(Glide),
+    /// A glide at 44.1 kHz.
+    Glide44(Glide),
     /// A glide from silence: 0.2 s of silence, then the glide without its
     /// first hold.
     Scoop(Glide),
@@ -64,6 +68,7 @@ impl Signal {
     fn render(self) -> Vec<f64> {
         match self {
             Self::Glide(glide) => glide.render(f64::from(RATE)),
+            Self::Glide44(glide) => glide.render(f64::from(RATE_44)),
             Self::Vibrato(vibrato) => vibrato.render(f64::from(RATE)),
             Self::Scoop(glide) => {
                 let rate = f64::from(RATE);
@@ -79,6 +84,19 @@ impl Signal {
         }
     }
 
+    /// The sample rate the signal renders at, in hertz.
+    fn hz(self) -> u32 {
+        if matches!(self, Self::Glide44(_)) {
+            RATE_44
+        } else {
+            RATE
+        }
+    }
+
+    fn rate(self) -> SampleRate {
+        SampleRate::new(self.hz()).unwrap()
+    }
+
     fn recipe(self) -> Value {
         match self {
             Self::Bass => json!({
@@ -87,7 +105,7 @@ impl Signal {
                 "drop": BassLine::DROP,
                 "glide": BassLine::GLIDE,
             }),
-            Self::Glide(g) => json!({
+            Self::Glide(g) | Self::Glide44(g) => json!({
                 "kind": "glide",
                 "start_hz": g.start_hz,
                 "semitones": g.semitones,
@@ -188,6 +206,21 @@ fn cases() -> Vec<(String, Signal)> {
         vibrato_name("unison", 5.5, 35.0),
         Signal::Vibrato(Vibrato::unison(5.5, 35.0)),
     ));
+    for (full, p) in [(0.15, 1.0), (0.15, 2.5), (0.2, 1.0), (0.4, 1.0), (0.4, 2.5)] {
+        cases.push((
+            format!("{}-44khz", glide_name("unison", full, p)),
+            Signal::Glide44(Glide::unison(full, p)),
+        ));
+    }
+    for (full, p) in [(0.2, 1.0), (0.3, 1.0), (0.3, 2.5)] {
+        cases.push((
+            format!("{}-44khz", glide_name("unison-in-phase", full, p)),
+            Signal::Glide44(Glide {
+                in_phase: true,
+                ..Glide::unison(full, p)
+            }),
+        ));
+    }
     cases.extend(review_cases());
     cases
 }
@@ -357,7 +390,7 @@ fn document(name: &str, signal: Signal, notes: &NoteList, track: &PitchTrack) ->
         "name": name,
         "generator": "tests/it/pitch.rs:pitch_fixtures_are_current",
         "recipe": signal.recipe(),
-        "sample_rate": RATE,
+        "sample_rate": signal.hz(),
         "notes": notes.notes().iter().map(|n| json!([n.onset().get(), n.offset().get(), n.pitch().get()])).collect::<Vec<_>>(),
         "frames": track.frames().iter().map(|f| json!([f.time.get(), f.f0.map(Hz::get)])).collect::<Vec<_>>(),
     })
@@ -399,7 +432,7 @@ fn layer(name: &str, signal: Signal) -> PitchLayer {
     let mono = signal.render();
     PitchLayer::of(&PitchInput {
         mono: &mono,
-        rate: rate(),
+        rate: signal.rate(),
         track: &track,
         notes: &notes,
         voicing: Voicing::Monophonic,
@@ -419,8 +452,14 @@ fn pitch_fixtures_are_current() {
     let mut stale = Vec::new();
     for (name, signal) in cases().into_iter().chain(std::iter::once(bass_case())) {
         let mono = signal.render();
-        let t =
-            transcribe_stem(&transcriber, &mono, rate(), Bpm::new(120.0).unwrap(), None).unwrap();
+        let t = transcribe_stem(
+            &transcriber,
+            &mono,
+            signal.rate(),
+            Bpm::new(120.0).unwrap(),
+            None,
+        )
+        .unwrap();
         let mut text = serde_json::to_string(&document(&name, signal, &t.notes, &t.track)).unwrap();
         text.push('\n');
         let path = fixture_path(&name);
@@ -658,9 +697,10 @@ fn unison_glides_never_read_above_low_confidence() {
     // Voices that start in phase beat hardest, and the track goes unvoiced
     // for up to 75 ms inside the glide. Bridged, the gap keeps the glide
     // whole; read from silence, it once gave 3.9 semitones of 7 at high.
+    // At 44.1 kHz a unison jittered 3.45 cents, the least of both rates.
     let mut read_any = 0;
     for (name, signal) in cases() {
-        let Signal::Glide(glide) = signal else {
+        let (Signal::Glide(glide) | Signal::Glide44(glide)) = signal else {
             continue;
         };
         if glide.voices == 1 || glide.full_s < 0.1 {

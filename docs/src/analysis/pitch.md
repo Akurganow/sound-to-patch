@@ -9,7 +9,8 @@ its fields. The tags are those of the [pipeline page](pipeline.md).
 The glides and the vibrato read the f0 track. The drops read the sub-band
 line, because the track averages over a 93 ms frame and smears a drop
 that settles in 20 ms [fact]. With `--notes` the model does not run, but
-the f0 track still reads the stem [fact].
+the f0 track still reads the stem, unless the notes play chords or are
+empty and the layer is skipped [fact].
 
 Every figure below comes from generated signals at 22,050 Hz, through the
 transcriber's notes and the f0 track of the release build [synthetic]. A
@@ -387,17 +388,19 @@ A glide is pitch moving from one stable pitch to another.
   in cents and the jitter: the RMS deviation of the two stable pitches
   from their medians, and `curve_bound` [fact]. High needs a residual of
   15 cents or less, a jitter of 3 cents or less, a motion of 150 ms or
-  more and $p$ of 3 or less; low comes with a jitter above 3.5 cents or a
+  more and $p$ of 3 or less; low comes with a jitter above 3.4 cents or a
   curve on the bound [proposal].
   - A faster start reads its rise less well: on the generated sets, up to
     11 % off at $p$ 4.4, while high-confidence glides read their rise
     within 7.1 % [synthetic].
   - A unison beats and the track wanders on the stable pitches, but the
-    jitter tells a unison only roughly. On the generated signals the
-    unison glides jitter 3.45 to 7.1 cents and the mono ones 0 to 5.6
-    [synthetic]. The unison glides read low, except one at 44.1 kHz with a
-    jitter of 3.45 cents, which reads medium; a mono glide above 3.5 cents
-    reads low too [synthetic].
+    jitter tells a unison only roughly. On the generated sets the unison
+    glides jitter 3.77 to 7.07 cents at 22.05 kHz and 3.45 to 6.93 at
+    44.1 kHz, the mono ones 0.66 to 8.03 at both rates [synthetic]. All
+    unison glides read low; from 3 to 3.4 cents only mono glides fall, and
+    they read medium, and a mono glide above 3.4 cents reads low too
+    [synthetic]. One threshold would raise those mono glides to high on no
+    measured gain, so the two stay [proposal].
 
 Glides of 7 semitones up from 110 Hz on a band-limited saw, 0.5 s holds
 [synthetic]. The rise is the 10 to 90 % time derived from the fitted time

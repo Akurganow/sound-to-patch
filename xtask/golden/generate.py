@@ -1382,7 +1382,7 @@ LINE_RECIPE = {
     "line_window_s": [0.257, 0.65],
     "line_every": 25,
     "onset": "first sample in 0 to 0.5 s whose envelope |z|, averaged over a centred 221 samples (10 ms), reaches half its peak in that span",
-    "fit": "scipy.optimize.least_squares of line - (f_end + df exp(-t / tau)) over the line values from 7 ms to 400 ms after the onset, t from the onset to halfway between two samples, tau bounded to 0.5 ms to 1 s",
+    "fit": "scipy.optimize.least_squares of line - (f_end + df exp(-t / tau)) over the line values from 7 ms to 400 ms after the onset, t from the onset to halfway between two samples, tau bounded to 7 ms / ln 10, about 3.04 ms, to 1 s",
 }
 
 # The Hilbert-fit column of the drop table in #67: f_end (Hz), df (Hz),
