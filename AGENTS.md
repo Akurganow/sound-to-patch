@@ -15,3 +15,7 @@ Facts learned while working on this repository.
 - An estimator change that passed generated signals still gave false
   records on real stems. Check such a change on real audio as well, and
   keep that audio out of the repository.
+- `vendor/pyin` is a copy of pyin 1.2.0 without the binary. The release
+  pulled `zip` 0.5 through `ndarray-npy`, and no newer release exists.
+  Cargo cannot switch off a feature of a transitive dependency. Keep the
+  library source equal to upstream.

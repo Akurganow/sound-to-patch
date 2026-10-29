@@ -1,0 +1,26 @@
+# A copy of pyin 1.2.0 (https://github.com/Sytronik/pyin-rs, MIT) with the
+# command-line binary and the `ndarray-npy` dependency removed. The binary
+# alone used `ndarray-npy`, and that crate pulls in the `zip` 0.5 crate with
+# its known advisory. The library source is unchanged. The crate stays
+# publishable on purpose: `cargo about` skips unpublished crates, and the
+# MIT notice of pyin must ship.
+[package]
+name = "pyin"
+version = "1.2.0"
+edition = "2021"
+authors = ["Sytronik <sytronik210@gmail.com>"]
+description = "pYIN pitch detection algorithm written in Rust"
+license = "MIT"
+repository = "https://github.com/Sytronik/pyin-rs"
+
+[dependencies]
+approx = "0.5.1"
+getset = "0.1.2"
+libc = "0.2.155"
+ndarray = { version = "0.15.6", features = ["approx-0_5"] }
+ndarray-stats = "0.5.1"
+realfft = "3.3.0"
+statrs = "0.17.1"
+
+# Its own root, so no outer workspace claims it.
+[workspace]
