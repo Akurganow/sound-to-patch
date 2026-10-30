@@ -303,12 +303,13 @@
     "note_envelope": {
       "description": "One read note: its onset, the peak of its amp proxy, its attack, its note-off knee, and whether the pool holds it.",
       "type": "object",
-      "required": ["onset_s", "peak_db", "attack_s", "knee_s", "pooled"],
+      "required": ["onset_s", "peak_db", "attack_s", "attack_upper_bound", "knee_s", "pooled"],
       "additionalProperties": false,
       "properties": {
         "onset_s": { "type": "number", "minimum": 0 },
         "peak_db": { "type": "number" },
         "attack_s": { "type": ["number", "null"], "minimum": 0 },
+        "attack_upper_bound": { "type": "boolean" },
         "knee_s": { "type": ["number", "null"], "minimum": 0 },
         "pooled": { "type": "boolean" }
       }

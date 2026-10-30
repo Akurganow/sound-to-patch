@@ -1541,10 +1541,26 @@ def centred_rms_db(x, rate, f0, periods, floor_s, start_s, end_s):
     return out
 
 
-def rise_10_90(db, onset):
+def attack_top(db, onset):
+    """The top level of an attack from frame `onset`, in dB: at the first
+    frame that the level exceeds by less than 1 dB over as long again as it
+    took to rise to it from under 10 % of it, the highest frame over that
+    span."""
+    for i in range(max(onset, 1), len(db)):
+        under = [j for j in range(i) if db[j] < db[i] - 20.0]
+        if not under:
+            continue
+        ahead = db[i:min(2 * i - under[-1], len(db) - 1) + 1].max()
+        if ahead < db[i] + 1.0:
+            return ahead
+    raise ValueError("no attack top")
+
+
+def rise_10_90(db, onset, top=False):
     """The 10-90 % rise of the linear amplitude from frame `onset`, in
-    seconds, both crossings linear between frames."""
-    amp = 10.0 ** ((db - db[onset:].max()) / 20.0)
+    seconds, both crossings linear between frames: to the attack's top, or
+    to the highest frame from the onset on."""
+    amp = 10.0 ** ((db - (attack_top(db, onset) if top else db[onset:].max())) / 20.0)
 
     def cross(i, level):
         a, b = amp[i - 1], amp[i]
@@ -1561,7 +1577,8 @@ ATTACK_RECIPE = {
     "f0_hz": [55.0, 220.0],
     "attack_s": [0.001, 0.005, 0.02, 0.1],
     "note": "one saw note, harmonic h at 1/h up to 6 kHz, at phase uniform(31, 1) cycles and level 0.3, from 0.2 s; a linear attack to 1, then a decay linear in dB over 0.2 s to -6 dB, held to 0.8 s past the attack and released linearly over 50 ms",
-    "track": "centred RMS on a 1 ms hop from 30 ms before the onset; the peak is the highest frame from the onset on",
+    "track": "centred RMS on a 1 ms hop from 30 ms before the onset",
+    "top": "ours rises to the attack's top: at the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, the highest frame over that span; the #69 window rises to the highest frame from the onset on",
     "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
     "issue": "the #69 window: two periods of f0 and at least 5 ms, in whole periods",
     "seed": 31,
@@ -1595,7 +1612,7 @@ def attack_table():
         for attack_s in r["attack_s"]:
             x, off = attack_note(f0, attack_s, rate)
             start = 0.2 - 0.03
-            ours = rise_10_90(centred_rms_db(x, rate, f0, 1.0, 0.002, start, off + 0.09), 30)
+            ours = rise_10_90(centred_rms_db(x, rate, f0, 1.0, 0.002, start, off + 0.09), 30, top=True)
             issue = rise_10_90(centred_rms_db(x, rate, f0, 2.0, 0.005, start, off + 0.09), 30)
             lo, hi = ISSUE_69_ATTACK[f0][attack_s]
             hop_ms = 1000.0 * ENVELOPE_HOP_S

@@ -1,4 +1,4 @@
-//! Small deterministic minimisers for the layer fits: a golden-section
+//! Small deterministic minimisers for the pitch fits: a golden-section
 //! search on one parameter and a Nelder-Mead simplex on a few.
 
 use crate::cast;

@@ -20,6 +20,8 @@ use sound_to_patch::estimate::envelope::{
 use sound_to_patch::notes::{Note, NoteList};
 use sound_to_patch::units::{Bpm, Hz, MidiPitch, Seconds};
 
+use super::signals::splitmix;
+
 /// The rate the set renders at.
 const RATE: u32 = 44_100;
 
@@ -117,16 +119,9 @@ fn samples(seconds: f64) -> usize {
 
 /// SplitMix64 values in `[0, 1)`.
 fn uniform(seed: u64, count: usize) -> Vec<f64> {
-    let mut state = seed;
-    (0..count)
-        .map(|_| {
-            state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-            let mut z = state;
-            z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-            z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-            z ^= z >> 31;
-            f64::from(u32::try_from(z >> 32).unwrap_or(0)) / 4_294_967_296.0
-        })
+    splitmix(seed, count)
+        .into_iter()
+        .map(|z| f64::from(u32::try_from(z >> 32).unwrap_or(0)) / 4_294_967_296.0)
         .collect()
 }
 

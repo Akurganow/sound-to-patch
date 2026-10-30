@@ -54,11 +54,13 @@ impl LevelTrack {
     }
 
     /// The centred RMS of `samples` in dB, from `from` to `to`, over the
-    /// window of [`rms_window`]. The window shrinks at the ends of the
-    /// samples.
+    /// window of [`rms_window`]. `samples` starts at sample `first` of the
+    /// stem, so a note reads only its own span. The window shrinks at the
+    /// ends of the samples.
     #[must_use]
     pub fn rms(
         samples: &[f64],
+        first: usize,
         rate: SampleRate,
         (from, to): (Seconds, Seconds),
         f0: Hz,
@@ -76,7 +78,9 @@ impl LevelTrack {
         }
         let db = frame_times(from, to)
             .map(|t| {
-                let centre = cast::round_to_usize(t * fs).unwrap_or(0);
+                let centre = cast::round_to_usize(t * fs)
+                    .unwrap_or(0)
+                    .saturating_sub(first);
                 let lo = centre.saturating_sub(half).min(samples.len());
                 let hi = (centre + half).min(samples.len());
                 if hi <= lo {
@@ -136,10 +140,13 @@ impl LevelTrack {
     /// harmonic of the note falls on a null, and its step response rises
     /// without overshoot, unlike a Butterworth low-pass. A partial of
     /// amplitude A reads A, its power A^2 / 2 as the RMS track reads it.
-    /// The window shrinks at the ends of the samples.
+    /// `samples` starts at sample `first` of the stem. At the start of the
+    /// samples the window keeps its whole period and runs from the first
+    /// sample, so the nulls hold; at their end it shrinks.
     #[must_use]
     pub fn harmonic(
         samples: &[f64],
+        first: usize,
         rate: SampleRate,
         (from, to): (Seconds, Seconds),
         frequency: Hz,
@@ -153,13 +160,16 @@ impl LevelTrack {
         let (mut re, mut im) = (vec![0.0; samples.len() + 1], vec![0.0; samples.len() + 1]);
         for (n, x) in samples.iter().enumerate() {
             // Reduce the phase per sample so it stays exact on long stems.
-            let (sin, cos) = ((step * cast::usize_to_f64(n)) % std::f64::consts::TAU).sin_cos();
+            let (sin, cos) =
+                ((step * cast::usize_to_f64(first + n)) % std::f64::consts::TAU).sin_cos();
             re[n + 1] = re[n] + x * cos;
             im[n + 1] = im[n] - x * sin;
         }
         let db = frame_times(from, to)
             .map(|t| {
-                let centre = cast::round_to_usize(t * fs).unwrap_or(0);
+                let centre = cast::round_to_usize(t * fs)
+                    .unwrap_or(0)
+                    .saturating_sub(first);
                 let lo = centre.saturating_sub(len / 2).min(samples.len());
                 let hi = (lo + len).min(samples.len());
                 if hi <= lo {
@@ -258,6 +268,7 @@ mod tests {
         let x = sine(110.0, 0.5, 0.5);
         let track = LevelTrack::rms(
             &x,
+            0,
             rate(),
             (Seconds::new(0.1).unwrap(), Seconds::new(0.4).unwrap()),
             Hz::new(110.0).unwrap(),
@@ -301,6 +312,7 @@ mod tests {
             .collect();
         let track = LevelTrack::harmonic(
             &x,
+            0,
             rate(),
             (Seconds::new(0.2).unwrap(), Seconds::new(0.4).unwrap()),
             Hz::new(220.0).unwrap(),
@@ -313,6 +325,29 @@ mod tests {
     }
 
     #[test]
+    fn a_harmonic_track_reads_a_whole_period_at_the_start_of_the_samples() {
+        // A 220 Hz sine from the first sample, with its second harmonic:
+        // the frame at 0 s reads the fundamental alone, at amplitude 1.
+        let fs = 22_050.0;
+        let x: Vec<f64> = (0..2205)
+            .map(|n| {
+                let t = cast::usize_to_f64(n) / fs;
+                (TAU * 220.0 * t).sin() + 0.5 * (TAU * 440.0 * t).sin()
+            })
+            .collect();
+        let track = LevelTrack::harmonic(
+            &x,
+            0,
+            SampleRate::new(22_050).unwrap(),
+            (Seconds::clamped(0.0), Seconds::clamped(0.01)),
+            Hz::new(220.0).unwrap(),
+            Hz::new(220.0).unwrap(),
+        );
+        let want = 10.0 * 0.5_f64.log10();
+        assert!((track.db()[0] - want).abs() < 0.1, "{}", track.db()[0]);
+    }
+
+    #[test]
     fn a_harmonic_track_is_centred_on_its_frame() {
         // A 110 Hz sine switched on at 0.2 s: the frame there sees half a
         // window of it, so it reads half the amplitude, 6 dB down.
@@ -322,6 +357,7 @@ mod tests {
         }
         let track = LevelTrack::harmonic(
             &x,
+            0,
             rate(),
             (Seconds::new(0.2).unwrap(), Seconds::new(0.4).unwrap()),
             Hz::new(110.0).unwrap(),
@@ -349,6 +385,7 @@ mod tests {
     fn silence_reads_the_floor_and_times_step_by_the_hop() {
         let track = LevelTrack::rms(
             &vec![0.0; 4410],
+            0,
             rate(),
             (Seconds::new(0.01).unwrap(), Seconds::new(0.02).unwrap()),
             Hz::new(100.0).unwrap(),

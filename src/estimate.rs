@@ -9,5 +9,4 @@
 //!   pump.
 
 pub mod envelope;
-mod fit;
 pub mod pitch;

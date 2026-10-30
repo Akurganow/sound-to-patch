@@ -5,8 +5,9 @@ use crate::audio::BeatGrid;
 use crate::cast;
 use crate::dsp::{ModulationSpectrum, SCAN_TOP_HZ, TRACK_RATE_HZ, Track, quantile, snap};
 use crate::notes::NoteList;
-use crate::units::{Cents, Decibels, Hz, Seconds};
+use crate::units::{Bpm, Cents, Decibels, Hz, Seconds};
 
+use super::median;
 use super::track::{HOP, LevelTrack};
 
 /// The phase bins of one beat.
@@ -20,8 +21,8 @@ pub const PUMP_BACK: Decibels = Decibels::from_const(1.5);
 /// A dip at least this deep counts as a pump, and the layer strips it from
 /// the envelope tracks.
 ///
-/// The beating of a constant three-note saw chord reads 1.6 to 1.8 dB, and
-/// a 6 dB duck reads 5.6 to 6.1 dB.
+/// The beating of a constant three-note saw chord reads 1.64 to 1.94 dB,
+/// and a 6 dB duck reads 3.2 to 5.8 dB.
 pub const PUMP_MIN: Decibels = Decibels::from_const(3.0);
 /// The pump needs this many beats that a sustained note covers.
 pub const PUMP_BEATS_MIN: usize = 4;
@@ -32,19 +33,32 @@ pub const PUMP_BEATS_MIN: usize = 4;
 /// beats against the sub, read 3.4 to 4.6 dB locked to the beat over 4 or
 /// 5 beats.
 pub const PUMP_STRIP_BEATS: usize = 8;
-/// A beat dips with the curve when it falls within this many bins of the
-/// curve's dip.
+/// A beat dips with the curve when its level falls within this many bins
+/// of the curve's dip.
 pub const PHASE_SLACK: usize = 3;
-/// A beat dips with the curve when it falls there by this share of the
-/// curve's depth.
+/// A beat dips with the curve when its level falls by this share of the
+/// curve's depth: from its highest bin over the [`FALL_MAX`] bins before
+/// the dip, to its lowest within [`PHASE_SLACK`] bins of it.
 ///
-/// A beat's own lowest bin is no test: the slow beating of a chord moves
-/// it. At 174 BPM a 6 dB duck on the saw chord read 5.4 dB, and only 5 of
-/// 15 beats had their lowest bin within 3 bins of the curve's.
+/// The bins before the dip run on into the beat before, as the level does,
+/// and do not wrap round the beat. A level that rises over each bar or
+/// each two beats and drops back makes every beat's curve start low: on
+/// the wrap of the beat, that reads as a fall at bin 0 on every beat.
+///
+/// A beat's own lowest bin is no test either: the slow beating of a chord
+/// moves it. At 174 BPM a 6 dB duck on the saw chord read 5.4 dB, and only
+/// 5 of 15 beats had their lowest bin within 3 bins of the curve's.
 pub const PHASE_DEPTH: f64 = 0.5;
 /// The pump locks to the beat when at least this share of the beats dips
 /// with the curve.
 pub const PHASE_SHARE: f64 = 0.5;
+/// The pump searches for its beat period this far either side of the
+/// grid's, as a share of it.
+///
+/// A sidechain follows the song's own tempo, and a stem's tempo may be off
+/// by 1 or 2 %. Over 32 beats a 1 % error moves the duck by a third of a
+/// beat, so its beats no longer fold onto one curve.
+pub const PERIOD_RANGE: f64 = 0.025;
 /// A tremolo runs free when its rate lies this far from every note
 /// division of the tempo.
 pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
@@ -59,7 +73,9 @@ pub const SUSTAIN_LEAD: Seconds = Seconds::from_const(0.05);
 /// A pump falls into its dip within this many bins.
 ///
 /// The fall counts from the last bin before the dip that lies within
-/// [`PUMP_BACK`] of the reference. A sidechain ducks within milliseconds;
+/// [`PUMP_BACK`] of the reference, on the median of the two-beat curves,
+/// so a dip early in the beat falls from the end of the beat before. A
+/// sidechain ducks within milliseconds;
 /// a note decaying across the beat falls over most of it and comes back
 /// at the next beat at once.
 pub const FALL_MAX: usize = 8;
@@ -67,8 +83,7 @@ pub const FALL_MAX: usize = 8;
 pub const FREE_RATE_MIN: Hz = Hz::from_const(0.5);
 
 /// What a level dip follows.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PumpLock {
     /// A dip at one phase of every beat: a sidechain pump.
     Beat,
@@ -89,7 +104,8 @@ pub struct Pump {
     /// [`PUMP_BACK`]; `None` when it does not within the beat.
     pub back: Option<Seconds>,
     /// `back / ln(depth / 1.5)`, the time constant of an exponential
-    /// recovery; `None` without `back`.
+    /// recovery; `None` without `back` and for any lock but the beat: a dip
+    /// that follows no beat has no recovery to model.
     pub tau: Option<Seconds>,
     /// What the dip follows.
     pub lock: PumpLock,
@@ -99,6 +115,9 @@ pub struct Pump {
     /// value per phase bin.
     pub curve: Vec<f64>,
     grid: BeatGrid,
+    /// For a beat lock, each beat's fall into the dip, by beat of the grid;
+    /// `None` where a beat holds no frames.
+    falls: Vec<Option<f64>>,
 }
 
 impl Pump {
@@ -108,10 +127,15 @@ impl Pump {
     /// count, so a pluck that decays inside its beat reads no pump and a
     /// release at the end of a beat reads no dip. `held` holds the start
     /// and end of each held part, in seconds; `notes` gives the onsets for
-    /// the note lock. Each counted beat is
-    /// binned into [`PUMP_BINS`] phase bins and taken relative to its
-    /// [`PUMP_REFERENCE`] quantile; the median over the beats is the
-    /// curve. `None` with fewer than [`PUMP_BEATS_MIN`] counted beats.
+    /// the note lock. Each counted beat is binned into [`PUMP_BINS`] phase
+    /// bins and taken relative to its [`PUMP_REFERENCE`] quantile; the
+    /// median over the beats is the curve. `None` with fewer than
+    /// [`PUMP_BEATS_MIN`] counted beats.
+    ///
+    /// The beats are read on the grid and again at the period, within
+    /// [`PERIOD_RANGE`] of it, whose beats fold onto the deepest mean
+    /// curve, when the first read does not lock to the beat. The second read
+    /// replaces the first when it locks to the beat.
     #[must_use]
     pub fn find(
         track: &LevelTrack,
@@ -119,50 +143,78 @@ impl Pump {
         notes: &NoteList,
         held: &[(f64, f64)],
     ) -> Option<Self> {
+        let read = Self::read(track, grid, notes, held)?;
+        if read.lock == PumpLock::Beat {
+            return Some(read);
+        }
+        let fitted = fit(track, grid, held)
+            .and_then(|g| Self::read(track, g, notes, held))
+            .filter(|p| p.lock == PumpLock::Beat);
+        Some(fitted.unwrap_or(read))
+    }
+
+    /// Reads the pump on the beats of one grid.
+    fn read(
+        track: &LevelTrack,
+        grid: BeatGrid,
+        notes: &NoteList,
+        held: &[(f64, f64)],
+    ) -> Option<Self> {
         let period = grid.beat_period().get();
+        let lead = SUSTAIN_LEAD.get();
         let mut beats = Vec::new();
         let mut onset_beats = Vec::new();
+        let mut odd = Vec::new();
         let mut longest = (0.0, 0.0);
-        let mut run: Option<(f64, f64)> = None;
-        for b in 0.. {
+        let mut run: Option<(usize, f64)> = None;
+        for b in covered(track, grid, held) {
             let start = grid.beat_time(b).get();
             let end = start + period;
-            if end > track.time(track.db().len()) {
-                break;
-            }
-            let covered = held
-                .iter()
-                .any(|&(on, off)| on <= start - SUSTAIN_LEAD.get() && off >= end);
-            if !covered {
-                run = None;
-                continue;
-            }
-            let Some(curve) = beat_curve(track, start, period) else {
+            let first = match run {
+                Some((last, first)) if b == last + 1 => first,
+                _ => start,
+            };
+            run = Some((b, first));
+            let Some(curve) = beat_curve(track, start, period, 1) else {
                 continue;
             };
-            let span = run.map_or((start, end), |(s, _)| (s, end));
-            run = Some(span);
-            if span.1 - span.0 > longest.1 - longest.0 {
-                longest = span;
+            if end - first > longest.1 - longest.0 {
+                longest = (first, end);
             }
+            // An onset up to the lead before the beat belongs to it.
             let onset_inside = notes
                 .notes()
                 .iter()
-                .any(|n| n.onset().get() > start && n.onset().get() < end);
+                .any(|n| (start - lead..end - lead).contains(&n.onset().get()));
             onset_beats.push(onset_inside);
+            odd.push(b % 2 == 1);
             beats.push(curve);
         }
         if beats.len() < PUMP_BEATS_MIN {
             return None;
         }
-        let curve = median_curve(&beats);
+        let wide = median_curve(&beats);
+        let curve = wide[PUMP_BINS..].to_vec();
         let depth = dip(&curve);
-        let lock = lock(&beats, &onset_beats, &curve, depth, || {
+        let low = PUMP_BINS + dip_bin(&curve);
+        let falls: Vec<f64> = beats.iter().map(|b| fall_into(b, low)).collect();
+        let lock = lock(&beats, &onset_beats, &odd, &falls, &wide, depth, || {
             free_tremolo(track, longest, grid)
         });
+        let falls = if lock == PumpLock::Beat {
+            let end = track.time(track.db().len()) - grid.offset().get();
+            (0..cast::floor_to_usize(end / period).unwrap_or(0))
+                .map(|b| {
+                    beat_curve(track, grid.beat_time(b).get(), period, 1)
+                        .map(|c| fall_into(&c, low))
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
         let back = recovery(&curve).map(|bins| bins * period / cast::usize_to_f64(PUMP_BINS));
         let tau = back
-            .filter(|_| depth > PUMP_BACK.get())
+            .filter(|_| lock == PumpLock::Beat)
             .map(|back| back / (depth / PUMP_BACK.get()).ln());
         Some(Self {
             depth: Decibels::clamped(depth),
@@ -172,7 +224,28 @@ impl Pump {
             beats: beats.len(),
             curve,
             grid,
+            falls,
         })
+    }
+
+    /// Returns whether the beats over `from` to `to` carry the duck: their
+    /// median fall into the dip is at least [`PHASE_DEPTH`] of its depth.
+    /// A stem can duck in one section only, and stripping a note outside it
+    /// would write the curve's ripple into its envelope. True when no beat
+    /// over the span has frames.
+    #[must_use]
+    pub fn carries(&self, from: f64, to: f64) -> bool {
+        let (period, offset) = (self.grid.beat_period().get(), self.grid.offset().get());
+        let first = cast::floor_to_usize((from - offset) / period).unwrap_or(0);
+        let last = cast::ceil_to_usize((to - offset) / period)
+            .unwrap_or(0)
+            .min(self.falls.len());
+        let falls: Vec<f64> = self.falls[first.min(last)..last]
+            .iter()
+            .flatten()
+            .copied()
+            .collect();
+        median(&falls).is_none_or(|fall| fall >= PHASE_DEPTH * self.depth.get())
     }
 
     /// Returns whether the layer strips the pump: it locks to the beat,
@@ -200,25 +273,145 @@ impl Pump {
     /// Adds the dip back to a level track, so the track shows the note's
     /// own envelope.
     pub fn strip(&self, track: &mut LevelTrack) {
-        let times: Vec<f64> = (0..track.db().len()).map(|i| track.time(i)).collect();
-        for (db, t) in track.db_mut().iter_mut().zip(times) {
-            *db -= self.at(t);
+        let start = track.time(0);
+        for (i, db) in track.db_mut().iter_mut().enumerate() {
+            *db -= self.at(start + cast::usize_to_f64(i) * HOP.get());
         }
     }
 }
 
-/// One beat's curve: the mean level of each phase bin, minus the
-/// [`PUMP_REFERENCE`] quantile of the bins. `None` when a bin holds no
-/// frame.
-fn beat_curve(track: &LevelTrack, start: f64, period: f64) -> Option<Vec<f64>> {
-    let mut sums = [0.0; PUMP_BINS];
-    let mut counts = [0_usize; PUMP_BINS];
+/// The beats of `grid` that the held part of one note covers from
+/// [`SUSTAIN_LEAD`] before the beat to its end, inside the track, in order.
+fn covered(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Vec<usize> {
+    let (period, offset) = (grid.beat_period().get(), grid.offset().get());
+    let end = track.time(track.db().len());
+    let mut beats: Vec<usize> = held
+        .iter()
+        .flat_map(|&(on, off)| {
+            let first = cast::ceil_to_usize((on + SUSTAIN_LEAD.get() - offset) / period - 1e-9);
+            let last = cast::floor_to_usize((off.min(end) - offset) / period + 1e-9);
+            first.unwrap_or(0)..last.unwrap_or(0)
+        })
+        .collect();
+    beats.sort_unstable();
+    beats.dedup();
+    beats
+}
+
+/// The grid at the beat period, within [`PERIOD_RANGE`] of `grid`'s, whose
+/// counted beats fold onto the deepest mean curve; `None` when that is the
+/// grid's own period, or with fewer than [`PUMP_BEATS_MIN`] beats in a row.
+///
+/// The search runs over the longest run of counted beats first, then over
+/// all of them around the best period of the run. Each step moves the last
+/// beat of the span searched by 1 bin.
+fn fit(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Option<BeatGrid> {
+    let beats = covered(track, grid, held);
+    let (mut longest, mut run) = ((0, 0), (0, 0));
+    for (i, &b) in beats.iter().enumerate() {
+        run = if i > 0 && b == beats[i - 1] + 1 {
+            (run.0, run.1 + 1)
+        } else {
+            (b, 1)
+        };
+        if run.1 > longest.1 {
+            longest = run;
+        }
+    }
+    if longest.1 < PUMP_BEATS_MIN {
+        return None;
+    }
+    let time = |b: usize| grid.beat_time(b).get();
+    let at = |share: f64| {
+        BeatGrid::new(
+            Bpm::clamped(grid.bpm().get() * (1.0 + share)),
+            grid.offset(),
+        )
+    };
+    let step = |(from, to): (f64, f64)| {
+        grid.beat_period().get() / (cast::usize_to_f64(PUMP_BINS) * (to - from))
+    };
+    let search = |centre: f64, half: f64, span: (f64, f64)| -> Option<f64> {
+        let step = step(span);
+        let n = cast::floor_to_usize(half / step).unwrap_or(0);
+        (0..=2 * n)
+            .map(|k| centre + (cast::usize_to_f64(k) - cast::usize_to_f64(n)) * step)
+            .map(|share| (share, folded_depth(track, at(share), held, span)))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .map(|(share, _)| share)
+    };
+    let run = (time(longest.0), time(longest.0 + longest.1));
+    let all = (time(beats[0]), time(beats[beats.len() - 1] + 1));
+    let coarse = search(0.0, PERIOD_RANGE, run)?;
+    let share = search(coarse, step(run), all)?;
+    (share != 0.0).then(|| at(share))
+}
+
+/// The depth of the mean curve over the counted beats of `grid` inside
+/// `(from, to)`.
+fn folded_depth(
+    track: &LevelTrack,
+    grid: BeatGrid,
+    held: &[(f64, f64)],
+    (from, to): (f64, f64),
+) -> f64 {
+    let period = grid.beat_period().get();
+    let mut sum = [0.0; PUMP_BINS];
+    let mut count = 0.0;
+    for b in covered(track, grid, held) {
+        let start = grid.beat_time(b).get();
+        if start < from - 1e-9 || start + period > to + 1e-9 {
+            continue;
+        }
+        if let Some(curve) = beat_curve(track, start, period, 0) {
+            for (s, c) in sum.iter_mut().zip(curve) {
+                *s += c;
+            }
+            count += 1.0;
+        }
+    }
+    if count == 0.0 {
+        return 0.0;
+    }
+    dip(&sum.map(|s| s / count))
+}
+
+/// How far a two-beat curve falls into the dip at bin `low`: its highest
+/// bin over the [`FALL_MAX`] bins before the [`PHASE_SLACK`] bins either
+/// side of `low`, minus its lowest bin within those.
+fn fall_into(curve: &[f64], low: usize) -> f64 {
+    let near = low - PHASE_SLACK..(low + PHASE_SLACK + 1).min(curve.len());
+    let top = curve[near.start - FALL_MAX..near.start]
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    let bottom = curve[near].iter().copied().fold(f64::INFINITY, f64::min);
+    top - bottom
+}
+
+/// The mean level of each phase bin of the beat from `start` and of
+/// `before` beats before it, minus the [`PUMP_REFERENCE`] quantile of the
+/// beat's own bins. `None` when a bin holds no frame.
+fn beat_curve(track: &LevelTrack, start: f64, period: f64, before: usize) -> Option<Vec<f64>> {
+    let count = (before + 1) * PUMP_BINS;
+    let mut sums = vec![0.0; count];
+    let mut counts = vec![0_usize; count];
     let bins = cast::usize_to_f64(PUMP_BINS);
-    for i in track.index(start)..track.index(start + period) {
+    let first = start - cast::usize_to_f64(before) * period;
+    for i in track.index(first.max(track.time(0)))..track.index(start + period) {
         let phase = (track.time(i) - start) / period;
-        let bin = cast::floor_to_usize(phase * bins)
-            .unwrap_or(0)
-            .min(PUMP_BINS - 1);
+        // A frame can read a rounding error before the first bin.
+        let bin = if phase >= 0.0 || before == 0 {
+            cast::floor_to_usize(phase * bins)
+                .unwrap_or(0)
+                .min(PUMP_BINS - 1)
+                + count
+                - PUMP_BINS
+        } else {
+            cast::floor_to_usize((phase + cast::usize_to_f64(before)) * bins)
+                .unwrap_or(0)
+                .min(count - PUMP_BINS - 1)
+        };
         sums[bin] += track.db()[i];
         counts[bin] += 1;
     }
@@ -230,20 +423,16 @@ fn beat_curve(track: &LevelTrack, start: f64, period: f64) -> Option<Vec<f64>> {
         .zip(counts)
         .map(|(s, c)| s / cast::usize_to_f64(c))
         .collect();
-    let mut sorted = means.clone();
+    let mut sorted = means[count - PUMP_BINS..].to_vec();
     sorted.sort_by(f64::total_cmp);
     let reference = quantile(&sorted, PUMP_REFERENCE)?;
     Some(means.into_iter().map(|m| m - reference).collect())
 }
 
 /// The median over beats of each bin.
-fn median_curve(beats: &[Vec<f64>]) -> Vec<f64> {
-    (0..PUMP_BINS)
-        .map(|k| {
-            let mut values: Vec<f64> = beats.iter().map(|b| b[k]).collect();
-            values.sort_by(f64::total_cmp);
-            quantile(&values, 0.5).unwrap_or(0.0)
-        })
+fn median_curve<B: AsRef<[f64]>>(beats: &[B]) -> Vec<f64> {
+    (0..beats.first().map_or(0, |b| b.as_ref().len()))
+        .map(|k| median(&beats.iter().map(|b| b.as_ref()[k]).collect::<Vec<_>>()).unwrap_or(0.0))
         .collect()
 }
 
@@ -276,12 +465,11 @@ fn recovery(curve: &[f64]) -> Option<f64> {
     })
 }
 
-/// The bins from the last bin before the dip, going back over the beat's
-/// wrap, that lies within [`PUMP_BACK`] of the reference, to the dip.
-fn fall(curve: &[f64]) -> usize {
-    let low = dip_bin(curve);
-    (1..PUMP_BINS)
-        .find(|&k| curve[(low + PUMP_BINS - k) % PUMP_BINS] >= -PUMP_BACK.get())
+/// The bins from the last bin before bin `low` that lies within
+/// [`PUMP_BACK`] of the reference, to `low`, on a two-beat curve.
+fn fall_to(curve: &[f64], low: usize) -> usize {
+    (1..=low)
+        .find(|&k| curve[low - k] >= -PUMP_BACK.get())
         .unwrap_or(PUMP_BINS)
 }
 
@@ -321,24 +509,32 @@ fn dips(curve: &[f64], depth: f64) -> usize {
 /// - `Beat`: the curve dips by [`PUMP_MIN`] or more, once per beat, and
 ///   falls into its dip within [`FALL_MAX`] bins, and at least
 ///   [`PHASE_SHARE`] of the beats fall by [`PHASE_DEPTH`] of its depth
-///   within [`PHASE_SLACK`] bins of the curve's dip.
+///   into the curve's dip: `falls` holds each beat's fall from
+///   [`fall_into`].
+///
+/// `beats` and `wide` hold two-beat curves, the beat before and the beat;
+/// `wide` is their median.
 /// - `None` otherwise.
 fn lock(
     beats: &[Vec<f64>],
     onset_beats: &[bool],
-    curve: &[f64],
+    odd: &[bool],
+    falls: &[f64],
+    wide: &[f64],
     depth: f64,
     free: impl FnOnce() -> bool,
 ) -> PumpLock {
-    let group = |with_onset: bool| -> Option<f64> {
-        let group: Vec<Vec<f64>> = beats
+    let curve = &wide[PUMP_BINS..];
+    let median_of = |flags: &[bool], value: bool| -> Option<Vec<f64>> {
+        let group: Vec<&Vec<f64>> = beats
             .iter()
-            .zip(onset_beats)
-            .filter(|&(_, &o)| o == with_onset)
-            .map(|(b, _)| b.clone())
+            .zip(flags)
+            .filter(|&(_, &f)| f == value)
+            .map(|(b, _)| b)
             .collect();
-        (group.len() >= 2).then(|| dip(&median_curve(&group)))
+        (group.len() >= 2).then(|| median_curve(&group))
     };
+    let group = |with_onset: bool| median_of(onset_beats, with_onset).map(|c| dip(&c[PUMP_BINS..]));
     if let (Some(with), Some(without)) = (group(true), group(false))
         && with >= PUMP_MIN.get()
         && without < 0.5 * PUMP_MIN.get()
@@ -348,18 +544,20 @@ fn lock(
     if free() {
         return PumpLock::Free;
     }
-    if depth >= PUMP_MIN.get() && fall(curve) <= FALL_MAX && dips(curve, depth) == 1 {
-        let low = dip_bin(curve);
-        let near = beats
-            .iter()
-            .filter(|b| {
-                (0..=2 * PHASE_SLACK)
-                    .map(|k| b[(low + PUMP_BINS + k - PHASE_SLACK) % PUMP_BINS])
-                    .fold(f64::INFINITY, f64::min)
-                    <= -PHASE_DEPTH * depth
-            })
-            .count();
-        if cast::usize_to_f64(near) >= PHASE_SHARE * cast::usize_to_f64(beats.len()) {
+    let low = PUMP_BINS + dip_bin(curve);
+    let half_falls = |parity: bool| {
+        median_of(odd, parity).is_some_and(|half| {
+            fall_to(&half, low) <= FALL_MAX && half[low] <= -PHASE_DEPTH * depth
+        })
+    };
+    if depth >= PUMP_MIN.get()
+        && fall_to(wide, low) <= FALL_MAX
+        && dips(curve, depth) == 1
+        && half_falls(false)
+        && half_falls(true)
+    {
+        let near = falls.iter().filter(|&&f| f >= PHASE_DEPTH * depth).count();
+        if cast::usize_to_f64(near) >= PHASE_SHARE * cast::usize_to_f64(falls.len()) {
             return PumpLock::Beat;
         }
     }
@@ -373,7 +571,9 @@ fn lock(
 fn free_tremolo(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> bool {
     let (lo, hi) = (track.index(start), track.index(end));
     let block = cast::round_to_usize(1.0 / (TRACK_RATE_HZ.get() * HOP.get())).unwrap_or(5);
-    // The scan takes the natural log of the amplitude itself.
+    // Each block averages in dB, as the curve does, so its mean is the
+    // geometric mean of the amplitude. The scan takes the natural log of
+    // the amplitude itself, so it reads that same mean level.
     let values: Vec<f64> = track.db()[lo..hi]
         .chunks_exact(block.max(1))
         .map(|c| 10f64.powf(c.iter().sum::<f64>() / cast::usize_to_f64(c.len()) / 20.0))
@@ -436,69 +636,145 @@ mod tests {
         curve
     }
 
+    /// The parity of 8 beats in a row.
+    const ALTERNATE: [bool; 8] = [false, true, false, true, false, true, false, true];
+
+    /// The two-beat curve of a flat beat before one with that dip.
+    fn wide(at: usize, depth: f64) -> Vec<f64> {
+        [vec![0.0; PUMP_BINS], dipped(at, depth)].concat()
+    }
+
     #[test]
-    fn the_beat_lock_needs_half_the_beats_to_dip_near_the_curve() {
-        let curve = dipped(10, 8.0);
+    fn the_beat_lock_needs_half_the_beats_to_fall_into_the_dip() {
+        let curve = wide(10, 8.0);
+        let beats: Vec<Vec<f64>> = (0..8).map(|_| wide(10, 8.0)).collect();
         let never = || false;
-        // 4 of 8 beats dip 8 dB at bin 10, the others 1 dB: half dip.
-        let mut beats: Vec<Vec<f64>> = (0..4).map(|_| dipped(10, 8.0)).collect();
-        beats.extend((0..4).map(|_| dipped(10, 1.0)));
+        // 4 of 8 beats fall 4 dB into the dip, half the curve's depth.
+        let mut falls = [4.0, 4.0, 4.0, 4.0, 3.9, 1.0, 1.0, 0.0];
         assert_eq!(
-            lock(&beats, &[false; 8], &curve, 8.0, never),
+            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, never),
             PumpLock::Beat
         );
-        // 3 of 8: under half, and a 1 dB dip is no dip with the curve.
-        beats[3] = dipped(10, 1.0);
+        // 3 of 8: under half.
+        falls[3] = 3.9;
         assert_eq!(
-            lock(&beats, &[false; 8], &curve, 8.0, never),
-            PumpLock::None
-        );
-        // A beat dips with the curve up to 3 bins away, on either side.
-        let beats: Vec<Vec<f64>> = (0..8)
-            .map(|i| {
-                if i < 5 {
-                    dipped(13, 8.0)
-                } else {
-                    dipped(7, 8.0)
-                }
-            })
-            .collect();
-        assert_eq!(
-            lock(&beats, &[false; 8], &curve, 8.0, never),
-            PumpLock::Beat
-        );
-        let beats: Vec<Vec<f64>> = (0..8)
-            .map(|i| {
-                if i < 5 {
-                    dipped(7, 8.0)
-                } else {
-                    dipped(13, 8.0)
-                }
-            })
-            .collect();
-        assert_eq!(
-            lock(&beats, &[false; 8], &curve, 8.0, never),
-            PumpLock::Beat
-        );
-        let beats: Vec<Vec<f64>> = (0..8).map(|_| dipped(14, 8.0)).collect();
-        assert_eq!(
-            lock(&beats, &[false; 8], &curve, 8.0, never),
+            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, never),
             PumpLock::None
         );
     }
 
     #[test]
+    fn the_beat_lock_needs_the_curve_to_fall_from_the_beat_before() {
+        // A level that rises over each beat and drops back at the next:
+        // its curve wraps from 0 dB at bin 63 to -6 dB at bin 0, but the
+        // beat before ends where the beat starts.
+        let ramp: Vec<f64> = (0..PUMP_BINS)
+            .map(|k| -6.0 * (1.0 - cast::usize_to_f64(k) / 63.0))
+            .collect();
+        let rising = [ramp.iter().map(|v| v - 6.0).collect(), ramp.clone()].concat();
+        let beats = vec![rising.clone(); 8];
+        assert_eq!(
+            lock(
+                &beats,
+                &[false; 8],
+                &ALTERNATE,
+                &[6.0; 8],
+                &rising,
+                6.0,
+                || false
+            ),
+            PumpLock::None
+        );
+        // The same beat after a flat one falls into its dip at once.
+        let ducked = [vec![0.0; PUMP_BINS], ramp].concat();
+        let beats = vec![ducked.clone(); 8];
+        assert_eq!(
+            lock(
+                &beats,
+                &[false; 8],
+                &ALTERNATE,
+                &[6.0; 8],
+                &ducked,
+                6.0,
+                || false
+            ),
+            PumpLock::Beat
+        );
+    }
+
+    #[test]
+    fn the_beat_lock_needs_the_odd_and_the_even_beats_to_dip() {
+        // A dip on every second beat only: the even beats dip 8 dB, the odd
+        // ones are flat, and the median curve still dips 8 dB.
+        let beats: Vec<Vec<f64>> = (0..9)
+            .map(|i| {
+                if i % 2 == 0 {
+                    wide(10, 8.0)
+                } else {
+                    vec![0.0; 2 * PUMP_BINS]
+                }
+            })
+            .collect();
+        let odd: Vec<bool> = (0..9).map(|i| i % 2 == 1).collect();
+        let curve = median_curve(&beats);
+        assert!((dip(&curve[PUMP_BINS..]) - 8.0).abs() < 1e-12);
+        assert_eq!(
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, || false),
+            PumpLock::None
+        );
+        // The odd beats dip, but under half the curve's depth at its dip.
+        let beats: Vec<Vec<f64>> = (0..9)
+            .map(|i| wide(10, if i % 2 == 0 { 8.0 } else { 3.9 }))
+            .collect();
+        assert_eq!(
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, || false),
+            PumpLock::None
+        );
+        let beats = vec![wide(10, 8.0); 9];
+        assert_eq!(
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, || false),
+            PumpLock::Beat
+        );
+    }
+
+    #[test]
+    fn a_beat_falls_from_the_bins_before_its_dip_to_the_lowest_near_it() {
+        // The dip at bin 10 of the beat: the 3 bins either side, 71 to 77,
+        // and the 8 bins before them, 63 to 70.
+        let mut curve = vec![-1.0; 2 * PUMP_BINS];
+        curve[63] = 0.5;
+        curve[77] = -9.0;
+        assert!((fall_into(&curve, 74) - 9.5).abs() < 1e-12);
+        let mut curve = vec![-1.0; 2 * PUMP_BINS];
+        curve[62] = 0.5;
+        curve[78] = -9.0;
+        assert!(fall_into(&curve, 74).abs() < 1e-12);
+        // A dip late in the beat looks no further than its last bin.
+        let mut curve = vec![-1.0; 2 * PUMP_BINS];
+        curve[126] = -9.0;
+        assert!((fall_into(&curve, 126) - 8.0).abs() < 1e-12);
+    }
+
+    #[test]
     fn the_note_lock_needs_the_other_beats_under_half_the_floor() {
-        let curve = dipped(10, 4.0);
+        let curve = wide(10, 4.0);
         let onsets = [true, true, false, false];
         let with = |other: f64| {
             let beats = vec![
-                dipped(10, 4.0),
-                dipped(10, 4.0),
-                dipped(30, other),
-                dipped(30, other),
+                wide(10, 4.0),
+                wide(10, 4.0),
+                wide(30, other),
+                wide(30, other),
             ];
-            lock(&beats, &onsets, &curve, 4.0, || false)
+            lock(
+                &beats,
+                &onsets,
+                &ALTERNATE[..4],
+                &[0.0; 4],
+                &curve,
+                4.0,
+                || false,
+            )
         };
         assert_eq!(with(1.0), PumpLock::Note);
         assert_ne!(with(1.6), PumpLock::Note);
@@ -516,6 +792,7 @@ mod tests {
             beats: 8,
             curve,
             grid: BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.1)),
+            falls: Vec::new(),
         };
         assert!((pump.at(0.1 + 0.5 / 128.0) + 8.0).abs() < 1e-9);
         assert!(pump.at(0.5 / 128.0).abs() < 1e-9);
@@ -533,6 +810,7 @@ mod tests {
             beats: 4,
             curve,
             grid: grid(),
+            falls: Vec::new(),
         };
         // Beat 0.5 s; bin 0's centre at 0.5 / 128 s, the last bin's at
         // 0.5 - 0.5 / 128 s, and the beat start halfway between them.

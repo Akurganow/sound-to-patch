@@ -2,10 +2,10 @@
 //! `f(t) = f_end + df exp(-t / tau)` on the sub-band line.
 
 use super::FAST_TAU;
+use super::fit::golden_section;
 use super::line::SubBandLine;
 use crate::audio::SampleRate;
 use crate::cast;
-use crate::estimate::fit::golden_section;
 use crate::units::{Hz, Seconds, Semitones};
 
 /// The fit starts this long after the onset. The line of a tone switched

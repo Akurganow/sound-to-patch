@@ -18,8 +18,9 @@ acceptance tests at 22,050 Hz, through the release build and with the
 true note list [synthetic]. A real stem adds filters, reverb, bleed and
 separation artefacts.
 
-The eval is local and writes nothing to the repository [fact]. Run it
-with a release build; a debug build of the library is far slower:
+The eval is local [fact]. It writes one file, the `--json` path, and only
+when that flag is given [fact]. Run it with a release build; a debug build
+of the library is far slower:
 
 ```sh
 cargo run --release -p xtask -- eval --layer envelope --json records.jsonl
@@ -37,8 +38,13 @@ record [fact].
 - The beat grid of the used tempo, from 0 s, for the pump [fact]. The
   offset is never estimated: a stem whose first beat is late shifts every
   beat window [fact].
-- A note that overlaps another and has no free harmonic, or that is too
-  short for a track, is skipped and counted in the summary [fact].
+- A note with no harmonic to read, or that is too short for a track, is
+  skipped and counted in the summary [fact]. A harmonic cannot be read
+  when it lies within 30 Hz of a harmonic of a note it overlaps, or when
+  its band reaches the Nyquist frequency; the summary counts both as no
+  free harmonic [fact]. A note whose amp proxy peaks at -120 dB or lower is
+  skipped as silent: over a silent stretch, a listed note would read a 0 dB
+  sustain at the tracks' floor [fact, proposal for -120 dB].
 - Every time is audio time from the start of the stem [fact].
 
 ## Level tracks
@@ -78,14 +84,30 @@ Levels are dB from the note's peak on the amp proxy, read no lower than
   the full 0 to 100 % time of a linear ramp [fact]. The rise reads the RMS
   track for a note that overlaps no other, and the amp proxy for one that
   does [fact].
-- The rise ends at the first frame within 1 dB of the peak [fact].
+- The rise ends at the attack's top: the first frame that the level
+  exceeds by less than 1 dB over as long again as it took to rise to it
+  from under 10 % of it [fact]. The 10 and 90 % shares are of the highest
+  frame over that span [fact]. A slow attack has no top before its end,
+  since a linear ramp keeps rising by more than 1 dB until 1 dB below its
+  peak [fact].
+- The peak of the whole note is no top: a real note swells or ripples after
+  its attack [fact]. At 110 and 261.63 Hz, a 50 ms attack that swells by
+  3 dB over 600 ms read 514 ms against the peak and reads 52 to 55 ms
+  against the top; at 261.63 Hz, a 10 ms attack under a 6 dB ripple at
+  5 Hz read 30 ms and reads 12.5 ms [synthetic].
 - A periodic wave gives one amplitude sample per period, so a rise under
   about 1.5 periods cannot be told from a shorter one [fact]. The attack
   is an upper bound when the rise is shorter than 1.5 RMS windows, or, on
   the amp proxy, shorter than 0.98 over its cutoff, which is twice the
   rise of the filter on an instant step [fact]. `attack_is_upper_bound` is
-  set when more than half the pooled attacks are upper bounds, and no
-  attack should be written then [fact].
+  set when more than half the pooled attacks are upper bounds [fact].
+  `attack_s` then still reports the read, and a preset should not take it
+  [fact]. Each note record carries its own `attack_upper_bound` [fact].
+- #69 writes an attack from 1.5 periods. The layer tests the rise, 0.8 of a
+  linear attack, so its flag covers attacks up to about 1.9 periods, which
+  is 45 ms at 41.2 Hz [fact]. It departs from #69 on the safe side: a 2.2
+  period attack is the shortest in the tests that reads its time
+  [synthetic].
 
 The attack ladder: one saw note with a linear attack, read attack in ms,
 `bound` for an upper bound [synthetic]:
@@ -121,9 +143,14 @@ periods reads as a bound [synthetic].
 - `fit_residual_db` is the median over the pool of the RMS in dB of each
   held part against the model: 0 dB over the hold, a fall linear in dB to
   the sustain level over the decay, then the sustain level [fact].
-- `ripple_db` is the median over the pool of the 90th minus the 10th
-  percentile of the sustain window after its line [fact]. Unison and
-  chord beating show here [fact].
+- `ripple_db` is the median, over the pooled notes whose sustain is
+  observable, of the 90th minus the 10th percentile of the sustain window
+  after its line [fact]. Unison and chord beating show here [fact].
+- A simplex refine of hold, decay and sustain on the pooled dB curve, the
+  last fit step #69 names, is not applied [fact]. On 72 lines with decays
+  of 50 to 600 ms, it moved the median decay error from 4.4 to 3.7 % and
+  the 90th percentile from 8.7 to 14.6 %, and left the median sustain
+  error at 0.24 dB [synthetic].
 
 On a grid of 240 lines of eight saw notes, decays of 50 to 600 ms, sustain
 levels of 0 to -24 dB, holds of 0 and 30 ms and releases of 20 to 300 ms
@@ -178,13 +205,23 @@ amplitude bends in dB [synthetic].
 
 ## Pooling and confidence
 
-- The pool holds the notes whose length to the knee, or to the end
-  without one, lies within a factor of 2 of the median length, and whose
-  pitch lies within 12 semitones of the median pitch [fact, proposal].
+- The pool leaves out a note whose peak lies 12 dB or more below the peak
+  of a note it overlaps: a quiet second voice, such as another part's
+  bleed or a ghost note, has an envelope of its own [fact, proposal for
+  12 dB]. Eight A2 notes decaying over 300 ms, each over an E3 18 dB
+  quieter decaying over 50 ms, read the A2 decay within 20 % with the
+  gate; the E3 notes would otherwise fill half the pool [synthetic].
+- Of the other notes, the pool holds those whose length to the knee, or to
+  the end without one, lies within a factor of 2 of their median length,
+  and whose pitch lies within 12 semitones of their median pitch [fact,
+  proposal].
 - Each statistic is the median and the interquartile range over the pool
   [fact]. It reads low over fewer than 3 notes, or with an interquartile
   range above half its median [fact]. Its reasons are `too_few_notes` and
-  `relative_spread`, and the attack adds `upper_bound_share` [fact].
+  `relative_spread`, and the attack adds `upper_bound_share` [fact]. A
+  median of 0 under an interquartile range above 0 has no ratio, so the
+  statistic reads low with `zero_median`, that range, in place of
+  `relative_spread` [fact].
 - `level_spread_db` is the 90th minus the 10th percentile of the pooled
   peak levels, null under 3 pooled notes and always low: no stem has
   tested the rule [fact, proposal]. Peaks 0, 3, 6 and 12 dB apart read
@@ -211,20 +248,35 @@ notes [fact].
   relative to the 90th percentile of its bins; the curve is the median
   over the beats [fact]. The pump needs 4 counted beats; with fewer it is
   null [fact].
+- Period. A sidechain follows the song's tempo, and a stem's tempo may be
+  off by 1 or 2 % [fact]. Over 32 beats a 1 % error moves the duck a third
+  of a beat, so its beats no longer fold onto one curve [fact]. When the
+  grid's read does not lock to the beat, the layer searches periods within
+  2.5 % of the grid's for the one whose counted beats fold onto the deepest
+  mean curve, over the longest run of counted beats and then over all of
+  them, in steps that move the last beat of the span by 1 bin [fact,
+  proposal for 2.5 %]. It keeps that read when it locks to the beat
+  [fact]. Of 72 ducks up to 2 % off the grid over 32 and 64 beats, 15
+  locked and stripped on the grid alone, and all 72 do with the search
+  [synthetic].
 - `pump_depth_db` is minus the curve's minimum [fact].
 - `pump_recovery_s` is the time from the minimum until the curve comes
   back within 1.5 dB, going on over the beat's wrap, so a duck that sits
   late in the beat recovers into the next [fact]. It is null when the
   curve does not come back within one beat [fact].
 - `pump_tau_ms` is the recovery over $\ln(\text{depth} / 1.5)$, the time
-  constant of an exponential recovery in dB [fact].
+  constant of an exponential recovery in dB, and null unless the pump
+  locks to the beat: a dip that follows no beat has no recovery to model
+  [fact].
 - `pump_beats` counts the beats behind the curve [fact].
 
 `pump_locked_to` names what the dip follows, tested in this order
 [fact, proposal for the thresholds]:
 
 1. `note`: the beats with a note onset inside dip 3 dB or more, and the
-   others under 1.5 dB, each group of 2 beats or more.
+   others under 1.5 dB, each group of 2 beats or more. An onset up to 50 ms
+   before a beat belongs to that beat, as the transcriber places onsets a
+   few milliseconds early [fact].
 2. `free`: the level swings 1 dB or more at a rate of 0.5 to 20 Hz that
    lies 50 cents or more from every note division, read on the modulation
    spectrum over the longest covered span [fact]. It comes before the
@@ -233,32 +285,43 @@ notes [fact].
    strongest line lies on the beat rate, a division, so it does not read
    free [fact].
 3. `beat`: the curve dips 3 dB or more in one run of bins half its depth
-   down, falls into its dip within 8 bins, and half the beats fall by half
-   its depth within 3 bins of its dip. A note that decays across the beat
-   falls over most of it, and fails the 8 bins [fact]. The one run stops a
-   tremolo at a division of the beat [fact].
+   down, and falls into its dip within 8 bins, reading on into the beat
+   before and not round the beat's wrap. The odd beats and the even beats
+   must each do the same on their own median curves, to half its depth at
+   its dip. Half the beats must fall by half its depth into its dip: from
+   their highest bin over the 8 bins before the 3 bins either side of it
+   to their lowest within those. A note that decays across the beat falls
+   over most of it, and fails the 8 bins [fact]. The one run stops a
+   tremolo at a division of the beat [fact]. A level that rises over each
+   bar or two beats and drops back makes every beat's curve start low, and
+   round the wrap that read as a fall on every beat: 12 dB per bar and 6 and
+   12 dB per two beats all stripped [synthetic]. Those falls only come on
+   the first beat of each bar or pair, so the rule reads no pump there
+   [synthetic].
 4. `none` otherwise.
 
 The layer strips the curve from the note tracks only when it locks to the
 beat over 8 counted beats or more, and sets `pump_stripped` [fact,
-proposal for 8]. With fewer beats, half of them is two or three, and
+proposal for 8]. A stem can duck in one section only, so a note takes the
+strip only when the median fall of the beats over it reaches half the
+curve's depth [fact]. With fewer beats, half of them is two or three, and
 other sounds on the beat pass the lock: a sine sub under a kick on every
 beat, whose tail beats against the sub, read 3.4 to 4.6 dB locked to the
 beat over 4 or 5 beats [synthetic]. On 1375 runs over the generated stems
-of the pitch layer, which hold no duck, 5 read such a lock, and none is
+of the pitch layer, which hold no duck, 4 read such a lock, and none is
 stripped [synthetic].
 
 A duck's dip can read as a note-off knee in the first read and cut the
-held parts short [synthetic]. A pump that locks to the beat over fewer
-than 8 held beats is therefore counted again over each note to 25 ms
-before its end, and strips when that count locks to the beat over 8 beats
-or more [fact]. A 6 dB duck on the chord at 174 BPM under noise at -20 dB
+held parts short [synthetic]. A read of the held parts that finds no pump,
+or one that locks to the beat over fewer than 8 beats, is therefore counted
+again over each note to 25 ms before its end, and strips when that count
+locks to the beat over 8 beats or more [fact]. A 6 dB duck on the chord at 174 BPM under noise at -20 dB
 read a false knee on each of its three notes and was not stripped; counted
 over the notes, it strips, and no knee remains [synthetic].
 
-A constant three-note saw chord reads 1.6 to 1.9 dB from its own beating,
-so the 3 dB floor sits above it [synthetic]. Over all 1111 parts, 825 of
-826 locks read as built [synthetic].
+A constant three-note saw chord reads 1.64 to 1.94 dB from its own beating,
+so the 3 dB floor sits above it [synthetic]. Over all 1111 parts, all 826
+locks read as built [synthetic].
 
 ### Depth bias
 
@@ -278,9 +341,10 @@ seeds, noiseless and with white noise at -30 and -20 dB, releases of 50,
 | 6 dB | -1.39 (-2.69 to -0.32) | -1.45 (-2.60 to -0.39) | -1.75 (-2.83 to -0.25) |
 | 9 dB | -2.65 (-4.57 to -1.07) | -2.77 (-4.39 to -1.13) | -3.03 (-4.68 to -1.41) |
 | 12 dB | -4.29 (-6.75 to -1.91) | -4.18 (-6.45 to -2.03) | -4.69 (-6.79 to -2.42) |
-| 18 dB | -8.39 (-11.76 to -3.62) | -7.53 (-11.29 to -4.31) | -8.40 (-11.63 to -4.87) |
+| 18 dB | -8.39 (-11.76 to -3.62) | -8.03 (-11.29 to -4.31) | -8.40 (-11.63 to -4.87) |
 
-- No duck reads 0 to 1.94 dB, the chord's beating [synthetic].
+- No duck reads 0 to 0.09 dB on the sub, and 1.64 to 1.94 dB on the chord
+  from its beating [synthetic].
 - Noise at -20 dB fills the dip: a 12 dB duck reads 1.5 dB shallower than
   without noise [synthetic].
 - At 128 BPM on the noiseless chord, the bias over the releases is -0.2
@@ -296,17 +360,24 @@ chord's beating moves the crossing [synthetic].
 
 ## Limits
 
-- An attack under 1.5 periods of the fundamental is an upper bound, and
-  at 41.2 Hz that covers attacks up to 20 ms [synthetic].
+- An attack under about 1.9 periods of the fundamental is an upper bound,
+  and at 41.2 Hz that covers attacks up to 45 ms [fact].
 - A decay linear in amplitude reads part of its start as hold [synthetic].
 - The upper note of an octave or a unison has no free harmonic and is
   skipped [fact].
 - A resonant filter that closes onto the fundamental changes the amp
   proxy itself [fact].
-- The beat grid starts at 0 s with the tempo as used; a drifting tempo
-  smears the curve [fact].
-- The depth reads shallow by up to half a deep duck, and the bias depends
-  on the shape [synthetic].
+- A release that falls, flattens and falls again reads its knee at the
+  second fall, since the last corner wins to pass over a decay [synthetic].
+  Its sustain window then reaches into the first fall [fact].
+- The beat grid starts at 0 s with the tempo as used. The period search
+  finds one constant tempo within 2.5 % of it; a tempo that moves inside
+  the stem still smears the curve [fact].
+- The depth reads shallow, by up to 11.8 dB on an 18 dB duck, and the bias
+  depends on the shape [synthetic].
+- `peak_db` compares two notes directly only when they read the same
+  harmonic, so the pool's level gate can leave out a note that reads a
+  higher harmonic of a timbre with weak upper harmonics [fact].
 - A second sound on the beat, such as a kick in the same stem, can read
   as a beat-locked pump; over fewer than 8 beats it is not stripped
   [synthetic].

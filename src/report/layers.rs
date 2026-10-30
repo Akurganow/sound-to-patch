@@ -119,6 +119,7 @@ struct NoteRecord {
     onset_s: Seconds,
     peak_db: Decibels,
     attack_s: Option<Seconds>,
+    attack_upper_bound: bool,
     knee_s: Option<Seconds>,
     pooled: bool,
 }
@@ -164,6 +165,7 @@ impl NoteRecord {
             onset_s: note.onset,
             peak_db: note.peak_db,
             attack_s: note.attack,
+            attack_upper_bound: note.attack_upper_bound,
             knee_s: note.knee,
             pooled,
         }

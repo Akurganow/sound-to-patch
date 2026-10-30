@@ -19,6 +19,7 @@ use crate::support::envelope::{
     Adsr, CHORD, Duck, adsr_notes, chord, note_list, plucks, samples, saw, swept_saw, tremolo,
 };
 use crate::support::golden::{Golden, float};
+use crate::support::rng::uniform;
 
 const RATE: u32 = 22_050;
 const BPM: f64 = 128.0;
@@ -54,6 +55,7 @@ fn pump(x: &[f64], notes: &NoteList, f0: f64) -> Option<Pump> {
     let end = f64::from(u32::try_from(x.len()).unwrap()) / fs();
     let track = LevelTrack::rms(
         x,
+        0,
         rate(),
         (Seconds::clamped(0.0), Seconds::clamped(end)),
         Hz::new(f0).unwrap(),
@@ -167,9 +169,8 @@ fn only_a_beat_lock_is_counted_again_over_the_notes() {
     // Five A2 notes, each over two beats and a rest beat: struck 60 ms
     // before its first beat, released over 50 ms to end 10 ms before the
     // rest beat, its span in the list running 30 ms into it. The held parts
-    // end at the knees and count 5 flat beats, no lock. Counted over the
-    // spans, the releases dip in half of 10 beats and would lock to the
-    // beat; only a beat lock is counted again, so nothing is stripped.
+    // end at the knees and count 5 flat beats, no lock, and nothing is
+    // stripped.
     let adsr = Adsr {
         attack_s: 0.01,
         hold_s: 0.0,
@@ -1104,4 +1105,356 @@ fn a_stem_without_notes_has_no_envelope() {
     assert!(read.flags.no_notes);
     assert!(!read.confidence.is_estimate());
     assert!(read.pump.is_none());
+}
+
+/// The chord held over `beats` beats, as in the pump table.
+fn held_chord_over(beats: f64) -> (Vec<f64>, NoteList) {
+    let seconds = beats * beat();
+    (
+        chord(&CHORD, fs(), seconds, 1),
+        note_list(&CHORD.map(|f| (0.0, seconds, f))),
+    )
+}
+
+/// `x` under a gain in dB.
+fn under(x: &[f64], gain_db: impl Fn(f64) -> f64) -> Vec<f64> {
+    x.iter()
+        .enumerate()
+        .map(|(n, v)| v * 10f64.powf(gain_db(f64::from(u32::try_from(n).unwrap()) / fs()) / 20.0))
+        .collect()
+}
+
+#[test]
+fn a_duck_off_the_given_tempo_is_found_and_stripped() {
+    // The sidechain follows the song's tempo, and a stem's tempo may be off
+    // by 1 or 2 %. Over 32 beats a 1 % error moves the duck a third of a
+    // beat: read on the grid alone, none of these locked to the beat.
+    let (x, notes) = held_chord_over(32.0);
+    for off in [-0.02, -0.01, 0.01, 0.02] {
+        for (depth_db, release_s) in [(6.0, 0.15), (12.0, 0.08)] {
+            let duck = Duck {
+                depth_db,
+                release_s,
+                bpm: BPM * (1.0 + off),
+            };
+            let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+            assert_eq!(p.lock, PumpLock::Beat, "{off} {depth_db}: {p:?}");
+            assert!(p.strips());
+            let depth = p.depth.get();
+            assert!(
+                depth <= depth_db && depth >= depth_db - 5.0,
+                "{off} {depth_db}: {depth}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_level_that_follows_the_bar_is_not_stripped() {
+    // The level rises over each bar, or each two beats, and drops back. A
+    // beat's own curve then starts low and wraps into a dip at its start,
+    // and these locked to the beat and stripped. The beat before ends
+    // where the beat starts on all but the first beat of each bar or pair.
+    let (x, notes) = held_chord_over(32.0);
+    for (every, swing_db) in [(4.0, 12.0), (2.0, 6.0), (2.0, 12.0)] {
+        let span = every * beat();
+        let y = under(&x, |t| -swing_db * (1.0 - (t / span).fract()));
+        let p = pump(&y, &notes, CHORD[0]).unwrap();
+        assert_ne!(p.lock, PumpLock::Beat, "{every} {swing_db}: {p:?}");
+    }
+}
+
+#[test]
+fn dips_near_most_beats_at_random_depths_are_not_stripped() {
+    // On about 70 % of 64 beats a dip of 2 to 8 dB, 40 to 120 ms wide,
+    // from 30 ms before to 60 ms after the beat: a player's articulation.
+    // At one seed the period search lined these up into a 3.2 dB
+    // curve that falls into its dip; its odd beats alone do not.
+    let (x, notes) = held_chord_over(64.0);
+    for seed in 1..=6 {
+        let u = uniform(seed + 50, 4 * 64);
+        let dips: Vec<(f64, f64, f64)> = (0..64)
+            .filter(|&b| u[4 * b] < 0.7)
+            .map(|b| {
+                let at = f64::from(u32::try_from(b).unwrap()) * beat() - 0.03 + 0.09 * u[4 * b + 1];
+                (at, 2.0 + 6.0 * u[4 * b + 2], 0.04 + 0.08 * u[4 * b + 3])
+            })
+            .collect();
+        let y = under(&x, |t| {
+            -dips
+                .iter()
+                .map(|&(at, depth, width)| depth * (-((t - at) / (0.5 * width)).powi(2)).exp())
+                .sum::<f64>()
+        });
+        let p = pump(&y, &notes, CHORD[0]).unwrap();
+        assert!(!p.strips(), "{seed}: {p:?}");
+    }
+}
+
+/// A gain in dB over the time since a note's onset.
+type GainDb = fn(f64) -> f64;
+
+#[test]
+fn an_attack_that_swells_or_ripples_on_reads_its_fast_rise() {
+    // A 50 ms attack, then a swell of 2 or 3 dB over 600 ms or a ripple of
+    // 4 or 6 dB at 5 Hz. The note's peak lies late in the swell, and the
+    // rise to 90 % of it read 400 to 514 ms; the attack's top is where the
+    // fast rise ends.
+    for rate in [22_050, 44_100] {
+        let fs = f64::from(rate);
+        for f0 in [110.0, 261.63] {
+            let swells: [(&str, GainDb); 4] = [
+                ("swell 2", |t: f64| -2.0 + 2.0 * (t / 0.6).min(1.0)),
+                ("swell 3", |t: f64| -3.0 + 3.0 * (t / 0.6).min(1.0)),
+                ("ripple 4", |t: f64| 2.0 * (TAU * 5.0 * t).sin()),
+                ("ripple 6", |t: f64| 3.0 * (TAU * 5.0 * t).sin()),
+            ];
+            for (name, gain_db) in swells {
+                let (on, length) = (0.2, 1.5);
+                let n = samples(on + length + 0.3, fs);
+                let tone = saw(f0, fs, n, 0.0);
+                let x: Vec<f64> = (0..n)
+                    .map(|i| {
+                        let t = f64::from(u32::try_from(i).unwrap()) / fs - on;
+                        if !(0.0..=length).contains(&t) {
+                            return 0.0;
+                        }
+                        let ramp = (t / 0.05).min(1.0) * ((length - t) / 0.05).min(1.0);
+                        0.3 * tone[i] * ramp * 10f64.powf(gain_db(t) / 20.0)
+                    })
+                    .collect();
+                let read = EnvelopeLayer::of(&EnvelopeInput {
+                    mono: &x,
+                    rate: SampleRate::new(rate).unwrap(),
+                    notes: &note_list(&[(on, on + length, f0)]),
+                    grid: grid(120.0),
+                })
+                .unwrap();
+                let rise = read.notes[0].attack.unwrap().get() / 1.25;
+                assert!(
+                    (rise / 0.04 - 1.0).abs() <= 0.15,
+                    "{rate} {f0} {name}: {rise}"
+                );
+            }
+        }
+    }
+}
+
+/// A held A2 and an E3 on every other beat whose onset the list puts
+/// `early` seconds before the beat; the mix dips 9 dB at each E3 onset and
+/// comes back in 40 ms.
+fn upper_note_on_the_beat(early: f64) -> Option<Pump> {
+    let seconds = 16.0 * beat();
+    let length = samples(seconds, fs());
+    let held = saw(110.0, fs(), length, 0.0);
+    let upper = saw(164.81, fs(), length, 0.3);
+    let onsets: Vec<f64> = (1..8).map(|k| 2.0 * f64::from(k) * beat()).collect();
+    let mut notes = vec![(0.0, seconds, 110.0)];
+    for &on in &onsets {
+        notes.push((on - early, on + 0.6 * beat(), 164.81));
+    }
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / fs();
+            let since = onsets
+                .iter()
+                .filter(|&&on| on <= t)
+                .map(|&on| t - on)
+                .fold(f64::INFINITY, f64::min);
+            let sounding = since < 0.6 * beat();
+            let dip = 1.0 - (1.0 - 10f64.powf(-9.0 / 20.0)) * (-since / 0.04).exp();
+            0.3 * dip * (held[i] + if sounding { upper[i] } else { 0.0 })
+        })
+        .collect();
+    pump(&x, &note_list(&notes), 110.0)
+}
+
+#[test]
+fn a_note_struck_on_the_beat_or_listed_early_locks_to_the_note() {
+    // At 128 BPM an onset on the beat starts that beat, and one the list
+    // puts 20 ms early still does: the lead before a beat belongs to it.
+    for early in [0.0, 0.02] {
+        let p = upper_note_on_the_beat(early).unwrap();
+        assert_eq!(p.lock, PumpLock::Note, "{early}: {p:?}");
+        assert!(!p.strips());
+    }
+}
+
+#[test]
+fn a_duck_whose_first_read_counts_too_few_beats_is_counted_over_the_notes() {
+    // A held saw under a 12 dB duck falls 20 dB over 100 ms after 2.2
+    // beats. The first read ends the held part at the fall, too few beats
+    // for a pump; counted again over the note to its end, 14 beats strip.
+    let seconds = 16.0 * beat();
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.15,
+        bpm: BPM,
+    };
+    let (step, low) = (2.2 * beat(), 10f64.powf(-20.0 / 20.0));
+    let x: Vec<f64> = duck
+        .apply(&chord(&[110.0], fs(), seconds, 1), fs())
+        .iter()
+        .enumerate()
+        .map(|(n, v)| {
+            let t = f64::from(u32::try_from(n).unwrap()) / fs();
+            v * (1.0 - (1.0 - low) * ((t - step) / 0.1).clamp(0.0, 1.0))
+        })
+        .collect();
+    let read = layer(&x, &note_list(&[(0.0, seconds, 110.0)]), BPM);
+    let p = read.pump.as_ref().unwrap();
+    assert!(read.flags.pump_stripped, "{p:?}");
+    assert_eq!(p.beats, 14, "{p:?}");
+}
+
+#[test]
+fn a_20_ms_release_ending_30_ms_before_the_note_end_reads_its_knee() {
+    // The search stops 25 ms before the note's end, 5 ms after the release
+    // ends; at 50 ms it would stop 20 ms before, at the release's start.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.1,
+        sustain_db: -6.0,
+        release_s: 0.02,
+    };
+    let off = 1.2;
+    let x = adsr_notes(&[(0.2, off, 110.0, 0.0)], adsr, fs(), off + 0.5);
+    let read = layer(&x, &note_list(&[(0.2, off + 0.02 + 0.03, 110.0)]), 120.0);
+    let knee = read.notes[0].knee.unwrap().get();
+    assert!((knee - off).abs() <= 0.005, "{knee}");
+}
+
+#[test]
+fn a_quiet_second_voice_stays_out_of_the_pool() {
+    // Eight A2 notes decay over 300 ms to -6 dB; under each an E3 18 dB
+    // quieter decays over 50 ms to -20 dB. Pooled, the E3 notes would put
+    // the median decay between the two.
+    let loud = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.3,
+        sustain_db: -6.0,
+        release_s: 0.05,
+    };
+    let quiet = Adsr {
+        decay_s: 0.05,
+        sustain_db: -20.0,
+        ..loud
+    };
+    let mut x = vec![0.0; samples(14.0, fs())];
+    let mut list = Vec::new();
+    for i in 0..8 {
+        let on = 0.2 + 1.6 * f64::from(u32::try_from(i).unwrap());
+        for (f0, adsr, level) in [(110.0, loud, 0.0), (164.81, quiet, -18.0)] {
+            let note = adsr_notes(&[(on, on + 1.2, f0, level)], adsr, fs(), 14.0);
+            for (v, n) in x.iter_mut().zip(note) {
+                *v += n;
+            }
+            list.push((on, on + 1.2 + adsr.release_s + 0.04, f0));
+        }
+    }
+    let read = layer(&x, &note_list(&list), 120.0);
+    let pooled: Vec<bool> = (0..16).map(|i| i % 2 == 0).collect();
+    assert_eq!(read.pooled, pooled, "{:?}", read.notes);
+    let decay = read.decay.value().unwrap().median().get();
+    assert!((decay / 0.3 - 1.0).abs() <= 0.2, "{decay}");
+}
+
+#[test]
+fn a_note_outside_the_ducked_section_keeps_its_own_level() {
+    // A chord under a 12 dB duck for 20 beats, then 12 beats without, one
+    // note each per pitch. The pump locks over both, and the second part
+    // takes no strip: the curve would write its ripple into the held level.
+    let split = 20.0 * beat();
+    let seconds = 32.0 * beat();
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.15,
+        bpm: BPM,
+    };
+    let x: Vec<f64> = chord(&CHORD, fs(), seconds, 1)
+        .iter()
+        .enumerate()
+        .map(|(n, v)| {
+            let t = f64::from(u32::try_from(n).unwrap()) / fs();
+            if t < split { v * duck.gain(t) } else { *v }
+        })
+        .collect();
+    let notes: Vec<(f64, f64, f64)> = CHORD
+        .iter()
+        .flat_map(|&f| [(0.0, split, f), (split, seconds, f)])
+        .collect();
+    let read = layer(&x, &note_list(&notes), BPM);
+    let p = read.pump.as_ref().unwrap();
+    assert!(read.flags.pump_stripped, "{p:?}");
+    assert!(p.carries(0.0, split));
+    assert!(!p.carries(split, seconds));
+}
+
+#[test]
+fn notes_over_a_silent_stem_are_skipped() {
+    let x = vec![0.0; samples(4.0, fs())];
+    let list: Vec<(f64, f64, f64)> = (0..4)
+        .map(|i| (0.5 + 0.8 * f64::from(i), 1.0 + 0.8 * f64::from(i), 110.0))
+        .collect();
+    let read = layer(&x, &note_list(&list), BPM);
+    assert_eq!(read.counts.silent, 4);
+    assert_eq!(read.counts.read, 0);
+    assert!(
+        read.summary()[0].contains("0 of 4 notes read"),
+        "{:?}",
+        read.summary()
+    );
+    assert!(!read.confidence.is_estimate());
+}
+
+#[test]
+fn a_duck_off_the_given_tempo_folds_over_two_runs() {
+    // The same duck, 1.5 % off the grid, under two notes with a gap: only
+    // a period right over the whole span folds both runs onto one phase,
+    // which the search over the longest run alone does not reach.
+    let (x, _) = held_chord_over(48.0);
+    let (split, resume) = (20.0 * beat(), 28.0 * beat());
+    let notes: Vec<(f64, f64, f64)> = CHORD
+        .iter()
+        .flat_map(|&f| [(0.0, split, f), (resume, 48.0 * beat(), f)])
+        .collect();
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 1.015,
+    };
+    let p = pump(&duck.apply(&x, fs()), &note_list(&notes), CHORD[0]).unwrap();
+    assert_eq!(p.lock, PumpLock::Beat, "{p:?}");
+    assert!(p.depth.get() >= 7.0, "{p:?}");
+}
+
+#[test]
+fn a_clean_start_before_a_level_step_is_not_counted_again() {
+    // A saw held clean for 6.2 beats falls 20 dB over 100 ms, then ducks. The
+    // first read ends at the fall and counts 5 flat beats, a read with no
+    // lock. Only no pump or a short beat lock is counted again, so nothing
+    // is stripped, though the count over the note would lock to the beat.
+    let seconds = 26.0 * beat();
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.15,
+        bpm: BPM,
+    };
+    let (step, low) = (6.2 * beat(), 10f64.powf(-20.0 / 20.0));
+    let x: Vec<f64> = chord(&[110.0], fs(), seconds, 1)
+        .iter()
+        .enumerate()
+        .map(|(n, v)| {
+            let t = f64::from(u32::try_from(n).unwrap()) / fs();
+            let g = if t < step { 1.0 } else { duck.gain(t) };
+            v * g * (1.0 - (1.0 - low) * ((t - step) / 0.1).clamp(0.0, 1.0))
+        })
+        .collect();
+    let read = layer(&x, &note_list(&[(0.0, seconds, 110.0)]), BPM);
+    let p = read.pump.as_ref().unwrap();
+    assert_ne!(p.lock, PumpLock::Beat, "{p:?}");
+    assert!(p.beats <= 6, "{p:?}");
+    assert!(!read.flags.pump_stripped, "{p:?}");
 }

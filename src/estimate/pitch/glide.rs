@@ -1,10 +1,10 @@
 //! Glides: pitch moving from one stable pitch to another, read from the f0
 //! track, with the curve `s(x) = 1 - (1 - x)^p` fitted between the two.
 
+use super::fit::nelder_mead;
 use super::vibrato::{VIBRATO_EXTENT_MIN, VIBRATO_RATE_MIN};
 use crate::cast;
 use crate::dsp::ACTIVE_GATE_DB;
-use crate::estimate::fit::nelder_mead;
 use crate::notes::{MODEL_RATE, NoteList, PitchTrack, TRACK_FRAME, TRACK_HOP};
 use crate::units::{Cents, Hz, Seconds, Semitones};
 

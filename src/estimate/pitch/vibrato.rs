@@ -1,7 +1,7 @@
 //! Vibrato: periodic pitch motion of 3 to 12 Hz, read from the f0 track.
 
+use super::fit::golden_section;
 use crate::cast;
-use crate::estimate::fit::golden_section;
 use crate::units::{Cents, Hz, Seconds};
 
 /// The slowest vibrato that counts.

@@ -280,6 +280,36 @@ mod tests {
     }
 
     #[test]
+    fn a_hold_that_breaks_into_a_curved_fall_has_its_knee_at_the_break() {
+        // Held at 1 for 500 frames, then `1 - (t / 150)^1.1` over 150
+        // frames: the fall steepens from the break on.
+        let amp: Vec<f64> = (0..650)
+            .map(|i| {
+                let t = cast::usize_to_f64(i.max(500) - 500);
+                1.0 - (t / 150.0).powf(1.1)
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!((knee - 0.5011).abs() < 5e-4, "{knee}");
+    }
+
+    #[test]
+    fn a_two_stage_release_reads_the_later_corner() {
+        // A shelf in the release looks like a decay into a sustain: the last
+        // corner wins, so the knee reads the second stage. Held at 1 to
+        // 0.4 s, down to 0.5 by 0.45 s, flat to 0.7 s, then to 0 by 0.8 s.
+        let amp: Vec<f64> = (0..820)
+            .map(|i| {
+                let t = cast::usize_to_f64(i) * HOP.get();
+                let first = 1.0 - 0.5 * ((t - 0.4) / 0.05).clamp(0.0, 1.0);
+                first * (1.0 - ((t - 0.7) / 0.1).clamp(0.0, 1.0))
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!((knee - 0.7).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
     fn a_fall_at_one_rate_has_no_knee() {
         let db = track(|t| -40.0 * t, 1.0);
         assert_eq!(find_knee(0.0, &db), None);

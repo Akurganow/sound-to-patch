@@ -3,18 +3,25 @@
 
 use crate::audio::SampleRate;
 use crate::cast;
-use crate::dsp::{FilterError, quantile};
+use crate::dsp::{FilterError, fit_line, quantile};
 use crate::notes::Note;
-use crate::units::{Decibels, Hz, Seconds};
+use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
 use super::knee::find_knee;
+use super::median;
 use super::pump::Pump;
 use super::track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
 };
 
-/// The attack ends where the level first comes within this much of the
-/// peak.
+/// How little the level may rise after the attack's top.
+///
+/// The attack ends at its top: the first frame that the level exceeds by
+/// less than this over as long again as the attack took to reach it. The
+/// hold starts where the level first comes within this much of the peak.
+///
+/// The peak of the whole note is no top: on a 10 ms attack that swells by
+/// 2 to 3 dB over 600 ms, the rise to 90 % of the peak read 400 to 525 ms.
 pub const ATTACK_TOP: Decibels = Decibels::from_const(1.0);
 /// A linear ramp spends 80 % of its time between 10 % and 90 % of its
 /// peak, so the 10-90 % rise times 1.25 is the full attack.
@@ -63,9 +70,15 @@ pub const OBSERVABLE_DECAYS: f64 = 3.0;
 /// The tracks are read no lower than this far below the note's peak, so
 /// the floor of a silent frame does not steer a fit.
 pub const FIT_FLOOR: Decibels = Decibels::from_const(60.0);
+/// A note whose amp proxy peaks at or below this has nothing to read: a
+/// list of notes over a silent stretch would read 0 dB sustains at the
+/// tracks' floor. 16-bit dither sits near -96 dB.
+pub const SILENCE_DB: Decibels = Decibels::from_const(-120.0);
 /// The tracks start this long before the onset, so the attack's start is
 /// inside them.
 pub const TRACK_LEAD: Seconds = Seconds::from_const(0.03);
+/// Each note's tracks read its span and this much on either side.
+const SPAN_MARGIN: Seconds = Seconds::from_const(0.3);
 /// The knee search stops this long before the note's end.
 ///
 /// On dry saws the transcriber's end falls 25 to 60 ms after the release
@@ -89,10 +102,11 @@ pub const PROXY_HARMONICS: u32 = 3;
 pub struct NoteEnvelope {
     /// The note's onset.
     pub onset: Seconds,
-    /// The note's end in the note list.
+    /// The note's end in the note list, or the stem's end when that comes
+    /// first.
     pub end: Seconds,
     /// The note's pitch.
-    pub f0: Hz,
+    pub pitch: MidiPitch,
     /// The peak of the amp proxy, in dB of the harmonic's power.
     pub peak_db: Decibels,
     /// The 10-90 % rise times [`RAMP_FACTOR`]; `None` when the level does
@@ -113,7 +127,8 @@ pub struct NoteEnvelope {
     /// The note-off knee; `None` when no knee shows.
     pub knee: Option<Seconds>,
     /// The swing of the level over the sustain window, the 90th minus the
-    /// 10th percentile after its line.
+    /// 10th percentile after its line; `None` when the sustain is not
+    /// observable.
     pub ripple: Option<Decibels>,
     /// The RMS of the held part, in dB, against the model of the hold, the
     /// decay line and the sustain level; `None` when not observable.
@@ -126,11 +141,14 @@ pub struct NoteEnvelope {
 /// Why a note has no envelope.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NoteSkip {
-    /// The note overlaps another, and none of its first harmonics lies
-    /// [`FREE_GAP`] from the other's harmonics: an octave or a unison.
+    /// None of the note's first harmonics can be read: each lies within
+    /// [`FREE_GAP`] of a harmonic of a note it overlaps, as in an octave or
+    /// a unison, or its band reaches the Nyquist frequency.
     NoFreeHarmonic,
     /// The note is too short for a track.
     TooShort,
+    /// The note's amp proxy peaks at or below [`SILENCE_DB`].
+    Silent,
 }
 
 /// Reads the envelope of `note` from the mono mix. `others` are the notes
@@ -149,9 +167,7 @@ pub fn read_note(
     pump: Option<&Pump>,
 ) -> Result<Result<NoteEnvelope, NoteSkip>, FilterError> {
     let f0 = Hz::from(note.pitch());
-    let from = Seconds::clamped(note.onset().get() - TRACK_LEAD.get());
-    let stem_end = cast::usize_to_f64(mono.len()) / rate.hz().get();
-    let to = Seconds::clamped(note.offset().get().min(stem_end));
+    let (from, to) = span(mono, rate, note);
     if to.get() - note.onset().get() < 2.0 * HOLD_MIN.get() {
         return Ok(Err(NoteSkip::TooShort));
     }
@@ -166,6 +182,9 @@ pub fn read_note(
         .iter()
         .copied()
         .fold(f64::NEG_INFINITY, f64::max);
+    if peak_db <= SILENCE_DB.get() {
+        return Ok(Err(NoteSkip::Silent));
+    }
     let resolution = if overlap {
         BAND_STEPS_MIN * BAND_STEP_RISE / partials[0].1.get()
     } else {
@@ -197,7 +216,7 @@ pub fn read_note(
         .unwrap_or(0)
         .max(1);
     let sustain_window = &rel[held_end - window..held_end];
-    let sustain = median(sustain_window);
+    let sustain = median(sustain_window).unwrap_or(0.0);
     // The fall is read from the peak: the frames between the first one
     // within 1 dB of it and the peak still rise.
     let peak = (top..held_end)
@@ -226,7 +245,7 @@ pub fn read_note(
     Ok(Ok(NoteEnvelope {
         onset: note.onset(),
         end: to,
-        f0,
+        pitch: note.pitch(),
         peak_db: Decibels::clamped(peak_db),
         attack,
         attack_upper_bound,
@@ -234,7 +253,10 @@ pub fn read_note(
         decay: decay.filter(|_| observable).map(Seconds::clamped),
         sustain: observable.then(|| Decibels::clamped(sustain)),
         knee: knee.map(Seconds::clamped),
-        ripple: ripple(sustain_window).map(Decibels::clamped),
+        ripple: observable
+            .then(|| ripple(sustain_window))
+            .flatten()
+            .map(Decibels::clamped),
         residual: observable
             .then(|| residual(&rel[top..held_end], hold, decay, sustain))
             .flatten()
@@ -243,10 +265,19 @@ pub fn read_note(
     }))
 }
 
+/// The span of a note's tracks: from [`TRACK_LEAD`] before its onset to its
+/// end, inside the stem.
+fn span(mono: &[f64], rate: SampleRate, note: &Note) -> (Seconds, Seconds) {
+    let stem_end = cast::usize_to_f64(mono.len()) / rate.hz().get();
+    (
+        Seconds::clamped(note.onset().get() - TRACK_LEAD.get()),
+        Seconds::clamped(note.offset().get().min(stem_end)),
+    )
+}
+
 /// The RMS in dB of the held part against its model: 0 dB over the hold,
 /// a fall linear in dB from 0 dB to `sustain` over the decay, then
-/// `sustain`. `None`
-/// for an empty part.
+/// `sustain`. `None` for an empty part.
 fn residual(part: &[f64], hold: f64, decay: Option<f64>, sustain: f64) -> Option<f64> {
     if part.is_empty() {
         return None;
@@ -284,9 +315,7 @@ pub fn amp_proxy(
     others: &[&Note],
 ) -> Result<Option<LevelTrack>, FilterError> {
     let f0 = Hz::from(note.pitch());
-    let from = Seconds::clamped(note.onset().get() - TRACK_LEAD.get());
-    let stem_end = cast::usize_to_f64(mono.len()) / rate.hz().get();
-    let to = Seconds::clamped(note.offset().get().min(stem_end));
+    let (from, to) = span(mono, rate, note);
     let partials = proxy_partials(f0, others, rate);
     if partials.is_empty() {
         return Ok(None);
@@ -304,7 +333,7 @@ pub fn amp_proxy(
 }
 
 /// The amp proxy and the attack's track of a note from `from` to `to`, with
-/// the pump stripped when it locks to the beat.
+/// the pump stripped when it locks to the beat and its beats carry the duck.
 ///
 /// A note that overlaps no other reads its harmonic by a sliding DFT over
 /// one period and its attack on the one-period RMS; an overlapping note
@@ -318,25 +347,28 @@ fn tracks(
     overlap: bool,
     pump: Option<&Pump>,
 ) -> Result<(LevelTrack, LevelTrack), FilterError> {
+    // Every track reads the note's span and a margin, so a note costs its
+    // own length, not the stem's. The band filters reflect three periods
+    // of their cutoff at each end, and 0.3 s keeps the note clear of them;
+    // it also covers the longest RMS window and DFT period.
+    let fs = rate.hz().get();
+    let lo = cast::floor_to_usize((from.get() - SPAN_MARGIN.get()).max(0.0) * fs).unwrap_or(0);
+    let hi = cast::ceil_to_usize((to.get() + SPAN_MARGIN.get()) * fs)
+        .unwrap_or(mono.len())
+        .min(mono.len());
+    let span = &mono[lo.min(hi)..hi];
     let mut proxy = if overlap {
-        let fs = rate.hz().get();
-        // The band filters reflect three periods of their cutoff at each
-        // end; a margin of 0.3 s keeps the note clear of them.
-        let lo = cast::floor_to_usize((from.get() - 0.3).max(0.0) * fs).unwrap_or(0);
-        let hi = cast::ceil_to_usize((to.get() + 0.3) * fs)
-            .unwrap_or(mono.len())
-            .min(mono.len());
         let offset = Seconds::clamped(cast::usize_to_f64(lo) / fs);
-        LevelTrack::partials(&mono[lo..hi], offset, rate, (from, to), partials)?
+        LevelTrack::partials(span, offset, rate, (from, to), partials)?
     } else {
-        LevelTrack::harmonic(mono, rate, (from, to), partials[0].0, f0)
+        LevelTrack::harmonic(span, lo, rate, (from, to), partials[0].0, f0)
     };
     let mut timing = if overlap {
         proxy.clone()
     } else {
-        LevelTrack::rms(mono, rate, (from, to), f0, RMS_PERIODS)
+        LevelTrack::rms(span, lo, rate, (from, to), f0, RMS_PERIODS)
     };
-    if let Some(pump) = pump.filter(|p| p.strips()) {
+    if let Some(pump) = pump.filter(|p| p.strips() && p.carries(from.get(), to.get())) {
         pump.strip(&mut proxy);
         pump.strip(&mut timing);
     }
@@ -373,22 +405,40 @@ fn proxy_partials(f0: Hz, others: &[&Note], rate: SampleRate) -> Vec<(Hz, Hz)> {
         .collect()
 }
 
-/// The 10-90 % rise of a track's linear amplitude from `onset`, in
-/// seconds: from the last frame under 10 % of the peak before the first
-/// frame at 90 %, with both crossings linear between frames. `None` when
-/// the track does not start below 10 % of its peak.
+/// The 10-90 % rise of a track's linear amplitude from `onset` to the top
+/// of the attack, in seconds: from the last frame under 10 % of the top
+/// level before the first frame at 90 %, with both crossings linear
+/// between frames. `None` when the level never rises from under 10 % of a
+/// frame to a top.
+///
+/// The top is the first frame from `onset` whose level the track exceeds
+/// by less than [`ATTACK_TOP`] over as long again as the level took to
+/// rise to it from under 10 % of it; the top level is the highest frame
+/// over that span. A note that swells or ripples after a fast attack rises
+/// to its top first, and a slow attack has no top before its end.
 fn rise(track: &LevelTrack, onset: usize) -> Option<f64> {
     let db = track.db();
-    let peak = db[onset..]
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let peak = attack_top(db, onset)?;
     let amp: Vec<f64> = db.iter().map(|d| 10f64.powf((d - peak) / 20.0)).collect();
     let up = (onset.max(1)..amp.len()).find(|&i| amp[i] >= 0.9)?;
     let t90 = between(&amp, up, 0.9);
     let low = (0..up).rev().find(|&i| amp[i] < 0.1)?;
     let t10 = between(&amp, low + 1, 0.1);
     Some((t90 - t10) * HOP.get())
+}
+
+/// The top level of an attack from `onset`, in dB: see [`rise`].
+fn attack_top(db: &[f64], onset: usize) -> Option<f64> {
+    // A tenth of the amplitude.
+    let tenth = 20.0;
+    (onset.max(1)..db.len()).find_map(|i| {
+        let start = (0..i).rev().find(|&j| db[j] < db[i] - tenth)?;
+        let ahead = db[i..=(2 * i - start).min(db.len() - 1)]
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        (ahead < db[i] + ATTACK_TOP.get()).then_some(ahead)
+    })
 }
 
 /// The fractional index where `amp` rises through `level` between frames
@@ -401,10 +451,11 @@ fn between(amp: &[f64], i: usize, level: f64) -> f64 {
 
 /// The decay from the track between `from` and `to`: the times at which
 /// the dB level first falls through [`DECAY_SHARES`] of `sustain`, linear
-/// between frames, the first share at least [`DECAY_FIRST_DB`] down. The decay time is the time between them over the gap
-/// between the shares, and the decay starts that share of it before the
-/// first. Returns the start, from the track start, and the decay time;
-/// `None` when the level does not reach the second share before `to`.
+/// between frames, the first share at least [`DECAY_FIRST_DB`] down. The
+/// decay time is the time between them over the gap between the shares,
+/// and the decay starts that share of it before the first. Returns the
+/// start, from the track start, and the decay time; `None` when the level
+/// does not reach the second share before `to`.
 fn decay_fall(rel: &[f64], from: usize, to: usize, sustain: f64) -> Option<(f64, f64)> {
     let (lo, hi) = DECAY_SHARES;
     let lo = lo.max(DECAY_FIRST_DB.get() / -sustain);
@@ -423,30 +474,6 @@ fn falls_through(rel: &[f64], from: usize, to: usize, level: f64) -> Option<f64>
     Some(cast::usize_to_f64(i - 1) + w.clamp(0.0, 1.0))
 }
 
-/// The least-squares slope and intercept of points; `None` for fewer than
-/// two.
-fn line(points: &[(f64, f64)]) -> Option<(f64, f64)> {
-    if points.len() < 2 {
-        return None;
-    }
-    let n = cast::usize_to_f64(points.len());
-    let mx = points.iter().map(|p| p.0).sum::<f64>() / n;
-    let my = points.iter().map(|p| p.1).sum::<f64>() / n;
-    let sxx: f64 = points.iter().map(|p| (p.0 - mx).powi(2)).sum();
-    let sxy: f64 = points.iter().map(|p| (p.0 - mx) * (p.1 - my)).sum();
-    (sxx > 0.0).then(|| {
-        let slope = sxy / sxx;
-        (slope, my - slope * mx)
-    })
-}
-
-/// The median of values; 0 for none.
-fn median(values: &[f64]) -> f64 {
-    let mut sorted = values.to_vec();
-    sorted.sort_by(f64::total_cmp);
-    quantile(&sorted, 0.5).unwrap_or(0.0)
-}
-
 /// The 90th minus the 10th percentile of values after their line; `None`
 /// for fewer than ten values.
 fn ripple(values: &[f64]) -> Option<f64> {
@@ -458,7 +485,7 @@ fn ripple(values: &[f64]) -> Option<f64> {
         .enumerate()
         .map(|(i, &v)| (cast::usize_to_f64(i), v))
         .collect();
-    let b = line(&points).map_or(0.0, |(slope, _)| slope);
+    let b = fit_line(&points).map_or(0.0, |(slope, _)| slope);
     let mut rest: Vec<f64> = points.iter().map(|&(x, y)| y - b * x).collect();
     rest.sort_by(f64::total_cmp);
     Some(quantile(&rest, 0.9)? - quantile(&rest, 0.1)?)
@@ -539,16 +566,6 @@ mod tests {
             .map(|i| -10.0 * (cast::usize_to_f64(i) / 100.0).min(1.0))
             .collect();
         assert!(decay_fall(&rel, 0, 80, -10.0).is_none());
-    }
-
-    #[test]
-    fn the_line_fits_slope_and_intercept() {
-        let (slope, intercept) = line(&[(0.0, 1.0), (1.0, 3.0), (2.0, 5.0)]).unwrap();
-        assert!((slope - 2.0).abs() < 1e-12 && (intercept - 1.0).abs() < 1e-12);
-        let (slope, intercept) = line(&[(1.0, 0.0), (3.0, -1.0)]).unwrap();
-        assert!((slope + 0.5).abs() < 1e-12 && (intercept - 0.5).abs() < 1e-12);
-        assert!(line(&[(1.0, 1.0)]).is_none());
-        assert!(line(&[(1.0, 1.0), (1.0, 2.0)]).is_none());
     }
 
     #[test]

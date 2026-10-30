@@ -219,6 +219,9 @@ fn main() -> ExitCode {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
         Task::Eval { part, layer, json } => match layer {
+            eval::Layer::Notes if json.is_some() => {
+                Err("--json works with --layer envelope only".into())
+            }
             eval::Layer::Notes => eval::run(part.as_deref()),
             eval::Layer::Envelope => eval::envelope::run(part.as_deref(), json.as_deref()),
         },

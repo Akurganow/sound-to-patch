@@ -29,13 +29,13 @@ records in the edit-list format, each a `param` or a `route` with unit
 strings, so a route keeps its source, amount and polarity; the mapping
 step fills it in a later release, and until then the list is empty.
 
-The pitch group breaks reports of `layers/1` from releases up to 0.16:
+The pitch group breaks reports of `layers/1` from releases up to 0.23:
 `suggested_edits` changed from an object of numbers to a list of records,
 `pitch` is a new required top-level key, and `conventions` requires the
 keys `pitch`, `glides`, `drops`, `sub_band_line` and `vibrato`. A reader of
 older reports keeps their schema.
 
-The envelope group breaks reports of `layers/1` from releases up to 0.24:
+The envelope group breaks reports of `layers/1` from releases up to 0.25:
 `envelope` is a new required top-level key, and `conventions` requires the
 keys `envelope`, `note_off`, `level_spread_db` and `pump`.
 
@@ -207,7 +207,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 
 | Field | Unit | Range | Value |
 | :-- | :-- | :-- | :-- |
-| `attack_s` | seconds | 0 or more | Statistic: 1.25 times the 10 to 90 % rise of each pooled note, its full time for a linear ramp. An upper bound when `attack_is_upper_bound` is set. |
+| `attack_s` | seconds | 0 or more | Statistic: 1.25 times the 10 to 90 % rise of each pooled note to the attack's top, its full time for a linear ramp. An upper bound when `attack_is_upper_bound` is set. |
 | `hold_s` | seconds | 0 or more | Statistic: the time at the peak before the decay, 0 under 10 ms. |
 | `decay_s` | seconds | 0 or more | Statistic: the fall from the peak to the sustain level, from the 10 and 90 % shares of the fall in dB. |
 | `sustain_db` | dB | 0 or less | Statistic: the level of the last 30 % of the held part, from the peak. |
@@ -219,7 +219,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `overlap_fraction` | share | 0 to 1 | The share of the notes in the list that overlap another. |
 | `pump_depth_db` | dB | 0 or more | Minus the minimum of the pump curve; `null` with fewer than 4 counted beats. |
 | `pump_recovery_s` | seconds | 0 or more | From the curve's minimum back to within 1.5 dB, over the beat's wrap; `null` when it does not within a beat. |
-| `pump_tau_ms` | milliseconds | 0 or more | `pump_recovery_s` over `ln(pump_depth_db / 1.5)`, the one time field in milliseconds. |
+| `pump_tau_ms` | milliseconds | 0 or more | `pump_recovery_s` over `ln(pump_depth_db / 1.5)`, the one time field in milliseconds; `null` unless the pump locks to the beat. |
 | `pump_locked_to` | | | `beat`, `note`, `free` or `none`; `null` without a pump. |
 | `pump_beats` | count | 0 or more | The beats behind the curve. |
 | `notes` | | | One record per read note, in note order. |
@@ -227,7 +227,10 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 A statistic reads low over fewer than 3 notes or with an interquartile
 range above half its median. Its reasons are `too_few_notes` and
 `relative_spread`; `attack_s` adds `upper_bound_share`, the share of the
-pooled attacks under 1.5 periods.
+pooled attacks that are upper bounds. A median of 0 under an interquartile
+range above 0 has no ratio, so the statistic reads low and writes
+`zero_median`, that range in the statistic's unit, in place of
+`relative_spread`.
 
 A note record:
 
@@ -236,6 +239,7 @@ A note record:
 | `onset_s` | seconds | 0 or more | The onset in the note list. |
 | `peak_db` | dB | any | The peak power of the note's amp proxy, the one harmonic it reads; two notes compare directly when they read the same harmonic. |
 | `attack_s` | seconds | 0 or more | The note's attack, as above; `null` when the rise is not read. |
+| `attack_upper_bound` | flag | | The note's attack is an upper bound. |
 | `knee_s` | seconds | 0 or more | The note-off knee; `null` for a note that decays at one rate. |
 | `pooled` | flag | | The pool holds the note. |
 
