@@ -50,13 +50,19 @@ fn a_closed_pipe_is_not_an_error() {
 }
 
 /// The success case of `analyze`, on a generated WAV in a temporary
-/// folder, which a trycmd case cannot name: the tempo line, then both
-/// written files. The notes come from a file, so the f0 track does not
-/// run; the report tests check the notes-step lines.
+/// folder, which a trycmd case cannot name: the tempo line, the pitch
+/// lines, then both written files. The notes come from a file, so the
+/// model does not run; the report tests check the notes-step lines. The f0
+/// track still runs for the pitch layer.
 #[test]
 fn analyze_writes_both_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
-    let (path, _) = saw_notes(dir.path());
+    // A 0.3 s saw keeps the debug f0 track short.
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0);
+    let path = dir.path().join("lead.wav");
+    crate::support::signals::write_wav16(&path, 22_050, &[saw.iter().map(|x| 0.3 * x).collect()]);
     let notes = crate::report::given(dir.path());
     let out = dir.path().join("cli");
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
@@ -70,11 +76,20 @@ fn analyze_writes_both_files_for_a_generated_wav() {
         .unwrap();
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).unwrap();
-    // 1.2 s at 120 BPM holds 2 beats, too few to refine the tempo.
+    // 0.3 s at 120 BPM is shorter than a beat; `report.rs` and `tempo.rs`
+    // check the tempo lines of longer stems. The given A1 starts at
+    // 0.25 s under the held saw: the band envelope rises at the stem's
+    // cut end, a candidate strike, but the level does not rise as a drop
+    // there needs.
     assert_eq!(
         stdout,
         format!(
-            "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it\nwrote {}\nwrote {}\n",
+            "tempo: 120 BPM as given; the stem is shorter than one beat\n\
+             glides: 0, 0 too short\n\
+             pitch drops: 0 of 1 low strikes\n\
+             drop skips: 1 no strike\n\
+             vibrato: 0 of 0 steady spans\n\
+             wrote {}\nwrote {}\n",
             out.join("layers.json").display(),
             out.join("spectrogram.png").display()
         )
@@ -104,9 +119,14 @@ fn analyze_warns_about_corrupt_packets_on_stderr() {
     let stdout = String::from_utf8(output.stdout).unwrap();
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stdout
-            .lines()
-            .all(|line| line.starts_with("wrote ") || line.starts_with("tempo: ")),
+        stdout.lines().all(|line| !line.contains("packet")),
+        "{stdout}"
+    );
+    assert!(
+        stdout.ends_with(&format!(
+            "wrote {}\n",
+            out.join("spectrogram.png").display()
+        )),
         "{stdout}"
     );
     assert_eq!(stderr.lines().count(), 1, "{stderr}");

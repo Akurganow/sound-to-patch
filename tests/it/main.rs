@@ -31,6 +31,8 @@ mod midi_write;
 mod modulation;
 #[cfg(test)]
 mod music;
+#[cfg(test)]
+mod pitch;
 mod preset;
 #[cfg(test)]
 mod profile;

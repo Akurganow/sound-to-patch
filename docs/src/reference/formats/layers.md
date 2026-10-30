@@ -16,14 +16,23 @@ report against it.
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
-| `conventions` | The convention of every number in `stem`, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
+| `pitch` | The pitch layer group below: glides, pitch drops and vibrato. |
+| `conventions` | The convention of every number in `stem` and of every record of the layer groups, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
-The top level takes no other field. Later releases add one group per layer,
-each with `values`, `confidence`, `flags`, `needs_render` and
-`suggested_edits`, and extend the schema in the same change. A group with
-too little evidence writes `values: null` and says why in its confidence.
-`suggested_edits` maps a parameter name with its unit suffix to a plain
-number, such as `"filter1_cutoff_hz": 410`.
+The top level takes no other field. Each layer adds one group with
+`values`, `confidence`, `flags`, `needs_render` and `suggested_edits`, and
+extends the schema in the same change. A group with too little evidence
+writes `values: null` and says why in its confidence. `values` holds plain
+numbers with the unit in the field name. `suggested_edits` is a list of
+records in the edit-list format, each a `param` or a `route` with unit
+strings, so a route keeps its source, amount and polarity; the mapping
+step fills it in a later release, and until then the list is empty.
+
+The pitch group breaks reports of `layers/1` from releases up to 0.16:
+`suggested_edits` changed from an object of numbers to a list of records,
+`pitch` is a new required top-level key, and `conventions` requires the
+keys `pitch`, `glides`, `drops`, `sub_band_line` and `vibrato`. A reader of
+older reports keeps their schema.
 
 ## The transcription group
 
@@ -40,9 +49,10 @@ two machines can be traced to its settings.
 ## Naming
 
 - Field names are snake_case ASCII.
-- A field with a unit carries it as a suffix: `_hz`, `_s`, `_db`, `_dbfs`
-  or `_deg`. A field without a suffix is a count, a ratio, a share from 0
-  to 1, a flag or a tempo in BPM.
+- A field with a unit carries it as a suffix: `_hz`, `_s`, `_ms`, `_db`,
+  `_dbfs`, `_deg`, `_st` (semitones) or `_ct` (cents). A field without a
+  suffix is a count, a ratio, a share from 0 to 1, a power, a flag or a
+  tempo in BPM.
 - Integers are written as integers; every other number is a float.
 
 ## Value objects
@@ -110,6 +120,77 @@ confidence for the screen:
 A stereo value is `null` when it does not exist: a one-channel file, a
 silent channel, or a zero mid or side.
 
+## The pitch group
+
+The pitch layer of a monophonic line; the
+[pitch layer page](../../analysis/pitch.md) explains each method. Every
+record carries its own confidence, always an estimate. The group's own
+confidence is medium, or low when fewer than half of the track frames
+inside the notes are voiced within 100 cents of a sounding note, as under
+noise or DC. Its reasons are `voiced_frames`, the voiced frames of the f0
+track, and `note_frames`, that share.
+
+`values` is `null` when the line plays chords (reason `polyphonic_line`)
+or the stem has no notes (reason `no_note_list`). Otherwise it holds three
+lists, each in time order and each empty when nothing was found:
+`glides`, `drops` and `vibrato`. Every time is audio time from the start
+of the stem.
+
+A glide:
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `start_s` | seconds | 0 or more | The fitted start of the motion. |
+| `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
+| `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
+| `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, needs a detected span of at most 2.5 times its fitted time, and reads low with `curve_bound`. |
+| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. That stable pitch has a median level within 40 dB of the loudest frame, and the pitch does not swing back half the lead within 167 ms after it, unless the run's next stable pitch lies 100 cents or more away and matches another note, and the pitch, once past half the way to it, stays there up to that stable pitch and to the window's end. |
+
+Its reasons are `motion_span` (seconds), `fit_residual` (cents),
+`pitch_jitter` (cents) and `curve_bound` (flag). A glide whose
+`motion_span` is under 0.09 reads low.
+
+A drop:
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `onset_s` | seconds | 0 or more | The onset of the strike from the band envelope. |
+| `f_end_hz` | hertz | above 0 | The settled frequency. |
+| `df_st` | semitones | above 2, at most 36 | The drop at the onset, `12 log2((f_end + df) / f_end)`. |
+| `df_hz` | hertz | above 0 | The same in hertz above `f_end_hz`. |
+| `tau_s` | seconds | above 0.003 | The time constant of `f_end + df exp(-t / tau)`, above the 3.04 ms floor of the search. |
+| `residual` | share | 0 to 0.15 | The RMS residual of the fit over the fall it shows from 7 ms on, `df_hz exp(-7 ms / tau_s)`; with `tau_s` of 0.01 or more, of the error averaged over half a period of `f_end_hz`, or over a full period when `tau_s` spans 1.5 periods or more. |
+
+Its reasons are `fit_residual` and `attack_time` (seconds): the time the
+band envelope of the strike takes from 10 % to 90 % of its peak. A drop
+with an attack over 30 ms reads low, and one with `tau_s` under 0.01 or an
+attack over 12 ms at most medium.
+
+A vibrato:
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `start_s`, `end_s` | seconds | 0 or more | The first and last frame read. |
+| `rate_hz` | hertz | 2.97 to 12.12 | The rate, 3 to 12 Hz with 1 % slack. |
+| `extent_ct` | cents | 10 or more | Half the peak-to-peak swing, after the correction. |
+| `extent_raw_ct` | cents | 0 or more | The same as the f0 track reads it. |
+| `extent_factor` | ratio | above 0 | The correction for the track's smoothing at this rate; `extent_ct = extent_raw_ct * extent_factor`. |
+| `share` | share | 0.5 to 1 | The power the fitted sine explains over the power left after the line alone. |
+
+Its reasons are `sine_share`, `cycles_in_span` and `contour_kurtosis`. A
+vibrato holds 2.5 cycles or more; from 4 it reads high. A kurtosis below
+1.25 reads low, since the contour jumps between two levels, as a trill
+does, and so does a vibrato on a pitch below 100 Hz.
+
+`flags` holds four booleans: `chord_skipped`, `glide_too_short` (a motion
+between two notes lasted 35 to 90 ms over its fitted time, or over its
+detected span when the fit failed), `weak_fundamental` (a low note's
+second harmonic exceeded its fundamental by 6 dB, so its drop was not
+reported) and `no_notes`. At a sample rate under about 4 times a note's
+pitch the second harmonic cannot be measured, and that note is not
+tested for `weak_fundamental`.
+`needs_render` is `false`.
+
 ## Conventions
 
 | Key | Holds |
@@ -119,3 +200,6 @@ silent channel, or a zero mid or side.
 | `spectral` | Magnitude weights for shape, power for band shares; the window and the hop. |
 | `confidence` | What the level, the reasons and the spread mean. |
 | every `stem` field | The convention of that field, as in the tables above. |
+| `pitch` | What the pitch layer reads, when `values` is `null`, and the time base. |
+| `glides`, `drops`, `vibrato` | The method and the rule of each list of the pitch group. |
+| `sub_band_line` | The line the drops read. |

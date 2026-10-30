@@ -8,6 +8,7 @@ pub(crate) mod cast;
 pub(crate) mod fixtures;
 pub(crate) mod golden;
 pub(crate) mod memory;
+pub(crate) mod pitch;
 pub(crate) mod render;
 pub(crate) mod rng;
 pub(crate) mod signals;

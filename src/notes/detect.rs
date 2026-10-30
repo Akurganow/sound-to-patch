@@ -250,6 +250,16 @@ fn range_of(low: f64, high: f64) -> PitchRange {
     .unwrap_or_else(|_| full_range())
 }
 
+/// The voicing of a note list by the rule detection applies to its probe
+/// notes.
+///
+/// It is polyphonic when [`CHORD_SHARE`] or more of the notes share at
+/// least [`CHORD_OVERLAP`] of their span with a note of another pitch class.
+#[must_use]
+pub fn voicing_of_notes(notes: &NoteList) -> Voicing {
+    voicing_of(chord_share(notes))
+}
+
 /// The share of notes that a note of another pitch class sounds with for
 /// at least [`CHORD_OVERLAP`] of their span.
 ///

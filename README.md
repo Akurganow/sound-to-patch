@@ -5,13 +5,13 @@ turn a written description of a sound into a preset. Vital and Serum 2 are
 the target synths, and Vital comes first.
 
 The project is at an early release. `sound-to-patch analyze` reads a stem
-and writes a report of its tempo, notes, level, spectrum, band edge and
-stereo image with a spectrogram image. `sound-to-patch preset inspect`
-prints the header and the decoded settings of a Vital preset,
-`sound-to-patch preset apply` writes a Vital preset from an edit list, and
-`sound-to-patch render` plays a Vital preset with a MIDI file through the
-Vital plug-in to a WAV file. The layer estimators and the text path arrive
-in later releases.
+and writes a report of its tempo, notes, level, spectrum, band edge,
+stereo image, glides, pitch drops and vibrato with a spectrogram image.
+`sound-to-patch preset inspect` prints the header and the decoded settings
+of a Vital preset, `sound-to-patch preset apply` writes a Vital preset from
+an edit list, and `sound-to-patch render` plays a Vital preset with a MIDI
+file through the Vital plug-in to a WAV file. The other layer estimators and
+the text path arrive in later releases.
 
 ## Build
 

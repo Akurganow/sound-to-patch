@@ -1,0 +1,86 @@
+---
+source: tests/it/pitch.rs
+expression: "serde_json::to_string_pretty(&shape(pitch)).unwrap()"
+---
+{
+  "values": {
+    "glides": [
+      {
+        "start_s": "<number>",
+        "interval_st": "<number>",
+        "time_s": "<number>",
+        "curve": "<number>",
+        "from_silence": false,
+        "confidence": {
+          "level": "high",
+          "reasons": [
+            {
+              "code": "motion_span",
+              "value": "<number>"
+            },
+            {
+              "code": "fit_residual",
+              "value": "<number>"
+            },
+            {
+              "code": "pitch_jitter",
+              "value": "<number>"
+            },
+            {
+              "code": "curve_bound",
+              "value": false
+            }
+          ],
+          "estimate": true
+        }
+      }
+    ],
+    "drops": [
+      {
+        "onset_s": "<number>",
+        "f_end_hz": "<number>",
+        "df_st": "<number>",
+        "df_hz": "<number>",
+        "tau_s": "<number>",
+        "residual": "<number>",
+        "confidence": {
+          "level": "high",
+          "reasons": [
+            {
+              "code": "fit_residual",
+              "value": "<number>"
+            },
+            {
+              "code": "attack_time",
+              "value": "<number>"
+            }
+          ],
+          "estimate": true
+        }
+      }
+    ],
+    "vibrato": []
+  },
+  "confidence": {
+    "level": "medium",
+    "reasons": [
+      {
+        "code": "voiced_frames",
+        "value": "<integer>"
+      },
+      {
+        "code": "note_frames",
+        "value": "<number>"
+      }
+    ],
+    "estimate": true
+  },
+  "flags": {
+    "chord_skipped": false,
+    "glide_too_short": false,
+    "weak_fundamental": false,
+    "no_notes": false
+  },
+  "needs_render": false,
+  "suggested_edits": []
+}
