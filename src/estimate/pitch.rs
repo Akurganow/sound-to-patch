@@ -8,7 +8,6 @@
 //! the voices.
 
 mod drop;
-mod fit;
 mod glide;
 mod line;
 mod vibrato;

@@ -16,7 +16,8 @@ Every statement carries a tag:
   work may tune.
 
 `analyze` runs decoding, the tempo, the notes step (unless `--notes` gives
-the notes), the [pitch layer](pitch.md), the stem, the stereo screen, the
+the notes), the [pitch layer](pitch.md), the
+[envelope layer](envelope.md), the stem, the stereo screen, the
 descriptors and the report today [fact]. With `--notes` the f0 track still
 reads the stem, for the pitch layer [fact]. `notes` runs decoding, the tempo and the notes step [fact].
 The analytic signal, the masks, the modulation spectrum, the periodogram and

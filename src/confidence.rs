@@ -161,6 +161,12 @@ reason_codes! {
     /// within 100 cents of a sounding note. Noise or DC under a note list
     /// reads near 0.
     NoteFrames,
+    /// The interquartile range of a value over the notes, divided by its
+    /// median. Above 0.5 the notes disagree too much for a preset.
+    RelativeSpread,
+    /// The share of the pooled notes whose attack rises in under 1.5
+    /// periods of the fundamental, so their attack is an upper bound.
+    UpperBoundShare,
 }
 
 /// The value of the signal behind a [`ReasonCode`].

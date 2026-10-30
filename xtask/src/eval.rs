@@ -7,6 +7,7 @@
 //! step, and show what the quiet-note guard does to a part with bleed.
 //! The set and the results stay local; nothing here is committed.
 
+pub(crate) mod envelope;
 mod matcher;
 mod signals;
 
@@ -21,6 +22,15 @@ use sound_to_patch::units::{Bpm, Decibels};
 
 use matcher::{EvalNote, Score, octave_errors, offset_score, onset_score, pitch_class_score};
 use signals::{Class, Part, RATE, evaluation_set};
+
+/// The layer `cargo xtask eval` scores.
+#[derive(Clone, Copy, Debug, clap::ValueEnum)]
+pub(crate) enum Layer {
+    /// The notes step on parts with known notes.
+    Notes,
+    /// The envelope layer on parts with known envelopes and pumps.
+    Envelope,
+}
 
 /// The gates the bleed table tries, in decibels below the loudest frame.
 const GATES_DB: [f64; 4] = [30.0, 40.0, 50.0, 60.0];

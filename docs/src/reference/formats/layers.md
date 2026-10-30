@@ -17,6 +17,7 @@ report against it.
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
 | `pitch` | The pitch layer group below: glides, pitch drops and vibrato. |
+| `envelope` | The envelope layer group below: the amplitude envelope of the notes and the sidechain pump. |
 | `conventions` | The convention of every number in `stem` and of every record of the layer groups, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
 The top level takes no other field. Each layer adds one group with
@@ -33,6 +34,10 @@ The pitch group breaks reports of `layers/1` from releases up to 0.16:
 `pitch` is a new required top-level key, and `conventions` requires the
 keys `pitch`, `glides`, `drops`, `sub_band_line` and `vibrato`. A reader of
 older reports keeps their schema.
+
+The envelope group breaks reports of `layers/1` from releases up to 0.24:
+`envelope` is a new required top-level key, and `conventions` requires the
+keys `envelope`, `note_off`, `level_spread_db` and `pump`.
 
 ## The transcription group
 
@@ -191,6 +196,55 @@ pitch the second harmonic cannot be measured, and that note is not
 tested for `weak_fundamental`.
 `needs_render` is `false`.
 
+## The envelope group
+
+The amplitude envelope over the pooled notes, each read note's record, and
+the sidechain pump; the
+[envelope layer page](../../analysis/envelope.md) explains each method.
+`values` is `null` when no note was read: the stem has no notes (reason
+`no_note_list`) or every note was skipped (reason `too_few_notes`). The
+group's own confidence is medium with 3 or more pooled notes, else low.
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `attack_s` | seconds | 0 or more | Statistic: 1.25 times the 10 to 90 % rise of each pooled note, its full time for a linear ramp. An upper bound when `attack_is_upper_bound` is set. |
+| `hold_s` | seconds | 0 or more | Statistic: the time at the peak before the decay, 0 under 10 ms. |
+| `decay_s` | seconds | 0 or more | Statistic: the fall from the peak to the sustain level, from the 10 and 90 % shares of the fall in dB. |
+| `sustain_db` | dB | 0 or less | Statistic: the level of the last 30 % of the held part, from the peak. |
+| `note_off_offset_s` | seconds | any | Statistic: the note's end in the note list minus its note-off knee, over the pooled notes with a knee. |
+| `level_spread_db` | dB | 0 or more | Value: the 90th minus the 10th percentile of the pooled peak levels; always low. |
+| `ripple_db` | dB | 0 or more | The median ripple of the sustain window after its line; `null` without a sustain. |
+| `fit_residual_db` | dB | 0 or more | The median RMS of the held parts against the hold, decay and sustain model. |
+| `n_notes_used` | count | 0 or more | The pooled notes. |
+| `overlap_fraction` | share | 0 to 1 | The share of the notes in the list that overlap another. |
+| `pump_depth_db` | dB | 0 or more | Minus the minimum of the pump curve; `null` with fewer than 4 counted beats. |
+| `pump_recovery_s` | seconds | 0 or more | From the curve's minimum back to within 1.5 dB, over the beat's wrap; `null` when it does not within a beat. |
+| `pump_tau_ms` | milliseconds | 0 or more | `pump_recovery_s` over `ln(pump_depth_db / 1.5)`, the one time field in milliseconds. |
+| `pump_locked_to` | | | `beat`, `note`, `free` or `none`; `null` without a pump. |
+| `pump_beats` | count | 0 or more | The beats behind the curve. |
+| `notes` | | | One record per read note, in note order. |
+
+A statistic reads low over fewer than 3 notes or with an interquartile
+range above half its median. Its reasons are `too_few_notes` and
+`relative_spread`; `attack_s` adds `upper_bound_share`, the share of the
+pooled attacks under 1.5 periods.
+
+A note record:
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `onset_s` | seconds | 0 or more | The onset in the note list. |
+| `peak_db` | dB | any | The peak power of the note's amp proxy, the one harmonic it reads; two notes compare directly when they read the same harmonic. |
+| `attack_s` | seconds | 0 or more | The note's attack, as above; `null` when the rise is not read. |
+| `knee_s` | seconds | 0 or more | The note-off knee; `null` for a note that decays at one rate. |
+| `pooled` | flag | | The pool holds the note. |
+
+`flags` holds three booleans: `no_notes`, `attack_is_upper_bound` (more
+than half the pooled attacks rise in under 1.5 periods, so no attack
+should be written) and `pump_stripped` (the pump locks to the beat over 8
+counted beats or more, and its curve was taken out of the note tracks).
+`needs_render` is `false`.
+
 ## Conventions
 
 | Key | Holds |
@@ -203,3 +257,7 @@ tested for `weak_fundamental`.
 | `pitch` | What the pitch layer reads, when `values` is `null`, and the time base. |
 | `glides`, `drops`, `vibrato` | The method and the rule of each list of the pitch group. |
 | `sub_band_line` | The line the drops read. |
+| `envelope` | The tracks, the amp proxy, the stages and the pool of the envelope group. |
+| `note_off` | The note-off knee and `note_off_offset_s`. |
+| `level_spread_db` | The level spread. |
+| `pump` | The pump's track, beats, curve, fields and lock, and when it is stripped. |

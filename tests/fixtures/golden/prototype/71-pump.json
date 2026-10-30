@@ -1,0 +1,143 @@
+{
+ "description": "The #71 pump detector on a held saw chord at 128 BPM under an exponential duck: depth and time back within 1.5 dB.",
+ "generator": "xtask/golden/generate.py:pump_table",
+ "issue": 71,
+ "issue_figures": {
+  "figures": [
+   {
+    "back_s": null,
+    "read_depth_db": 1.6
+   },
+   {
+    "back_s": 0.212,
+    "read_depth_db": 5.6
+   },
+   {
+    "back_s": 0.176,
+    "read_depth_db": 9.4
+   },
+   {
+    "back_s": 0.234,
+    "read_depth_db": 10.1
+   },
+   {
+    "back_s": 0.264,
+    "read_depth_db": 9.3
+   },
+   {
+    "back_s": 0.242,
+    "read_depth_db": 13.7
+   }
+  ],
+  "reproduced": true,
+  "rows": [
+   true,
+   true,
+   true,
+   true,
+   true,
+   true
+  ],
+  "why": "a row reproduces within 0.5 dB of depth and 30 % of the time back; the issue does not give its chord phases"
+ },
+ "name": "71-pump",
+ "recipe": {
+  "beats": 16,
+  "beats_counted": "a beat counts when it starts 50 ms or more after 0 s and ends by the end",
+  "bpm": 128.0,
+  "chord": "saws of the envelope tests, each at phase uniform(1, 3) cycles in chord order, summed and scaled to a peak of 0.5, held from 0 s to the end",
+  "chord_hz": [
+   110.0,
+   130.81,
+   164.81
+  ],
+  "curve": "64 phase bins per beat, each beat minus its 90th percentile, the median over the beats",
+  "duck": "gain 1 - (1 - 10^(-depth / 20)) exp(-(t mod beat) / release) on every beat from 0 s",
+  "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within 1.5 dB, linear between bins",
+  "rows": [
+   [
+    0.0,
+    0.15
+   ],
+   [
+    6.0,
+    0.15
+   ],
+   [
+    12.0,
+    0.08
+   ],
+   [
+    12.0,
+    0.15
+   ],
+   [
+    12.0,
+    0.3
+   ],
+   [
+    18.0,
+    0.15
+   ]
+  ],
+  "sample_rate": 22050,
+  "seed": 1,
+  "track": "centred RMS in dB over two periods of 110 Hz on a 1 ms hop from 0 s to the end"
+ },
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.01,
+  "rel": 0.0
+ },
+ "tolerance_note": "depth within 0.01 dB and time back within 0.01 s: both sides bin the same frames, and the saws differ only in the last bits of their sines",
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "rows": [
+   {
+    "back_s": null,
+    "beats": 15,
+    "depth_db": 0.0,
+    "read_depth_db": 1.959045433736037,
+    "release_s": 0.15
+   },
+   {
+    "back_s": 0.18954110294603627,
+    "beats": 15,
+    "depth_db": 6.0,
+    "read_depth_db": 5.776836784241777,
+    "release_s": 0.15
+   },
+   {
+    "back_s": 0.1889815804215366,
+    "beats": 15,
+    "depth_db": 12.0,
+    "read_depth_db": 9.501974882447975,
+    "release_s": 0.08
+   },
+   {
+    "back_s": 0.23165273520607854,
+    "beats": 15,
+    "depth_db": 12.0,
+    "read_depth_db": 10.08677427824016,
+    "release_s": 0.15
+   },
+   {
+    "back_s": 0.24853622430280808,
+    "beats": 15,
+    "depth_db": 12.0,
+    "read_depth_db": 9.266675322025787,
+    "release_s": 0.3
+   },
+   {
+    "back_s": 0.23412430208943438,
+    "beats": 15,
+    "depth_db": 18.0,
+    "read_depth_db": 13.590266084634784,
+    "release_s": 0.15
+   }
+  ]
+ }
+}

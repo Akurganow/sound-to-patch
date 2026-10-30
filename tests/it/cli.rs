@@ -89,6 +89,9 @@ fn analyze_writes_both_files_for_a_generated_wav() {
              pitch drops: 0 of 1 low strikes\n\
              drop skips: 1 no strike\n\
              vibrato: 0 of 0 steady spans\n\
+             envelope: 1 of 1 notes read, 1 pooled, 0 with a note-off knee\n\
+             envelope: attack none, hold 0 ms, decay none, sustain 0.0 dB\n\
+             pump: too few sustained beats\n\
              wrote {}\nwrote {}\n",
             out.join("layers.json").display(),
             out.join("spectrogram.png").display()
