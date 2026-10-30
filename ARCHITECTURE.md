@@ -85,6 +85,10 @@ joins `READY` when its adapter lands.
   signal with the heterodyne, decay fits by backward integration, the stem
   descriptors, the modulation spectrum with the division snap, and the
   Lomb-Scargle periodogram.
+- `estimate`: the layer estimators that read the note list and the f0
+  track. `pitch` holds the pitch layer of a monophonic line: the sub-band
+  line, pitch drops at the strike of a low note, glides between notes and
+  vibrato, each record with its own confidence.
 - `notes`: the note list that the transcriber and the MIDI reader produce
   and every layer reads. The transcriber runs the model once per stem and
   decodes that run with the settings of a profile or of the register and

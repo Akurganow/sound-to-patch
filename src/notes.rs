@@ -41,7 +41,7 @@ pub use cleanup::{
 pub use detect::{
     CHORD_OVERLAP, CHORD_SHARE, Detection, HOLD_WINDOW, REFERENCE_PERCENTILE, REGISTER_MARGIN,
     REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource, Voicing, detect, detect_with_window,
-    probe_settings,
+    probe_settings, voicing_of_notes,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{

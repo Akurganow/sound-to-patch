@@ -15,6 +15,8 @@
 //!   reasons and a spread, or no estimate.
 //! - [`dsp`]: the signal core: windows, STFT, peak picking, active frames,
 //!   the analytic signal and decay fits.
+//! - [`estimate`]: the layer estimators that read the note list and the f0
+//!   track: the pitch layer with its glides, pitch drops and vibrato.
 //! - [`music`]: the music dictionary for notes, embedded from
 //!   `dictionary/music/`, with the key, note-name, numeral and chord-symbol
 //!   parsers, the snap rule and the rhythm arithmetic.
@@ -43,6 +45,7 @@ use sound_to_patch_core::cast;
 pub mod cli;
 pub mod confidence;
 pub mod dsp;
+pub mod estimate;
 pub mod music;
 pub mod notes;
 pub mod preset;

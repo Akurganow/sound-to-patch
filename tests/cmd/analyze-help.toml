@@ -21,7 +21,7 @@ Options:
           Use --bpm as it is, without refining it from the stem
 
       --notes <FILE>
-          A MIDI file with the stem's notes, instead of transcribing the stem. Its tempo must match --bpm or the refined tempo
+          A MIDI file with the stem's notes, instead of transcribing the stem; the f0 track still reads the stem unless the notes play chords. Its tempo must match --bpm or the refined tempo
 
       --profile <PROFILE>
           Decode with the settings of this kind of stem instead of the detected ones

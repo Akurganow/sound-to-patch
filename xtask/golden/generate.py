@@ -24,6 +24,7 @@ import librosa
 import mir_eval
 import numpy as np
 import scipy
+import scipy.optimize
 import scipy.signal
 
 GENERATOR = "xtask/golden/generate.py"
@@ -1367,6 +1368,117 @@ def pitch_track():
     )
 
 
+LINE_RECIPE = {
+    "sample_rate": 22050,
+    "signal": "0.8 sin(2 pi (f_end t + df tau (1 - exp(-t / tau)))) exp(-t / decay_s) from lead_s on, silence before, length_s in all",
+    "decay_s": 0.5,
+    "lead_s": 0.25,
+    "length_s": 1.25,
+    "rows": [[41.2, 41.2, 0.020], [41.2, 41.2, 0.050], [55.0, 165.0, 0.030], [41.2, 13.8, 0.100]],
+    "band": "fourth-order Butterworth high-pass at 20 Hz, then low-pass at 200 Hz, each by sosfiltfilt with odd padding of ceil(3 fs / 20) samples",
+    "analytic": "scipy.signal.hilbert of the band zero-padded by its own length on each side",
+    "frequency": "angle(z[n+1] conj(z[n])) fs / 2 pi",
+    "median": "centred median of 31 samples, shortened at the ends",
+    "line_window_s": [0.257, 0.65],
+    "line_every": 25,
+    "onset": "first sample in 0 to 0.5 s whose envelope |z|, averaged over a centred 221 samples (10 ms), reaches half its peak in that span",
+    "fit": "scipy.optimize.least_squares of line - (f_end + df exp(-t / tau)) over the line values from 7 ms to 400 ms after the onset, t from the onset to halfway between two samples, tau bounded to 7 ms / ln 10, about 3.04 ms, to 1 s",
+}
+
+# The Hilbert-fit column of the drop table in #67: f_end (Hz), df (Hz),
+# tau (ms) per row.
+ISSUE_67_HILBERT = [(41.1, 34.3, 23.7), (41.1, 38.8, 53.6), (55.2, 172.5, 28.7), (40.5, 12.3, 135.0)]
+
+
+def drop_tone(r, row, rate):
+    f_end, df, tau = row
+    n = int(round(r["length_s"] * rate))
+    t = np.arange(n) / rate - r["lead_s"]
+    tp = np.maximum(t, 0.0)
+    phase = f_end * tp + df * tau * (1.0 - np.exp(-tp / tau))
+    x = 0.8 * np.sin(2.0 * np.pi * phase) * np.exp(-tp / r["decay_s"])
+    return np.where(t < 0.0, 0.0, x)
+
+
+def shrinking_median(x, length):
+    half = length // 2
+    out = np.empty_like(x)
+    for n in range(len(x)):
+        out[n] = np.median(x[max(0, n - half) : n + half + 1])
+    return out
+
+
+def sub_band(x, rate):
+    pad = int(math.ceil(3.0 * rate / 20.0))
+    high = scipy.signal.butter(4, 20.0, "highpass", fs=rate, output="sos")
+    low = scipy.signal.butter(4, 200.0, "lowpass", fs=rate, output="sos")
+    band = scipy.signal.sosfiltfilt(high, x, padtype="odd", padlen=pad)
+    band = scipy.signal.sosfiltfilt(low, band, padtype="odd", padlen=pad)
+    z = scipy.signal.hilbert(np.pad(band, len(band)))[len(band) : 2 * len(band)]
+    frequency = np.angle(z[1:] * np.conj(z[:-1])) * rate / (2.0 * np.pi)
+    return shrinking_median(frequency, 31), np.abs(z)
+
+
+def band_onset(envelope, rate, to_s):
+    end = int(math.ceil(to_s * rate))
+    half = int(round(0.005 * rate))
+    sums = np.concatenate([[0.0], np.cumsum(envelope)])
+    smooth = np.array([(sums[min(n + half + 1, len(envelope))] - sums[max(n - half, 0)]) / (min(n + half + 1, len(envelope)) - max(n - half, 0)) for n in range(end)])
+    first = int(np.argmax(smooth >= 0.5 * smooth.max()))
+    return first / rate
+
+
+def drop_fit(line, onset, rate):
+    start = int(math.ceil((onset + 0.007) * rate))
+    stop = int(math.ceil((onset + 0.4) * rate))
+    n = np.arange(start, stop)
+    t = (n + 0.5) / rate - onset
+    y = line[n]
+    model = lambda p: p[0] + p[1] * np.exp(-t / p[2])
+    fit = scipy.optimize.least_squares(
+        lambda p: y - model(p),
+        [y[-1], y[0] - y[-1], 0.02],
+        bounds=([-np.inf, -np.inf, 0.007 / math.log(10)], [np.inf, np.inf, 1.0]),
+        xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=10000,
+    )
+    f_end, df, tau = fit.x
+    rms = float(np.sqrt(np.mean((y - model(fit.x)) ** 2)))
+    seen = abs(float(df)) * math.exp(-0.007 / float(tau))
+    return {"onset_s": onset, "f_end_hz": float(f_end), "df_hz": float(df), "tau_s": float(tau), "residual": rms / seen, "points": int(len(n))}
+
+
+def sub_band_line():
+    r = LINE_RECIPE
+    rate = r["sample_rate"]
+    first = drop_tone(r, r["rows"][0], rate)
+    line, _ = sub_band(first, rate)
+    lo, hi = (int(round(t * rate)) for t in r["line_window_s"])
+    indices = list(range(lo, hi, r["line_every"]))
+    rows = []
+    for row in r["rows"]:
+        line_row, envelope = sub_band(drop_tone(r, row, rate), rate)
+        rows.append(drop_fit(line_row, band_onset(envelope, rate, 0.5), rate))
+    figures = {
+        "hilbert_fit": [{"f_end_hz": f, "df_hz": d, "tau_ms": t} for f, d, t in ISSUE_67_HILBERT],
+    }
+    reproduced = [
+        within(row["f_end_hz"], f, 0.0, 0.1) and within(row["df_hz"], d, 0.05, 0.0) and within(1000.0 * row["tau_s"], t, 0.05, 0.0)
+        for row, (f, d, t) in zip(rows, ISSUE_67_HILBERT)
+    ]
+    return document(
+        "sub-band-line",
+        114,
+        "The sub-band Hilbert line of a generated 808 tone and the drop fit on it, for the four rows of the #67 drop table.",
+        "sub_band_line",
+        ["python", "numpy", "scipy"],
+        r,
+        {"line_indices": indices, "line_hz": floats(line[indices]), "drops": rows},
+        {"abs": 5e-4, "rel": 1e-5},
+        tolerance_note="line values within 5e-4 Hz, about 1e-5 of the tone: the Rust filter sections and the SciPy ones round differently, and the frequency between samples amplifies that, measured up to 3.2e-4 Hz; fitted f_end, df and tau within a relative 1e-5, since the two minimisers stop at slightly different points of the same minimum, measured up to 1.5e-6",
+        issue_figures={**figures, "rows": reproduced, "reproduced": all(reproduced), "why": "the issue fit from 3 ms after the true onset; this recipe fits from 7 ms after the envelope onset, because the line of a tone switched on from silence overshoots by about 11 Hz at 3 ms"},
+    )
+
+
 GLIDE_ISSUE_RECIPE = {
     "settings": {**TRACK_SETTINGS, "fmin_hz": 30.0, "fmax_hz": 400.0},
     "glides": {**TRACK_RECIPE["glides"], "hold_s": 0.5},
@@ -1411,6 +1523,7 @@ VECTORS = {
     "midi-timing": midi_timing,
     "notes-match": match_cases,
     "pitch-track": pitch_track,
+    "sub-band-line": sub_band_line,
     "prototype/48-peak-accuracy": peak_accuracy,
     "prototype/53-noise-floor": decay_noise_floor,
     "prototype/53-release-reverb": decay_release_reverb,

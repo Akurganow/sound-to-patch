@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/Akurganow/sound-to-patch/blob/main/schemas/layers.schema.json",
   "title": "layers.json",
-  "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _db, _dbfs, _deg) where the value has one. The conventions group names the convention of every number in the stem group.",
+  "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _ms, _db, _dbfs, _deg, _st, _ct) where the value has one; a field without a suffix is a count, a ratio, a share, a power, a flag or a tempo. The conventions group names the convention of every number in the stem group and of every record in the layer groups.",
   "type": "object",
-  "required": ["schema", "source", "synth", "stem", "transcription", "conventions"],
+  "required": ["schema", "source", "synth", "stem", "transcription", "pitch", "conventions"],
   "additionalProperties": false,
   "properties": {
     "schema": { "const": "layers/1" },
@@ -16,6 +16,7 @@
     "synth": { "enum": ["vital", "serum2"] },
     "stem": { "$ref": "#/$defs/stem" },
     "transcription": { "$ref": "#/$defs/transcription" },
+    "pitch": { "$ref": "#/$defs/pitch" },
     "conventions": { "$ref": "#/$defs/conventions" }
   },
   "$defs": {
@@ -205,7 +206,8 @@
         "frame_size", "statistics", "spectral", "bpm", "bpm_given", "bpm_refined", "duration_s",
         "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
         "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
-        "flatness", "band_share", "stereo", "confidence"
+        "flatness", "band_share", "stereo", "confidence", "pitch", "glides", "drops",
+        "sub_band_line", "vibrato"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
@@ -214,7 +216,7 @@
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "layer_group": {
-      "description": "The shape of the layer groups that later releases add at the top level. values is null when the evidence is too thin, and the confidence then says why. suggested_edits maps a parameter name with its unit suffix to a plain number, such as filter1_cutoff_hz: 410.",
+      "description": "The shape of every layer group at the top level. values is null when the evidence is too thin, and the confidence then says why. suggested_edits is a list of records in the edit-list format, each a param or a route with unit strings, so a route keeps its source, amount and polarity; the mapping step fills it, and until then it is empty.",
       "type": "object",
       "required": ["values", "confidence", "flags", "needs_render", "suggested_edits"],
       "additionalProperties": false,
@@ -231,13 +233,103 @@
         },
         "needs_render": { "type": "boolean" },
         "suggested_edits": {
-          "type": "object",
-          "propertyNames": { "$ref": "#/$defs/name" },
-          "additionalProperties": { "type": "number" }
+          "type": "array",
+          "items": {
+            "description": "One record of the edit-list format.",
+            "type": "object",
+            "minProperties": 1
+          }
         }
       },
       "if": { "$ref": "#/$defs/no_estimate" },
       "then": { "properties": { "values": { "type": "null" } } }
+    },
+    "pitch": {
+      "description": "The pitch layer of a monophonic line: glides, pitch drops and vibrato, each record with its own confidence. values is null when the line plays chords or has no notes; a line without a glide holds an empty list.",
+      "allOf": [
+        { "$ref": "#/$defs/layer_group" },
+        {
+          "properties": {
+            "values": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "required": ["glides", "drops", "vibrato"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "glides": { "type": "array", "items": { "$ref": "#/$defs/glide" } },
+                    "drops": { "type": "array", "items": { "$ref": "#/$defs/drop" } },
+                    "vibrato": { "type": "array", "items": { "$ref": "#/$defs/vibrato" } }
+                  }
+                }
+              ]
+            },
+            "flags": {
+              "required": ["chord_skipped", "glide_too_short", "weak_fundamental", "no_notes"],
+              "additionalProperties": false,
+              "properties": {
+                "chord_skipped": { "type": "boolean" },
+                "glide_too_short": { "type": "boolean" },
+                "weak_fundamental": { "type": "boolean" },
+                "no_notes": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "estimate": {
+      "description": "The confidence of a record, which always holds an estimate.",
+      "allOf": [
+        { "$ref": "#/$defs/confidence" },
+        { "properties": { "estimate": { "const": true } } }
+      ]
+    },
+    "glide": {
+      "type": "object",
+      "required": ["start_s", "interval_st", "time_s", "curve", "from_silence", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "start_s": { "type": "number", "minimum": 0 },
+        "interval_st": { "type": "number" },
+        "time_s": { "type": "number", "minimum": 0.09 },
+        "curve": { "type": "number", "exclusiveMinimum": 0.21, "maximum": 5 },
+        "from_silence": { "type": "boolean" },
+        "confidence": { "$ref": "#/$defs/estimate" }
+      }
+    },
+    "drop": {
+      "type": "object",
+      "required": ["onset_s", "f_end_hz", "df_st", "df_hz", "tau_s", "residual", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "onset_s": { "type": "number", "minimum": 0 },
+        "f_end_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "df_st": { "type": "number", "exclusiveMinimum": 2, "maximum": 36 },
+        "df_hz": { "type": "number", "exclusiveMinimum": 0 },
+        "tau_s": { "type": "number", "exclusiveMinimum": 0.003 },
+        "residual": { "type": "number", "minimum": 0, "exclusiveMaximum": 0.15 },
+        "confidence": { "$ref": "#/$defs/estimate" }
+      }
+    },
+    "vibrato": {
+      "type": "object",
+      "required": [
+        "start_s", "end_s", "rate_hz", "extent_ct", "extent_raw_ct", "extent_factor", "share",
+        "confidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "start_s": { "type": "number", "minimum": 0 },
+        "end_s": { "type": "number", "minimum": 0 },
+        "rate_hz": { "type": "number", "minimum": 2.97, "maximum": 12.12 },
+        "extent_ct": { "type": "number", "minimum": 10 },
+        "extent_raw_ct": { "type": "number", "minimum": 0 },
+        "extent_factor": { "type": "number", "exclusiveMinimum": 0 },
+        "share": { "type": "number", "minimum": 0.5, "maximum": 1 },
+        "confidence": { "$ref": "#/$defs/estimate" }
+      }
     }
   }
 }

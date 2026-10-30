@@ -1,5 +1,5 @@
-//! The `layers.json` report: the `stem` group with a convention for every
-//! number.
+//! The `layers.json` report: the `stem` group and the `pitch` layer group,
+//! with a convention for every number.
 
 use serde::Serialize;
 
@@ -11,9 +11,15 @@ use crate::confidence::{Confidence, Estimate, NoSpread, Spread};
 use crate::dsp::{
     BAND_CONVENTION, Descriptors, FLATNESS_CONVENTION, LEVEL_CONVENTION, SHAPE_CONVENTION, Stats,
 };
+use crate::estimate::pitch::{
+    DROP_CONVENTION, DropFit, GLIDE_CONVENTION, GlideFit, LINE_CONVENTION, PitchFlags, PitchLayer,
+    Rated, VIBRATO_CONVENTION, VibratoFit,
+};
 use crate::notes::TranscriptionRecord;
 use crate::synth::Synth;
-use crate::units::{Bpm, Correlation, Decibels, Degrees, Hz, Normalized, Ratio, Seconds};
+use crate::units::{
+    Bpm, Cents, Correlation, Decibels, Degrees, Hz, Normalized, Ratio, Seconds, Semitones,
+};
 
 /// The schema name and version that `layers.json` declares.
 pub const SCHEMA: &str = "layers/1";
@@ -27,8 +33,9 @@ when its RMS lies within 40 dB of the loudest frame";
 /// newline. The same stem always gives the same bytes.
 ///
 /// `source` is the stem's file name without its folder, `tempo` the
-/// given and refined tempo, and `transcription` the record of the
-/// transcriber that gave the notes, or `None` when none ran.
+/// given and refined tempo, `transcription` the record of the
+/// transcriber that gave the notes, or `None` when none ran, and `pitch`
+/// the pitch layer.
 ///
 /// # Errors
 ///
@@ -41,6 +48,7 @@ pub fn layers_json(
     source: &str,
     tempo: &Tempo,
     transcription: Option<&TranscriptionRecord>,
+    pitch: &PitchLayer,
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
@@ -48,6 +56,7 @@ pub fn layers_json(
         synth,
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
+        pitch: PitchGroup::new(pitch),
         conventions: Conventions::new(descriptors.frame_len),
     };
     let mut text = serde_json::to_string_pretty(&report)?;
@@ -64,7 +73,120 @@ struct Layers<'a> {
     stem: StemGroup<'a>,
     /// The transcriber's model and settings, `null` when none ran.
     transcription: Option<&'a TranscriptionRecord>,
+    pitch: PitchGroup<'a>,
     conventions: Conventions,
+}
+
+/// The pitch layer as a layer group. The mapping step fills
+/// `suggested_edits` in a later release; until then the list is empty.
+#[derive(Serialize)]
+struct PitchGroup<'a> {
+    values: Option<PitchValues<'a>>,
+    confidence: &'a Confidence<NoSpread>,
+    flags: PitchFlags,
+    needs_render: bool,
+    suggested_edits: [(); 0],
+}
+
+impl<'a> PitchGroup<'a> {
+    fn new(layer: &'a PitchLayer) -> Self {
+        Self {
+            values: layer.confidence.is_estimate().then(|| PitchValues {
+                glides: layer.glides.iter().map(GlideRecord::of).collect(),
+                drops: layer.drops.iter().map(DropRecord::of).collect(),
+                vibrato: layer.vibrato.iter().map(VibratoRecord::of).collect(),
+            }),
+            confidence: &layer.confidence,
+            flags: layer.flags,
+            needs_render: false,
+            suggested_edits: [],
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct PitchValues<'a> {
+    glides: Vec<GlideRecord<'a>>,
+    drops: Vec<DropRecord<'a>>,
+    vibrato: Vec<VibratoRecord<'a>>,
+}
+
+#[derive(Serialize)]
+struct GlideRecord<'a> {
+    start_s: Seconds,
+    interval_st: Semitones,
+    time_s: Seconds,
+    curve: f64,
+    from_silence: bool,
+    confidence: &'a Confidence<NoSpread>,
+}
+
+impl<'a> GlideRecord<'a> {
+    fn of(glide: &'a Rated<GlideFit>) -> Self {
+        let g = &glide.value;
+        Self {
+            start_s: g.start,
+            interval_st: g.interval,
+            time_s: g.time,
+            curve: g.curve,
+            from_silence: g.from_silence,
+            confidence: &glide.confidence,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct DropRecord<'a> {
+    onset_s: Seconds,
+    f_end_hz: Hz,
+    df_st: Option<Semitones>,
+    df_hz: f64,
+    tau_s: Seconds,
+    residual: f64,
+    confidence: &'a Confidence<NoSpread>,
+}
+
+impl<'a> DropRecord<'a> {
+    fn of(drop: &'a Rated<DropFit>) -> Self {
+        let d = &drop.value;
+        Self {
+            onset_s: d.onset,
+            f_end_hz: d.f_end,
+            df_st: d.df(),
+            df_hz: d.df_hz,
+            tau_s: d.tau,
+            residual: d.residual,
+            confidence: &drop.confidence,
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct VibratoRecord<'a> {
+    start_s: Seconds,
+    end_s: Seconds,
+    rate_hz: Hz,
+    extent_ct: Cents,
+    extent_raw_ct: Cents,
+    extent_factor: f64,
+    share: f64,
+    confidence: &'a Confidence<NoSpread>,
+}
+
+impl<'a> VibratoRecord<'a> {
+    fn of(vibrato: &'a Rated<VibratoFit>) -> Self {
+        let v = &vibrato.value;
+        Self {
+            start_s: v.start,
+            end_s: v.end,
+            rate_hz: v.rate,
+            extent_ct: v.extent(),
+            extent_raw_ct: v.extent_raw,
+            extent_factor: v.factor,
+            share: v.share,
+            confidence: &vibrato.confidence,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -239,6 +361,11 @@ struct Conventions {
     band_share: &'static str,
     stereo: &'static str,
     confidence: &'static str,
+    pitch: &'static str,
+    glides: &'static str,
+    drops: &'static str,
+    sub_band_line: &'static str,
+    vibrato: &'static str,
 }
 
 impl Conventions {
@@ -272,6 +399,13 @@ list, MIDI pitch to hertz with A4 = 440 Hz; null without a note list",
             confidence: "level, reasons and spread of each estimate; the spread of a statistic \
 is its interquartile range and that of the band edge one bin width, in the unit of the value; \
 estimate false means no value, with the reasons why",
+            pitch: "the pitch layer of a monophonic line, read from the f0 track, the note list \
+and the sub-band line; values is null when the line plays chords or has no notes; every time is \
+audio time from the start of the stem",
+            glides: GLIDE_CONVENTION,
+            drops: DROP_CONVENTION,
+            sub_band_line: LINE_CONVENTION,
+            vibrato: VIBRATO_CONVENTION,
         }
     }
 }
