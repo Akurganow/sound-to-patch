@@ -305,19 +305,19 @@ The cleanup runs five steps and prints the note count after each [fact].
   loudest frame or more, centred 60 ms or more before the dip. The split
   falls on the last envelope reading at a tenth of the loudest reading
   after the dip, before the first reading at nine tenths after the
-  quietest one in the dip frame, read as in the rise test below. The
-  note before the dip can read louder than the one after it, so the
-  climb starts at the quietest reading, and a deeper gap later in the 50
-  ms belongs to a dip of its own, so it cannot move the cut past a
-  repeat [fact]. At the same times the level at the note's fundamental
-  alone, one DFT bin over one period, must reach 23 dB above its
-  quietest reading before the split in a reading from the split on. The
-  piece after the split must last 50 ms, and the attack rule below must
-  hold between the two pieces. Each piece keeps the note's key, octave
-  flag and velocity [fact]. A last piece of at most 100 ms that runs
-  into the decoder's next note of its key, within 2 model frames, starts
-  that note instead, unless that note has an attack of its own after the
-  piece by the same rule [fact].
+  quietest of the dip frame's 26 readings, 1 ms apart, read as in the
+  rise test below. The note before the dip can read louder than the one
+  after it, so the climb starts at the quietest reading, and a deeper
+  gap later in the 50 ms belongs to a dip of its own, so it cannot move
+  the cut past a repeat [fact]. At the same times the level at the
+  note's fundamental alone, one DFT bin over one period, must reach 23
+  dB above its quietest reading before the split in a reading from the
+  split on. The piece after the split must last 50 ms, and the attack
+  rule below must hold between the two pieces. Each piece keeps the
+  note's key, octave flag and velocity [fact]. A last piece of at most
+  100 ms that runs into the decoder's next note of its key, within 2
+  model frames, starts that note instead, unless that note has an attack
+  of its own after the piece by the same rule [fact].
 - Why the split: the decoder can read a low repeat with a short gap as
   part of one long note, and no later step sees two notes [synthetic].
   With 30 ms gaps the gated 55 Hz saw decodes as 9 notes for 16, or 8
@@ -338,11 +338,14 @@ The cleanup runs five steps and prints the note count after each [fact].
   held A1 20 dB under an A2 gated for 0.2 s in every 0.25 s gave 16
   notes where the split join alone keeps 12; with the fundamental's dip
   it keeps the 12 [synthetic]. Held A1s 6 to 30 dB under a gated D2, C2,
-  E2, A2 or A3 give the split join's notes in every case [synthetic]. So
-  do held A1s under a gated key 1 to 3 semitones above or below, F#1 to
-  C2, though the bin reads such a key nearly as loud as the note: the
-  attack split adds no cut there, and every note count matches main
-  [synthetic].
+  E2, A2 or A3 give the split join's notes in every case [synthetic].
+  Held A1s 6 to 30 dB under a gated key 1 to 3 semitones above or below,
+  F#1 to C2, give main's note counts too, though the bin reads such a
+  key nearly as loud as the note [synthetic]. There the decoder already
+  cuts the A1 at the gates or drops it, so no dip falls inside an A1
+  note: where the A1 decodes across a gate, 6 to 14 dB down, the stem
+  dips there by about that much, short of 19 dB [synthetic]. No
+  generated semitone case reaches the fundamental test [synthetic].
 - Why 23 dB: from 21 to 25 dB the generated sets give the same notes,
   and 23 dB lies in the middle [synthetic]. At 19 and 20 dB squares
   loud for 60 to 80 % of the cycle split a held note further in 72 runs

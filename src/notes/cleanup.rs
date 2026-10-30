@@ -349,8 +349,8 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
 /// the [`ATTACK_AFTER`] after it. The split falls on the last envelope
 /// reading at or below the first share of [`RISE_SPAN`] of the loudest
 /// reading in that span, before the first reading at the second share
-/// after the quietest one in the dip frame, and the note's fundamental
-/// must dip by [`FUNDAMENTAL_DIP`] across it. It holds when the piece from
+/// after the quietest of the dip frame's readings, and the note's
+/// fundamental must dip by [`FUNDAMENTAL_DIP`] across it. It holds when the piece from
 /// there has an attack of its own after the piece before it, by the rule
 /// of the split join, which then keeps the two apart. Each piece keeps the
 /// note's key, octave flag and velocity.
@@ -468,14 +468,15 @@ fn split_point(
         rise_window(pitch),
     );
     let peak = peak_from(&readings, centre.get());
-    // The climb starts at the quietest reading of the dip frame: the note
-    // before the dip can read louder than the one after it, and a deeper
-    // gap later in the window belongs to a dip of its own.
-    let dip_end = centre.get() + QUIET_FRAME.get() / 2.0;
+    // The climb starts at the quietest of the dip frame's 26 readings, from
+    // its start to its end: the note before the dip can read louder than
+    // the one after it, and a deeper gap later in the window belongs to a
+    // dip of its own. A count, not a time, so float steps cannot move it.
+    let dip_readings = cast::round_to_usize(QUIET_FRAME.get() / step)? + 1;
     let trough = readings
         .iter()
+        .take(dip_readings)
         .enumerate()
-        .take_while(|(_, (time, _))| *time <= dip_end)
         .min_by(|a, b| a.1.1.total_cmp(&b.1.1))
         .map(|(k, _)| k)?;
     let rise = trough
@@ -1660,6 +1661,47 @@ mod tests {
         assert_eq!(onsets.len(), 3, "{onsets:?}");
         assert!((onsets[1] + 0.0053).abs() < 0.0005, "{onsets:?}");
         assert!((onsets[2] - 0.145).abs() < 1e-9, "{onsets:?}");
+    }
+
+    #[test]
+    fn the_trough_comes_from_the_dip_frame_s_26_readings() {
+        // An A4 at 0.5, a gap at -54 dB that ends at the dip frame's
+        // centre, a 10 or 11 ms repeat and a silent 25 ms gap. Each reading
+        // spans 4 ms. After the 10 ms repeat the 26th reading, at the
+        // frame's end, is the first silent one: the trough, so the cut
+        // falls after the second gap. After the 11 ms repeat the first
+        // silent reading is the 27th, outside the frame, so the trough
+        // stays in the first gap and the cut falls before the repeat.
+        let frame = 100;
+        let len = 44_100;
+        let centre = StemLevels::new(&vec![0.0; len], rate())
+            .frame_time(frame)
+            .get();
+        for (repeat, late) in [(0.01, true), (0.011, false)] {
+            let mono: Vec<f64> = (0..len)
+                .map(|index| {
+                    let t = f64::from(u32::try_from(index).unwrap()) / 22_050.0 - centre;
+                    let level = if (-0.02..0.0).contains(&t) {
+                        0.002
+                    } else if (repeat..repeat + 0.025).contains(&t) {
+                        0.0
+                    } else {
+                        0.5
+                    };
+                    level * (std::f64::consts::TAU * 440.0 * (t + centre)).sin()
+                })
+                .collect();
+            let levels = StemLevels::new(&mono, rate());
+            let level = |m: usize| if m == frame { 0.001 } else { 1.0 };
+            let onset = split_point(&levels, frame, MidiPitch::new(69.0).unwrap(), &level, 1.0)
+                .map(|onset| onset.get() - centre);
+            let cut = onset.unwrap();
+            if late {
+                assert!(cut > repeat + 0.02, "repeat {repeat} s: cut {cut}");
+            } else {
+                assert!(cut < 0.0, "repeat {repeat} s: cut {cut}");
+            }
+        }
     }
 
     #[test]

@@ -647,12 +647,14 @@ fn a_held_note_under_a_louder_gated_octave_gets_no_more_cuts() {
     );
 }
 
-/// A held A1 9.5 dB under a louder B1, two semitones up, gated for 0.2 s
-/// in every 0.25 s. The A1's fundamental bin reads the B1 within 1 dB, so
-/// it dips at each gate, but the split join joins the decoder's 16 A1
-/// pieces into 4, and the attack split cuts nothing more.
+/// A no-regression count: a held A1 9.5 dB under a louder B1, two
+/// semitones up, gated for 0.2 s in every 0.25 s, keeps main's 4 A1 notes.
+/// The decoder already cuts the A1 at the B1's gates into 16 pieces, and
+/// the split join joins them into 4, so no dip falls inside an A1 note
+/// and the attack split has nothing to cut. It guards the count, not the
+/// fundamental bin.
 #[test]
-fn a_held_note_under_a_louder_gated_second_gets_no_more_cuts() {
+fn a_held_note_under_a_louder_gated_second_keeps_main_s_count() {
     let low = held(55.0, |_| 1.0 / 3.0);
     let stem: Vec<f64> = gated(&[61.735], 0.005, 0.2, 0.0, -400.0)
         .into_iter()
