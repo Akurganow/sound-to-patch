@@ -799,7 +799,7 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
                 );
                 let right = match (back, expected_back) {
                     (Some(b), Some(e)) => (b / e - 1.0).abs() <= 0.3,
-                    (None, None) => true,
+                    (None, None) => pump.is_some(),
                     _ => false,
                 };
                 tick(&mut tally.pump_back, right);

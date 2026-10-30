@@ -375,7 +375,9 @@ chord's beating moves the crossing [synthetic].
   Its sustain window then reaches into the first fall [fact].
 - The beat grid starts at 0 s with the tempo as used. The period search
   finds one constant tempo within 2.5 % of it; a tempo that moves inside
-  the stem still smears the curve [fact].
+  the stem still smears the curve [fact]. Its first stage reads up to 64
+  beats of the longest run, so a duck off the tempo that starts later in
+  one held note can go unfound [fact].
 - The depth reads shallow, by up to 11.8 dB on an 18 dB duck, and the bias
   depends on the shape [synthetic].
 - `peak_db` compares two notes directly only when they read the same
