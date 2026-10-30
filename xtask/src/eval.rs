@@ -268,7 +268,7 @@ impl Tally {
 
     fn groups(&self) {
         println!(
-            "\nOnset F1 (matched/estimated/reference) per group, raw and clean: after the octave check,\nthe ghost merge, the split join and the {} dB quiet-note guard.\nThe detected settings read the f0 register within {} dB of the loudest frame.\n",
+            "\nOnset F1 (matched/estimated/reference) per group, raw and clean: after the octave check,\nthe ghost merge, the attack split, the split join and the {} dB quiet-note guard.\nThe detected settings read the f0 register within {} dB of the loudest frame.\n",
             QUIET_GATE.get(),
             REGISTER_WINDOW.get()
         );
@@ -351,8 +351,17 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
     }
     println!("\nCleanup steps per part (detected settings): notes after each step\n");
     println!(
-        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
-        "part", "decoded", "moved", "flagged", "unchecked", "merged", "joined", "quiet", "kept"
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>5} {:>6} {:>5} {:>5}",
+        "part",
+        "decoded",
+        "moved",
+        "flagged",
+        "unchecked",
+        "merged",
+        "split",
+        "joined",
+        "quiet",
+        "kept"
     );
     for row in &tally.steps {
         println!("{row}");
@@ -429,8 +438,9 @@ fn detection_row(part: &Part, detection: &Detection) -> String {
 
 /// The goldens of #60 on the bass profile. The dry 110 Hz saw shows the
 /// octave ghost at MIDI 57 before the cleanup; after it every note is a
-/// true A2, and 5 of the 6 match, because the model misses the onset of the
-/// fourth. Its six notes through reverb give the six true notes.
+/// true A2, and all 6 match: the model misses the onset of the fourth, and
+/// the attack split restores it. Its six notes through reverb give the six
+/// true notes.
 fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<()> {
     let at_57 = |list: &NoteList| {
         list.notes()
@@ -445,8 +455,7 @@ fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<
         "bass 110 Hz release 0.3 s" if at_57(decoded) == 0 => {
             return fail("the decoder gave no ghost at MIDI 57 to remove".to_owned());
         }
-        "bass 110 Hz release 0.3 s" => 5,
-        "bass 110 Hz release 0.3 s+reverb" => 6,
+        "bass 110 Hz release 0.3 s" | "bass 110 Hz release 0.3 s+reverb" => 6,
         _ => return Ok(()),
     };
     if found.len() == expected && matched == expected {
@@ -461,13 +470,14 @@ fn check_60(part: &Part, decoded: &NoteList, clean: &NoteList) -> crate::Result<
 
 fn steps_row(part: &Part, steps: &CleanupSteps) -> String {
     format!(
-        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>6} {:>5} {:>5}",
+        "{:<28} {:>7} {:>5} {:>7} {:>9} {:>6} {:>5} {:>6} {:>5} {:>5}",
         part.name,
         steps.decoded,
         steps.octaves.moved,
         steps.octaves.flagged,
         steps.octaves.unchecked,
         steps.merged,
+        steps.split,
         steps.joined,
         steps.quiet,
         steps.kept

@@ -25,6 +25,7 @@ settings: detected, MIDI 30 to 48, minimum note 5 frames (58.0 ms), melodia on
 decoded: 24 notes
 octave check: 24 notes, 4 moved down an octave, 4 flagged, 0 unchecked
 ghost merge: 20 notes
+attack split: 20 notes
 split join: 20 notes
 quiet-note guard: 20 notes, 0 dropped below 40 dB
 wrote bass/notes.mid
@@ -129,17 +130,24 @@ velocity 100. Then check what the model cannot get right:
 
   Most natural attacks are slower than 10 ms: a bowed, blown or sung
   re-attack rises like a tremolo, and the cleanup reads only the level.
-  A low repeat with a short gap can be lost in the model itself. A 55 Hz
-  saw gated with 30 ms gaps gives 9 notes for 16.
+  The model can read a low repeat with a short gap as part of one note:
+  a 55 Hz saw gated with 30 ms gaps decodes as 9 notes for 16. From A1
+  (55 Hz) up the cleanup splits such a note at a clear attack inside it,
+  and the saw gives its 16. Below A1 the note stays whole, because there
+  a fast sidechain duck looks like a gate.
 - A square LFO that cuts the level for 20 to 40 % of each cycle looks,
   by level, like a gated note with short gaps. The cleanup reads it as a
   gate and can split a held note into repeats: an A1 under a 6 Hz square
-  off for 30 % of each cycle gives 22 notes where the model's onsets
-  alone give 6. A vibrato under such a square splits the same way. Only
-  a cue such as a phase reset at each repeat could tell the two apart. A
-  square off half of each cycle holds only as long as it dips. No
-  generated one split a held note further than the model's onsets do,
-  and no sine tremolo of 2 to 20 Hz did.
+  off for 30 % of each cycle gives 24 notes, one a pulse, where the
+  model's onsets alone give 6. A vibrato under such a square splits the
+  same way. Only a cue such as a phase reset at each repeat could tell
+  the two apart. A square off half of each cycle holds only as long as
+  it dips. No generated one split a held note further than the model's
+  onsets do, and no sine tremolo of 2 to 20 Hz did.
+- A held low note under a louder gated note of another key can split at
+  that note's gates when the model splits it there: an A1 20 dB under a
+  gated A2 gives 12 notes. Below A2 the cleanup cannot tell the two keys
+  apart by their harmonics.
 
 Plan a manual pass in the piano roll. The [pipeline
 page](../analysis/pipeline.md#evaluation) gives the scores on generated
