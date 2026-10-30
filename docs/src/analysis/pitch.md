@@ -496,16 +496,23 @@ A glide is pitch moving from one stable pitch to another.
   stable pitch [proposal]. Its median level lies within 40 dB of the
   loudest frame, the gate of active frames [fact]. And within half a
   period of 3 Hz, the slowest vibrato, the smoothed pitch does not swing
-  back half the lead [proposal]. The window ends sooner at the run's next
-  stable pitch or the end of the note, so a step to the next note does
-  not count [proposal]. On real stems a wobble of ±60 cents at 6 to 7 Hz
-  read its first half-cycle as a fall from silence, coming back 82 % of
-  its lead [fact]. A quiet onset after digital silence read one into a
-  stable pitch at -41.9 dB, 1.9 dB past the gate [fact]. True falls there
-  came back 0 and 24 % and settled at -16 and -9 dB [fact]. Generated
-  falls that swing back or settle at -42 dB read none; one that rebounds
-  a quarter of its lead, or steps to the next note 30 ms after the stable
-  pitch, reads [synthetic]. A generated fall from 150 Hz
+  back half the lead [proposal]. When the run's next stable pitch matches
+  another note, the motion toward it is a step, and the window holds
+  nothing after the first stable pitch [proposal]. The end of the
+  transcribed note does not cut the window: on real stems the transcriber
+  ended a wobbling note inside its first trough [fact]. A step to a pitch
+  that no transcribed note matches counts as a swing back, since a wobble's
+  crest matches none either [proposal]. On real stems a
+  wobble of ±60 cents at 6 to 7 Hz read its first half-cycle as a fall
+  from silence, coming back 82 % of its lead [fact]. A quiet onset after
+  digital silence read one into a stable pitch at -41.9 dB, 1.9 dB past
+  the gate [fact]. True falls there came back 0 and 24 % and settled at
+  -16 and -9 dB [fact]. Generated falls that swing back or settle at
+  -42 dB read none, and so does a wobble whose note ends inside its first
+  stable pitch [synthetic]. One that rebounds a quarter or 45 % of its
+  lead reads [synthetic]. So does one that steps to the next note 30 ms
+  after the stable pitch, with the first note ending at the step's start,
+  20 ms into it or after it [synthetic]. A generated fall from 150 Hz
   into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
   rule as a drop [synthetic]. It reads as a fall from silence at medium,
   14.6 of its 19.0 semitones: it starts near 116 Hz, where the fall
@@ -679,9 +686,10 @@ Limits:
   1.66, a semitone trill at 6 Hz 1.06 [synthetic].
   - On real stems every vibrato above 100 Hz with 4 cycles or more matched
     an independent f0 [fact]. The 23 vibratos the independent f0 found
-    plausible read a share of 0.502 to 0.838, the 12 at high 0.502 to
-    0.630; the other 12 read 0.501 to 0.734, so the share does not tell
-    them apart [fact]. None read under 0.5: the lowest, 0.501, sits at the
+    plausible read a share of 0.502 to 0.838: the 12 of them at high 0.502
+    to 0.630, the 10 at medium 0.519 to 0.838 and the one at low 0.575.
+    The 12 vibratos it did not find plausible read 0.501 to 0.734, so the
+    share does not tell the two groups apart [fact]. None read under 0.5: the lowest, 0.501, sits at the
     threshold, so the margin there is nil [fact].
   - Below 100 Hz few matched, and the extent read up to 5 times too wide
     [fact]. A generated low saw with amplitude modulation, two beating

@@ -1179,8 +1179,9 @@ mod tests {
         // A 190 Hz note's second harmonic band starts at 319.5 Hz. At 600 Hz
         // it lies above the 300 Hz Nyquist frequency. At 646 Hz it is cut
         // to 0.24 Hz under 0.99 of Nyquist, and at 767 Hz to 60 Hz, both
-        // below the 380 Hz harmonic, so a strong tone inside either passes. At 800 Hz the band holds the
-        // harmonic, and one four times the fundamental reads weak.
+        // below the 380 Hz harmonic, so a strong tone inside either passes.
+        // At 800 Hz the band holds the harmonic, and one four times the
+        // fundamental reads weak.
         let weak = |rate: u32, upper: f64| {
             let r = f64::from(rate);
             let segment: Vec<f64> = (0..rate)

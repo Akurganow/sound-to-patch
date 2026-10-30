@@ -64,8 +64,9 @@ pub(crate) const BOUND_SPAN_MAX: f64 = 2.5;
 /// its lead within half a period of the slowest vibrato after its first
 /// stable pitch.
 ///
-/// The window is half a period of [`VIBRATO_RATE_MIN`], shorter where the
-/// run reaches its next stable pitch or leaves the note. On real stems a
+/// The window is half a period of [`VIBRATO_RATE_MIN`] after the first
+/// stable pitch. It holds no frame when the run's next stable pitch matches
+/// another note: the motion toward it is a step. On real stems a
 /// wobble of ±60 cents at 6 to 7 Hz on a bass read its first half-cycle as
 /// a fall from silence; the pitch came back 82 % of the lead. True falls
 /// from silence came back 0 % and 24 %.
@@ -137,9 +138,8 @@ each; start_s is the fitted start less the track's lag of a quarter frame, 23.2 
 a period; time_s is the full 0 to 100 % time; from_silence marks a glide into the first stable \
 pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 100 ms before \
 it, when that stable pitch has a median level within 40 dB of the loudest frame and the smoothed \
-pitch does not swing back 50 % of the lead within half a period of 3 Hz after it, or before the \
-next stable pitch or the end of its note if either comes first, and the fit also finds its start \
-pitch; a voiced run that starts within 100 ms of the one \
+pitch does not swing back 50 % of the lead within half a period of 3 Hz after it, unless the \
+run's next stable pitch matches another note, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
 before joins it when the full-band RMS does not rise 6 dB in the gap, its 10 ms RMS stays within \
 20 dB of the 20 ms before or after the gap and within 40 dB of the loudest frame of the stem, \
 and the pitch keeps moving after the gap the way it jumped, at 30 cents per millisecond or \
@@ -259,32 +259,35 @@ pub(crate) fn find_glides(
         let smooth = moving_average(&run);
         let slope = slopes(&run, &smooth);
         let plateaus = plateaus(&run, &smooth);
-        let note_at = |plateau: &Plateau| {
+        let note_of = |plateau: &Plateau| {
             let middle = f64::midpoint(run[plateau.first].time, run[plateau.last].time);
             let audio = Seconds::clamped(middle - lag_at(plateau.median));
             notes
                 .notes()
                 .iter()
                 .filter(|note| note.sounds_at(audio))
-                .find(|note| {
-                    (100.0 * note.pitch().get() - plateau.median).abs() <= NOTE_MATCH.get()
-                })
+                .map(|note| note.pitch().get())
+                .find(|pitch| (100.0 * pitch - plateau.median).abs() <= NOTE_MATCH.get())
+                .map(f64::round)
         };
-        let note_of = |plateau: &Plateau| note_at(plateau).map(|note| note.pitch().get().round());
         if let Some(first) = plateaus.first()
             && first.first > 0
             && from_silence(
                 Seconds::clamped(audio(&run[0]) - ONSET_LOOKBACK.get()),
                 Seconds::clamped(audio(&run[0])),
             )
-            && let Some(note) = note_at(first)
+            && let Some(settled) = note_of(first)
         {
             let lead = run[0].cents - first.median;
-            // The swing-back window stops where the run reaches its next
-            // stable pitch or leaves the note it settles on.
-            let stop = plateaus.get(1).map_or(run.len(), |next| next.first);
-            let until = (run[first.last].time + 0.5 / VIBRATO_RATE_MIN.get())
-                .min(note.offset().get() + lag_at(first.median));
+            // When the next stable pitch matches another note, the motion
+            // after the first stable pitch is a step to it and the window
+            // holds no frame. The transcribed note's end does not cut it:
+            // the transcriber can end a wobbling note inside its first trough.
+            let until = run[first.last].time + 0.5 / VIBRATO_RATE_MIN.get();
+            let steps = plateaus.get(1).is_some_and(|next| {
+                note_of(next).is_some_and(|pitch| (pitch - settled).abs() >= 0.5)
+            });
+            let stop = if steps { first.last + 1 } else { run.len() };
             let signed: Vec<f64> = slope.iter().map(|s| -s * lead.signum()).collect();
             let motion = detected(
                 &run,
@@ -1131,18 +1134,35 @@ mod tests {
         assert_eq!(held.len(), 1, "{held:?}");
         assert!(held[0].from_silence);
         assert_eq!(reads(|x| 30.0 * (x / 0.05).min(1.0)).len(), 1);
+        assert_eq!(reads(|x| 54.0 * (x / 0.05).min(1.0)).len(), 1, "45 % reads");
         let wobble = reads(|x| 55.0 - 55.0 * (std::f64::consts::TAU * 6.5 * x).cos());
         assert_eq!(wobble, [], "{wobble:?}");
+        // The transcriber can end the note inside the first stable pitch,
+        // which runs to about 0.35 s, and start another on the same pitch;
+        // the wobble still swings back.
+        let wobble = fall_into_e1(|x| 55.0 - 55.0 * (std::f64::consts::TAU * 6.5 * x).cos());
+        for end in [0.32, 0.34, 0.36] {
+            let split = notes(&[(0.2, end, 41.0), (end, 1.1, 41.0)]);
+            let read = find_glides(&wobble, &split, |_, _| false, |_, _| true);
+            assert_eq!(read.glides, [], "{end}: {read:?}");
+        }
     }
 
     #[test]
     fn a_fall_from_silence_then_a_step_to_another_note_reads() {
         // A step up 200 cents into G1 starts 30 ms after the stable E1, well
         // inside the swing window; it belongs to the next note.
+        // The first note can end at the step's start, 20 ms into it or
+        // after it.
         let step = |x: f64| 200.0 * ((x - 0.03) / 0.03).clamp(0.0, 1.0);
-        let line = notes(&[(0.2, 0.38, 41.0), (0.38, 1.1, 43.0)]);
-        let read = find_glides(&fall_into_e1(step), &line, |_, _| false, |_, _| true);
-        assert!(read.glides.iter().any(|g| g.from_silence), "{read:?}");
+        for end in [0.38, 0.4, 0.45] {
+            let line = notes(&[(0.2, end, 41.0), (end, 1.1, 43.0)]);
+            let read = find_glides(&fall_into_e1(step), &line, |_, _| false, |_, _| true);
+            assert!(
+                read.glides.iter().any(|g| g.from_silence),
+                "{end}: {read:?}"
+            );
+        }
     }
 
     #[test]
