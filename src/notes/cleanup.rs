@@ -80,11 +80,13 @@ pub const ATTACK_DIP: Decibels = Decibels::from_const(19.0);
 /// closes. Its fundamental does not, and the split cuts it no further than
 /// the split join alone. The bin of [`StemLevels::fundamental_level`]
 /// rejects the note's harmonics alone, fully only where a period is a
-/// whole number of samples, and from about A6 up a harmonic leaks within
-/// 23 dB. On the generated sets 21 to 25 dB give the same notes, and
-/// 23 dB lies in the middle. At 19 and 20 dB squares loud for 60 to 80 %
-/// of the cycle split a held note further in 72 runs where 23 dB gives
-/// 52, and at 30 dB gated runs hit 8 fewer gates.
+/// whole number of samples. From about A6 up a harmonic leaks within
+/// 23 dB at the worst phase.
+///
+/// On the generated sets 21 to 25 dB give the same notes, and 23 dB lies
+/// in the middle. At 19 and 20 dB squares loud for 60 to 80 % of the
+/// cycle split a held note further in 72 runs where 23 dB gives 52, and
+/// at 30 dB gated runs hit 8 fewer gates.
 pub const FUNDAMENTAL_DIP: Decibels = Decibels::from_const(23.0);
 /// How far the level at the note's own harmonics must dip in the same
 /// frames.
@@ -351,13 +353,16 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
 /// [`FUNDAMENTAL_DIP`] across it. It holds when the piece from there has
 /// an attack of its own after the piece before it, by the rule of the
 /// split join, which then keeps the two apart. Each piece keeps the
-/// note's key, octave flag and velocity. A last piece of at most twice
-/// [`ATTACK_AFTER`] that runs into the decoder's next note of its key,
-/// within [`SPLIT_GAP`], starts that note instead, unless that note has an
-/// attack of its own after the piece. The decoder can start a note 58 ms
-/// after its attack, which leaves such a piece. A longer piece is a note
-/// of its own, and a repeat after a gap of 20 ms or less can show no attack
-/// by the rule of the split join.
+/// note's key, octave flag and velocity.
+///
+/// A last piece of at most twice [`ATTACK_AFTER`] that runs into the
+/// decoder's next note of its key, within [`SPLIT_GAP`], starts that note
+/// instead, unless that note has an attack of its own after the piece.
+/// The decoder can start a note 58 ms after its attack, which leaves such
+/// a piece. A repeat after a gap of 20 ms or less can show no attack by
+/// the rule of the split join, so the limit keeps a longer piece before
+/// one a note of its own. A gated repeat of 60 to 90 ms after such a gap
+/// still loses its onset to the piece before it.
 #[must_use]
 pub fn split_at_attacks(notes: &NoteList, levels: &StemLevels<'_>) -> NoteList {
     let decoded = notes.notes();
@@ -1602,11 +1607,38 @@ mod tests {
     }
 
     #[test]
-    fn a_last_piece_stays_before_a_next_note_with_its_own_attack() {
+    fn a_short_last_piece_stays_before_a_next_note_with_its_own_attack() {
+        // A second gap from 60 to 90 ms after the onset: the decoder ends
+        // the note 25 ms into it and starts the next note 10 ms later, at
+        // 95 ms. The cut piece lasts 90.3 ms, within the 100 ms limit, but
+        // the next note has its own attack, so the piece stays a note and
+        // the next one keeps its onset.
+        let start = f64::from(LEAD_SAMPLES) / 22_050.0 + onset();
+        let mono = stem(onset(), |t| {
+            let gap = (-0.05..0.0).contains(&t) || (0.06..0.09).contains(&t);
+            (if gap { 0.0 } else { 0.5 }, 0.0)
+        });
+        let notes = NoteList::new(vec![
+            heard(start - 0.3, start + 0.085, 45.0, 80),
+            heard(start + 0.095, start + 0.4, 45.0, 90),
+        ]);
+        let pieces = split_at_attacks(&notes, &StemLevels::new(&mono, rate()));
+        let onsets: Vec<f64> = pieces
+            .notes()
+            .iter()
+            .map(|piece| piece.onset().get() - start)
+            .collect();
+        assert_eq!(onsets.len(), 3, "{onsets:?}");
+        assert!((onsets[1] + 0.0053).abs() < 0.0005, "{onsets:?}");
+        assert!((onsets[2] - 0.095).abs() < 1e-9, "{onsets:?}");
+    }
+
+    #[test]
+    fn a_long_last_piece_stays_before_a_next_note_with_its_own_attack() {
         // A second gap from 100 to 140 ms after the onset: the decoder ends
         // the note 25 ms into it and starts the next note 20 ms later, at
-        // 145 ms. The next note has its own attack, so the cut piece stays
-        // a note and the next one keeps its onset.
+        // 145 ms. The cut piece lasts 130 ms, past the 100 ms limit, so it
+        // stays a note and the next one keeps its onset.
         let start = f64::from(LEAD_SAMPLES) / 22_050.0 + onset();
         let mono = stem(onset(), |t| {
             let gap = (-0.05..0.0).contains(&t) || (0.1..0.14).contains(&t);
@@ -1625,6 +1657,43 @@ mod tests {
         assert_eq!(onsets.len(), 3, "{onsets:?}");
         assert!((onsets[1] + 0.0053).abs() < 0.0005, "{onsets:?}");
         assert!((onsets[2] - 0.145).abs() < 1e-9, "{onsets:?}");
+    }
+
+    #[test]
+    fn a_short_repeat_after_a_short_gap_takes_the_cut_piece() {
+        // Gates end 100 ms before the onset and `length` after it, and a
+        // third opens 15 ms later, until 450 ms. The decoder starts the
+        // repeat 5 ms before the third gate. With a gate of 80 ms the cut
+        // piece lasts 85.3 ms, and the attack rule reads no attack after a
+        // gap that short, so the piece starts the repeat: 2 notes, and the
+        // repeat starts at the cut. A gate of 100 ms gives a piece past
+        // the limit, and the repeat keeps its own onset.
+        let start = f64::from(LEAD_SAMPLES) / 22_050.0 + onset();
+        for (length, expected) in [(0.08, 2), (0.1, 3)] {
+            let mono = stem(onset(), |t| {
+                let open =
+                    t < -0.1 || (0.0..length).contains(&t) || (length + 0.015..0.45).contains(&t);
+                (if open { 0.5 } else { 0.0 }, 0.0)
+            });
+            let notes = NoteList::new(vec![
+                heard(start - 0.3, start + length, 45.0, 80),
+                heard(start + length + 0.01, start + 0.45, 45.0, 90),
+            ]);
+            let pieces = split_at_attacks(&notes, &StemLevels::new(&mono, rate()));
+            let onsets: Vec<f64> = pieces
+                .notes()
+                .iter()
+                .map(|piece| piece.onset().get() - start)
+                .collect();
+            assert_eq!(onsets.len(), expected, "gate {length} s: {onsets:?}");
+            let last = onsets[expected - 1];
+            let onset = if expected == 2 {
+                -0.0053
+            } else {
+                length + 0.01
+            };
+            assert!((last - onset).abs() < 0.0005, "gate {length} s: {onsets:?}");
+        }
     }
 
     #[test]
