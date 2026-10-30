@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.24.0](https://github.com/Akurganow/sound-to-patch/compare/13f93860d065726b07b7ff265a1e407ca544a8e0..v0.24.0) - 2026-10-30
+#### Features
+- (**analyze**) report glides, pitch drops and vibrato (#287) - ([13f9386](https://github.com/Akurganow/sound-to-patch/commit/13f93860d065726b07b7ff265a1e407ca544a8e0)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.23.1](https://github.com/Akurganow/sound-to-patch/compare/31f81d953f46e4a1cfc6824fdeb389aea7a0941a..v0.23.1) - 2026-10-29
 #### Bug Fixes
 - (**notes**) keep repeated gated notes apart in the split join (#279) - ([f9db972](https://github.com/Akurganow/sound-to-patch/commit/f9db97269029abcf673c69b3ca13a70afe0f71dc)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
