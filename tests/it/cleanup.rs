@@ -646,3 +646,32 @@ fn a_held_note_under_a_louder_gated_octave_gets_no_more_cuts() {
         (14, 4, 12)
     );
 }
+
+/// A held A1 9.5 dB under a louder B1, two semitones up, gated for 0.2 s
+/// in every 0.25 s. The A1's fundamental bin reads the B1 within 1 dB, so
+/// it dips at each gate, but the split join joins the decoder's 16 A1
+/// pieces into 4, and the attack split cuts nothing more.
+#[test]
+fn a_held_note_under_a_louder_gated_second_gets_no_more_cuts() {
+    let low = held(55.0, |_| 1.0 / 3.0);
+    let stem: Vec<f64> = gated(&[61.735], 0.005, 0.2, 0.0, -400.0)
+        .into_iter()
+        .zip(low)
+        .map(|(high, low)| high + low)
+        .collect();
+    let found = cleaned(&stem);
+    let at_a1 = |list: &NoteList| {
+        list.notes()
+            .iter()
+            .filter(|note| (note.pitch().get() - 33.0).abs() < 0.5)
+            .count()
+    };
+    assert_eq!(
+        (
+            at_a1(&found.decoded),
+            at_a1(&found.onset_only),
+            at_a1(&found.kept)
+        ),
+        (16, 4, 4)
+    );
+}

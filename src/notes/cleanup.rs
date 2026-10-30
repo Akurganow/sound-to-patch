@@ -349,10 +349,10 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
 /// the [`ATTACK_AFTER`] after it. The split falls on the last envelope
 /// reading at or below the first share of [`RISE_SPAN`] of the loudest
 /// reading in that span, before the first reading at the second share
-/// after the quietest one, and the note's fundamental must dip by
-/// [`FUNDAMENTAL_DIP`] across it. It holds when the piece from there has
-/// an attack of its own after the piece before it, by the rule of the
-/// split join, which then keeps the two apart. Each piece keeps the
+/// after the quietest one in the dip frame, and the note's fundamental
+/// must dip by [`FUNDAMENTAL_DIP`] across it. It holds when the piece from
+/// there has an attack of its own after the piece before it, by the rule
+/// of the split join, which then keeps the two apart. Each piece keeps the
 /// note's key, octave flag and velocity.
 ///
 /// A last piece of at most twice [`ATTACK_AFTER`] that runs into the
@@ -468,11 +468,14 @@ fn split_point(
         rise_window(pitch),
     );
     let peak = peak_from(&readings, centre.get());
-    // The climb starts at the quietest reading: the note before the dip
-    // can read louder than the one after it.
+    // The climb starts at the quietest reading of the dip frame: the note
+    // before the dip can read louder than the one after it, and a deeper
+    // gap later in the window belongs to a dip of its own.
+    let dip_end = centre.get() + QUIET_FRAME.get() / 2.0;
     let trough = readings
         .iter()
         .enumerate()
+        .take_while(|(_, (time, _))| *time <= dip_end)
         .min_by(|a, b| a.1.1.total_cmp(&b.1.1))
         .map(|(k, _)| k)?;
     let rise = trough
@@ -1660,6 +1663,32 @@ mod tests {
     }
 
     #[test]
+    fn the_climb_starts_in_the_dip_frame() {
+        // A 35 ms gap at -54 dB, a 15 ms repeat and a 40 ms gap of silence.
+        // The note splits 5 ms before the end of the first gap, as when
+        // both gaps are silent; the deeper second gap does not move the
+        // cut past the repeat.
+        for floor in [0.002, 0.0] {
+            let mono = stem(onset(), |t| {
+                let level = if (0.0..0.035).contains(&t) {
+                    floor
+                } else if (0.05..0.09).contains(&t) {
+                    0.0
+                } else {
+                    0.5
+                };
+                (level, 0.0)
+            });
+            let onsets = split_at(45.0, &mono, -0.3, 0.3);
+            assert_eq!(onsets.len(), 2, "floor {floor}: {onsets:?}");
+            assert!(
+                (onsets[1] - 0.03).abs() < 0.001,
+                "floor {floor}: {onsets:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_short_repeat_after_a_short_gap_takes_the_cut_piece() {
         // Gates end 100 ms before the onset and `length` after it, and a
         // third opens 15 ms later, until 450 ms. The decoder starts the
@@ -1771,6 +1800,13 @@ mod tests {
             assert_eq!(piece.velocity(), Some(Velocity::new(77).unwrap()));
             assert_eq!(piece.octave_uncertain(), Some(true));
         }
+        // The pieces span the note: its onset, the cut, and its offset.
+        let [first, last] = pieces.notes() else {
+            unreachable!()
+        };
+        assert_eq!(first.onset(), notes.notes()[0].onset());
+        assert_eq!(first.offset(), last.onset());
+        assert_eq!(last.offset(), notes.notes()[0].offset());
     }
 
     #[test]
