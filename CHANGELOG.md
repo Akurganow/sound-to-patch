@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.25.0](https://github.com/Akurganow/sound-to-patch/compare/e2307d36076451e017c450cb217c63017f186e33..v0.25.0) - 2026-10-30
+#### Features
+- (**notes**) split decoded notes at attacks inside them (#305) - ([e2307d3](https://github.com/Akurganow/sound-to-patch/commit/e2307d36076451e017c450cb217c63017f186e33)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.24.0](https://github.com/Akurganow/sound-to-patch/compare/13f93860d065726b07b7ff265a1e407ca544a8e0..v0.24.0) - 2026-10-30
 #### Features
 - (**analyze**) report glides, pitch drops and vibrato (#287) - ([13f9386](https://github.com/Akurganow/sound-to-patch/commit/13f93860d065726b07b7ff265a1e407ca544a8e0)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
