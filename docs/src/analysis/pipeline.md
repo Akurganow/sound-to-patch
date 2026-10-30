@@ -300,9 +300,8 @@ The cleanup runs five steps and prints the note count after each [fact].
   an attack of its own inside it [proposal]. A 25 ms frame of the note
   marks a dip when it is no louder than the frame before it, quieter
   than the frame after it, and 19 dB or more below the loudest frame in
-  the 50 ms after it. The note
-  must hold a frame at six tenths of that loudest frame or more, centred
-  60 ms or more before the dip. The split falls on the last envelope
+  the 50 ms after it. The note must hold a frame at six tenths of that
+  loudest frame or more, centred 60 ms or more before the dip. The split falls on the last envelope
   reading at a tenth of the loudest reading after the dip, before the
   first reading at nine tenths after the quietest one, read as in the
   rise test below. The note before the dip can read louder than the one
@@ -312,9 +311,9 @@ The cleanup runs five steps and prints the note count after each [fact].
   split in a reading from the split on. The piece after the split must last
   50 ms, and the attack rule below must hold between the two pieces.
   Each piece keeps the note's key, octave flag and velocity [fact]. A
-  last piece that runs into the decoder's next note of its key, within
-  2 model frames, starts that note instead, unless that note has an
-  attack of its own after the piece by the same rule [fact].
+  last piece of at most 100 ms that runs into the decoder's next note of
+  its key, within 2 model frames, starts that note instead, unless that
+  note has an attack of its own after the piece by the same rule [fact].
 - Why the split: the decoder can read a low repeat with a short gap as
   part of one long note, and no later step sees two notes [synthetic].
   With 30 ms gaps the gated 55 Hz saw decodes as 9 notes for 16, or 8
@@ -326,7 +325,12 @@ The cleanup runs five steps and prints the note count after each [fact].
   rule cannot tell a note from a key nearby, so a held note under a
   louder gated voice of another key dips at its harmonics as well as in
   the stem [fact]. A bin over one period has its zeros on every harmonic
-  of the note, so a tone an octave up reads nothing there [fact]. A held
+  of the note when the period is a whole number of samples, so a tone an
+  octave up reads nothing there [fact]. The period is rounded to whole
+  samples: at 22,050 Hz a harmonic leaks about -70 dB at A1 and -46 to
+  -50 dB from A2 to A5 [fact]. The bin rejects only the note's
+  harmonics: a key 1 to 3 semitones up reads within 1 dB of the note,
+  and a fifth up about 2 dB under it [fact]. A held
   A1 20 dB under an A2 gated for 0.2 s in every 0.25 s gave 16 notes
   where the split join alone keeps 12; with the fundamental's dip it
   keeps the 12 [synthetic]. Held A1s 6 to 30 dB under a gated D2, C2,
@@ -338,6 +342,10 @@ The cleanup runs five steps and prints the note count after each [fact].
 - Why the next note starts at the cut: on a real vocal stem the decoder
   started the next note of a key 58 ms after its attack, and the cut
   there left a fragment of 58 ms before it [fact].
+- Why 100 ms: a longer piece is a note of its own. A2 gates to 200 ms,
+  then a repeat after a gap of 10 to 20 ms, which the decoder starts
+  5 ms early: the attack rule finds no attack there, and without the
+  limit the 200 ms piece would start the repeat [synthetic].
 - Why the 50 ms after the split: a decoded note that starts late in one
   gated repeat runs into the next, and a split at that repeat left a
   fragment of about 17 ms before the gate closed [synthetic].
@@ -542,10 +550,10 @@ The cleanup runs five steps and prints the note count after each [fact].
     phase reset at each repeat could tell the two apart [proposal].
   - Below A1 the attack split stays off, so a repeat the decoder reads as
     part of one note stays joined there [synthetic]. From E1 the split,
-    measured before its fundamental test, would keep more repeats in 33 of the 242 gated runs of the second
-    and fourth sets and the A1 sixteenths, and in 8 of the 24 two-voice
-    runs, 238 more gates hit; it would also split the ducks above
-    [synthetic].
+    measured before its fundamental test, would keep more repeats in 33
+    of the 242 gated runs of the second and fourth sets and the A1
+    sixteenths, and in 8 of the 24 two-voice runs, 238 more gates hit; it
+    would also split the ducks above [synthetic].
   - Below about A2 the harmonics' window cannot tell a note from a key
     nearby, so a held note under a louder gated voice of another key
     dips at its harmonics too, and the split join keeps the decoder's
@@ -553,6 +561,17 @@ The cleanup runs five steps and prints the note count after each [fact].
     0.2 s in every 0.25 s gives 12 notes, and under a gated E2 13
     [synthetic]. The attack split adds no cut there, since the held
     note's fundamental never dips [synthetic].
+  - From about A6 up a period lasts 13 samples or fewer at 22,050 Hz,
+    and a harmonic leaks into the fundamental's bin at -23 dB at A6 and
+    -17 dB at A7 [fact]. There the fundamental's dip guards less well
+    against a louder gated voice an octave or more up [fact]. The
+    generated sets hold no such pair [synthetic].
+  - A held A1 under a 6 dB amplitude LFO of one cycle per eighth note at
+    120 BPM gives 2 notes, as the onset rule alone does: the decoder
+    reads a strong onset of its own at 0.19 s [synthetic]. The attack
+    split adds no cut there, under such an LFO at 1/8 or 1/4, at A1 or
+    E1 [synthetic]. Keeping such a note whole is
+    [#306](https://github.com/Akurganow/sound-to-patch/issues/306).
   - A repeat after a note that holds above half its level for less than
     60 ms joins the note before it when the decoder reads its onset weak
     [synthetic]. At A2 a note of 59 ms before a 30 ms gap holds long

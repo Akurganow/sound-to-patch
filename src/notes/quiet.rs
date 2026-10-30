@@ -148,9 +148,14 @@ impl<'a> StemLevels<'a> {
 
     /// Returns the level at the fundamental of `pitch` of the one period of
     /// samples centred at `time`, with their mean removed: one DFT bin over
-    /// the period. The bin's zeros fall on every harmonic of the note, so a
-    /// tone an octave up reads nothing. Samples outside the stem count as
-    /// silence.
+    /// the period, unnormalised, so only ratios of two readings mean
+    /// anything. The bin's zeros fall on every harmonic of the note when
+    /// the period is a whole number of samples. It is rounded to one, so at
+    /// 22,050 Hz a harmonic leaks about -70 dB at A1, -46 to -50 dB from A2
+    /// to A5, -23 dB at A6 and -17 dB at A7. The bin rejects only the
+    /// note's harmonics: a key 1 to 3 semitones up reads within 1 dB of
+    /// the note, and a fifth up about 2 dB under it. Samples outside the
+    /// stem count as silence.
     #[must_use]
     pub fn fundamental_level(&self, time: Seconds, pitch: MidiPitch) -> f64 {
         let rate = f64::from(self.rate.get());

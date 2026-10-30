@@ -136,8 +136,9 @@ fn phased(rate: f64, phase: f64) -> impl Fn(f64) -> f64 {
 /// What the cleanup gives on a stem: the decoded notes with the bass
 /// profile at 120 BPM, the count after the ghost merge, the notes after
 /// the split join with no attack test (the stem read as silence), the
-/// kept notes and the count after each cleanup step. It runs `clean_up` with an empty f0 track, which takes minutes
-/// on these stems in a debug build: every note stays unchecked.
+/// kept notes and the count after each cleanup step. It runs `clean_up`
+/// with an empty f0 track, which takes minutes on these stems in a debug
+/// build: every note stays unchecked.
 struct Cleaned {
     decoded: NoteList,
     merged: usize,

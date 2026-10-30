@@ -180,8 +180,6 @@ fn notes_writes_the_notes_of_a_generated_wav() {
     }
 }
 
-/// A silent stem gives no note: exit 1 with the cause and the fix, and
-/// nothing written.
 /// A 55 Hz saw gated with 30 ms gaps: the decoder reads 9 notes for 16, and
 /// the output counts the 16 from the attack split on.
 #[test]
@@ -208,6 +206,8 @@ fn notes_prints_the_count_after_the_attack_split() {
     }
 }
 
+/// A silent stem gives no note: exit 1 with the cause and the fix, and
+/// nothing written.
 #[test]
 fn notes_on_a_silent_stem_fails_and_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();
