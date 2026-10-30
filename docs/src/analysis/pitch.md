@@ -496,24 +496,29 @@ A glide is pitch moving from one stable pitch to another.
   stable pitch [proposal]. Its median level lies within 40 dB of the
   loudest frame, the gate of active frames [fact]. And within half a
   period of 3 Hz, the slowest vibrato, the smoothed pitch does not swing
-  back half the lead [proposal]. When the run's next stable pitch matches
-  another note, the motion toward it is a step, and the window holds
-  nothing after the first stable pitch [proposal]. The end of the
-  transcribed note does not cut the window: on real stems the transcriber
-  ended a wobbling note inside its first trough [fact]. A step to a pitch
-  that no transcribed note matches counts as a swing back, since a wobble's
-  crest matches none either [proposal]. On real stems a
-  wobble of ±60 cents at 6 to 7 Hz read its first half-cycle as a fall
-  from silence, coming back 82 % of its lead [fact]. A quiet onset after
-  digital silence read one into a stable pitch at -41.9 dB, 1.9 dB past
-  the gate [fact]. True falls there came back 0 and 24 % and settled at
-  -16 and -9 dB [fact]. Generated falls that swing back or settle at
-  -42 dB read none, and so does a wobble whose note ends inside its first
-  stable pitch [synthetic]. One that rebounds a quarter or 45 % of its
-  lead reads [synthetic]. So does one that steps to the next note 30 ms
-  after the stable pitch, with the first note ending at the step's start,
-  20 ms into it or after it [synthetic]. A generated fall from 150 Hz
-  into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
+  back half the lead [proposal]. The motion after the first stable pitch
+  is a step, and the window holds nothing, when the next stable pitch
+  matches another note and the pitch, once past half the way to it, stays
+  there up to that stable pitch and to the window's end [proposal]. A
+  wobble's crest can match a neighbouring note, but the pitch comes back
+  from it [synthetic]. When two notes match a stable pitch, the nearest
+  one counts [proposal]. The end of the transcribed note does not cut the
+  window: on real stems the transcriber ended a wobbling note inside its
+  first trough [fact]. A step to a pitch that no transcribed note matches
+  counts as a swing back, since a wobble's crest matches none either
+  [proposal]. On real stems a wobble of ±60 cents at 6 to 7 Hz read its
+  first half-cycle as a fall from silence, coming back 82 % of its lead
+  [fact]. A quiet onset after digital silence read one into a stable
+  pitch at -41.9 dB, 1.9 dB past the gate [fact]. True falls there came
+  back 0 and 24 % and settled at -16 and -9 dB [fact]. Generated falls
+  that swing back or settle at -42 dB read none [synthetic]. So does a
+  wobble whose note ends inside its first stable pitch, and one at 6 to
+  7 Hz with a neighbouring note at its crest [synthetic]. One that
+  rebounds a quarter or 45 % of its lead reads [synthetic]. So does one
+  that steps to the next note 30 ms after the stable pitch, with the
+  first note ending at the step's start, 20 ms into it or after it, and
+  one that slides there over 80 to 400 ms [synthetic]. A generated fall
+  from 150 Hz into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
   rule as a drop [synthetic]. It reads as a fall from silence at medium,
   14.6 of its 19.0 semitones: it starts near 116 Hz, where the fall
   stands 17 ms after the onset [synthetic]. The sound must start up to 100 ms
@@ -601,6 +606,13 @@ Limits:
   lost [fact].
 - A glide that the transcriber merges into one note, with its two ends in
   one note, is not read [fact].
+- A fall from silence followed within 167 ms by a step back toward its
+  start, to a pitch that no transcribed note matches, reads as a swing
+  back and is lost [synthetic]. A wobble at 3 to 4 Hz whose crest matches
+  a neighbouring note still reads as a fall from silence: the crest comes
+  at the window's end, and the pitch returns after it [synthetic]. Of 49
+  generated wobbles of ±40 to ±70 cents at 3 to 8 Hz with the neighbour
+  sounding, 10 read, all at 3 or 4 Hz [synthetic].
 - A step between two 808 notes can raise `glide_too_short` when the fit
   finds 35 to 90 ms: one of three generated 808 lines does [synthetic].
 - A vibrato of ±100 cents at 3 Hz holds each extreme long enough to read
@@ -689,8 +701,9 @@ Limits:
     plausible read a share of 0.502 to 0.838: the 12 of them at high 0.502
     to 0.630, the 10 at medium 0.519 to 0.838 and the one at low 0.575.
     The 12 vibratos it did not find plausible read 0.501 to 0.734, so the
-    share does not tell the two groups apart [fact]. None read under 0.5: the lowest, 0.501, sits at the
-    threshold, so the margin there is nil [fact].
+    share does not tell the two groups apart [fact]. None read under 0.5:
+    the lowest, 0.501, sits at the threshold, so the margin there is nil
+    [fact].
   - Below 100 Hz few matched, and the extent read up to 5 times too wide
     [fact]. A generated low saw with amplitude modulation, two beating
     voices or none reads no vibrato, and one with a ±30-cent vibrato reads
