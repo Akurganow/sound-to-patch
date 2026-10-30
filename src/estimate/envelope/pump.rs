@@ -847,6 +847,22 @@ mod tests {
     }
 
     #[test]
+    fn a_note_takes_the_strip_by_the_beats_after_the_grid_offset() {
+        let pump = Pump {
+            depth: Decibels::clamped(8.0),
+            back: None,
+            tau: None,
+            lock: PumpLock::Beat,
+            beats: 8,
+            curve: vec![0.0; PUMP_BINS],
+            grid: BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.6)),
+            falls: [0.0, 0.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0].map(Some).to_vec(),
+        };
+        assert!(!pump.carries(0.6, 1.6), "beats 0 and 1 do not fall");
+        assert!(pump.carries(1.6, 2.6), "beats 2 and 3 fall");
+    }
+
+    #[test]
     fn the_curve_follows_the_grid_offset() {
         let mut curve = vec![0.0; PUMP_BINS];
         curve[0] = -8.0;
