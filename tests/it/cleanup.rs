@@ -3,8 +3,8 @@
 
 use sound_to_patch::audio::SampleRate;
 use sound_to_patch::notes::{
-    MODEL_SHA256, NoteList, PitchTrack, Profile, TRANSCRIBER_VERSION, Transcriber, Voicing,
-    clean_up, join_splits, merge_overlaps, transcribe_stem,
+    CleanupSteps, MODEL_SHA256, NoteList, PitchTrack, Profile, TRANSCRIBER_VERSION, Transcriber,
+    Voicing, clean_up, join_splits, merge_overlaps, transcribe_stem,
 };
 use sound_to_patch::units::Bpm;
 
@@ -82,7 +82,7 @@ fn four_seconds() -> Vec<f64> {
 /// 0.25 s with a linear attack of `attack` seconds, then fall with time
 /// constant `tail` (silence at 0), over white noise `floor` decibels below
 /// 0.3.
-fn gated(f0s: &[f64], attack: f64, on: f64, tail: f64, floor: f64) -> Vec<f64> {
+pub(crate) fn gated(f0s: &[f64], attack: f64, on: f64, tail: f64, floor: f64) -> Vec<f64> {
     let t = four_seconds();
     let saws: Vec<Vec<f64>> = f0s
         .iter()
@@ -135,14 +135,16 @@ fn phased(rate: f64, phase: f64) -> impl Fn(f64) -> f64 {
 
 /// What the cleanup gives on a stem: the decoded notes with the bass
 /// profile at 120 BPM, the count after the ghost merge, the notes after
-/// the split join with no attack test (the stem read as silence), and the
-/// kept notes. It runs `clean_up` with an empty f0 track, which takes minutes
-/// on these stems in a debug build: every note stays unchecked.
+/// the split join with no attack test (the stem read as silence), the
+/// kept notes and the count after each cleanup step. It runs `clean_up`
+/// with an empty f0 track, which takes minutes on these stems in a debug
+/// build: every note stays unchecked.
 struct Cleaned {
     decoded: NoteList,
     merged: usize,
     onset_only: NoteList,
     kept: NoteList,
+    steps: CleanupSteps,
 }
 
 fn cleaned(stem: &[f64]) -> Cleaned {
@@ -167,6 +169,7 @@ fn cleaned(stem: &[f64]) -> Cleaned {
         merged: merged.notes().len(),
         onset_only,
         kept,
+        steps,
     }
 }
 
@@ -199,6 +202,70 @@ fn a_gated_55_hz_saw_keeps_its_16_repeats() {
                 .any(|decoded| decoded.onset() == note.onset()),
             "note {index} starts off every decoded onset"
         );
+    }
+}
+
+/// The decoder reads a gated A1 with 30 ms gaps as 9 notes for 16, and no
+/// later step could find the rest (#280). The split at attacks gives each
+/// gate its note, within the eval's 50 ms, before the split join, which
+/// keeps them.
+#[test]
+fn a_gated_55_hz_saw_with_30_ms_gaps_gets_its_16_notes() {
+    let found = cleaned(&gated(&[55.0], 0.005, 0.22, 0.0, -400.0));
+    assert_eq!(
+        (
+            found.decoded.notes().len(),
+            found.kept.notes().len(),
+            gates_hit(&found.kept, 33.0)
+        ),
+        (9, 16, 16)
+    );
+    let steps = found.steps;
+    assert_eq!(
+        (steps.merged, steps.split, steps.joined, steps.kept),
+        (9, 16, 16, 16)
+    );
+}
+
+/// A held saw under an amplitude LFO of 6 dB, one cycle per quarter or
+/// per eighth note at 120 BPM, keeps the onset rule's notes: one, but two
+/// for A1 at 1/8, where the decoder reads a strong onset at 0.19 s.
+#[test]
+fn a_6_db_lfo_never_splits_a_held_note() {
+    for (name, f0, rate, count) in [
+        ("A1 at 1/4", 55.0, 2.0, 1),
+        ("A1 at 1/8", 55.0, 4.0, 2),
+        ("E1 at 1/4", 41.203, 2.0, 1),
+        ("E1 at 1/8", 41.203, 4.0, 1),
+    ] {
+        let found = cleaned(&held(f0, |time| {
+            10_f64.powf(-6.0 / 20.0 * (0.5 - 0.5 * (std::f64::consts::TAU * rate * time).cos()))
+        }));
+        assert_eq!(found.kept.notes().len(), count, "{name}");
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
+    }
+}
+
+/// A held saw through a low-pass filter swept from 200 Hz to 4 kHz and back
+/// once a second stays one note.
+#[test]
+fn a_filter_sweep_never_splits_a_held_note() {
+    for (name, f0) in [("A1", 55.0), ("E1", 41.203)] {
+        let mut state = 0.0;
+        let stem: Vec<f64> = held(f0, |_| 1.0)
+            .into_iter()
+            .zip(four_seconds())
+            .map(|(value, time)| {
+                let sweep = 0.5 - 0.5 * (std::f64::consts::TAU * time).cos();
+                let cutoff = 200.0 * 20_f64.powf(sweep);
+                let share = 1.0 - (-std::f64::consts::TAU * cutoff / RATE).exp();
+                state += share * (value - state);
+                state
+            })
+            .collect();
+        let found = cleaned(&stem);
+        assert_eq!(found.kept.notes().len(), 1, "{name}");
+        assert_eq!(starts(&found.kept), starts(&found.onset_only), "{name}");
     }
 }
 
@@ -235,22 +302,22 @@ fn repeats_with_a_tail_a_floor_or_a_second_voice_keep_more_gates() {
             "10 ms tail over -60 dB",
             gated(&[55.0], 0.005, 0.2, 0.01, -60.0),
             vec![33.0],
-            vec![(13, 6, 13)],
-            (13, 6, 13),
+            vec![(13, 6, 16)],
+            (13, 6, 16),
         ),
         (
             "30 ms gaps, 5 ms tail",
             gated(&[55.0], 0.005, 0.22, 0.005, -400.0),
             vec![33.0],
-            vec![(8, 2, 8)],
-            (8, 2, 8),
+            vec![(8, 2, 16)],
+            (8, 2, 16),
         ),
         (
             "A1 and E2",
             gated(&[55.0, 82.407], 0.005, 0.2, 0.0, -400.0),
             vec![33.0, 40.0],
-            vec![(14, 5, 9), (16, 16, 16)],
-            (39, 30, 34),
+            vec![(14, 5, 11), (16, 16, 16)],
+            (39, 30, 36),
         ),
         (
             "A1 and A2",
@@ -536,8 +603,8 @@ fn a_square_tremolo_at_half_duty_never_splits_a_held_note() {
 }
 
 /// A square tremolo off for 30 % of each cycle reads by level as a gated
-/// repeat with short gaps, and splits a held note at A1 into every piece
-/// the decoder gives.
+/// repeat with short gaps, and splits a held note at A1 into a note per
+/// pulse, two more than the decoder gives.
 #[test]
 fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
     let found = cleaned(&held(55.0, square(6.0, 0.7)));
@@ -547,6 +614,66 @@ fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
             found.onset_only.notes().len(),
             found.kept.notes().len()
         ),
-        (22, 6, 22)
+        (22, 6, 24)
+    );
+}
+
+/// A held A1 20 dB under a louder A2 gated for 0.2 s in every 0.25 s.
+/// The stem dips at each gate, and below A2 so do the A1's harmonics, so
+/// the split join keeps 12 of the decoder's 14 pieces apart. The A1's
+/// fundamental never dips, so the attack split cuts nothing more.
+#[test]
+fn a_held_note_under_a_louder_gated_octave_gets_no_more_cuts() {
+    let low = held(55.0, |_| 0.1);
+    let stem: Vec<f64> = gated(&[110.0], 0.005, 0.2, 0.0, -400.0)
+        .into_iter()
+        .zip(low)
+        .map(|(high, low)| high + low)
+        .collect();
+    let found = cleaned(&stem);
+    let at_a1 = |list: &NoteList| {
+        list.notes()
+            .iter()
+            .filter(|note| (note.pitch().get() - 33.0).abs() < 0.5)
+            .count()
+    };
+    assert_eq!(
+        (
+            at_a1(&found.decoded),
+            at_a1(&found.onset_only),
+            at_a1(&found.kept)
+        ),
+        (14, 4, 12)
+    );
+}
+
+/// A no-regression count: a held A1 9.5 dB under a louder B1, two
+/// semitones up, gated for 0.2 s in every 0.25 s, keeps main's 4 A1 notes.
+/// The decoder already cuts the A1 at the B1's gates into 16 pieces, and
+/// the split join joins them into 4, so no dip falls inside an A1 note
+/// and the attack split has nothing to cut. It guards the count, not the
+/// fundamental bin.
+#[test]
+fn a_held_note_under_a_louder_gated_second_keeps_main_s_count() {
+    let low = held(55.0, |_| 1.0 / 3.0);
+    let stem: Vec<f64> = gated(&[61.735], 0.005, 0.2, 0.0, -400.0)
+        .into_iter()
+        .zip(low)
+        .map(|(high, low)| high + low)
+        .collect();
+    let found = cleaned(&stem);
+    let at_a1 = |list: &NoteList| {
+        list.notes()
+            .iter()
+            .filter(|note| (note.pitch().get() - 33.0).abs() < 0.5)
+            .count()
+    };
+    assert_eq!(
+        (
+            at_a1(&found.decoded),
+            at_a1(&found.onset_only),
+            at_a1(&found.kept)
+        ),
+        (16, 4, 4)
     );
 }

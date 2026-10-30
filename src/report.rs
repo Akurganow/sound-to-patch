@@ -396,6 +396,7 @@ fn transcription_summary(t: &Transcription) -> Vec<String> {
             steps.decoded, steps.octaves.moved, steps.octaves.flagged, steps.octaves.unchecked
         ),
         format!("ghost merge: {} notes", steps.merged),
+        format!("attack split: {} notes", steps.split),
         format!("split join: {} notes", steps.joined),
         format!(
             "quiet-note guard: {} notes, {} dropped below {} dB",

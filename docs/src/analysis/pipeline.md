@@ -274,7 +274,7 @@ stereo phase [fact].
 
 ### Cleanup
 
-The cleanup runs four steps and prints the note count after each [fact].
+The cleanup runs five steps and prints the note count after each [fact].
 
 - Octave check, on a part played one note at a time: each note meets the
   median pitch of the voiced f0 frames inside it, given 3 or more
@@ -298,6 +298,101 @@ The cleanup runs four steps and prints the note count after each [fact].
   [fact]. The decoder gives no two notes of one key that overlap, so a
   decoded repeat never merges [fact]: on every generated part the merge
   removes exactly the moved copies [synthetic].
+- Attack split: a note of A1 (55 Hz) or above splits where the stem has
+  an attack of its own inside it [proposal]. A 25 ms frame of the note
+  marks a dip when it is no louder than the frame before it, quieter
+  than the frame after it, and 19 dB or more below the loudest frame in
+  the 50 ms after it. The note must hold a frame at six tenths of that
+  loudest frame or more, centred 60 ms or more before the dip. The split
+  falls on the last envelope reading at a tenth of the loudest reading
+  after the dip, before the first reading at nine tenths after the
+  quietest of the dip frame's 26 readings, 1 ms apart, read as in the
+  rise test below. The note before the dip can read louder than the one
+  after it, so the climb starts at the quietest reading, and a deeper
+  gap later in the 50 ms belongs to a dip of its own, so it cannot move
+  the cut past a repeat [fact]. At the same times the level at the
+  note's fundamental alone, one DFT bin over one period, must reach 23
+  dB above its quietest reading before the split in a reading from the
+  split on. The piece after the split must last 50 ms, and the attack
+  rule below must hold between the two pieces. Each piece keeps the
+  note's key, octave flag and velocity [fact]. A last piece of at most
+  100 ms that runs into the decoder's next note of its key, within 2
+  model frames, starts that note instead, unless that note has an attack
+  of its own after the piece by the same rule [fact].
+- Why the split: the decoder can read a low repeat with a short gap as
+  part of one long note, and no later step sees two notes [synthetic].
+  With 30 ms gaps the gated 55 Hz saw decodes as 9 notes for 16, or 8
+  with a 5 ms tail, and the split gives all 16 in both [synthetic].
+- Why the loud frame before the dip: the decoder can start a note in the
+  gap before its own attack, and a split there would cut off a piece of
+  silence [proposal].
+- Why the fundamental: below about A2 the harmonics' window of the
+  attack rule cannot tell a note from a key nearby, so a held note under
+  a louder gated voice of another key dips at its harmonics as well as
+  in the stem [fact]. A bin over one period has its zeros on every
+  harmonic of the note when the period is a whole number of samples, so
+  a tone an octave up reads nothing there [fact]. The period is rounded
+  to whole samples: at 22,050 Hz and at the worst phase a harmonic leaks
+  about -70 dB at A1 and -46 to -50 dB from A2 to A5 [fact]. The bin
+  rejects only the note's harmonics: a key 1 to 3 semitones up reads
+  within 1 dB of the note, and a fifth up 2 to 6 dB under it [fact]. A
+  held A1 20 dB under an A2 gated for 0.2 s in every 0.25 s gave 16
+  notes where the split join alone keeps 12; with the fundamental's dip
+  it keeps the 12 [synthetic]. Held A1s 6 to 30 dB under a gated D2, C2,
+  E2, A2 or A3 give the split join's notes in every case [synthetic].
+  Held A1s 6 to 30 dB under a gated key 1 to 3 semitones above or below,
+  F#1 to C2, give main's note counts too, though the bin reads such a
+  key nearly as loud as the note [synthetic]. There the decoder already
+  cuts the A1 at the gates or drops it, so no dip falls inside an A1
+  note: where the A1 decodes across a gate, 6 to 14 dB down, the stem
+  dips there by about that much, short of 19 dB [synthetic]. No
+  generated semitone case reaches the fundamental test [synthetic].
+- Why 23 dB: from 21 to 25 dB the generated sets give the same notes,
+  and 23 dB lies in the middle [synthetic]. At 19 and 20 dB squares
+  loud for 60 to 80 % of the cycle split a held note further in 72 runs
+  where 23 dB gives 52, and at 30 dB gated runs hit 8 fewer gates
+  [synthetic].
+- Why the next note starts at the cut: on a real vocal stem the decoder
+  started the next note of a key 58 ms after its attack, and the cut
+  there left a fragment of 58 ms before it [fact].
+- Why 100 ms: the real fragment lasted 58 ms, and a piece much longer
+  than the decoder's lag is more likely a note of its own [proposal]. A2
+  gates to 200 ms, then a repeat after a gap of 10 to 20 ms, which the
+  decoder starts 5 ms early: the attack rule finds no attack there, and
+  without the limit the 200 ms piece would start the repeat [synthetic].
+  The limit leaves the same loss for a shorter gate, as the limits below
+  give [synthetic].
+- Why the 50 ms after the split: a decoded note that starts late in one
+  gated repeat runs into the next, and a split at that repeat left a
+  fragment of about 17 ms before the gate closed [synthetic].
+- Why A1: below it the envelope window of one period lasts 19 ms or more,
+  as long as the recovery of a fast sidechain duck [fact]. Ducks to
+  -40 dB split at B0 and C#1, and so do ducks to -40 dB that recover in
+  30 to 45 ms on every key from D1 to G#1 [synthetic]. Full-depth sine
+  tremolos of 10 Hz split at A0 and B0 [synthetic]. At E1 such a duck
+  and a gate with a 30 ms gap and a 5 ms tail read the same trough,
+  0.069 and 0.066 of the peak, and the same onset activation, 0.27 to
+  0.44 and 0.23 to 0.39 [synthetic]. From A1 to C4 no duck to -40 or
+  -48 dB that recovers in 25 to 45 ms splits [synthetic].
+- What the split was measured on [synthetic]: the four sets below and 16
+  A1 sixteenths with gaps of 35 to 44 ms, each stem decoded with the
+  detected profile and with the bass profile, a sweep of 1053 ducked and
+  tremolo stems, and the 37 eval parts. The sweep holds ducks to -40 and
+  -48 dB that recover in 25 to 60 ms, linear or exponential in decibels,
+  at three phases, on every key from D1 to A2 and on C3, E3, A3 and C4,
+  with full-depth sine tremolos of 8 to 14 Hz from D1 to A1.
+- On those sets no held run splits further than without the split, but
+  for the squares the limits below give [synthetic]. On the first set
+  8 of the 716 runs come closer to the true notes, and gated runs hit
+  1245 gates where they hit 1205. On the second set 12 of the 130 gated
+  runs and 10 of the 24 two-voice runs keep more repeats, 1666 gates hit
+  where 1558 were. The fourth set keeps the same notes. Every A1
+  sixteenths run keeps more: 872 of 1024 gates hit where 214 were
+  [synthetic]. On the eval the dry 110 Hz saw with a 0.3 s release keeps
+  all 6 of its notes where it kept 5 [synthetic]. The bass clean group's
+  onset F1 rises by 0.002 to 0.003 under every setting and the bass
+  recall after the cleanup from 0.955 to 0.958; no other cell moves
+  [synthetic].
 - Split join: a note that starts within 2 model frames (23 ms) of the end
   of a note of the same key joins it when three things hold [proposal].
   Its onset activation lies below 0.68, its velocity is no higher than
@@ -421,7 +516,7 @@ The cleanup runs four steps and prints the note count after each [fact].
   second-set runs and 14 of the 80 fourth-set runs keep more
   [synthetic]. The rule keeps every repeat the decoder gives for the
   gated A1 with 50 ms gaps, with 30 ms gaps, with a DC offset and with
-  A2 above it [synthetic]. It keeps part of the rest: 9 of 14 A1
+  A2 above it [synthetic]. It keeps part of the rest: 11 of 14 A1
   repeats under a fifth, 13 of 16 eighths with a 20 ms tail, and fewer
   as the attack slows past 10 ms [synthetic]. Every sine tremolo, duck,
   triangle tremolo and tremolo with vibrato gives the same notes as the
@@ -459,10 +554,49 @@ The cleanup runs four steps and prints the note count after each [fact].
     third set squares loud for 60, 70 and 80 % of the cycle split a held
     note further in 38, 57 and 22 of their 240 runs: an A1 under a 6 Hz
     square loud for 70 % into 22 notes where the onset rule alone gives
-    6 [synthetic]. A vibrato under such a square splits the same way, in
-    18 of the 96 runs, all loud for 60 or 70 % [synthetic]. Only a cue
-    such as a phase reset at each repeat could tell the two apart
-    [proposal].
+    6, and with the attack split into 24, one a pulse [synthetic]. A
+    vibrato under such a square splits the same way, in 18 of the 96
+    runs, all loud for 60 or 70 % [synthetic]. The attack
+    split cuts such a note at its pulses as well: squares loud for 60, 70
+    and 80 % split further than without the split in 15, 20 and 7 of
+    their 240 runs, and a vibrato under one in 10 of 96. An A1 under an
+    8 Hz square loud for 70 % gives 32 notes, one a pulse, where it gave
+    8 [synthetic]. The model's onset activation at those pulses, 0.25 to
+    0.67, matches that of gated repeats [synthetic]. Only a cue such as a
+    phase reset at each repeat could tell the two apart [proposal].
+  - Below A1 the attack split stays off, so a repeat the decoder reads as
+    part of one note stays joined there [synthetic]. From E1 the split,
+    measured before its fundamental test, would keep more repeats in 33
+    of the 242 gated runs of the second and fourth sets and the A1
+    sixteenths, and in 8 of the 24 two-voice runs, 238 more gates hit; it
+    would also split the ducks above [synthetic].
+  - Below about A2 the harmonics' window cannot tell a note from a key
+    nearby, so a held note under a louder gated voice of another key
+    dips at its harmonics too, and the split join keeps the decoder's
+    pieces of it apart [fact]. A held A1 20 dB under an A2 gated for
+    0.2 s in every 0.25 s gives 12 notes, and under a gated E2 13
+    [synthetic]. The attack split adds no cut there, since the held
+    note's fundamental never dips [synthetic].
+  - From about A6 up a period lasts 13 samples or fewer at 22,050 Hz,
+    and at the worst phase a harmonic leaks into the fundamental's bin
+    at -23 dB at A6 and -17 dB at A7 [fact]. There the fundamental's dip
+    guards less well against a louder gated voice an octave or more up
+    [fact]. The generated sets hold no such pair [synthetic].
+  - A gated repeat of 60 to 90 ms after a gap of 10 to 20 ms, which the
+    decoder starts 5 ms early and with a higher velocity, still loses
+    its onset: the cut piece before it lasts 100 ms or less and starts
+    it, so the stem gives 2 notes for 3 and the repeat starts at the cut
+    [synthetic]. The 60 ms hold and the 25 ms dip frame hide so short a
+    gap from the attack rule [fact]. After a 25 ms gap all but the 80 ms
+    gate lose it too; gates of 95, 100 and 120 ms keep 3 [synthetic].
+    The join exists for the real 58 ms fragment above, which would stay
+    a note of its own without it [fact].
+  - A held A1 under a 6 dB amplitude LFO of one cycle per eighth note at
+    120 BPM gives 2 notes, as the onset rule alone does: the decoder
+    reads a strong onset of its own at 0.19 s [synthetic]. The attack
+    split adds no cut there, under such an LFO at 1/8 or 1/4, at A1 or
+    E1 [synthetic]. Keeping such a note whole is
+    [#306](https://github.com/Akurganow/sound-to-patch/issues/306).
   - A repeat after a note that holds above half its level for less than
     60 ms joins the note before it when the decoder reads its onset weak
     [synthetic]. At A2 a note of 59 ms before a 30 ms gap holds long
@@ -475,9 +609,9 @@ The cleanup runs four steps and prints the note count after each [fact].
     length, gated for 125 ms in every 250 ms, keep 3 of 16 repeats at E1
     in the bass profile, as the onset rule does; with 100 ms gaps they
     keep 8 where it keeps 3 [synthetic]. Sixteenths pay it too: A1
-    sixteenths with 41 to 44 ms gaps and a 10 ms attack keep 3 to 6 of
-    32 repeats where a hold of 60 ms alone kept 7 or 8. With 44 ms gaps
-    that is the onset rule's 3 [synthetic].
+    sixteenths with 41 to 44 ms gaps and a 10 ms attack kept 3 to 6 of
+    32 repeats where a hold of 60 ms alone kept 7 or 8; the attack split
+    now gives them 14 to 27 [synthetic].
   - Most bowed, blown and sung re-attacks rise slower than about 10 ms,
     and such a re-attack joins when the decoder reads its onset weak
     [proposal]. The rule reads only the stem's level, and a slow
@@ -485,8 +619,9 @@ The cleanup runs four steps and prints the note count after each [fact].
     or a phase reset could tell them apart, but the generated sets
     change only the level, so they cannot measure it [synthetic].
   - The decoder itself can miss a repeat: with 30 ms gaps the gated
-    55 Hz saw decodes as 9 notes for 16, or 8 with a 5 ms tail, and no
-    cleanup step restores them [synthetic]. At 110 Hz the bass profile
+    55 Hz saw decodes as 9 notes for 16, or 8 with a 5 ms tail
+    [synthetic]. From A1 up the attack split restores them; below it
+    nothing does [synthetic]. At 110 Hz the bass profile
     decodes the same signal as 29 or 30 notes, an octave copy over most
     of them, and the cleanup gives the 16 [synthetic].
 - Quiet-note guard: a note whose span holds no 25 ms frame within 40 dB
@@ -498,7 +633,9 @@ The cleanup runs four steps and prints the note count after each [fact].
   bass profile as the true note plus a 70 ms copy at MIDI 57 that ends
   about 80 ms after the onset [synthetic]. The copy needs a minimum length
   below 70 ms: the 11 frames of the `pad` profile remove it [synthetic].
-  After the cleanup the stem gives the A2 alone [synthetic]. Six such
+  After the cleanup the stem gives the A2 alone, all 6 of its notes: the
+  model misses the onset of the fourth, and the attack split restores it
+  [synthetic]. Six such
   notes through a 1.5 s reverb give seven notes, one of them a tail
   fragment, and six after the cleanup [synthetic].
 - Limit: a lone note an octave above the tracker's reading is flagged,
@@ -540,7 +677,7 @@ matched, estimated and reference notes, raw and after the cleanup
 
 | Group | Right profile, raw | Right profile, clean | Detected, raw | Detected, clean |
 | :-- | :-- | :-- | :-- | :-- |
-| bass, 13 clean parts | 0.755 (239/381/252) | 0.893 (239/283/252) | 0.791 (239/352/252) | 0.905 (239/276/252) |
+| bass, 13 clean parts | 0.755 (239/381/252) | 0.896 (240/284/252) | 0.791 (239/352/252) | 0.907 (240/277/252) |
 | bass, 4 parts with bleed | 0.457 (32/108/32) | 0.627 (32/70/32) | 0.615 (32/72/32) | 0.865 (32/42/32) |
 | bass, 3 parts with transients | 0.622 (23/50/24) | 0.821 (23/32/24) | 0.742 (23/38/24) | 0.920 (23/26/24) |
 | lead, 9 parts | 0.945 (130/143/132) | 0.974 (130/135/132) | 0.945 (130/143/132) | 0.974 (130/135/132) |
@@ -551,7 +688,7 @@ right profile and for detection [synthetic]:
 
 | Class | Raw | Clean |
 | :-- | :-- | :-- |
-| bass, 20 parts | 0.955 | 0.955 |
+| bass, 20 parts | 0.955 | 0.958 |
 | lead, 9 parts | 0.985 | 0.985 |
 | pad, 7 parts | 0.860 | 0.860 |
 

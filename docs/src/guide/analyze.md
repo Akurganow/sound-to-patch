@@ -23,17 +23,18 @@ detected voicing: monophonic, chord share 0.00
 register window: 20 dB
 cleanup voicing: monophonic, as detected
 settings: detected, MIDI 30 to 36, minimum note 5 frames (58.0 ms), melodia on
-decoded: 8 notes
-octave check: 8 notes, 0 moved down an octave, 0 flagged, 0 unchecked
-ghost merge: 8 notes
-split join: 8 notes
-quiet-note guard: 8 notes, 0 dropped below 40 dB
+decoded: 16 notes
+octave check: 16 notes, 0 moved down an octave, 0 flagged, 0 unchecked
+ghost merge: 16 notes
+attack split: 16 notes
+split join: 16 notes
+quiet-note guard: 16 notes, 0 dropped below 40 dB
 glides: 0, 0 too short
-pitch drops: 0 of 8 low strikes
-drop skips: 8 no fall
+pitch drops: 0 of 15 low strikes
+drop skips: 1 no onset, 15 no fall
 vibrato: 0 of 0 steady spans
-envelope: 8 of 8 notes read, 8 pooled, 8 with a note-off knee
-envelope: attack 22 ms (upper bound), hold 0 ms, decay none, sustain 0.0 dB
+envelope: 16 of 16 notes read, 16 pooled, 16 with a note-off knee
+envelope: attack 19 ms (upper bound), hold 0 ms, decay none, sustain 0.0 dB
 pump: too few sustained beats
 wrote bass/layers.json
 wrote bass/spectrogram.png
@@ -45,7 +46,7 @@ The first line is the tempo: `--bpm` refined from the stem's onsets, as
 [notes](notes.md), which `analyze` runs once to know the stem's notes;
 `--profile` overrides its settings as there. `analyze` writes no MIDI file.
 The four lines after them are the [pitch layer](../analysis/pitch.md): this
-saw repeats one note with no glide or vibrato, and none of its eight low
+saw repeats one note with no glide or vibrato, and none of its 15 low
 strikes falls in pitch. Each line lists what it found, with its numbers;
 `drop skips` counts the low notes with no drop by the gate that stopped
 each: no onset, settling, quiet, no strike, weak fundamental, no fall, tau
@@ -53,9 +54,9 @@ on bound, residual or off note.
 The next three lines are the [envelope layer](../analysis/envelope.md).
 The first counts the notes read, those pooled and those with a note-off
 knee, and any skipped. The second gives the pooled medians: this saw
-reaches its peak in 5 ms, under 1.5 periods of 55 Hz, so the attack is an
-upper bound; it holds its level, so it has no decay and a sustain of
-0 dB. The last is the pump: no beat here lies inside one held note from
+starts each note at full level, under 1.5 periods of 55 Hz, so the attack
+is an upper bound; it holds its level, so it has no decay and a sustain
+of 0 dB. The last is the pump: no beat here lies inside one held note from
 50 ms before it, so none counts.
 The files go into a folder named after the stem, next to it. `--out` picks
 another folder. A warning about a packet that did not decode goes to

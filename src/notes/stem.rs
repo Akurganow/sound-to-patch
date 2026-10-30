@@ -10,7 +10,7 @@ use serde::Serialize;
 use super::{
     DecodeSettings, Detection, MODEL_SHA256, ModelRun, NoteList, OctaveCheck, PitchTrack, Profile,
     QUIET_GATE, StemLevels, TrackError, TranscribeError, Transcriber, Voicing, check_octaves,
-    detect, drop_quiet_with, join_splits_with, merge_overlaps,
+    detect, drop_quiet_with, join_splits_with, merge_overlaps, split_at_attacks,
 };
 use crate::audio::SampleRate;
 use crate::units::Bpm;
@@ -27,6 +27,8 @@ pub struct CleanupSteps {
     pub octaves: OctaveCheck,
     /// Notes after octave ghosts merged into their notes.
     pub merged: usize,
+    /// Notes after notes split at attacks inside them.
+    pub split: usize,
     /// Notes after split notes joined.
     pub joined: usize,
     /// Notes the quiet-note guard dropped.
@@ -35,11 +37,12 @@ pub struct CleanupSteps {
     pub kept: usize,
 }
 
-/// Cleans decoded notes in four steps, and counts the notes after each.
+/// Cleans decoded notes in five steps, and counts the notes after each.
 ///
 /// The steps are the octave check (a monophonic part only, since the
 /// track reads a chord as one low period), the merge of notes of one key
-/// that overlap, the join of split notes, and the quiet-note guard at
+/// that overlap, the split of notes at attacks inside them, the join of
+/// split notes, and the quiet-note guard at
 /// [`QUIET_GATE`]. `mono` is the stem at `rate`, as the guard reads it.
 #[must_use]
 pub fn clean_up(
@@ -62,12 +65,14 @@ pub fn clean_up(
     };
     let merged = merge_overlaps(&checked);
     let levels = StemLevels::new(mono, rate);
-    let joined = join_splits_with(&merged, run, &levels);
+    let split = split_at_attacks(&merged, &levels);
+    let joined = join_splits_with(&split, run, &levels);
     let (kept, quiet) = drop_quiet_with(&joined, &levels, QUIET_GATE);
     let steps = CleanupSteps {
         decoded: decoded.notes().len(),
         octaves,
         merged: merged.notes().len(),
+        split: split.notes().len(),
         joined: joined.notes().len(),
         quiet,
         kept: kept.notes().len(),
