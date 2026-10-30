@@ -84,10 +84,11 @@ Levels are dB from the note's peak on the amp proxy, read no lower than
   the full 0 to 100 % time of a linear ramp [fact]. The rise reads the RMS
   track for a note that overlaps no other, and the amp proxy for one that
   does [fact].
-- The rise ends at the attack's top: the first frame that the level
-  exceeds by less than 1 dB over as long again as it took to rise to it
-  from under 10 % of it, and at least over the shortest rise the track can
-  tell, the same figure as the upper bound's below [fact]. Without that
+- The rise ends at the attack's top: the first frame from the onset that
+  the level exceeds by less than 1 dB over as long again as it took to
+  rise to it from under 10 % of it, and at least over the shortest rise
+  the track can tell, the same figure as the upper bound's below [fact].
+  Without that
   floor, a wobble of the window early in the rise read as a top [synthetic]. The 10 and 90 % shares are of the highest
   frame over that span [fact]. A slow attack has no top before its end,
   since a linear ramp keeps rising by more than 1 dB until 1 dB below its
@@ -97,6 +98,17 @@ Levels are dB from the note's peak on the amp proxy, read no lower than
   3 dB over 600 ms read 514 ms against the peak and reads 52 to 55 ms
   against the top; at 261.63 Hz, a 10 ms attack under a 6 dB ripple at
   5 Hz read 30 ms and reads 12.5 ms [synthetic].
+- A swell finds no top when it rises 1 dB or more over the attack's own
+  length [fact]. A 300 ms attack under a swell over 0.8 s reads 324 to
+  370 ms up to 2.9 dB and 640 to 706 ms from 3.1 dB, at 55 to 440 Hz and
+  22.05 to 48 kHz; at 3 dB it reads either [synthetic]. The 50 ms attacks
+  above lie far from that edge [synthetic].
+- The factor of 1.25 holds for a linear rise, so a rise that flattens near
+  its top reads long [fact]. Loud isolated bass notes on real stems read
+  141 and 156 ms where the level crosses -1 dB at 103 and 105 ms and -3 dB
+  at 72 and 42 ms, on 9 and 22 notes [fact]. Loud isolated keyboard and
+  synth notes on real stems read 15 and 20 ms against -1 dB crossings at
+  18 and 14 ms [fact].
 - A periodic wave gives one amplitude sample per period, so a rise under
   about 1.5 periods cannot be told from a shorter one [fact]. The attack
   is an upper bound when the rise is shorter than 1.5 RMS windows, or, on
@@ -149,11 +161,14 @@ periods reads as a bound [synthetic].
 - `ripple_db` is the median, over the pooled notes whose sustain is
   observable, of the 90th minus the 10th percentile of the sustain window
   after its line [fact]. Unison and chord beating show here [fact].
-- A simplex refine of hold, decay and sustain on the pooled dB curve, the
-  last fit step #69 names, is not applied [fact]. On 72 lines with decays
-  of 50 to 600 ms, it moved the median decay error from 4.4 to 3.7 % and
-  the 90th percentile from 8.7 to 14.6 %, and left the median sustain
-  error at 0.24 dB [synthetic].
+- A Levenberg-Marquardt refine of a piecewise linear model over the pooled
+  dB curve, with a floor, a peak and a fixed note-off, is not applied
+  [fact]. Fitted from each note's top with the peak free, it moved the
+  decay error on 72 lines with decays of 50 to 600 ms from a median of
+  4.4 % and a 90th percentile of 8.7 % to 9.9 % and 26 %, and left the
+  median sustain error at 0.24 dB [synthetic]. A fit in dB trades the two
+  ends of a fall against each other, which the read at 10 and 90 % of the
+  fall does not [fact].
 
 On a grid of 240 lines of eight saw notes, decays of 50 to 600 ms, sustain
 levels of 0 to -24 dB, holds of 0 and 30 ms and releases of 20 to 300 ms
@@ -254,14 +269,18 @@ notes [fact].
 - Period. A sidechain follows the song's tempo, and a stem's tempo may be
   off by 1 or 2 % [fact]. Over 32 beats a 1 % error moves the duck a third
   of a beat, so its beats no longer fold onto one curve [fact]. When the
-  grid's read does not lock to the beat, the layer searches periods within
+  grid's read locks neither to the beat nor to a free tremolo, the layer
+  searches periods within
   2.5 % of the grid's for the one whose counted beats fold onto the deepest
   mean curve, over up to 64 beats of the longest run of counted beats and
   then over all of them, in steps that move the last beat of the span by 1 bin [fact,
   proposal for 2.5 %]. It keeps that read when it locks to the beat
   [fact]. Of 72 ducks up to 2 % off the grid over 32 and 64 beats, 15
   locked and stripped on the grid alone, and all 72 do with the search
-  [synthetic].
+  [synthetic]. `pump_bpm` reports the tempo of the read [fact]. A free read
+  stays free: the search moves the tempo by up to 43 cents, and a square
+  gate 3 to 3.5 % off the tempo, 12 to 16 beats long, stripped as a duck
+  when the search ran after it [synthetic].
 - `pump_depth_db` is minus the curve's minimum [fact].
 - `pump_recovery_s` is the time from the minimum until the curve comes
   back within 1.5 dB, going on over the beat's wrap, so a duck that sits
@@ -377,7 +396,9 @@ chord's beating moves the crossing [synthetic].
   finds one constant tempo within 2.5 % of it; a tempo that moves inside
   the stem still smears the curve [fact]. Its first stage reads up to 64
   beats of the longest run, so a duck off the tempo that starts later in
-  one held note can go unfound [fact].
+  one held note can go unfound [fact]. A 12 dB duck locks at every phase up
+  to 2.4 % off the tempo. A 6 dB duck locks at every phase up to 2 %, and
+  at 2.2 to 2.5 % below the tempo in 3 of 12 phase cells [synthetic].
 - The depth reads shallow, by up to 11.8 dB on an 18 dB duck, and the bias
   depends on the shape [synthetic].
 - `peak_db` compares two notes directly only when they read the same

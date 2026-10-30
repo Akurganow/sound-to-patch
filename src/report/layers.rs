@@ -13,7 +13,7 @@ use crate::dsp::{
 };
 use crate::estimate::envelope::{
     ENVELOPE_CONVENTION, EnvelopeFlags, EnvelopeLayer, KNEE_CONVENTION, LEVEL_SPREAD_CONVENTION,
-    NoteEnvelope, PUMP_CONVENTION, lock_name,
+    NoteEnvelope, PUMP_CONVENTION, Pump, lock_name,
 };
 use crate::estimate::pitch::{
     DROP_CONVENTION, DropFit, GLIDE_CONVENTION, GlideFit, LINE_CONVENTION, PitchFlags, PitchLayer,
@@ -111,6 +111,7 @@ struct EnvelopeValues<'a> {
     pump_tau_ms: Option<f64>,
     pump_locked_to: Option<&'static str>,
     pump_beats: usize,
+    pump_bpm: Option<Bpm>,
     notes: Vec<NoteRecord>,
 }
 
@@ -144,6 +145,7 @@ impl<'a> EnvelopeGroup<'a> {
                 pump_tau_ms: pump.and_then(|p| p.tau).map(|t| 1000.0 * t.get()),
                 pump_locked_to: pump.map(|p| lock_name(p.lock)),
                 pump_beats: pump.map_or(0, |p| p.beats),
+                pump_bpm: pump.map(Pump::bpm),
                 notes: layer
                     .notes
                     .iter()

@@ -222,6 +222,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `pump_tau_ms` | milliseconds | 0 or more | `pump_recovery_s` over `ln(pump_depth_db / 1.5)`, the one time field in milliseconds; `null` unless the pump locks to the beat. |
 | `pump_locked_to` | | | `beat`, `note`, `free` or `none`; `null` without a pump. |
 | `pump_beats` | count | 0 or more | The beats behind the curve. |
+| `pump_bpm` | BPM | above 0 | The tempo the curve was read at: `--bpm`, or within 2.5 % of it when only a fitted period locks to the beat, so a sidechain's rate follows this and not `--bpm`; `null` without a pump. |
 | `notes` | | | One record per read note, in note order. |
 
 A statistic reads low over fewer than 3 notes or with an interquartile

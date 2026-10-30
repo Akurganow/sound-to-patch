@@ -71,7 +71,7 @@
   "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
   "sample_rate": 22050,
   "seed": 31,
-  "top": "ours rises to the attack's top: at the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over 1.5 RMS windows, the highest frame over that span; the #69 window rises to the highest frame from the onset on",
+  "top": "ours rises to the attack's top: the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, here 1.5 RMS windows, and the shares are of the highest frame over that span; the #69 window rises to the highest frame from the onset on",
   "track": "centred RMS on a 1 ms hop from 30 ms before the onset"
  },
  "tag": "[own, synthetic]",

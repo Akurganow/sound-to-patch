@@ -431,6 +431,7 @@ fn a_tremolo_off_the_tempo_runs_free_and_one_on_it_is_no_pump() {
     let (x, notes) = held_chord();
     let free = pump(&tremolo(&x, fs(), 5.3, 3.0), &notes, CHORD[0]).unwrap();
     assert_eq!(free.lock, PumpLock::Free, "{free:?}");
+    assert!(free.back.is_some() && free.tau.is_none(), "{free:?}");
     // A swing of 0.4 dB either way stays under the 1 dB floor.
     let faint = pump(&tremolo(&x, fs(), 5.3, 0.4), &notes, CHORD[0]).unwrap();
     assert_eq!(faint.lock, PumpLock::None, "{faint:?}");
@@ -1486,8 +1487,8 @@ fn an_overlapping_note_whose_band_reaches_0_hz_reads_a_higher_harmonic() {
 
 #[test]
 fn a_duck_off_the_given_tempo_is_found_past_the_search_cap() {
-    // The search's first stage reads 64 beats of a 160-beat run; the second
-    // fits all of them, where a 1 % error moves the duck by 1.6 beats.
+    // A 1 % error moves the duck by 1.6 beats over 160 beats. The search's
+    // first stage reads 64 of them, which fits the period closely enough.
     let (x, notes) = held_chord_over(160.0);
     let duck = Duck {
         depth_db: 12.0,
@@ -1497,4 +1498,38 @@ fn a_duck_off_the_given_tempo_is_found_past_the_search_cap() {
     let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
     assert_eq!(p.lock, PumpLock::Beat, "{p:?}");
     assert!(p.depth.get() >= 7.0, "{p:?}");
+}
+
+#[test]
+fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
+    // A 10 ms release leaves few bins to move: over 480 beats the period of
+    // the first 64 still misses the duck by more than its width, and only
+    // the fit over all of them locks. The first stage alone reads 1.56 dB.
+    let (x, notes) = held_chord_over(480.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.01,
+        bpm: BPM * 1.02,
+    };
+    let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+    assert!(p.strips(), "{p:?}");
+}
+
+#[test]
+fn a_square_gate_near_a_division_stays_free_after_the_period_search() {
+    // A gate 50 to 93 cents off the tempo: the search moves the tempo by up
+    // to 43 cents, and a fitted read would fold the gate onto one curve.
+    for (beats, off, low) in [(12.0, 0.035, 0.3), (16.0, 0.03, 0.1)] {
+        let (x, notes) = held_chord_over(beats);
+        let period = 60.0 / (BPM * (1.0 + off));
+        let gated = under(&x, |t| {
+            if (t / period).fract() < low {
+                -9.0
+            } else {
+                0.0
+            }
+        });
+        let p = pump(&gated, &notes, CHORD[0]).unwrap();
+        assert_eq!(p.lock, PumpLock::Free, "{beats} {off}: {p:?}");
+    }
 }

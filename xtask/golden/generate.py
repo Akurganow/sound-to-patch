@@ -1579,7 +1579,7 @@ ATTACK_RECIPE = {
     "attack_s": [0.001, 0.005, 0.02, 0.1],
     "note": "one saw note, harmonic h at 1/h up to 6 kHz, at phase uniform(31, 1) cycles and level 0.3, from 0.2 s; a linear attack to 1, then a decay linear in dB over 0.2 s to -6 dB, held to 0.8 s past the attack and released linearly over 50 ms",
     "track": "centred RMS on a 1 ms hop from 30 ms before the onset",
-    "top": "ours rises to the attack's top: at the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over 1.5 RMS windows, the highest frame over that span; the #69 window rises to the highest frame from the onset on",
+    "top": "ours rises to the attack's top: the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, here 1.5 RMS windows, and the shares are of the highest frame over that span; the #69 window rises to the highest frame from the onset on",
     "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
     "issue": "the #69 window: two periods of f0 and at least 5 ms, in whole periods",
     "seed": 31,

@@ -263,7 +263,7 @@
                     "level_spread_db", "ripple_db", "fit_residual_db", "n_notes_used",
                     "overlap_fraction",
                     "pump_depth_db", "pump_recovery_s", "pump_tau_ms", "pump_locked_to",
-                    "pump_beats", "notes"
+                    "pump_beats", "pump_bpm", "notes"
                   ],
                   "additionalProperties": false,
                   "properties": {
@@ -282,6 +282,7 @@
                     "pump_tau_ms": { "type": ["number", "null"], "minimum": 0 },
                     "pump_locked_to": { "enum": ["beat", "note", "free", "none", null] },
                     "pump_beats": { "type": "integer", "minimum": 0 },
+                    "pump_bpm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
                     "notes": { "type": "array", "items": { "$ref": "#/$defs/note_envelope" } }
                   }
                 }

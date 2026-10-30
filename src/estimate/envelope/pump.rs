@@ -140,8 +140,11 @@ impl Pump {
     ///
     /// The beats are read on the grid and again at the period, within
     /// [`PERIOD_RANGE`] of it, whose beats fold onto the deepest mean
-    /// curve, when the first read does not lock to the beat. The second read
-    /// replaces the first when it locks to the beat.
+    /// curve, when the first read locks neither to the beat nor to a free
+    /// tremolo. The second read replaces the first when it locks to the beat.
+    /// A free read stays: the search moves the tempo by up to 43 cents, so
+    /// over 12 to 16 beats a square gate 50 to 93 cents from a division
+    /// would fold onto one curve and strip as a duck.
     #[must_use]
     pub fn find(
         track: &LevelTrack,
@@ -150,7 +153,7 @@ impl Pump {
         held: &[(f64, f64)],
     ) -> Option<Self> {
         let read = Self::read(track, grid, notes, held)?;
-        if read.lock == PumpLock::Beat {
+        if matches!(read.lock, PumpLock::Beat | PumpLock::Free) {
             return Some(read);
         }
         let fitted = fit(track, grid, held)
@@ -167,7 +170,6 @@ impl Pump {
         held: &[(f64, f64)],
     ) -> Option<Self> {
         let period = grid.beat_period().get();
-        let lead = SUSTAIN_LEAD.get();
         let mut beats = Vec::new();
         let mut onset_beats = Vec::new();
         let mut odd = Vec::new();
@@ -187,12 +189,7 @@ impl Pump {
             if end - first > longest.1 - longest.0 {
                 longest = (first, end);
             }
-            // An onset up to the lead before the beat belongs to it.
-            let onset_inside = notes
-                .notes()
-                .iter()
-                .any(|n| (start - lead..end - lead).contains(&n.onset().get()));
-            onset_beats.push(onset_inside);
+            onset_beats.push(starts_in(notes, start, end));
             odd.push(b % 2 == 1);
             beats.push(curve);
         }
@@ -262,6 +259,13 @@ impl Pump {
         self.lock == PumpLock::Beat && self.beats >= PUMP_STRIP_BEATS
     }
 
+    /// Returns the tempo the pump was read at: the given tempo, or the
+    /// fitted one when only that locks to the beat.
+    #[must_use]
+    pub fn bpm(&self) -> Bpm {
+        self.grid.bpm()
+    }
+
     /// Returns the curve at time `t`, linear between bin centres and
     /// wrapping over the beat.
     #[must_use]
@@ -302,6 +306,16 @@ fn covered(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Vec<usize
     beats.sort_unstable();
     beats.dedup();
     beats
+}
+
+/// Whether a note starts in the beat from `start` to `end`: an onset up to
+/// [`SUSTAIN_LEAD`] before the beat belongs to it.
+fn starts_in(notes: &NoteList, start: f64, end: f64) -> bool {
+    let lead = SUSTAIN_LEAD.get();
+    notes
+        .notes()
+        .iter()
+        .any(|n| (start - lead..end - lead).contains(&n.onset().get()))
 }
 
 /// The grid at the beat period, within [`PERIOD_RANGE`] of `grid`'s, whose
@@ -621,6 +635,48 @@ mod tests {
 
     fn grid() -> BeatGrid {
         BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.0))
+    }
+
+    #[test]
+    fn the_counted_beats_follow_the_grid_offset() {
+        let track = LevelTrack::new(Seconds::clamped(0.0), vec![0.0; 16_000]);
+        let grid = BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.6));
+        // Beat 1 starts at 1.1 s, 100 ms after the note and past the lead;
+        // beat 29 ends at 15.6 s, and beat 30 at 16.1 s, past the note.
+        assert_eq!(
+            covered(&track, grid, &[(1.0, 16.0)]),
+            (1..30).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn an_onset_up_to_the_lead_before_a_beat_belongs_to_it() {
+        let starts = |onset: f64| {
+            let note = crate::notes::Note::new(
+                Seconds::clamped(onset),
+                Seconds::clamped(onset + 5.0),
+                crate::units::MidiPitch::new(45.0).unwrap(),
+            )
+            .unwrap();
+            starts_in(&NoteList::new(vec![note]), 1.0, 1.5)
+        };
+        assert!(starts(0.97));
+        assert!(!starts(0.93), "70 ms before the beat");
+        assert!(starts(1.43), "70 ms before the next beat");
+        assert!(!starts(1.47), "30 ms before the next beat");
+    }
+
+    #[test]
+    fn the_folded_depth_is_the_mean_over_the_beats_whatever_their_count() {
+        // A 6 dB dip over the first 50 ms of each 500 ms beat.
+        let db: Vec<f64> = (0..4_000)
+            .map(|i| if i % 500 < 50 { -6.0 } else { 0.0 })
+            .collect();
+        let track = LevelTrack::new(Seconds::clamped(0.0), db);
+        for beats in [4.0, 7.0] {
+            let depth = folded_depth(&track, grid(), &[(-1.0, 4.0)], (0.0, 0.5 * beats));
+            assert!((depth - 6.0).abs() < 1e-9, "{beats}: {depth}");
+        }
     }
 
     #[test]

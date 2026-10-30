@@ -67,8 +67,8 @@ is 1.25 times the 10 to 90 % rise of the linear amplitude to the attack's top, t
 time of a linear ramp, read on the centred RMS over one period of the fundamental, or the fewest \
 whole periods that span 2 ms, for a note that overlaps no other, else on the amp proxy; the top is \
 the first frame from the onset that the level exceeds by less than 1 dB over as long again as it \
-took to rise to it from under 10 % of it, and at least over the rise that bounds the attack below, \
-and the shares are of the highest frame over that span; \
+took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, \
+the upper bound's figure below, and the shares are of the highest frame over that span; \
 the attack is an upper bound \
 when the rise is shorter than 1.5 RMS windows, or on the amp proxy shorter than 0.98 over its \
 low-pass cutoff, twice its rise for an instant step; hold_s is the time from the first frame \
@@ -122,7 +122,7 @@ from every note division; else beat when the curve dips 3 dB or more in one run 
 depth down, falls into its dip within 8 bins, reading on into the beat before, the odd and the even \
 beats' own median curves do the same to half its depth at its dip, and half the beats fall by half \
 its depth from their highest bin over the 8 bins before the 3 bins either side of the dip to their \
-lowest within those; else none; when this does not read beat, the read at the period within 2.5 % \
+lowest within those; else none; when this reads neither beat nor free, the read at the period within 2.5 % \
 of the tempo's whose counted beats fold onto the deepest mean curve replaces it if that reads beat; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \
 or more and the median fall of the beats over the note reaches half the curve's depth, the beats \
@@ -763,6 +763,13 @@ mod tests {
             peak(note(3.0, 1.5, 110.0, None), -6.0),
         ];
         assert_eq!(pool(&overlapping), [true, false, true]);
+        // 8 dB down lies inside the gate.
+        let inside = vec![
+            peak(note(0.0, 1.5, 110.0, None), -6.0),
+            peak(note(1.0, 1.5, 110.0, None), -14.0),
+            peak(note(3.0, 1.5, 110.0, None), -6.0),
+        ];
+        assert_eq!(pool(&inside), [true, true, true]);
     }
 
     #[test]

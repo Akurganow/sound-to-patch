@@ -16,10 +16,11 @@ use super::track::{
 
 /// How little the level may rise after the attack's top.
 ///
-/// The attack ends at its top: the first frame that the level exceeds by
-/// less than this over as long again as the attack took to reach it, and
-/// at least over the shortest rise the track can tell. The hold starts
-/// where the level first comes within this much of the peak.
+/// The attack ends at its top: the first frame from the onset that the
+/// level exceeds by less than this over as long again as it took to rise to
+/// it from under 10 % of it, and at least over the shortest rise the track
+/// can tell. The hold starts where the level first comes within this much
+/// of the peak.
 ///
 /// The peak of the whole note is no top: on a 10 ms attack that swells by
 /// 2 to 3 dB over 600 ms, the rise to 90 % of the peak read 400 to 525 ms.
