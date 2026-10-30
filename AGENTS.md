@@ -16,3 +16,6 @@ Facts learned while working on this repository.
 - An estimator change that passed generated signals still gave false
   records on real stems. Check such a change on real audio as well, and
   keep that audio out of the repository.
+- Judge a real-audio check on instrument stems. Vocals are not a project
+  goal: a vocal stem only shows false records, blocks no merge, and gets no
+  estimator rule of its own.
