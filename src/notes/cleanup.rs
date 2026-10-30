@@ -350,7 +350,7 @@ pub fn join_splits_with(notes: &NoteList, run: &ModelRun, levels: &StemLevels<'_
 /// split join, which then keeps the two apart. Each piece keeps the
 /// note's key, octave flag and velocity. A last piece that runs into the
 /// decoder's next note of its key, within [`SPLIT_GAP`], starts that note
-/// instead.
+/// instead, unless that note has an attack of its own after the piece.
 #[must_use]
 pub fn split_at_attacks(notes: &NoteList, levels: &StemLevels<'_>) -> NoteList {
     let decoded = notes.notes();
@@ -406,7 +406,10 @@ pub fn split_at_attacks(notes: &NoteList, levels: &StemLevels<'_>) -> NoteList {
             })
             .flatten()
             .map(|offset| index + 1 + offset)
-            .filter(|&later| decoded[later].onset().get() - rest.offset().get() <= SPLIT_GAP.get());
+            .filter(|&later| {
+                decoded[later].onset().get() - rest.offset().get() <= SPLIT_GAP.get()
+                    && !attacks(levels, &rest, &decoded[later])
+            });
         match next {
             Some(later) => starts[later] = Some(rest.onset()),
             None => pieces.push(rest),
@@ -1587,6 +1590,32 @@ mod tests {
             heard(start + 0.07, start + 0.3, 47.0, 90),
         ]);
         assert_eq!(split_at_attacks(&notes, &levels).notes().len(), 3);
+    }
+
+    #[test]
+    fn a_last_piece_stays_before_a_next_note_with_its_own_attack() {
+        // A second gap from 100 to 140 ms after the onset: the decoder ends
+        // the note 25 ms into it and starts the next note 20 ms later, at
+        // 145 ms. The next note has its own attack, so the cut piece stays
+        // a note and the next one keeps its onset.
+        let start = f64::from(LEAD_SAMPLES) / 22_050.0 + onset();
+        let mono = stem(onset(), |t| {
+            let gap = (-0.05..0.0).contains(&t) || (0.1..0.14).contains(&t);
+            (if gap { 0.0 } else { 0.5 }, 0.0)
+        });
+        let notes = NoteList::new(vec![
+            heard(start - 0.3, start + 0.125, 45.0, 80),
+            heard(start + 0.145, start + 0.4, 45.0, 90),
+        ]);
+        let pieces = split_at_attacks(&notes, &StemLevels::new(&mono, rate()));
+        let onsets: Vec<f64> = pieces
+            .notes()
+            .iter()
+            .map(|piece| piece.onset().get() - start)
+            .collect();
+        assert_eq!(onsets.len(), 3, "{onsets:?}");
+        assert!((onsets[1] + 0.0053).abs() < 0.0005, "{onsets:?}");
+        assert!((onsets[2] - 0.145).abs() < 1e-9, "{onsets:?}");
     }
 
     #[test]

@@ -313,7 +313,8 @@ The cleanup runs five steps and prints the note count after each [fact].
   50 ms, and the attack rule below must hold between the two pieces.
   Each piece keeps the note's key, octave flag and velocity [fact]. A
   last piece that runs into the decoder's next note of its key, within
-  2 model frames, starts that note instead [fact].
+  2 model frames, starts that note instead, unless that note has an
+  attack of its own after the piece by the same rule [fact].
 - Why the split: the decoder can read a low repeat with a short gap as
   part of one long note, and no later step sees two notes [synthetic].
   With 30 ms gaps the gated 55 Hz saw decodes as 9 notes for 16, or 8
@@ -360,9 +361,9 @@ The cleanup runs five steps and prints the note count after each [fact].
   for the squares the limits below give [synthetic]. On the first set
   8 of the 716 runs come closer to the true notes, and gated runs hit
   1245 gates where they hit 1205. On the second set 12 of the 130 gated
-  runs and 10 of the 24 two-voice runs keep more repeats, 1662 gates hit
+  runs and 10 of the 24 two-voice runs keep more repeats, 1664 gates hit
   where 1558 were. The fourth set keeps the same notes. Every A1
-  sixteenths run keeps more: 870 of 1024 gates hit where 214 were
+  sixteenths run keeps more: 874 of 1024 gates hit where 214 were
   [synthetic]. On the eval the dry 110 Hz saw with a 0.3 s release keeps
   all 6 of its notes where it kept 5 [synthetic]. The bass clean group's
   onset F1 rises by 0.002 to 0.003 under every setting and the bass
