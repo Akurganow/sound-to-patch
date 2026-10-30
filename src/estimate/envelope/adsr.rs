@@ -17,8 +17,9 @@ use super::track::{
 /// How little the level may rise after the attack's top.
 ///
 /// The attack ends at its top: the first frame that the level exceeds by
-/// less than this over as long again as the attack took to reach it. The
-/// hold starts where the level first comes within this much of the peak.
+/// less than this over as long again as the attack took to reach it, and
+/// at least over the shortest rise the track can tell. The hold starts
+/// where the level first comes within this much of the peak.
 ///
 /// The peak of the whole note is no top: on a 10 ms attack that swells by
 /// 2 to 3 dB over 600 ms, the rise to 90 % of the peak read 400 to 525 ms.
@@ -143,7 +144,7 @@ pub struct NoteEnvelope {
 pub enum NoteSkip {
     /// None of the note's first harmonics can be read: each lies within
     /// [`FREE_GAP`] of a harmonic of a note it overlaps, as in an octave or
-    /// a unison, or its band reaches the Nyquist frequency.
+    /// a unison, or its band reaches 0 Hz or the Nyquist frequency.
     NoFreeHarmonic,
     /// The note is too short for a track.
     TooShort,
@@ -190,7 +191,7 @@ pub fn read_note(
     } else {
         ATTACK_PERIODS_MIN * rms_window(f0, RMS_PERIODS).get()
     };
-    let (attack, attack_upper_bound) = match rise(&timing, onset) {
+    let (attack, attack_upper_bound) = match rise(&timing, onset, resolution) {
         Some(rise) => (
             Some(Seconds::clamped(RAMP_FACTOR * rise)),
             rise < resolution,
@@ -377,7 +378,8 @@ fn tracks(
 
 /// The harmonic of the amp proxy with its low-pass: the lowest of
 /// harmonics 1 to [`PROXY_HARMONICS`] below the Nyquist frequency that
-/// lies at least [`FREE_GAP`] from every harmonic of `others`. The
+/// lies at least [`FREE_GAP`] from every harmonic of `others` and whose
+/// band lies above 0 Hz. The
 /// low-pass is half the distance to the nearest foreign or own
 /// neighbouring harmonic, between [`HARMONIC_CUTOFF_MIN`] and
 /// [`HARMONIC_CUTOFF_MAX`]. Empty when no harmonic is free.
@@ -399,7 +401,7 @@ fn proxy_partials(f0: Hz, others: &[&Note], rate: SampleRate) -> Vec<(Hz, Hz)> {
             }
             let cutoff = (0.5 * foreign.min(f0.get()))
                 .clamp(HARMONIC_CUTOFF_MIN.get(), HARMONIC_CUTOFF_MAX.get());
-            (f + cutoff < nyquist).then(|| (Hz::clamped(f), Hz::clamped(cutoff)))
+            (f > cutoff && f + cutoff < nyquist).then(|| (Hz::clamped(f), Hz::clamped(cutoff)))
         })
         .take(1)
         .collect()
@@ -413,12 +415,13 @@ fn proxy_partials(f0: Hz, others: &[&Note], rate: SampleRate) -> Vec<(Hz, Hz)> {
 ///
 /// The top is the first frame from `onset` whose level the track exceeds
 /// by less than [`ATTACK_TOP`] over as long again as the level took to
-/// rise to it from under 10 % of it; the top level is the highest frame
+/// rise to it from under 10 % of it, and at least over `resolution`, the
+/// shortest rise the track can tell; the top level is the highest frame
 /// over that span. A note that swells or ripples after a fast attack rises
 /// to its top first, and a slow attack has no top before its end.
-fn rise(track: &LevelTrack, onset: usize) -> Option<f64> {
+fn rise(track: &LevelTrack, onset: usize, resolution: f64) -> Option<f64> {
     let db = track.db();
-    let peak = attack_top(db, onset)?;
+    let peak = attack_top(db, onset, resolution)?;
     let amp: Vec<f64> = db.iter().map(|d| 10f64.powf((d - peak) / 20.0)).collect();
     let up = (onset.max(1)..amp.len()).find(|&i| amp[i] >= 0.9)?;
     let t90 = between(&amp, up, 0.9);
@@ -428,12 +431,25 @@ fn rise(track: &LevelTrack, onset: usize) -> Option<f64> {
 }
 
 /// The top level of an attack from `onset`, in dB: see [`rise`].
-fn attack_top(db: &[f64], onset: usize) -> Option<f64> {
+fn attack_top(db: &[f64], onset: usize, resolution: f64) -> Option<f64> {
     // A tenth of the amplitude.
     let tenth = 20.0;
-    (onset.max(1)..db.len()).find_map(|i| {
+    let least = cast::ceil_to_usize(resolution / HOP.get()).unwrap_or(0);
+    let first = onset.max(1);
+    let mut lowest = db[..first.min(db.len())]
+        .iter()
+        .copied()
+        .fold(f64::INFINITY, f64::min);
+    (first..db.len()).find_map(|i| {
+        // The running minimum skips the search on a level that never rose,
+        // which would otherwise read a long note's frames once per frame.
+        let low = lowest;
+        lowest = lowest.min(db[i]);
+        if low >= db[i] - tenth {
+            return None;
+        }
         let start = (0..i).rev().find(|&j| db[j] < db[i] - tenth)?;
-        let ahead = db[i..=(2 * i - start).min(db.len() - 1)]
+        let ahead = db[i..=(i + (i - start).max(least)).min(db.len() - 1)]
             .iter()
             .copied()
             .fold(f64::NEG_INFINITY, f64::max);
@@ -569,6 +585,17 @@ mod tests {
     }
 
     #[test]
+    fn the_attack_top_looks_ahead_at_least_over_the_resolution() {
+        // A rise from -60 dB that stalls at -20 dB for 3 frames before it
+        // goes on to 0 dB: over 3 frames of look-ahead the stall is a top.
+        let mut db: Vec<f64> = vec![-60.0; 5];
+        db.extend([-40.0, -20.0, -20.0, -20.0, -20.0, -10.0, -5.0, 0.0]);
+        db.extend([0.0; 20]);
+        assert_eq!(attack_top(&db, 0, 0.0), Some(-20.0));
+        assert_eq!(attack_top(&db, 0, 0.01), Some(0.0));
+    }
+
+    #[test]
     fn the_ripple_is_the_spread_after_the_line() {
         // A slope of 0.5 dB per frame with a swing of 1 dB either way.
         let values: Vec<f64> = (0..200)
@@ -604,7 +631,7 @@ mod tests {
             })
             .collect();
         let track = LevelTrack::new(Seconds::clamped(0.0), db);
-        let rise = rise(&track, 0).unwrap();
+        let rise = rise(&track, 0, 0.0).unwrap();
         assert!((rise - 0.08).abs() < 1e-3, "{rise}");
     }
 

@@ -21,9 +21,9 @@ pub use knee::{
     KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
-    FALL_MAX, FREE_RATE_MIN, FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PHASE_DEPTH, PHASE_SHARE,
-    PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE, PUMP_STRIP_BEATS,
-    Pump, PumpLock, SUSTAIN_LEAD,
+    FALL_MAX, FREE_RATE_MIN, FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PERIOD_RUN_BEATS,
+    PHASE_DEPTH, PHASE_SHARE, PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN,
+    PUMP_REFERENCE, PUMP_STRIP_BEATS, Pump, PumpLock, SUSTAIN_LEAD,
 };
 pub use track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, PUMP_RMS_PERIODS, RMS_PERIODS,
@@ -67,7 +67,8 @@ is 1.25 times the 10 to 90 % rise of the linear amplitude to the attack's top, t
 time of a linear ramp, read on the centred RMS over one period of the fundamental, or the fewest \
 whole periods that span 2 ms, for a note that overlaps no other, else on the amp proxy; the top is \
 the first frame from the onset that the level exceeds by less than 1 dB over as long again as it \
-took to rise to it from under 10 % of it, and the shares are of the highest frame over that span; \
+took to rise to it from under 10 % of it, and at least over the rise that bounds the attack below, \
+and the shares are of the highest frame over that span; \
 the attack is an upper bound \
 when the rise is shorter than 1.5 RMS windows, or on the amp proxy shorter than 0.98 over its \
 low-pass cutoff, twice its rise for an instant step; hold_s is the time from the first frame \
@@ -146,8 +147,9 @@ pub struct EnvelopeInput<'a> {
 pub struct EnvelopeFlags {
     /// The stem gave no note list, so no note was read.
     pub no_notes: bool,
-    /// Most pooled notes rise in under 1.5 periods, so the attack is an
-    /// upper bound and no attack should be written.
+    /// Most pooled attacks are upper bounds, see
+    /// [`NoteEnvelope::attack_upper_bound`], so a preset should not take
+    /// the attack.
     pub attack_is_upper_bound: bool,
     /// The pump locks to the beat over [`PUMP_STRIP_BEATS`] counted beats
     /// or more, so its curve was stripped from the level tracks before the

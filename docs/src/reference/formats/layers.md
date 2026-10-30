@@ -244,8 +244,8 @@ A note record:
 | `pooled` | flag | | The pool holds the note. |
 
 `flags` holds three booleans: `no_notes`, `attack_is_upper_bound` (more
-than half the pooled attacks rise in under 1.5 periods, so no attack
-should be written) and `pump_stripped` (the pump locks to the beat over 8
+than half the pooled attacks are upper bounds, so a preset should not
+take the attack) and `pump_stripped` (the pump locks to the beat over 8
 counted beats or more, and its curve was taken out of the note tracks).
 `needs_render` is `false`.
 

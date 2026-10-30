@@ -59,6 +59,12 @@ pub const PHASE_SHARE: f64 = 0.5;
 /// by 1 or 2 %. Over 32 beats a 1 % error moves the duck by a third of a
 /// beat, so its beats no longer fold onto one curve.
 pub const PERIOD_RANGE: f64 = 0.025;
+/// The period search's first stage reads at most this many beats of the
+/// longest run; the second refines over all counted beats.
+///
+/// Its cost grows with the square of the beats it reads: a 10-minute held
+/// chord took 277 s over its whole run, against 6.5 s without the layer.
+pub const PERIOD_RUN_BEATS: usize = 64;
 /// A tremolo runs free when its rate lies this far from every note
 /// division of the tempo.
 pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
@@ -302,8 +308,9 @@ fn covered(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Vec<usize
 /// counted beats fold onto the deepest mean curve; `None` when that is the
 /// grid's own period, or with fewer than [`PUMP_BEATS_MIN`] beats in a row.
 ///
-/// The search runs over the longest run of counted beats first, then over
-/// all of them around the best period of the run. Each step moves the last
+/// The search runs over up to [`PERIOD_RUN_BEATS`] beats of the longest run
+/// of counted beats first, then over all of them around the best period
+/// of the run. Each step moves the last
 /// beat of the span searched by 1 bin.
 fn fit(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Option<BeatGrid> {
     let beats = covered(track, grid, held);
@@ -340,7 +347,10 @@ fn fit(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Option<BeatGr
             .max_by(|a, b| a.1.total_cmp(&b.1))
             .map(|(share, _)| share)
     };
-    let run = (time(longest.0), time(longest.0 + longest.1));
+    let run = (
+        time(longest.0),
+        time(longest.0 + longest.1.min(PERIOD_RUN_BEATS)),
+    );
     let all = (time(beats[0]), time(beats[beats.len() - 1] + 1));
     let coarse = search(0.0, PERIOD_RANGE, run)?;
     let share = search(coarse, step(run), all)?;

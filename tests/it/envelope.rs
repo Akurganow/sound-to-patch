@@ -1390,6 +1390,14 @@ fn a_note_outside_the_ducked_section_keeps_its_own_level() {
     assert!(read.flags.pump_stripped, "{p:?}");
     assert!(p.carries(0.0, split));
     assert!(!p.carries(split, seconds));
+    // The chord's own beating, about 2 dB; the stripped curve would add
+    // its whole depth.
+    let clean = read.notes[read.notes.len() - 3..]
+        .iter()
+        .find_map(|n| n.ripple)
+        .unwrap()
+        .get();
+    assert!(clean < 0.5 * p.depth.get(), "{clean}: {p:?}");
 }
 
 #[test]
@@ -1457,4 +1465,36 @@ fn a_clean_start_before_a_level_step_is_not_counted_again() {
     assert_ne!(p.lock, PumpLock::Beat, "{p:?}");
     assert!(p.beats <= 6, "{p:?}");
     assert!(!read.flags.pump_stripped, "{p:?}");
+}
+
+#[test]
+fn an_overlapping_note_whose_band_reaches_0_hz_reads_a_higher_harmonic() {
+    // MIDI 6 sits at 11.6 Hz, under the band's lowest cutoff of 12 Hz. Its
+    // fundamental has no band, so it reads its second harmonic. The A2's
+    // harmonics all lie near one of its dense harmonics, so that note skips.
+    let f0 = 440.0 * 2f64.powf((6.0 - 69.0) / 12.0);
+    let seconds = 2.0;
+    let x = chord(&[f0, 110.0], fs(), seconds, 1);
+    let read = layer(
+        &x,
+        &note_list(&[(0.1, seconds, f0), (0.1, seconds, 110.0)]),
+        BPM,
+    );
+    assert_eq!(read.counts.read, 1, "{:?}", read.counts);
+    assert_eq!(read.counts.no_free_harmonic, 1, "{:?}", read.counts);
+}
+
+#[test]
+fn a_duck_off_the_given_tempo_is_found_past_the_search_cap() {
+    // The search's first stage reads 64 beats of a 160-beat run; the second
+    // fits all of them, where a 1 % error moves the duck by 1.6 beats.
+    let (x, notes) = held_chord_over(160.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 1.01,
+    };
+    let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+    assert_eq!(p.lock, PumpLock::Beat, "{p:?}");
+    assert!(p.depth.get() >= 7.0, "{p:?}");
 }

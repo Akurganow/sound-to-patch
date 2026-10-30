@@ -71,7 +71,7 @@
   "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
   "sample_rate": 22050,
   "seed": 31,
-  "top": "ours rises to the attack's top: at the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, the highest frame over that span; the #69 window rises to the highest frame from the onset on",
+  "top": "ours rises to the attack's top: at the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over 1.5 RMS windows, the highest frame over that span; the #69 window rises to the highest frame from the onset on",
   "track": "centred RMS on a 1 ms hop from 30 ms before the onset"
  },
  "tag": "[own, synthetic]",
@@ -90,14 +90,14 @@
     "attack_s": 0.001,
     "f0_hz": 55.0,
     "issue_window_rise_s": 0.022672226064227332,
-    "rise_s": 0.007556138566511574,
+    "rise_s": 0.013592891242911919,
     "true_rise_s": 0.0008
    },
    {
     "attack_s": 0.005,
     "f0_hz": 55.0,
     "issue_window_rise_s": 0.03315224913422789,
-    "rise_s": 0.007529198325012533,
+    "rise_s": 0.018253493019490044,
     "true_rise_s": 0.004
    },
    {
@@ -118,7 +118,7 @@
     "attack_s": 0.001,
     "f0_hz": 220.0,
     "issue_window_rise_s": 0.008174299665208171,
-    "rise_s": 0.0018716821319844216,
+    "rise_s": 0.004443267610108691,
     "true_rise_s": 0.0008
    },
    {

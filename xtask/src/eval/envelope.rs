@@ -797,11 +797,12 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
                     &mut tally.pump_depth,
                     depth.is_some_and(|d| d <= depth_db + 0.5 && d >= depth_db - 5.0),
                 );
-                if let (Some(b), Some(e)) = (back, expected_back) {
-                    tick(&mut tally.pump_back, (b / e - 1.0).abs() <= 0.3);
-                } else {
-                    tick(&mut tally.pump_back, false);
-                }
+                let right = match (back, expected_back) {
+                    (Some(b), Some(e)) => (b / e - 1.0).abs() <= 0.3,
+                    (None, None) => true,
+                    _ => false,
+                };
+                tick(&mut tally.pump_back, right);
             }
             let expected = if *depth_db >= 6.0 {
                 PumpLock::Beat

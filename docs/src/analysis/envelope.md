@@ -41,8 +41,8 @@ record [fact].
 - A note with no harmonic to read, or that is too short for a track, is
   skipped and counted in the summary [fact]. A harmonic cannot be read
   when it lies within 30 Hz of a harmonic of a note it overlaps, or when
-  its band reaches the Nyquist frequency; the summary counts both as no
-  free harmonic [fact]. A note whose amp proxy peaks at -120 dB or lower is
+  its band reaches 0 Hz or the Nyquist frequency; the summary counts these
+  as no free harmonic [fact]. A note whose amp proxy peaks at -120 dB or lower is
   skipped as silent: over a silent stretch, a listed note would read a 0 dB
   sustain at the tracks' floor [fact, proposal for -120 dB].
 - Every time is audio time from the start of the stem [fact].
@@ -86,7 +86,9 @@ Levels are dB from the note's peak on the amp proxy, read no lower than
   does [fact].
 - The rise ends at the attack's top: the first frame that the level
   exceeds by less than 1 dB over as long again as it took to rise to it
-  from under 10 % of it [fact]. The 10 and 90 % shares are of the highest
+  from under 10 % of it, and at least over the shortest rise the track can
+  tell, the same figure as the upper bound's below [fact]. Without that
+  floor, a wobble of the window early in the rise read as a top [synthetic]. The 10 and 90 % shares are of the highest
   frame over that span [fact]. A slow attack has no top before its end,
   since a linear ramp keeps rising by more than 1 dB until 1 dB below its
   peak [fact].
@@ -129,10 +131,11 @@ periods reads as a bound [synthetic].
   the start of the decay, 0 when under 10 ms [fact, proposal for 10 ms].
 - `decay_s` is the time between the first frames after the peak at which
   the level falls through 10 % and 90 % of the sustain level in dB, linear
-  between frames, divided by the 0.8 between the two shares [fact]. The
+  between frames, divided by the gap between the two shares [fact]. The
   first share is at least 0.5 dB down, so ripple at the peak does not end
-  the hold [fact]. The decay starts a tenth of its time before the first
-  share [fact]. A regression in dB from the peak read the decay 6 to 22 %
+  the hold, and it rises above 10 % for a sustain shallower than -5 dB
+  [fact]. The decay starts that share of its time before the first share's
+  crossing [fact]. A regression in dB from the peak read the decay 6 to 22 %
   long, since the knee at the sustain level bends the line [synthetic].
 - `sustain_db` is the median of the last 30 % of the held part [fact].
   The held part runs from the first frame within 1 dB of the peak to the
@@ -253,8 +256,8 @@ notes [fact].
   of a beat, so its beats no longer fold onto one curve [fact]. When the
   grid's read does not lock to the beat, the layer searches periods within
   2.5 % of the grid's for the one whose counted beats fold onto the deepest
-  mean curve, over the longest run of counted beats and then over all of
-  them, in steps that move the last beat of the span by 1 bin [fact,
+  mean curve, over up to 64 beats of the longest run of counted beats and
+  then over all of them, in steps that move the last beat of the span by 1 bin [fact,
   proposal for 2.5 %]. It keeps that read when it locks to the beat
   [fact]. Of 72 ducks up to 2 % off the grid over 32 and 64 beats, 15
   locked and stripped on the grid alone, and all 72 do with the search
