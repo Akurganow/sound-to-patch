@@ -144,7 +144,7 @@ A glide:
 | `interval_st` | semitones | any | From the start pitch to the end pitch; negative for a glide down. |
 | `time_s` | seconds | 0.09 or more | The full 0 to 100 % time. |
 | `curve` | power | above 0.21, at most 5 | `p` of `s(x) = 1 - (1 - x)^p`: above 1 starts fast, 1 is linear in pitch. A fit within 5 % of the lower bound 0.2 is no glide; one within 5 % of the upper bound 5, such as an exponential portamento, needs a detected span of at most 2.5 times its fitted time, and reads low with `curve_bound`. |
-| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. That stable pitch has a median level within 40 dB of the loudest frame, and the pitch does not swing back half the lead within 167 ms after it, unless the run's next stable pitch matches another note and the pitch stays past half the way to it up to that stable pitch and to the 167 ms. |
+| `from_silence` | flag | | The glide leads into the first stable pitch of a voiced run whose sound starts up to 100 ms before it. That stable pitch has a median level within 40 dB of the loudest frame, and the pitch does not swing back half the lead within 167 ms after it, unless the run's next stable pitch lies 100 cents or more away and matches another note, and the pitch, once past half the way to it, stays there up to that stable pitch and to the window's end. |
 
 Its reasons are `motion_span` (seconds), `fit_residual` (cents),
 `pitch_jitter` (cents) and `curve_bound` (flag). A glide whose

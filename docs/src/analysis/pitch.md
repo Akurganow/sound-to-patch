@@ -498,8 +498,9 @@ A glide is pitch moving from one stable pitch to another.
   period of 3 Hz, the slowest vibrato, the smoothed pitch does not swing
   back half the lead [proposal]. The motion after the first stable pitch
   is a step, and the window holds nothing, when the next stable pitch
-  matches another note and the pitch, once past half the way to it, stays
-  there up to that stable pitch and to the window's end [proposal]. A
+  lies 100 cents or more away and matches another note, and the pitch,
+  once past half the way to it, stays there up to that stable pitch and
+  to the window's end [proposal]. A
   wobble's crest can match a neighbouring note, but the pitch comes back
   from it [synthetic]. When two notes match a stable pitch, the nearest
   one counts [proposal]. The end of the transcribed note does not cut the
@@ -518,11 +519,11 @@ A glide is pitch moving from one stable pitch to another.
   that steps to the next note 30 ms after the stable pitch, with the
   first note ending at the step's start, 20 ms into it or after it, and
   one that slides there over 80 to 400 ms [synthetic]. A generated fall
-  from 150 Hz into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails the strike
-  rule as a drop [synthetic]. It reads as a fall from silence at medium,
-  14.6 of its 19.0 semitones: it starts near 116 Hz, where the fall
-  stands 17 ms after the onset [synthetic]. The sound must start up to 100 ms
-  before the run: the full-band RMS over 30 ms rises 20 dB above
+  from 150 Hz into 50 Hz with $\tau$ = 40 ms under a 300 ms attack fails
+  the strike rule as a drop [synthetic]. It reads as a fall from silence
+  at medium, 14.6 of its 19.0 semitones: it starts near 116 Hz, where the
+  fall stands 17 ms after the onset [synthetic]. The sound must start up
+  to 100 ms before the run: the full-band RMS over 30 ms rises 20 dB above
   the RMS from 60 to 30 ms before, searched in 5 ms steps [proposal]. The
   track voices a run some frames after the sound starts, and a beating
   unison dips without falling silent [synthetic]. The run's first frame
@@ -608,9 +609,14 @@ Limits:
   one note, is not read [fact].
 - A fall from silence followed within 167 ms by a step back toward its
   start, to a pitch that no transcribed note matches, reads as a swing
-  back and is lost [synthetic]. A wobble at 3 to 4 Hz whose crest matches
-  a neighbouring note still reads as a fall from silence: the crest comes
-  at the window's end, and the pitch returns after it [synthetic]. Of 49
+  back and is lost [synthetic]. So is one whose portamento to the next
+  note stalls under half the way for 100 ms: the stall forms its own
+  stable pitch, which no note matches; a stall of 60 ms reads
+  [synthetic]. So is one followed by a move back toward its start of
+  under 100 cents to another note, past half the lead [synthetic]. A
+  wobble at 3 to 4 Hz whose crest matches a neighbouring note still reads
+  as a fall from silence: the crest comes at the window's end, and the
+  pitch returns after it [synthetic]. Of 49
   generated wobbles of ±40 to ±70 cents at 3 to 8 Hz with the neighbour
   sounding, 10 read, all at 3 or 4 Hz [synthetic].
 - A step between two 808 notes can raise `glide_too_short` when the fit

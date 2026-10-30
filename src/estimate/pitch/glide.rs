@@ -66,8 +66,8 @@ pub(crate) const BOUND_SPAN_MAX: f64 = 2.5;
 ///
 /// The window is half a period of [`VIBRATO_RATE_MIN`] after the first
 /// stable pitch. It holds no frame when the motion is a step: the run's
-/// next stable pitch matches another note, and the pitch stays past half
-/// the way to it. On real stems a wobble of ±60 cents at 6 to 7 Hz on a
+/// next stable pitch lies [`GLIDE_INTERVAL_MIN`] or more away and matches
+/// another note, and the pitch stays past half the way to it. On real stems a wobble of ±60 cents at 6 to 7 Hz on a
 /// bass read its first half-cycle as a fall from silence; the pitch came
 /// back 82 % of the lead. True falls from silence came back 0 % and 24 %.
 const SWING_BACK: f64 = 0.5;
@@ -139,9 +139,9 @@ a period; time_s is the full 0 to 100 % time; from_silence marks a glide into th
 pitch of a voiced run whose sound starts, the full-band RMS rising 20 dB, up to 100 ms before \
 it, when that stable pitch has a median level within 40 dB of the loudest frame and the smoothed \
 pitch does not swing back 50 % of the lead within half a period of 3 Hz after it, unless the \
-run's next stable pitch matches another note, the nearest match counting, and the pitch stays \
-past half the way to it up to that stable pitch and to that time, and the fit also finds its \
-start pitch; a voiced run that starts within 100 ms of the one \
+run's next stable pitch lies 100 cents or more away and matches another note, the nearest match \
+counting, and the pitch, once past half the way to it, stays there up to that stable pitch and \
+to the window's end, and the fit also finds its start pitch; a voiced run that starts within 100 ms of the one \
 before joins it when the full-band RMS does not rise 6 dB in the gap, its 10 ms RMS stays within \
 20 dB of the 20 ms before or after the gap and within 40 dB of the loudest frame of the stem, \
 and the pitch keeps moving after the gap the way it jumped, at 30 cents per millisecond or \
@@ -284,9 +284,10 @@ pub(crate) fn find_glides(
         {
             let lead = run[0].cents - first.median;
             // The motion after the first stable pitch is a step, and the
-            // window holds no frame, when the next stable pitch matches another
-            // note and the pitch, once past half the way to it, stays there
-            // up to that stable pitch and to the window's end. A wobble's
+            // window holds no frame, when the next stable pitch lies 100
+            // cents or more away and matches another note, and the pitch,
+            // once past half the way to it, stays there up to that stable
+            // pitch and to the window's end. A wobble's
             // crest can match a neighbouring note but comes back. The
             // transcribed note's end does not cut the window: the transcriber
             // can end a wobbling note inside its first trough.
@@ -294,7 +295,8 @@ pub(crate) fn find_glides(
             let steps = plateaus.get(1).is_some_and(|next| {
                 let step = next.median - first.median;
                 let past = |k: usize| (smooth[k] - first.median) * step.signum() > 0.5 * step.abs();
-                note_of(next).is_some_and(|pitch| (pitch - settled).abs() >= 0.5)
+                step.abs() >= GLIDE_INTERVAL_MIN.get()
+                    && note_of(next).is_some_and(|pitch| (pitch - settled).abs() >= 0.5)
                     && (first.last + 1..run.len())
                         .take_while(|&k| k <= next.first || run[k].time <= until)
                         .skip_while(|&k| !past(k))
@@ -1203,6 +1205,101 @@ mod tests {
                 "{slide}: {read:?}"
             );
         }
+    }
+
+    /// Cents through the given points, linear between them and held
+    /// outside.
+    fn path(points: &[(f64, f64)]) -> impl Fn(f64) -> f64 + use<> {
+        let points = points.to_vec();
+        move |x| {
+            let next = points.partition_point(|&(at, _)| at <= x);
+            match (next.checked_sub(1).map(|k| points[k]), points.get(next)) {
+                (Some((a, ca)), Some(&(b, cb))) => ca + (cb - ca) * (x - a) / (b - a),
+                (Some((_, c)), None) | (None, Some(&(_, c))) => c,
+                (None, None) => 0.0,
+            }
+        }
+    }
+
+    /// Whether a fall into E1 then `after` reads from silence, with E1
+    /// sounding to `end` and G1 from there.
+    fn falls_before_g1(after: impl Fn(f64) -> f64, end: f64) -> bool {
+        let line = notes(&[(0.2, end, 41.0), (end, 1.1, 43.0)]);
+        let read = find_glides(&fall_into_e1(after), &line, |_, _| false, |_, _| true);
+        read.glides.iter().any(|g| g.from_silence)
+    }
+
+    #[test]
+    fn a_step_holds_past_half_the_way() {
+        // The pitch peaks, dips toward 90 cents and climbs to G1. Smoothed,
+        // the dip after a peak of 120 falls under half the 200-cent step,
+        // so the motion is no step and swings back; after 160 it does not.
+        let to_g1 = |peak: f64| path(&[(0.03, 0.0), (0.06, peak), (0.1, 90.0), (0.13, 200.0)]);
+        assert!(!falls_before_g1(to_g1(120.0), 0.5));
+        assert!(falls_before_g1(to_g1(160.0), 0.5));
+    }
+
+    #[test]
+    fn a_step_must_hold_up_to_its_stable_pitch() {
+        // The pitch reaches G1 at once, then sinks to 40 cents over 440 ms,
+        // past the window, before it comes back: no step, so the swing back
+        // counts.
+        let sag = path(&[(0.03, 0.0), (0.06, 200.0), (0.5, 40.0), (0.55, 200.0)]);
+        assert!(!falls_before_g1(sag, 0.9));
+    }
+
+    #[test]
+    fn a_scoop_away_from_the_step_still_steps() {
+        // The pitch scoops 80 cents back toward the start, past half the
+        // lead, then steps down to D1: a step, so the scoop does not count.
+        let scoop = path(&[(0.03, 0.0), (0.05, 80.0), (0.07, 80.0), (0.11, -200.0)]);
+        let line = notes(&[(0.2, 0.5, 41.0), (0.5, 1.1, 39.0)]);
+        let read = find_glides(&fall_into_e1(scoop), &line, |_, _| false, |_, _| true);
+        assert!(read.glides.iter().any(|g| g.from_silence), "{read:?}");
+    }
+
+    #[test]
+    fn the_nearest_note_names_a_stable_pitch() {
+        // The fall lands at 4140 cents, nearest the note at 41.6, which
+        // rounds to the same note as the hold at 4245: no step, and the
+        // pitch swings back 105 of the 120 cents. The note at 41.0, first
+        // in the list, would make it a step.
+        let track = track(1.2, |t| {
+            (0.2..1.1).contains(&t).then(|| {
+                let x = ((t - 0.2) / 0.09).clamp(0.0, 1.0);
+                4260.0 - 120.0 * x + path(&[(0.38, 0.0), (0.41, 105.0)])(t)
+            })
+        });
+        let line = notes(&[(0.2, 1.1, 41.0), (0.2, 1.1, 41.6), (0.2, 1.1, 42.0)]);
+        let read = find_glides(&track, &line, |_, _| false, |_, _| true);
+        assert_eq!(read.glides, [], "{read:?}");
+    }
+
+    #[test]
+    fn a_portamento_that_stalls_under_half_the_way_is_lost() {
+        // A stall of 100 ms at 80 cents forms its own stable pitch, which no
+        // note matches, so the motion is no step and swings back; one of
+        // 60 ms does not.
+        let stall = |hold: f64| {
+            path(&[
+                (0.03, 0.0),
+                (0.05, 80.0),
+                (0.05 + hold, 80.0),
+                (0.08 + hold, 200.0),
+            ])
+        };
+        assert!(falls_before_g1(stall(0.06), 0.5));
+        assert!(!falls_before_g1(stall(0.1), 0.5));
+    }
+
+    #[test]
+    fn a_move_under_the_glide_interval_is_no_step() {
+        // A 70-cent move matches F1 within 30 cents but is no step, so it
+        // swings back past half the 120-cent lead.
+        let line = notes(&[(0.2, 1.1, 41.0), (0.4, 1.1, 42.0)]);
+        let after = path(&[(0.03, 0.0), (0.06, 70.0)]);
+        let read = find_glides(&fall_into_e1(after), &line, |_, _| false, |_, _| true);
+        assert_eq!(read.glides, [], "{read:?}");
     }
 
     #[test]
