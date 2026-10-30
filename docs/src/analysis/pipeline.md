@@ -308,7 +308,7 @@ The cleanup runs five steps and prints the note count after each [fact].
   rise test below. The note before the dip can read louder than the one
   after it, so the climb starts at the quietest reading [fact]. At the
   same times the level at the note's fundamental alone, one DFT bin over
-  one period, must reach 22 dB above its quietest reading before the
+  one period, must reach 23 dB above its quietest reading before the
   split in a reading from the split on. The piece after the split must last
   50 ms, and the attack rule below must hold between the two pieces.
   Each piece keeps the note's key, octave flag and velocity [fact]. A
@@ -336,10 +336,11 @@ The cleanup runs five steps and prints the note count after each [fact].
   where the split join alone keeps 12; with the fundamental's dip it
   keeps the 12 [synthetic]. Held A1s 6 to 30 dB under a gated D2, C2,
   E2, A2 or A3 give the split join's notes in every case [synthetic].
-- Why 22 dB: from 22 to 25 dB the generated sets give the same notes
-  [synthetic]. At 19 dB squares loud for 60 to 80 % of the cycle split
-  a held note further in 70 runs where 22 dB gives 50, and at 30 dB
-  gated runs hit 12 fewer gates [synthetic].
+- Why 23 dB: from 21 to 25 dB the generated sets give the same notes,
+  and 23 dB lies in the middle [synthetic]. At 19 and 20 dB squares
+  loud for 60 to 80 % of the cycle split a held note further in 72 runs
+  where 23 dB gives 52, and at 30 dB gated runs hit 8 fewer gates
+  [synthetic].
 - Why the next note starts at the cut: on a real vocal stem the decoder
   started the next note of a key 58 ms after its attack, and the cut
   there left a fragment of 58 ms before it [fact].
@@ -370,9 +371,9 @@ The cleanup runs five steps and prints the note count after each [fact].
   for the squares the limits below give [synthetic]. On the first set
   8 of the 716 runs come closer to the true notes, and gated runs hit
   1245 gates where they hit 1205. On the second set 12 of the 130 gated
-  runs and 10 of the 24 two-voice runs keep more repeats, 1664 gates hit
+  runs and 10 of the 24 two-voice runs keep more repeats, 1666 gates hit
   where 1558 were. The fourth set keeps the same notes. Every A1
-  sixteenths run keeps more: 874 of 1024 gates hit where 214 were
+  sixteenths run keeps more: 872 of 1024 gates hit where 214 were
   [synthetic]. On the eval the dry 110 Hz saw with a 0.3 s release keeps
   all 6 of its notes where it kept 5 [synthetic]. The bass clean group's
   onset F1 rises by 0.002 to 0.003 under every setting and the bass
@@ -543,7 +544,7 @@ The cleanup runs five steps and prints the note count after each [fact].
     vibrato under such a square splits the same way, in 18 of the 96
     runs, all loud for 60 or 70 % [synthetic]. The attack
     split cuts such a note at its pulses as well: squares loud for 60, 70
-    and 80 % split further than without the split in 13, 20 and 7 of
+    and 80 % split further than without the split in 15, 20 and 7 of
     their 240 runs, and a vibrato under one in 10 of 96. An A1 under an
     8 Hz square loud for 70 % gives 32 notes, one a pulse, where it gave
     8 [synthetic]. The model's onset activation at those pulses, 0.25 to

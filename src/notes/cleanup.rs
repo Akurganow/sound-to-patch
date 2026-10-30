@@ -81,11 +81,11 @@ pub const ATTACK_DIP: Decibels = Decibels::from_const(19.0);
 /// the split join alone. The bin of [`StemLevels::fundamental_level`]
 /// rejects the note's harmonics alone, fully only where a period is a
 /// whole number of samples, and from about A6 up a harmonic leaks within
-/// 23 dB. On the generated sets 22 to 25 dB give the same
-/// notes. At 19 dB squares loud for 60 to 80 % of the cycle split a held
-/// note further in 70 runs where 22 dB gives 50, and at 30 dB gated runs
-/// keep 12 fewer repeats.
-pub const FUNDAMENTAL_DIP: Decibels = Decibels::from_const(22.0);
+/// 23 dB. On the generated sets 21 to 25 dB give the same notes, and
+/// 23 dB lies in the middle. At 19 and 20 dB squares loud for 60 to 80 %
+/// of the cycle split a held note further in 72 runs where 23 dB gives
+/// 52, and at 30 dB gated runs hit 8 fewer gates.
+pub const FUNDAMENTAL_DIP: Decibels = Decibels::from_const(23.0);
 /// How far the level at the note's own harmonics must dip in the same
 /// frames.
 ///
@@ -1541,9 +1541,9 @@ mod tests {
         // An A2 at 0.5 under a tone at its second harmonic at 2, and in the
         // gap the A2 alone: the stem and the harmonics dip past 30 dB. The
         // fundamental reads up to about 0.55 after the gap, where the
-        // tone's step leaks into its bin, so 0.042 lies 22.3 dB below it
-        // and 0.045 21.7 dB.
-        for (floor, expected) in [(0.042, 2), (0.045, 1)] {
+        // tone's step leaks into its bin, so 0.0375 lies 23.3 dB below it
+        // and 0.04 22.7 dB.
+        for (floor, expected) in [(0.0375, 2), (0.04, 1)] {
             let mono = harmonic_stem(|t| {
                 if (-0.05..0.0).contains(&t) {
                     (floor, 0.0)
