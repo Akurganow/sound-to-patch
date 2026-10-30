@@ -527,13 +527,14 @@ unit test with the input bytes inline, next to the code it broke.
   parts with known notes and prints its tables. It stays local, renders
   its audio on each run and commits nothing. Run it as a release build:
   the f0 tracker is part of our crate, so a debug run costs about 15
-  times the CPU time: 160 s against 10 s for the whole table. `--part TEXT` runs the matching parts and
-  prints their notes, raw and clean. It fails when a golden of the
-  cleanup breaks. The dry 110 Hz saw must show its octave copy at MIDI 57
-  before the cleanup, and only true notes after it: 5 of its 6, since the
-  model misses one onset. Its six notes through reverb must give the six
-  true notes. Those stems cost seconds of CPU time each in a debug build, so no
-  test in CI runs them.
+  times the CPU time: 160 s against 10 s for the whole table.
+  `--part TEXT` runs the matching parts and prints their notes, raw and
+  clean. It fails when a golden of the cleanup breaks. The dry 110 Hz saw
+  must show its octave copy at MIDI 57 before the cleanup, and all 6 of
+  its true notes after it: the model misses the fourth onset, and the
+  attack split restores it. Its six notes through reverb must give the
+  six true notes. Those stems cost seconds of CPU time each in a debug
+  build, so no test in CI runs them.
 - Noise comes from SplitMix64, which the generator and
   `tests/it/support/rng.rs` implement bit for bit, so a noise recipe gives
   the same signal in both languages.

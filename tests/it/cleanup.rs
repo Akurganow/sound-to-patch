@@ -3,8 +3,8 @@
 
 use sound_to_patch::audio::SampleRate;
 use sound_to_patch::notes::{
-    MODEL_SHA256, NoteList, PitchTrack, Profile, TRANSCRIBER_VERSION, Transcriber, Voicing,
-    clean_up, join_splits, merge_overlaps, transcribe_stem,
+    CleanupSteps, MODEL_SHA256, NoteList, PitchTrack, Profile, TRANSCRIBER_VERSION, Transcriber,
+    Voicing, clean_up, join_splits, merge_overlaps, transcribe_stem,
 };
 use sound_to_patch::units::Bpm;
 
@@ -82,7 +82,7 @@ fn four_seconds() -> Vec<f64> {
 /// 0.25 s with a linear attack of `attack` seconds, then fall with time
 /// constant `tail` (silence at 0), over white noise `floor` decibels below
 /// 0.3.
-fn gated(f0s: &[f64], attack: f64, on: f64, tail: f64, floor: f64) -> Vec<f64> {
+pub(crate) fn gated(f0s: &[f64], attack: f64, on: f64, tail: f64, floor: f64) -> Vec<f64> {
     let t = four_seconds();
     let saws: Vec<Vec<f64>> = f0s
         .iter()
@@ -135,14 +135,15 @@ fn phased(rate: f64, phase: f64) -> impl Fn(f64) -> f64 {
 
 /// What the cleanup gives on a stem: the decoded notes with the bass
 /// profile at 120 BPM, the count after the ghost merge, the notes after
-/// the split join with no attack test (the stem read as silence), and the
-/// kept notes. It runs `clean_up` with an empty f0 track, which takes minutes
+/// the split join with no attack test (the stem read as silence), the
+/// kept notes and the count after each cleanup step. It runs `clean_up` with an empty f0 track, which takes minutes
 /// on these stems in a debug build: every note stays unchecked.
 struct Cleaned {
     decoded: NoteList,
     merged: usize,
     onset_only: NoteList,
     kept: NoteList,
+    steps: CleanupSteps,
 }
 
 fn cleaned(stem: &[f64]) -> Cleaned {
@@ -167,6 +168,7 @@ fn cleaned(stem: &[f64]) -> Cleaned {
         merged: merged.notes().len(),
         onset_only,
         kept,
+        steps,
     }
 }
 
@@ -204,7 +206,8 @@ fn a_gated_55_hz_saw_keeps_its_16_repeats() {
 
 /// The decoder reads a gated A1 with 30 ms gaps as 9 notes for 16, and no
 /// later step could find the rest (#280). The split at attacks gives each
-/// gate its note, within the eval's 50 ms.
+/// gate its note, within the eval's 50 ms, before the split join, which
+/// keeps them.
 #[test]
 fn a_gated_55_hz_saw_with_30_ms_gaps_gets_its_16_notes() {
     let found = cleaned(&gated(&[55.0], 0.005, 0.22, 0.0, -400.0));
@@ -215,6 +218,11 @@ fn a_gated_55_hz_saw_with_30_ms_gaps_gets_its_16_notes() {
             gates_hit(&found.kept, 33.0)
         ),
         (9, 16, 16)
+    );
+    let steps = found.steps;
+    assert_eq!(
+        (steps.merged, steps.split, steps.joined, steps.kept),
+        (9, 16, 16, 16)
     );
 }
 
@@ -609,13 +617,12 @@ fn a_square_tremolo_off_for_30_percent_splits_like_a_gate() {
     );
 }
 
-/// A held A1 20 dB under a louder A2 gated for 0.2 s in every 0.25 s
-/// dips at the A1's harmonics too, since below A2 their window cannot
-/// tell the two keys apart: the A1 splits at the A2's gates. The split
-/// join keeps 12 of the decoder's 14 pieces, and the attack split cuts
-/// the rest, 16.
+/// A held A1 20 dB under a louder A2 gated for 0.2 s in every 0.25 s.
+/// The stem dips at each gate, and below A2 so do the A1's harmonics, so
+/// the split join keeps 12 of the decoder's 14 pieces apart. The A1's
+/// fundamental never dips, so the attack split cuts nothing more.
 #[test]
-fn a_held_note_under_a_louder_gated_key_splits_at_its_gates() {
+fn a_held_note_under_a_louder_gated_octave_gets_no_more_cuts() {
     let low = held(55.0, |_| 0.1);
     let stem: Vec<f64> = gated(&[110.0], 0.005, 0.2, 0.0, -400.0)
         .into_iter()
@@ -635,6 +642,6 @@ fn a_held_note_under_a_louder_gated_key_splits_at_its_gates() {
             at_a1(&found.onset_only),
             at_a1(&found.kept)
         ),
-        (14, 4, 16)
+        (14, 4, 12)
     );
 }

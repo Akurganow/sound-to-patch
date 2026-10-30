@@ -139,14 +139,15 @@ velocity 100. Then check what the model cannot get right:
   by level, like a gated note with short gaps. The cleanup reads it as a
   gate and can split a held note into repeats: an A1 under a 6 Hz square
   off for 30 % of each cycle gives 24 notes, one a pulse, where the
-  model's onsets alone give 6. A vibrato under such a square splits the same way. Only
-  a cue such as a phase reset at each repeat could tell the two apart. A
-  square off half of each cycle holds only as long as it dips. No
-  generated one split a held note further than the model's onsets do,
-  and no sine tremolo of 2 to 20 Hz did.
+  model's onsets alone give 6. A vibrato under such a square splits the
+  same way. Only a cue such as a phase reset at each repeat could tell
+  the two apart. A square off half of each cycle holds only as long as
+  it dips. No generated one split a held note further than the model's
+  onsets do, and no sine tremolo of 2 to 20 Hz did.
 - A held low note under a louder gated note of another key can split at
-  that note's gates: an A1 20 dB under a gated A2 gives 16 notes. Below
-  A2 the cleanup cannot tell the two keys apart by their harmonics.
+  that note's gates when the model splits it there: an A1 20 dB under a
+  gated A2 gives 12 notes. Below A2 the cleanup cannot tell the two keys
+  apart by their harmonics.
 
 Plan a manual pass in the piano roll. The [pipeline
 page](../analysis/pipeline.md#evaluation) gives the scores on generated

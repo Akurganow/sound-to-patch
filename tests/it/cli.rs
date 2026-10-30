@@ -182,6 +182,32 @@ fn notes_writes_the_notes_of_a_generated_wav() {
 
 /// A silent stem gives no note: exit 1 with the cause and the fix, and
 /// nothing written.
+/// A 55 Hz saw gated with 30 ms gaps: the decoder reads 9 notes for 16, and
+/// the output counts the 16 from the attack split on.
+#[test]
+fn notes_prints_the_count_after_the_attack_split() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("bass.wav");
+    let stem = crate::cleanup::gated(&[55.0], 0.005, 0.22, 0.0, -400.0);
+    crate::support::signals::write_wav16(&path, 22_050, &[stem]);
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .arg("notes")
+        .arg(&path)
+        .args(["--bpm", "120", "--bpm-exact", "--profile", "bass", "--out"])
+        .arg(dir.path().join("cli"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    for step in [
+        "ghost merge: 9 notes",
+        "attack split: 16 notes",
+        "split join: 16 notes",
+    ] {
+        assert!(stdout.contains(step), "no `{step}` in {stdout}");
+    }
+}
+
 #[test]
 fn notes_on_a_silent_stem_fails_and_writes_nothing() {
     let dir = tempfile::tempdir().unwrap();

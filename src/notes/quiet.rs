@@ -23,8 +23,8 @@ pub const QUIET_FRAME: Seconds = Seconds::from_const(0.025);
 pub const QUIET_GATE: Decibels = crate::dsp::ACTIVE_GATE_DB;
 
 /// The stem's level in [`QUIET_FRAME`] frames at its own rate, with a
-/// quarter-frame hop, frame `m` centred at `m` hops. The quiet-note guard
-/// and the split join read the same frames.
+/// quarter-frame hop, frame `m` centred at `m` hops. The quiet-note guard,
+/// the attack split and the split join read the same frames.
 #[derive(Clone, Debug)]
 pub struct StemLevels<'a> {
     mono: &'a [f64],
@@ -141,21 +141,42 @@ impl<'a> StemLevels<'a> {
         (1..=HARMONICS)
             .map(|h| f0 * f64::from(h))
             .take_while(|&frequency| frequency < rate / 2.0)
-            .map(|frequency| {
-                // The Goertzel recurrence: the power of one DFT bin at any
-                // frequency.
-                let coefficient = 2.0 * (std::f64::consts::TAU * frequency / rate).cos();
-                let (mut s1, mut s2) = (0.0, 0.0);
-                for x in &windowed {
-                    let s0 = x + coefficient * s1 - s2;
-                    s2 = s1;
-                    s1 = s0;
-                }
-                (s1 * s1 + s2 * s2 - coefficient * s1 * s2).max(0.0)
-            })
+            .map(|frequency| bin_power(&windowed, frequency, rate))
             .sum::<f64>()
             .sqrt()
     }
+
+    /// Returns the level at the fundamental of `pitch` of the one period of
+    /// samples centred at `time`, with their mean removed: one DFT bin over
+    /// the period. The bin's zeros fall on every harmonic of the note, so a
+    /// tone an octave up reads nothing. Samples outside the stem count as
+    /// silence.
+    #[must_use]
+    pub fn fundamental_level(&self, time: Seconds, pitch: MidiPitch) -> f64 {
+        let rate = f64::from(self.rate.get());
+        let f0 = Hz::from(pitch).get();
+        let len = cast::round_to_usize(rate / f0).unwrap_or(1).max(1);
+        let centre = cast::round_to_usize(time.get() * rate).unwrap_or(0);
+        let raw: Vec<f64> = (0..len)
+            .map(|offset| self.sample(centre, offset, len))
+            .collect();
+        let mean = raw.iter().sum::<f64>() / cast::usize_to_f64(len);
+        let centred: Vec<f64> = raw.iter().map(|x| x - mean).collect();
+        bin_power(&centred, f0, rate).sqrt()
+    }
+}
+
+/// The power of one DFT bin of `samples` at `frequency`, at `rate`, by the
+/// Goertzel recurrence, which reads any frequency.
+fn bin_power(samples: &[f64], frequency: f64, rate: f64) -> f64 {
+    let coefficient = 2.0 * (std::f64::consts::TAU * frequency / rate).cos();
+    let (mut s1, mut s2) = (0.0, 0.0);
+    for x in samples {
+        let s0 = x + coefficient * s1 - s2;
+        s2 = s1;
+        s1 = s0;
+    }
+    (s1 * s1 + s2 * s2 - coefficient * s1 * s2).max(0.0)
 }
 
 /// The harmonics of a note that [`StemLevels::harmonic_level`] sums.
