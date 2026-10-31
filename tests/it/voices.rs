@@ -398,6 +398,10 @@ fn notes_that_all_sound_silent_have_no_count() {
     assert_eq!(layer.max_polyphony, 0);
     assert!(!layer.mono);
     assert_eq!(layer.joins, []);
+    assert_eq!(
+        layer.summary(),
+        ["voices: no note holds a sounding part, so no count"]
+    );
 }
 
 #[test]
@@ -412,6 +416,7 @@ fn a_join_past_the_stem_has_no_verdict() {
     tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
     tone(&mut x, (0.5, 0.9), 165.0, 0.005, 0.0);
     let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins.len(), 2, "{layer:?}");
     assert!(layer.joins[0].dip.is_some(), "{layer:?}");
     for join in &layer.joins[1..] {
         assert_eq!(join.dip, None, "{join:?}");
@@ -485,6 +490,27 @@ fn the_dip_window_stops_at_the_stem_end() {
     let layer = cut_after_join(0.0, 0.015);
     let dip = layer.joins[0].dip.expect("a level before the join");
     assert!(dip.get() < 3.0, "{:?}", layer.joins[0]);
+}
+
+#[test]
+fn a_note_past_the_stem_holds_no_voice() {
+    // Two overlapping notes past the end and one that crosses it.
+    let list = [(0.1, 1.5, 110.0), (1.2, 1.6, 165.0), (1.3, 1.7, 247.0)];
+    let mut x = vec![0.0; samples(1.0, FS)];
+    tone(&mut x, (0.1, 1.0), 110.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert!(layer.mono, "{layer:?}");
+    assert_eq!(layer.max_polyphony, 1, "{layer:?}");
+    assert!((layer.mean_polyphony - 1.0).abs() < 1e-9, "{layer:?}");
+}
+
+#[test]
+fn a_stem_with_only_notes_past_it_has_no_count() {
+    let layer = read(
+        &vec![0.1; samples(1.0, FS)],
+        &note_list(&[(2.0, 2.5, 110.0)]),
+    );
+    assert!(!layer.confidence.is_estimate(), "{layer:?}");
 }
 
 #[test]

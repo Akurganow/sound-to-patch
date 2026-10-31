@@ -226,7 +226,20 @@ fn a_join_has_a_stable_record_the_schema_accepts() {
     let report = run(&stem(dir.path()), Some(&path), &dir.path().join("out"));
     let joins = report["voices"]["values"]["joins"].as_array().unwrap();
     assert_eq!(joins.len(), 1, "{joins:?}");
-    assert!(definition("join").is_valid(&joins[0]), "{:?}", joins[0]);
+    let schema = definition("join");
+    assert!(schema.is_valid(&joins[0]), "{:?}", joins[0]);
+    let no_estimate = serde_json::json!({
+        "estimate": false,
+        "reasons": [{ "code": "no_note_list", "value": true }],
+    });
+    let mut unread = joins[0].clone();
+    unread["dip_db"] = serde_json::Value::Null;
+    unread["legato"] = serde_json::Value::Null;
+    assert!(!schema.is_valid(&unread), "a null verdict with an estimate");
+    unread["confidence"] = no_estimate.clone();
+    assert!(schema.is_valid(&unread), "{unread:?}");
+    unread["legato"] = serde_json::Value::Bool(true);
+    assert!(!schema.is_valid(&unread), "a verdict with no estimate");
     insta::assert_snapshot!(serde_json::to_string_pretty(&shape(&joins[0])).unwrap());
 }
 

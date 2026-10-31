@@ -12,7 +12,8 @@ this count [fact].
 
 - A note holds a voice from its onset to its note-off knee, or to 25 ms before
   its end without a knee, so a release tail holds no voice, and a note the
-  envelope layer reads as silent holds none [fact]. The issue asks
+  envelope layer reads as silent holds none. A held part stops at the stem end,
+  so a note listed past the stem holds none either [fact]. The issue asks
   for the first note to lie within 3 dB of its sustain level. This reads the
   knee instead and has no level test [fact].
 - Pitches within 60 cents form one voice, so seven detuned copies of one pitch

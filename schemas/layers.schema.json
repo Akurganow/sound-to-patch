@@ -354,7 +354,10 @@
         "centroid_change": { "type": ["number", "null"] },
         "legato": { "type": ["boolean", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
-      }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "dip_db": { "type": "null" }, "legato": { "type": "null" } } },
+      "else": { "properties": { "dip_db": { "type": "number" }, "legato": { "type": "boolean" } } }
     },
     "pitch": {
       "description": "The pitch layer of a monophonic line: glides, pitch drops and vibrato, each record with its own confidence. values is null when the line plays chords or has no notes; a line without a glide holds an empty list.",

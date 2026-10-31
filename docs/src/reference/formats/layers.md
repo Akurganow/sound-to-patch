@@ -205,7 +205,8 @@ tested for `weak_fundamental`.
 
 The count of voices, read on any line, and the joins of a mono line; the
 [voices layer page](../../analysis/voices.md) explains each method. `values`
-is `null` without notes (reason `no_note_list`). The group's confidence reads
+is `null` without notes (reason `no_note_list`) or when no note holds a sounding
+part in the stem (reason `too_few_notes`). The group's confidence reads
 the share of the held time whose count agrees with the verdict (reason
 `count_agreement`). `flags` is empty and `needs_render` is `false`.
 

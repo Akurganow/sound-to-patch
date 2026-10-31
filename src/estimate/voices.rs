@@ -52,10 +52,10 @@ const AGREE_MEDIUM: f64 = 0.7;
 
 /// The convention of the count.
 pub const VOICES_CONVENTION: &str = "each note counts from its onset to its note-off knee, or to \
-25 ms before its end without one, so a release tail holds no voice; pitches within 60 cents form \
+25 ms before its end without one, so a release tail holds no voice, and up to the stem end; pitches within 60 cents form \
 one voice; max_polyphony is the most voices that have started by any onset and are held 50 ms after \
 it, mono when that is 1; mean_polyphony is the mean count over the time any note is held, so short \
-overlaps can lift it above max_polyphony; null without notes";
+overlaps can lift it above max_polyphony; null when no note holds a sounding part";
 
 /// The convention of a join.
 pub const JOIN_CONVENTION: &str = "consecutive notes of a mono line whose gap, the later onset \
@@ -173,7 +173,7 @@ impl VoicesLayer {
         if notes.is_empty() {
             return Self::no_count(Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?);
         }
-        let held = held_parts(notes, input.envelope);
+        let held = held_parts(notes, input.envelope, stem_end(input));
         if held.is_empty() {
             return Self::no_count(Reason::new(ReasonCode::TooFewNotes, Signal::Count(0))?);
         }
@@ -225,7 +225,19 @@ impl VoicesLayer {
     #[must_use]
     pub fn summary(&self) -> Vec<String> {
         if !self.confidence.is_estimate() {
-            return vec!["voices: no notes, so no count".to_owned()];
+            let no_list = self
+                .confidence
+                .reasons()
+                .iter()
+                .any(|r| r.code() == ReasonCode::NoNoteList);
+            return vec![
+                if no_list {
+                    "voices: no notes, so no count"
+                } else {
+                    "voices: no note holds a sounding part, so no count"
+                }
+                .to_owned(),
+            ];
         }
         let legato = self.joins.iter().filter(|j| j.legato == Some(true)).count();
         vec![format!(
@@ -258,15 +270,21 @@ fn is_silent(note: &Note, envelope: &EnvelopeLayer) -> bool {
     envelope.silent.contains(&(note.onset(), note.pitch()))
 }
 
-/// Each note's held part. A note that does not sound holds none, nor does one
-/// that ends within [`KNEE_END_GAP`] of its onset.
-fn held_parts(notes: &[Note], envelope: &EnvelopeLayer) -> Vec<Held> {
+/// The length of the stem.
+fn stem_end(input: &VoicesInput<'_>) -> f64 {
+    cast::usize_to_f64(input.mono.len()) / input.rate.hz().get()
+}
+
+/// Each note's held part, up to the stem end. A note that does not sound holds
+/// none, nor does one that ends within [`KNEE_END_GAP`] of its onset or starts
+/// past the stem.
+fn held_parts(notes: &[Note], envelope: &EnvelopeLayer, stem_end: f64) -> Vec<Held> {
     notes
         .iter()
         .filter(|n| !is_silent(n, envelope))
         .map(|n| Held {
             onset: n.onset().get(),
-            end: held_end(n, envelope),
+            end: held_end(n, envelope).min(stem_end),
             hz: hz(n),
         })
         .filter(|h| h.end > h.onset)
@@ -353,10 +371,9 @@ fn join(
     // from the earlier note's held end at the latest.
     let dip_from = (at - span).min(held_end(before, input.envelope));
     let from = (dip_from - SUSTAIN_SPAN.get()).max(before.onset().get());
-    let stem_end = cast::usize_to_f64(input.mono.len()) / input.rate.hz().get();
     let to = (at + span + SUSTAIN_SPAN.get())
         .min(after.offset().get())
-        .min(stem_end);
+        .min(stem_end(input));
     // Shorter than a period, a window ripples with the waveform.
     let lower = Hz::clamped(hz(before).min(hz(after)));
     let fs = input.rate.hz().get();
