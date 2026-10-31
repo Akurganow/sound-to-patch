@@ -1,0 +1,29 @@
+---
+source: tests/it/report.rs
+expression: "serde_json::to_string_pretty(&shape(&joins[0])).unwrap()"
+---
+{
+  "time_s": "<number>",
+  "gap_ms": "<number>",
+  "dip_db": "<number>",
+  "centroid_change": "<number>",
+  "legato": true,
+  "confidence": {
+    "level": "low",
+    "reasons": [
+      {
+        "code": "attack_hides_join",
+        "value": false
+      },
+      {
+        "code": "level_kept_at_join",
+        "value": true
+      },
+      {
+        "code": "stem_edge_at_join",
+        "value": false
+      }
+    ],
+    "estimate": true
+  }
+}

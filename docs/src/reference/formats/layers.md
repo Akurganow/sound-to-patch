@@ -17,6 +17,7 @@ report against it.
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
 | `pitch` | The pitch layer group below: glides, pitch drops and vibrato. |
+| `voices` | The voices layer group below: the count of voices and the joins of a mono line. |
 | `envelope` | The envelope layer group below: the amplitude envelope of the notes and the sidechain pump. |
 | `conventions` | The convention of every number in `stem` and of every record of the layer groups, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
@@ -38,6 +39,10 @@ older reports keeps their schema.
 The envelope group breaks reports of `layers/1` from releases up to 0.25:
 `envelope` is a new required top-level key, and `conventions` requires the
 keys `envelope`, `note_off`, `level_spread_db` and `pump`.
+
+The voices group breaks reports of `layers/1` from releases up to 0.26:
+`voices` is a new required top-level key, and `conventions` requires the
+keys `voices` and `joins`.
 
 ## The transcription group
 
@@ -195,6 +200,33 @@ reported) and `no_notes`. At a sample rate under about 4 times a note's
 pitch the second harmonic cannot be measured, and that note is not
 tested for `weak_fundamental`.
 `needs_render` is `false`.
+
+## The voices group
+
+The count of voices, read on any line, and the joins of a mono line; the
+[voices layer page](../../analysis/voices.md) explains each method. `values`
+is `null` without notes (reason `no_note_list`) or when no note holds a sounding
+part in the stem (reason `too_few_notes`). The group's confidence reads
+the share of the held time whose count agrees with the verdict (reason
+`count_agreement`). `flags` is empty and `needs_render` is `false`.
+
+| Field | Unit | Range | Meaning |
+| :-- | :-- | :-- | :-- |
+| `mono` | | | `max_polyphony` is 1. |
+| `max_polyphony` | count | 1 or more | The most voices that have started by any onset and are held 50 ms after it. |
+| `mean_polyphony` | count | 0 or more | The mean count over the time any note is held; it can exceed `max_polyphony`. |
+| `joins` | | | One record per join, in time order; empty on a line that is not mono. |
+
+A join record:
+
+| Field | Unit | Range | Meaning |
+| :-- | :-- | :-- | :-- |
+| `time_s` | seconds | 0 or more | The later note's onset. |
+| `gap_ms` | milliseconds | under 30 | The later onset minus the earlier end in the note list; negative when they overlap there. |
+| `dip_db` | dB | 0 or more | How far the level falls at the join under the quieter note; `null` when neither note has a level beside the join. |
+| `centroid_change` | ratio | | The centroid over f0 after the join over the same before it, minus 1; `null` when either side holds no signal or runs past either end of the stem. |
+| `legato` | | | `dip_db` is under 1; `null` without a dip. |
+| `confidence` | | | Low when the verdict is legato (reason `level_kept_at_join`), no attack was read (`no_attack_read`), the stem's edge reaches a level window beside the join (`stem_edge_at_join`) or the median attack is over 100 ms (`attack_hides_join`), else medium; no estimate without a dip. |
 
 ## The envelope group
 

@@ -15,6 +15,7 @@
 - [Pipeline](analysis/pipeline.md)
 - [Pitch layer](analysis/pitch.md)
 - [Envelope layer](analysis/envelope.md)
+- [Voices layer](analysis/voices.md)
 - [Common methods](analysis/methods.md)
 
 # Reference

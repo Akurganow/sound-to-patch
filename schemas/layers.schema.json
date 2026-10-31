@@ -5,7 +5,7 @@
   "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _ms, _db, _dbfs, _deg, _st, _ct) where the value has one; a field without a suffix is a count, a ratio, a share, a power, a flag or a tempo. The conventions group names the convention of every number in the stem group and of every record in the layer groups.",
   "type": "object",
   "required": [
-    "schema", "source", "synth", "stem", "transcription", "pitch", "envelope", "conventions"
+    "schema", "source", "synth", "stem", "transcription", "pitch", "voices", "envelope", "conventions"
   ],
   "additionalProperties": false,
   "properties": {
@@ -19,6 +19,7 @@
     "stem": { "$ref": "#/$defs/stem" },
     "transcription": { "$ref": "#/$defs/transcription" },
     "pitch": { "$ref": "#/$defs/pitch" },
+    "voices": { "$ref": "#/$defs/voices" },
     "envelope": { "$ref": "#/$defs/envelope" },
     "conventions": { "$ref": "#/$defs/conventions" }
   },
@@ -209,7 +210,7 @@
         "frame_size", "statistics", "spectral", "bpm", "bpm_given", "bpm_refined", "duration_s",
         "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
         "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
-        "flatness", "band_share", "stereo", "confidence", "pitch", "glides", "drops",
+        "flatness", "band_share", "stereo", "confidence", "pitch", "voices", "joins", "glides", "drops",
         "sub_band_line", "vibrato", "envelope", "note_off", "level_spread_db", "pump"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
@@ -314,6 +315,49 @@
         "knee_s": { "type": ["number", "null"], "minimum": 0 },
         "pooled": { "type": "boolean" }
       }
+    },
+    "voices": {
+      "description": "The count of voices, read on any line, and the joins of a mono line. values is null without notes (reason no_note_list) or when no note holds a sounding part in the stem (reason too_few_notes).",
+      "allOf": [
+        { "$ref": "#/$defs/layer_group" },
+        {
+          "properties": {
+            "values": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "required": ["mono", "max_polyphony", "mean_polyphony", "joins"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "mono": { "type": "boolean" },
+                    "max_polyphony": { "type": "integer", "minimum": 1 },
+                    "mean_polyphony": { "type": "number", "minimum": 0 },
+                    "joins": { "type": "array", "items": { "$ref": "#/$defs/join" } }
+                  }
+                }
+              ]
+            },
+            "flags": { "additionalProperties": false }
+          }
+        }
+      ]
+    },
+    "join": {
+      "type": "object",
+      "required": ["time_s", "gap_ms", "dip_db", "centroid_change", "legato", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "time_s": { "type": "number", "minimum": 0 },
+        "gap_ms": { "type": "number" },
+        "dip_db": { "type": ["number", "null"], "minimum": 0 },
+        "centroid_change": { "type": ["number", "null"] },
+        "legato": { "type": ["boolean", "null"] },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "if": { "$ref": "#/$defs/no_estimate" },
+      "then": { "properties": { "dip_db": { "type": "null" }, "legato": { "type": "null" } } },
+      "else": { "properties": { "dip_db": { "type": "number" }, "legato": { "type": "boolean" } } }
     },
     "pitch": {
       "description": "The pitch layer of a monophonic line: glides, pitch drops and vibrato, each record with its own confidence. values is null when the line plays chords or has no notes; a line without a glide holds an empty list.",

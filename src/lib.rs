@@ -17,7 +17,8 @@
 //!   the analytic signal and decay fits.
 //! - [`estimate`]: the layer estimators that read the note list and the f0
 //!   track: the pitch layer with its glides, pitch drops and vibrato, and
-//!   the envelope layer with the note envelopes and the sidechain pump.
+//!   the envelope layer with the note envelopes and the sidechain pump, and
+//!   the voices layer with the count of voices and the joins of a mono line.
 //! - [`music`]: the music dictionary for notes, embedded from
 //!   `dictionary/music/`, with the key, note-name, numeral and chord-symbol
 //!   parsers, the snap rule and the rhythm arithmetic.

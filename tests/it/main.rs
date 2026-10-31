@@ -72,4 +72,6 @@ mod transcribe;
 #[cfg(test)]
 mod vita;
 #[cfg(test)]
+mod voices;
+#[cfg(test)]
 mod words;

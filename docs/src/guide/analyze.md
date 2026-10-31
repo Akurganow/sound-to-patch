@@ -2,7 +2,7 @@
 
 `sound-to-patch analyze` reads one stem and writes a report of its tempo,
 notes, level, spectrum, band edge, stereo image, glides, pitch drops,
-vibrato, amplitude envelope and sidechain pump, with a spectrogram image. The report is what an agent reads
+vibrato, amplitude envelope, sidechain pump and voices, with a spectrogram image. The report is what an agent reads
 before it writes an edit list for the [preset commands](preset.md). The
 [CLI reference](../reference/cli.md#analyze) lists every flag, and the
 [layer report page](../reference/formats/layers.md) every field.
@@ -36,6 +36,7 @@ vibrato: 0 of 0 steady spans
 envelope: 16 of 16 notes read, 16 pooled, 16 with a note-off knee
 envelope: attack 19 ms (upper bound), hold 0 ms, decay none, sustain 0.0 dB
 pump: too few sustained beats
+voices: mono, up to 1, mean 1.00; 15 joins, 0 legato
 wrote bass/layers.json
 wrote bass/spectrogram.png
 ```
@@ -58,6 +59,9 @@ starts each note at full level, under 1.5 periods of 55 Hz, so the attack
 is an upper bound; it holds its level, so it has no decay and a sustain
 of 0 dB. The last is the pump: no beat here lies inside one held note from
 50 ms before it, so none counts.
+The last line before the files is the [voices layer](../analysis/voices.md):
+one voice at a time, and each of the 15 joins falls to silence, so none reads
+legato.
 The files go into a folder named after the stem, next to it. `--out` picks
 another folder. A warning about a packet that did not decode goes to
 standard error; the stem keeps its timing, with silence in its place.

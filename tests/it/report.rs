@@ -200,6 +200,50 @@ fn every_stem_field_has_a_convention() {
 }
 
 #[test]
+fn a_join_has_a_stable_record_the_schema_accepts() {
+    use sound_to_patch::notes::{Note, NoteList};
+    use sound_to_patch::units::{MidiPitch, Seconds};
+
+    let dir = tempfile::tempdir().unwrap();
+    let note = |from: f64, to: f64| {
+        Note::new(
+            Seconds::clamped(from),
+            Seconds::clamped(to),
+            MidiPitch::new(33.0).unwrap(),
+        )
+        .unwrap()
+    };
+    let list = NoteList::new(vec![note(0.25, 1.5), note(1.5, 2.75)]);
+    let bytes = write_named_midi(
+        &list,
+        Bpm::new(120.0).unwrap(),
+        Velocities::Constant(DEFAULT_VELOCITY),
+        "bass.wav",
+    )
+    .unwrap();
+    let path = dir.path().join("bass.mid");
+    fs::write(&path, bytes).unwrap();
+    let report = run(&stem(dir.path()), Some(&path), &dir.path().join("out"));
+    let joins = report["voices"]["values"]["joins"].as_array().unwrap();
+    assert_eq!(joins.len(), 1, "{joins:?}");
+    let schema = definition("join");
+    assert!(schema.is_valid(&joins[0]), "{:?}", joins[0]);
+    let no_estimate = serde_json::json!({
+        "estimate": false,
+        "reasons": [{ "code": "no_note_list", "value": true }],
+    });
+    let mut unread = joins[0].clone();
+    unread["dip_db"] = serde_json::Value::Null;
+    unread["legato"] = serde_json::Value::Null;
+    assert!(!schema.is_valid(&unread), "a null verdict with an estimate");
+    unread["confidence"] = no_estimate.clone();
+    assert!(schema.is_valid(&unread), "{unread:?}");
+    unread["legato"] = serde_json::Value::Bool(true);
+    assert!(!schema.is_valid(&unread), "a verdict with no estimate");
+    insta::assert_snapshot!(serde_json::to_string_pretty(&shape(&joins[0])).unwrap());
+}
+
+#[test]
 fn the_schema_accepts_the_report_and_rejects_broken_ones() {
     let dir = tempfile::tempdir().unwrap();
     let report = run(

@@ -19,6 +19,7 @@ use crate::estimate::pitch::{
     DROP_CONVENTION, DropFit, GLIDE_CONVENTION, GlideFit, LINE_CONVENTION, PitchFlags, PitchLayer,
     Rated, VIBRATO_CONVENTION, VibratoFit,
 };
+use crate::estimate::voices::{JOIN_CONVENTION, Join, VOICES_CONVENTION, VoicesLayer};
 use crate::notes::TranscriptionRecord;
 use crate::synth::Synth;
 use crate::units::{
@@ -52,7 +53,7 @@ pub fn layers_json(
     source: &str,
     tempo: &Tempo,
     transcription: Option<&TranscriptionRecord>,
-    (pitch, envelope): (&PitchLayer, &EnvelopeLayer),
+    (pitch, envelope, voices): (&PitchLayer, &EnvelopeLayer, &VoicesLayer),
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
@@ -61,6 +62,7 @@ pub fn layers_json(
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
         pitch: PitchGroup::new(pitch),
+        voices: VoicesGroup::new(voices),
         envelope: EnvelopeGroup::new(envelope),
         conventions: Conventions::new(descriptors.frame_len),
     };
@@ -79,6 +81,7 @@ struct Layers<'a> {
     /// The transcriber's model and settings, `null` when none ran.
     transcription: Option<&'a TranscriptionRecord>,
     pitch: PitchGroup<'a>,
+    voices: VoicesGroup<'a>,
     envelope: EnvelopeGroup<'a>,
     conventions: Conventions,
 }
@@ -170,6 +173,69 @@ impl NoteRecord {
             attack_upper_bound: note.attack_upper_bound,
             knee_s: note.knee,
             pooled,
+        }
+    }
+}
+
+/// The voices layer as a layer group. The mapping step fills
+/// `suggested_edits` in a later release; until then the list is empty.
+#[derive(Serialize)]
+struct VoicesGroup<'a> {
+    values: Option<VoicesValues<'a>>,
+    confidence: &'a Confidence<NoSpread>,
+    flags: VoicesFlags,
+    needs_render: bool,
+    suggested_edits: [(); 0],
+}
+
+/// The voices layer reads no flags yet.
+#[derive(Serialize)]
+struct VoicesFlags {}
+
+impl<'a> VoicesGroup<'a> {
+    fn new(layer: &'a VoicesLayer) -> Self {
+        Self {
+            values: layer.confidence.is_estimate().then(|| VoicesValues {
+                mono: layer.mono,
+                max_polyphony: layer.max_polyphony,
+                mean_polyphony: layer.mean_polyphony,
+                joins: layer.joins.iter().map(JoinRecord::of).collect(),
+            }),
+            confidence: &layer.confidence,
+            flags: VoicesFlags {},
+            needs_render: false,
+            suggested_edits: [],
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct VoicesValues<'a> {
+    mono: bool,
+    max_polyphony: usize,
+    mean_polyphony: f64,
+    joins: Vec<JoinRecord<'a>>,
+}
+
+#[derive(Serialize)]
+struct JoinRecord<'a> {
+    time_s: Seconds,
+    gap_ms: f64,
+    dip_db: Option<Decibels>,
+    centroid_change: Option<f64>,
+    legato: Option<bool>,
+    confidence: &'a Confidence<NoSpread>,
+}
+
+impl<'a> JoinRecord<'a> {
+    fn of(join: &'a Join) -> Self {
+        Self {
+            time_s: join.time,
+            gap_ms: 1000.0 * join.gap,
+            dip_db: join.dip,
+            centroid_change: join.centroid_change,
+            legato: join.legato,
+            confidence: &join.confidence,
         }
     }
 }
@@ -459,6 +525,8 @@ struct Conventions {
     stereo: &'static str,
     confidence: &'static str,
     pitch: &'static str,
+    voices: &'static str,
+    joins: &'static str,
     glides: &'static str,
     drops: &'static str,
     sub_band_line: &'static str,
@@ -500,6 +568,8 @@ list, MIDI pitch to hertz with A4 = 440 Hz; null without a note list",
             confidence: "level, reasons and spread of each estimate; the spread of a statistic \
 is its interquartile range and that of the band edge one bin width, in the unit of the value; \
 estimate false means no value, with the reasons why",
+            voices: VOICES_CONVENTION,
+            joins: JOIN_CONVENTION,
             pitch: "the pitch layer of a monophonic line, read from the f0 track, the note list \
 and the sub-band line; values is null when the line plays chords or has no notes; every time is \
 audio time from the start of the stem",
