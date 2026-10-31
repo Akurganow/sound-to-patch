@@ -304,8 +304,10 @@ notes [fact].
     half the level window in bins. A gate near a division folds onto one
     curve as well, but comes back at once, within the smear of the window
     [synthetic].
-  - The grid's read reads none: under the same shape test. A gate off the
-    tempo often reads no lock on the grid; see Limits for what the test costs
+  - The grid's read reads none: when the search's curve falls faster than it
+    recovers and takes 3 bins from half its depth back to a quarter. A gate off
+    the tempo often reads no lock on the grid, and the level window's share is
+    left out because it costs real ducks under a low note; see Limits
     [synthetic].
 
   The set behind the numbers below holds 123,840 generated signals: a
@@ -318,17 +320,17 @@ notes [fact].
 
   | Signal | Off the tempo | Signals | Free read stays | No free rule | This rule |
   | :-- | :-- | :-- | :-- | :-- | :-- |
-  | Duck, release 80 ms or more | up to 2.5 % | 47520 | 35719 | 35818 | 35789 |
-  | | 3 % | 8640 | 1329 | 5014 | 4869 |
-  | | 3.5 % | 8640 | 164 | 4127 | 1711 |
+  | Duck, release 80 ms or more | up to 2.5 % | 47520 | 36008 | 36107 | 36078 |
+  | | 3 % | 8640 | 1343 | 5028 | 4883 |
+  | | 3.5 % | 8640 | 169 | 4132 | 1716 |
   | | 4 to 5 % | 17280 | 122 | 4717 | 128 |
-  | Duck, release 30 ms | up to 2.5 % | 15840 | 6265 | 6287 | 6278 |
-  | | 3 % | 2880 | 426 | 605 | 538 |
-  | | 3.5 % | 2880 | 315 | 501 | 348 |
-  | | 4 to 5 % | 5760 | 152 | 279 | 152 |
-  | Square gate | 3 % | 2880 | 10 | 757 | 14 |
-  | | 3.5 % | 2880 | 29 | 654 | 34 |
-  | | 4 to 5 % | 5760 | 11 | 600 | 11 |
+  | Duck, release 30 ms | up to 2.5 % | 15840 | 7440 | 7462 | 7453 |
+  | | 3 % | 2880 | 622 | 801 | 734 |
+  | | 3.5 % | 2880 | 426 | 612 | 459 |
+  | | 4 to 5 % | 5760 | 160 | 287 | 160 |
+  | Square gate | 3 % | 2880 | 21 | 768 | 25 |
+  | | 3.5 % | 2880 | 42 | 667 | 47 |
+  | | 4 to 5 % | 5760 | 14 | 603 | 14 |
   | Saw tremolo | 3 % | 720 | 71 | 498 | 498 |
   | | 3.5 % | 720 | 0 | 352 | 148 |
   | | 4 to 5 % | 1440 | 0 | 293 | 0 |
@@ -456,14 +458,14 @@ chord's beating moves the crossing [synthetic].
   one held note can go unfound [fact]. On the 110 Hz chord, over runs of
   10, 12, 16 and 32 beats and four phases, up to 2.5 % off the tempo, of 176
   cells at each tempo [synthetic]:
-  - A 12 dB duck with an 80 ms release locks in 162, 172, 176, 176 and 173 at
+  - A 12 dB duck with an 80 ms release locks in 173, 175, 176, 176 and 173 at
     60, 80, 96, 128 and 174 BPM.
   - A 6 dB duck with a 150 ms release locks in 172, 165, 135, 159 and 131 at
     60, 80, 96, 128 and 174 BPM. It locks in 8 of 16 on the tempo at 96 BPM,
     and in 1 of 16 at 2.5 % above at 174 BPM.
 - A read that stays on the grid reports the grid's tempo, though the duck
   can lie off it [fact]. Of 11,161 ducks up to 2.5 % off that stayed, the
-  tempo was off by a median of 0.99 % and at most 2.56 %; of 32,050 fitted
+  tempo was off by a median of 0.99 % and at most 2.56 %; of 33,787 fitted
   reads, by a median of 0.08 % and at most 2.22 % [synthetic].
 - A duck on the tempo can move from a grid lock. On the 123,840 signals,
   1 of 4847 grid locks does, 6 dB at 110 Hz and 60 BPM, by 0.89 %. The 76,836
@@ -477,27 +479,29 @@ chord's beating moves the crossing [synthetic].
   those fades, and 0 under the steps. These are ducks of 6 dB or less over 8.9
   to 12.3 beats, by up to 2.7 %. A 6 dB, 150 ms duck at 110 Hz and 60 BPM over
   10 beats, under the 36 dB fade, reads 59.479 BPM [synthetic].
-- A grid read of none takes a fitted beat lock only under a duck's shape, which
-  holds out gates at a price in ducks. The set: 38,400 ducks on the tempo, from 3
-  pitches, 5 tempos, 10 runs of 8.9 to 32 beats, 8 duck settings of 3 to 18 dB and
-  8 phases; 46,080 ducks 0.5 to 2.5 % off, of 6, 12 and 18 dB with releases of 80
-  and 150 ms; 13,824 gates; flat and under fades of 12, 18 and 36 dB. Counted on
-  this path alone [synthetic]:
+- A grid read of none takes a fitted beat lock only when its curve falls faster
+  than it recovers and takes 3 bins from half its depth back to a quarter, which
+  holds out most gates at a small price in ducks. The set: 38,400 ducks on the
+  tempo, from 3 pitches, 5 tempos, 10 runs of 8.9 to 32 beats, 8 duck settings of
+  3 to 18 dB and 8 phases; 46,080 ducks 0.5 to 2.5 % off, of 6, 12 and 18 dB with
+  releases of 80 and 150 ms; 13,824 gates; flat and under fades of 12, 18 and
+  36 dB. Counted on this path alone [synthetic]:
 
   | Fitted read over a grid read of none | Moves on the tempo | Ducks off the tempo that strip | Gates that strip |
   | :-- | :-- | :-- | :-- |
   | No test | 839 | 16,427 | 1733 |
-  | A duck's shape | 617 | 15,571 | 2 |
+  | This test | 653 | 16,150 | 59 |
 
-  - The lost ducks are 856, or 5.2 %. Of them 431 lie at 55 Hz, 522 have a release
-    of 80 ms and 334 of 150 ms [synthetic].
+  - The lost ducks are 277, or 1.7 %. Of them 132 lie at 55 Hz, 117 have a release
+    of 80 ms and 160 of 150 ms [synthetic].
   - Short releases lose more, and slow tempos with them, as the test asks for 3
     bins of a beat. On the 123,840 signals, on this path, ducks that would strip
-    lose 3494 of 6406 at 30 ms, 317 of 4773 at 80 ms, 50 of 4079 at 150 ms and 11
-    of 3976 at 300 ms, and 1554 of 4065 at 60 BPM against 151 of 3168 at 174 BPM.
-    Over all ducks 30 ms and up to 2.5 % off, 6278 of 15,840 strip, against 8996
-    with no test. A 12 dB, 10 ms duck over 480 beats does not strip [synthetic].
-  - The moves left are 115 on a flat level and 171, 164 and 167 under the fades,
+    lose 2004 of 6406 at 30 ms, 61 of 4773 at 80 ms, 7 of 4079 at 150 ms and 2 of
+    3976 at 300 ms, and 998 of 4065 at 60 BPM, 523 of 3649 at 80, 326 of 4930 at
+    96, 141 of 3422 at 128 and 86 of 3168 at 174. Over all ducks of 30 ms up to
+    2.5 % off, 7453 of 15,840 strip, against 8996 with no test. A 12 dB, 10 ms
+    duck over 480 beats does not strip [synthetic].
+  - The moves left are 118 on a flat level and 181, 177 and 177 under the fades,
     by up to 2.46 %. There the duck is real: a move mostly shows that the grid read
     found no lock [synthetic].
 
@@ -519,7 +523,7 @@ chord's beating moves the crossing [synthetic].
   12.3 beats at 96 BPM reads 6.5 dB of ripple on the grid and 1.1 dB at its
   own period, at fold errors of 1.42 and 1.33 dB [synthetic].
 - The shape test can pass a gate. Over 8 phases and 9 to 32 beats, a 12 dB gate
-  3 % below the tempo at 55 Hz and 174 BPM strips in 2 of 376 runs [synthetic].
+  3 % below the tempo at 55 Hz and 174 BPM strips in 4 of 376 runs [synthetic].
 - The depth reads shallow, and the bias depends on the shape: an 18 dB duck
   reads up to 11.8 dB short in the set of Depth bias. On the noiseless chords
   of the 123,840 signals, on the tempo, with releases of 80 ms or more, it

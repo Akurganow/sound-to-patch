@@ -199,8 +199,9 @@ impl Pump {
     ///   duck's shape: over a short span, a duck near the search's end reads
     ///   free. A gate near a division folds onto one curve as well, but
     ///   comes back at once;
-    /// - reads nothing, and the second has a duck's shape: a gate off the
-    ///   tempo often reads no lock on the grid;
+    /// - reads nothing, and the second has a duck's shape without the level
+    ///   window's share of the tail: a gate off the tempo often reads no lock
+    ///   on the grid;
     /// - follows the notes.
     #[must_use]
     pub fn find(
@@ -223,7 +224,10 @@ impl Pump {
                     .is_some_and(|cents| cents <= FREE_REACH.get())
                     && fitted.has_a_ducks_shape(track.window().get())
             }
-            PumpLock::None => fitted.has_a_ducks_shape(track.window().get()),
+            // Over no lock, the window's share costs real ducks under a low
+            // note, and of 1733 gates here only 59 take 3 bins or more to come
+            // back.
+            PumpLock::None => fitted.has_a_ducks_shape(0.0),
             PumpLock::Note => true,
         };
         Some(if replaces { fitted } else { read })

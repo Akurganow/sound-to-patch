@@ -1555,6 +1555,25 @@ fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
 }
 
 #[test]
+fn a_short_tail_under_a_low_note_keeps_a_duck_over_no_lock() {
+    // 12 dB, 80 ms, 2 % slow at 55 Hz and 128 BPM: the grid reads no lock, and
+    // the fitted curve's tail takes 3 bins against the 5.5 that the level
+    // window's share would ask.
+    let (x, notes) = chord_at(55.0, 16.0, 128.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: 128.0 * 0.98,
+    };
+    let read = layer(&ducked(&x, duck, 0.25), &notes, 128.0).pump.unwrap();
+    assert!(read.strips(), "{read:?}");
+    assert!(
+        (read.bpm().get() / (128.0 * 0.98) - 1.0).abs() < 0.004,
+        "{read:?}"
+    );
+}
+
+#[test]
 fn a_duck_too_short_for_the_shape_test_stays_on_the_grid() {
     // A limit, pinned: a 10 ms release comes back as fast as a gate, so this
     // duck's grid read of no lock stays.

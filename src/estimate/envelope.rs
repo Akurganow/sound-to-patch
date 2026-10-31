@@ -130,7 +130,8 @@ or neither does, at a fold error, the standard deviation of the level minus the 
 counted beats, each beat about its own mean, over 1 / 0.9 of that read's and 0.15 dB higher, or, \
 when only one of the reads strips, that read strips and has the lower fold error, or reads free on a line within 60 cents of a division \
 under a curve that falls faster than it recovers and takes 3 bins and half the level window from \
-half its depth back to a quarter, or reads none under such a curve; \
+half its depth back to a quarter, or reads none under a curve that falls faster than it recovers \
+and takes 3 bins from half its depth back to a quarter; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \
 or more and the median fall of the beats over the note reaches half the curve's depth, the beats \
 counted again over each note to 25 ms before its end when the held parts give fewer \
