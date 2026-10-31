@@ -12,14 +12,16 @@ use crate::audio::SampleRate;
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
 use crate::dsp::{Stft, StftError, StftParams, frame_descriptors, quantile};
-use crate::estimate::envelope::{EnvelopeLayer, KNEE_END_GAP, LevelTrack, RMS_PERIODS};
+use crate::estimate::envelope::{EnvelopeLayer, KNEE_END_GAP, LevelTrack, RMS_PERIODS, rms_window};
 use crate::notes::{Note, NoteList};
 use crate::units::{Cents, Decibels, Hz, Seconds};
 
 /// Notes this close in pitch count as one voice: seven detuned copies of one
 /// pitch form one cluster.
 pub const CLUSTER_CENTS: Cents = Cents::from_const(60.0);
-/// Two notes count as two voices only when their held parts overlap this long.
+/// Two notes count as two voices when their held parts overlap for this long or
+/// more, and a later note starting this far before an earlier note's held end
+/// stacks on it.
 pub const OVERLAP_MIN: Seconds = Seconds::from_const(0.05);
 /// Consecutive notes join when the gap between them is under this.
 pub const JOIN_GAP_MAX: Seconds = Seconds::from_const(0.03);
@@ -36,7 +38,7 @@ pub const CENTROID_SPAN: Seconds = Seconds::from_const(0.02);
 ///
 /// Between a 0 dB join and a 12 dB dip that rises over 5 ms at 110 Hz, which
 /// reads 1.35 dB through a window of one period. On a sampled set of generated
-/// joins, 1 dB keeps 91 % of legato joins and finds 85 % of retriggers of 12 dB
+/// joins, 1 dB keeps 91 % of legato joins and finds 86 % of retriggers of 12 dB
 /// or more with attacks of 5 ms or more.
 pub const DIP_RETRIGGER: Decibels = Decibels::from_const(1.0);
 /// An attack longer than this hides a retrigger, so a join reads low.
@@ -49,18 +51,22 @@ const AGREE_MEDIUM: f64 = 0.7;
 /// The convention of the count.
 pub const VOICES_CONVENTION: &str = "each note counts from its onset to its note-off knee, or to \
 25 ms before its end without one, so a release tail holds no voice; pitches within 60 cents form \
-one voice; max_polyphony is the most voices 50 ms after any onset, mono when that is 1; \
-mean_polyphony is the mean over the time any note is held; null without notes";
+one voice; max_polyphony is the most voices that have started by any onset and are held 50 ms after \
+it, mono when that is 1; mean_polyphony is the mean count over the time any note is held, so short \
+overlaps can lift it above max_polyphony; null without notes";
 
 /// The convention of a join.
 pub const JOIN_CONVENTION: &str = "consecutive notes of a mono line whose gap, the later onset \
-minus the earlier end in the note list, is under 30 ms; dip_db is the 10th percentile of the \
-level of the quieter note over up to 100 ms beside the join minus the lowest level within 25 ms of \
-the onset, on an RMS over one period of the lower note; centroid_change is the centroid over f0 \
+minus the earlier end in the note list, is under 30 ms, and whose later onset lies less than 50 ms \
+inside the earlier note's held part; dip_db is the 10th percentile of the \
+level of the quieter note over up to 100 ms beside the join minus the lowest level from 25 ms before \
+the onset, or from the earlier held end when that comes first, on an RMS over one period of the lower note; centroid_change is the centroid over f0 \
 after the join over the same before it, minus 1, over 20 ms or two periods each side, and the \
 verdict does not read it, and it is null when either side holds no signal or runs past the stem; \
 legato when dip_db is under 1; dip_db and legato are null with no estimate when neither note has a \
-level beside the join; confidence low when the median attack is over 100 ms";
+level beside the join; confidence is low when the verdict is legato, as a retrigger with an instant \
+attack keeps its level too, when no attack was read, or when the median attack is over 100 ms, else \
+medium";
 
 /// What the voices layer reads.
 #[derive(Clone, Copy, Debug)]
@@ -102,7 +108,9 @@ pub struct VoicesLayer {
     pub mono: bool,
     /// The most voices at once.
     pub max_polyphony: usize,
-    /// The mean count over the time that any note is held.
+    /// The mean count over the time that any note is held. An overlap under
+    /// [`OVERLAP_MIN`] counts here and not in `max_polyphony`, so this can exceed
+    /// it.
     pub mean_polyphony: f64,
     /// The joins of a mono line, in time order; empty on any other line.
     pub joins: Vec<Join>,
@@ -174,7 +182,7 @@ impl VoicesLayer {
         let held = held_parts(notes, input.envelope);
         let max_polyphony = held
             .iter()
-            .map(|h| voices_at(&held, h.onset + OVERLAP_MIN.get()).max(1))
+            .map(|h| voices_at(&held, h.onset, h.onset + OVERLAP_MIN.get()).max(1))
             .max()
             .unwrap_or(1);
         let (mean_polyphony, agree) = frame_counts(&held, max_polyphony);
@@ -227,35 +235,36 @@ fn hz(note: &Note) -> f64 {
     Hz::from(note.pitch()).get()
 }
 
-/// Each note's held part: from its onset to its knee, or to [`KNEE_END_GAP`]
-/// before its end when it has none. A release tail holds no voice, and a note
-/// that does not sound holds none.
+/// The end of a note's held part: its knee, or [`KNEE_END_GAP`] before its end
+/// when it has none. A release tail holds no voice.
+fn held_end(note: &Note, envelope: &EnvelopeLayer) -> f64 {
+    let knee = envelope
+        .notes
+        .iter()
+        .find(|e| e.onset == note.onset() && e.pitch == note.pitch())
+        .and_then(|e| e.knee);
+    knee.map_or(note.offset().get() - KNEE_END_GAP.get(), Seconds::get)
+        .max(note.onset().get())
+}
+
+/// Each note's held part. A note that does not sound holds none.
 fn held_parts(notes: &[Note], envelope: &EnvelopeLayer) -> Vec<Held> {
     notes
         .iter()
         .filter(|n| !envelope.silent.contains(&(n.onset(), n.pitch())))
-        .map(|n| {
-            let onset = n.onset().get();
-            let knee = envelope
-                .notes
-                .iter()
-                .find(|e| e.onset == n.onset() && e.pitch == n.pitch())
-                .and_then(|e| e.knee);
-            let end = knee.map_or(n.offset().get() - KNEE_END_GAP.get(), Seconds::get);
-            Held {
-                onset,
-                end: end.max(onset),
-                hz: hz(n),
-            }
+        .map(|n| Held {
+            onset: n.onset().get(),
+            end: held_end(n, envelope),
+            hz: hz(n),
         })
         .collect()
 }
 
-/// The clusters of pitches held at `t`.
-fn voices_at(held: &[Held], t: f64) -> usize {
+/// The clusters of the pitches that started by `started` and are held at `t`.
+fn voices_at(held: &[Held], started: f64, t: f64) -> usize {
     let mut pitches: Vec<f64> = held
         .iter()
-        .filter(|h| h.onset <= t && t <= h.end)
+        .filter(|h| h.onset <= started && t <= h.end)
         .map(|h| h.hz)
         .collect();
     pitches.sort_by(f64::total_cmp);
@@ -276,7 +285,8 @@ fn frame_counts(held: &[Held], max: usize) -> (f64, f64) {
     let (mut total, mut time, mut agree) = (0.0, 0.0, 0.0);
     for pair in edges.windows(2) {
         let span = pair[1] - pair[0];
-        let count = voices_at(held, f64::midpoint(pair[0], pair[1]));
+        let middle = f64::midpoint(pair[0], pair[1]);
+        let count = voices_at(held, middle, middle);
         if span > 0.0 && count > 0 {
             total += cast::usize_to_f64(count) * span;
             time += span;
@@ -292,15 +302,18 @@ fn frame_counts(held: &[Held], max: usize) -> (f64, f64) {
     }
 }
 
-/// The joins of a mono line.
+/// The joins of a mono line. A later note that starts well inside the earlier
+/// one's held part stacks on it and joins nothing.
 fn joins(input: &VoicesInput<'_>, notes: &[Note]) -> Result<Vec<Join>, VoicesError> {
     let attack = input.envelope.attack.value().map(|s| s.median().get());
-    let hides = attack.is_some_and(|a| a > ATTACK_HIDES_JOIN.get());
     let mut read = Vec::new();
     for pair in notes.windows(2) {
         let gap = pair[1].onset().get() - pair[0].offset().get();
-        if gap < JOIN_GAP_MAX.get() {
-            read.push(join(input, &pair[0], &pair[1], gap, hides)?);
+        let start = pair[1].onset().get();
+        let stacked = start <= pair[0].onset().get()
+            || start + OVERLAP_MIN.get() < held_end(&pair[0], input.envelope);
+        if gap < JOIN_GAP_MAX.get() && !stacked {
+            read.push(join(input, &pair[0], &pair[1], gap, attack)?);
         }
     }
     Ok(read)
@@ -311,19 +324,31 @@ fn join(
     before: &Note,
     after: &Note,
     gap: f64,
-    hides: bool,
+    attack: Option<f64>,
 ) -> Result<Join, VoicesError> {
     let at = after.onset().get();
     let span = JOIN_SPAN.get();
-    let from = (at - span - SUSTAIN_SPAN.get()).max(before.onset().get());
+    // A transcribed onset can land after the silence it follows, so the dip reads
+    // from the earlier note's held end at the latest.
+    let dip_from = (at - span).min(held_end(before, input.envelope));
+    let from = (dip_from - SUSTAIN_SPAN.get()).max(before.onset().get());
     let to = (at + span + SUSTAIN_SPAN.get()).min(after.offset().get());
     // Shorter than a period, a window ripples with the waveform.
+    let lower = Hz::clamped(hz(before).min(hz(after)));
+    let fs = input.rate.hz().get();
+    let margin = rms_window(lower, RMS_PERIODS).get();
+    let first = cast::floor_to_usize((from - margin).max(0.0) * fs)
+        .unwrap_or(0)
+        .min(input.mono.len());
+    let last = cast::ceil_to_usize((to + margin) * fs)
+        .unwrap_or(first)
+        .clamp(first, input.mono.len());
     let track = LevelTrack::rms(
-        input.mono,
-        0,
+        &input.mono[first..last],
+        first,
         input.rate,
         (Seconds::clamped(from), Seconds::clamped(to)),
-        Hz::clamped(hz(before).min(hz(after))),
+        lower,
         RMS_PERIODS,
     );
     let level = |a: f64, b: f64| -> &[f64] {
@@ -335,9 +360,9 @@ fn join(
         sorted.sort_by(f64::total_cmp);
         quantile(&sorted, SUSTAIN_QUANTILE)
     };
-    let left = low_level(from, at - span);
+    let left = low_level(from, dip_from);
     let right = low_level(at + span, to);
-    let low = level(at - span, at + span)
+    let low = level(dip_from, at + span)
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min);
@@ -349,20 +374,32 @@ fn join(
     let dip = quieter.map(|q| (q - low).max(0.0));
     let centroid_change = centroid_change(input, before, after)?;
     let legato = dip.map(|d| d < DIP_RETRIGGER.get());
-    let confidence = if dip.is_none() {
-        Confidence::no_estimate(vec![Reason::new(
+    let confidence = match (dip, attack) {
+        (None, _) => Confidence::no_estimate(vec![Reason::new(
             ReasonCode::TooFewFrames,
             Signal::Count(0),
-        )?])?
-    } else {
-        Confidence::estimate(
-            if hides { Level::Low } else { Level::Medium },
+        )?])?,
+        (Some(_), None) => Confidence::estimate(
+            Level::Low,
             None,
-            vec![Reason::new(
-                ReasonCode::AttackHidesJoin,
-                Signal::Flag(hides),
-            )?],
-        )?
+            vec![Reason::new(ReasonCode::NoAttackRead, Signal::Flag(true))?],
+        )?,
+        (Some(_), Some(attack)) => {
+            let hides = attack > ATTACK_HIDES_JOIN.get();
+            let kept = legato == Some(true);
+            Confidence::estimate(
+                if hides || kept {
+                    Level::Low
+                } else {
+                    Level::Medium
+                },
+                None,
+                vec![
+                    Reason::new(ReasonCode::AttackHidesJoin, Signal::Flag(hides))?,
+                    Reason::new(ReasonCode::LevelKeptAtJoin, Signal::Flag(kept))?,
+                ],
+            )?
+        }
     };
     Ok(Join {
         time: after.onset(),

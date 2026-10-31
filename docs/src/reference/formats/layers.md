@@ -212,8 +212,8 @@ the share of the held time whose count agrees with the verdict (reason
 | Field | Unit | Range | Meaning |
 | :-- | :-- | :-- | :-- |
 | `mono` | | | `max_polyphony` is 1. |
-| `max_polyphony` | count | 1 or more | The most voices 50 ms after any onset. |
-| `mean_polyphony` | count | 0 or more | The mean count over the time any note is held. |
+| `max_polyphony` | count | 1 or more | The most voices that have started by any onset and are held 50 ms after it. |
+| `mean_polyphony` | count | 0 or more | The mean count over the time any note is held; it can exceed `max_polyphony`. |
 | `joins` | | | One record per join, in time order; empty on a line that is not mono. |
 
 A join record:
@@ -225,7 +225,7 @@ A join record:
 | `dip_db` | dB | 0 or more | How far the level falls at the join under the quieter note; `null` when neither note has a level beside the join. |
 | `centroid_change` | ratio | | The centroid over f0 after the join over the same before it, minus 1; `null` when either side holds no signal or runs past the stem. |
 | `legato` | | | `dip_db` is under 1; `null` without a dip. |
-| `confidence` | | | Low when the median attack is over 100 ms (reason `attack_hides_join`), else medium. |
+| `confidence` | | | Low when the verdict is legato (reason `level_kept_at_join`), no attack was read (`no_attack_read`) or the median attack is over 100 ms (`attack_hides_join`), else medium; no estimate without a dip. |
 
 ## The envelope group
 

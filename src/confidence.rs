@@ -174,6 +174,11 @@ reason_codes! {
     CountAgreement,
     /// The stem's attack is long enough to hide a retrigger.
     AttackHidesJoin,
+    /// No attack was read, so a retrigger it hides cannot be ruled out.
+    NoAttackRead,
+    /// The level holds through a join, which a retrigger with an instant attack
+    /// does too.
+    LevelKeptAtJoin,
     /// The interquartile range of a value over the notes whose median is 0,
     /// so the range has no ratio to the median. The value reads low.
     ZeroMedian,

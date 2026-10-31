@@ -91,7 +91,8 @@ joins `READY` when its adapter lands.
   vibrato, each record with its own confidence. `envelope` holds the
   envelope layer: per-note level tracks, the attack, hold, decay, sustain
   and note-off knee pooled over the notes, and the sidechain pump read on
-  the beats that a held note covers.
+  the beats that a held note covers `voices` holds the
+  voices layer: the count of voices on any line and the joins of a mono line.
 - `notes`: the note list that the transcriber and the MIDI reader produce
   and every layer reads. The transcriber runs the model once per stem and
   decodes that run with the settings of a profile or of the register and

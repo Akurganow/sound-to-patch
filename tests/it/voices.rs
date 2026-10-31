@@ -71,6 +71,7 @@ fn a_unison_of_seven_is_one_voice() {
     let layer = read(&x, &note_list(&list));
     assert_eq!(layer.max_polyphony, 1);
     assert!(layer.mono);
+    assert_eq!(layer.joins, []);
 }
 
 #[test]
@@ -161,20 +162,21 @@ fn a_long_attack_lowers_a_join() {
 
 #[test]
 fn an_overlap_counts_from_50_ms_of_held_notes() {
+    // Both tones run on past the first note's end, so its held part ends 25 ms
+    // before its listed end, at 0.575 s.
     let line = |overlap: f64| {
-        let list = [(0.1, 0.6, 110.0), (0.6 - overlap, 1.1, 165.0)];
+        let list = [(0.1, 0.6, 110.0), (0.575 - overlap, 1.1, 165.0)];
         let mut x = vec![0.0; samples(1.2, FS)];
-        for &(a, b, f) in &list {
-            tone(&mut x, (a, b), f, 0.005, 0.0);
-        }
-        read(&x, &note_list(&list))
+        tone(&mut x, (0.1, 1.2), 110.0, 0.005, 0.0);
+        tone(&mut x, (0.575 - overlap, 1.2), 165.0, 0.005, 0.0);
+        read(&x, &note_list(&list)).max_polyphony
     };
-    assert_eq!(line(0.09).max_polyphony, 2);
-    assert_eq!(line(0.03).max_polyphony, 1);
+    assert_eq!(line(0.055), 2);
+    assert_eq!(line(0.045), 1);
 }
 
 #[test]
-fn a_gap_of_30_ms_or_more_is_no_join() {
+fn a_gap_under_30_ms_joins() {
     let line = |gap: f64| {
         let list = [(0.1, 0.6, 110.0), (0.6 + gap, 1.1, 165.0)];
         let mut x = vec![0.0; samples(1.2, FS)];
@@ -183,8 +185,141 @@ fn a_gap_of_30_ms_or_more_is_no_join() {
         }
         read(&x, &note_list(&list)).joins.len()
     };
-    assert_eq!(line(0.02), 1);
-    assert_eq!(line(0.04), 0);
+    assert_eq!(line(0.027), 1);
+    assert_eq!(line(0.033), 0);
+}
+
+#[test]
+fn a_cluster_ends_at_60_cents() {
+    let line = |cents: f64| {
+        let f = 110.0 * 2f64.powf(cents / 1200.0);
+        let list = [(0.1, 1.0, 110.0), (0.1, 1.0, f)];
+        let mut x = vec![0.0; samples(1.2, FS)];
+        tone(&mut x, (0.1, 1.0), 110.0, 0.005, 0.0);
+        tone(&mut x, (0.1, 1.0), f, 0.005, 0.0);
+        read(&x, &note_list(&list)).max_polyphony
+    };
+    assert_eq!(line(55.0), 1);
+    assert_eq!(line(65.0), 2);
+}
+
+#[test]
+fn a_short_note_inside_a_long_one_joins_nothing() {
+    let list = [(0.1, 1.0, 110.0), (0.1, 0.13, 165.0), (0.5, 0.53, 220.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.005, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert!(layer.mono, "{layer:?}");
+    assert_eq!(layer.joins, []);
+}
+
+#[test]
+fn a_note_stacked_inside_a_long_one_joins_nothing() {
+    let list = [(0.1, 1.0, 110.0), (0.5, 0.53, 165.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.005, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert!(layer.mono, "{layer:?}");
+    assert_eq!(layer.joins, []);
+}
+
+#[test]
+fn a_later_note_at_the_same_onset_joins_nothing() {
+    let list = [(0.1, 0.13, 110.0), (0.1, 1.0, 165.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.005, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert!(layer.mono, "{layer:?}");
+    assert_eq!(layer.joins, []);
+}
+
+#[test]
+fn a_note_starting_inside_the_50_ms_does_not_count_early() {
+    // The first holds to 0.16 s and the second starts at 0.12 s: 40 ms held
+    // together, though both are held 50 ms after the first onset would reach
+    // the second's start.
+    let list = [(0.1, 0.185, 110.0), (0.12, 1.1, 165.0)];
+    let mut x = vec![0.0; samples(1.3, FS)];
+    tone(&mut x, (0.1, 1.3), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.12, 1.3), 165.0, 0.005, 0.0);
+    assert_eq!(read(&x, &note_list(&list)).max_polyphony, 1);
+}
+
+#[test]
+fn silence_before_a_late_onset_is_no_legato() {
+    // The note list puts the second onset 40 ms after the silence ends, past the
+    // 25 ms before it, as a transcribed onset can.
+    let list = [(0.1, 0.57, 110.0), (0.59, 1.1, 165.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.55, 1.1), 165.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins[0].legato, Some(false), "{:?}", layer.joins[0]);
+}
+
+#[test]
+fn a_join_reads_medium_only_on_a_dip_with_a_short_attack() {
+    let level = |layer: &VoicesLayer| layer.joins[0].confidence.level();
+    assert_eq!(level(&joined(12.0, 0.08)), Some(Level::Medium));
+    assert_eq!(level(&joined(12.0, 0.15)), Some(Level::Low));
+    // A join that keeps its level cannot rule out an instant retrigger.
+    assert_eq!(level(&joined(0.0, 0.08)), Some(Level::Low));
+}
+
+#[test]
+fn a_join_with_no_attack_read_reads_low() {
+    // The tones sound before their listed onsets, so no attack shows.
+    let list = [(0.5, 1.0, 110.0), (1.0, 1.5, 165.0)];
+    let mut x = vec![0.0; samples(1.6, FS)];
+    tone(&mut x, (0.0, 1.0), 110.0, 0.0, 0.0);
+    tone(&mut x, (1.0, 1.6), 165.0, 0.0, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(
+        layer.joins[0].confidence.level(),
+        Some(Level::Low),
+        "{layer:?}"
+    );
+    assert_eq!(layer.joins[0].legato, Some(true));
+}
+
+#[test]
+fn the_count_reads_low_medium_and_high_by_the_share_that_agrees() {
+    // The tones run on past the list, so each note holds to 25 ms before its
+    // end, and the two overlap over 1 s less the second's delay.
+    let level = |delay: f64| {
+        let list = [(0.1, 1.125, 110.0), (0.1 + delay, 1.125, 165.0)];
+        let mut x = vec![0.0; samples(1.3, FS)];
+        tone(&mut x, (0.1, 1.3), 110.0, 0.005, 0.0);
+        tone(&mut x, (0.1 + delay, 1.3), 165.0, 0.005, 0.0);
+        read(&x, &note_list(&list)).confidence.level()
+    };
+    assert_eq!(level(0.05), Some(Level::High));
+    assert_eq!(level(0.15), Some(Level::Medium));
+    assert_eq!(level(0.25), Some(Level::Medium));
+    assert_eq!(level(0.5), Some(Level::Low));
+}
+
+#[test]
+fn a_flat_line_with_no_dip_reads_legato_under_a_wobble() {
+    // A 6 dB wobble at 8 Hz is no dip at the join.
+    let at = 1.0;
+    let length = samples(2.0, FS);
+    let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / FS;
+            let wobble = 10f64.powf((-3.0 + 3.0 * (std::f64::consts::TAU * 8.0 * t).sin()) / 20.0);
+            0.2 * wobble * if t < at { a[i] } else { b[i] }
+        })
+        .collect();
+    let layer = read(&x, &note_list(&[(0.0, at, 110.0), (at, 2.0, 165.0)]));
+    assert_eq!(layer.joins[0].legato, Some(true), "{:?}", layer.joins[0]);
 }
 
 #[test]
