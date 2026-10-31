@@ -481,7 +481,8 @@ chord's beating moves the crossing [synthetic].
   10 beats, under the 36 dB fade, reads 59.479 BPM [synthetic].
 - A grid read of none takes a fitted beat lock only when its curve falls faster
   than it recovers and takes 3 bins from half its depth back to a quarter, which
-  holds out most gates at a small price in ducks. The set: 38,400 ducks on the
+  holds out most gates. The price in ducks is small for releases of 80 ms or
+  more and large at 30 ms, which loses 2004 of 6406 below. The set: 38,400 ducks on the
   tempo, from 3 pitches, 5 tempos, 10 runs of 8.9 to 32 beats, 8 duck settings of
   3 to 18 dB and 8 phases; 46,080 ducks 0.5 to 2.5 % off, of 6, 12 and 18 dB with
   releases of 80 and 150 ms; 13,824 gates; flat and under fades of 12, 18 and
@@ -505,6 +506,10 @@ chord's beating moves the crossing [synthetic].
     by up to 2.46 %. There the duck is real: a move mostly shows that the grid read
     found no lock [synthetic].
 
+- A chord whose level wanders with no pump can read as a pump. Under linear
+  interpolation of Gaussian dB knots, spaced 0.25 to 1 beat, with sigmas of 1, 2
+  and 4 dB, at 55, 110 and 220 Hz, 60 to 174 BPM and 9, 16 and 32 beats, 5 of
+  2,592 strip, at 3 to 4 dB, 4 of them at a sigma of 4 dB [synthetic].
 - A level step inside a beat stays in that beat's fold error, and a step on a
   beat edge does not, so a slightly different period can win by moving an edge
   onto the step. One step of 6, 12 or 24 dB, about 0.35 or 0.65 through the run

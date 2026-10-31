@@ -1957,16 +1957,65 @@ fn a_fitted_read_over_no_lock_needs_a_ducks_shape() {
 
     let (x, notes) = chord_at(110.0, 16.0, 128.0);
     let duck = Duck {
-        depth_db: 12.0,
+        depth_db: 6.0,
         release_s: 0.08,
         bpm: 128.0 * 0.99,
     };
-    let read = layer(&ducked(&x, duck, 0.0), &notes, 128.0).pump.unwrap();
+    let read = layer(&ducked(&x, duck, 0.25), &notes, 128.0).pump.unwrap();
     assert!(read.strips(), "{read:?}");
     assert!(
         (read.bpm().get() / (128.0 * 0.99) - 1.0).abs() < 0.004,
         "{read:?}"
     );
+}
+
+#[test]
+fn a_gate_over_no_lock_with_a_tail_of_2_bins_does_not_strip() {
+    // 2 bins would take it at 124.89 BPM.
+    let (x, notes) = chord_at(220.0, 10.0, 128.0);
+    let period = 60.0 / (128.0 * 0.99);
+    let gated = under(&x, |t| {
+        if (t / period + 0.125).fract() < 0.3 {
+            -9.0
+        } else {
+            0.0
+        }
+    });
+    let read = layer(&gated, &notes, 128.0).pump.unwrap();
+    assert!(!read.strips(), "{read:?}");
+    assert_eq!(read.bpm().get(), 128.0, "{read:?}");
+}
+
+#[test]
+fn a_fitted_read_over_a_note_lock_needs_no_shape_test() {
+    // A held A2 and an E3 struck every 4 beats, under a duck 2 % fast: the grid's
+    // read follows the notes.
+    let bpm = 80.0;
+    let seconds = 32.0 * 60.0 / bpm;
+    let length = samples(seconds, fs());
+    let held = saw(110.0, fs(), length, 0.0);
+    let upper = saw(164.81, fs(), length, 0.3);
+    let mix: Vec<f64> = held
+        .iter()
+        .zip(&upper)
+        .map(|(a, b)| 0.3 * (a + b))
+        .collect();
+    let mut list = vec![(0.0, seconds, 110.0)];
+    for bar in 0..8 {
+        let start = f64::from(bar) * 4.0 * 60.0 / bpm;
+        list.push((start, start + 4.0 * 60.0 / bpm, 164.81));
+    }
+    let duck = Duck {
+        depth_db: 9.0,
+        release_s: 0.08,
+        bpm: bpm * 1.02,
+    };
+    let read = layer(&duck.apply(&mix, fs()), &note_list(&list), bpm)
+        .pump
+        .unwrap();
+    assert_eq!(read.lock, PumpLock::Beat, "{read:?}");
+    assert!(read.strips(), "{read:?}");
+    assert!((read.bpm().get() - 81.61).abs() < 0.05, "{read:?}");
 }
 
 #[test]

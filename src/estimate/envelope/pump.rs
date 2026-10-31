@@ -80,12 +80,15 @@ pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
 /// a duck 3 % off.
 pub const FREE_REACH: Cents = Cents::from_const(60.0);
 /// A duck takes at least this many bins, and [`DUCK_TAIL_WINDOWS`] more,
-/// from half its depth back to a quarter of it.
+/// from half its depth back to a quarter of it. A read over a grid read of
+/// none asks this many bins alone.
 ///
 /// A gate comes back at once: at 128 BPM the median is 1 bin for a gate and
 /// 7 to 13 for a duck's release of 80 ms or more.
 pub const DUCK_TAIL_BINS: f64 = 3.0;
-/// The shares of the level window that [`DUCK_TAIL_BINS`] grows by.
+/// The shares of the level window that [`DUCK_TAIL_BINS`] grows by, for a read
+/// that replaces a free read. A read over a grid read of none drops this share,
+/// which costs real ducks under a low note.
 ///
 /// The window smears a gate's edge over its own length, and a bin's time
 /// follows the tempo. A flat 5 bins let a gate through at 55 Hz and 174 BPM,
@@ -225,8 +228,7 @@ impl Pump {
                     && fitted.has_a_ducks_shape(track.window().get())
             }
             // Over no lock, the window's share costs real ducks under a low
-            // note, and of 1733 gates here only 59 take 3 bins or more to come
-            // back.
+            // note, and of 1733 gates here only 59 strip without it.
             PumpLock::None => fitted.has_a_ducks_shape(0.0),
             PumpLock::Note => true,
         };
