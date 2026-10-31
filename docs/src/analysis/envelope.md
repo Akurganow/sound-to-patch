@@ -475,13 +475,21 @@ chord's beating moves the crossing [synthetic].
   those fades, and 0 under the steps. These are ducks of 6 dB or less over 8.9
   to 12.3 beats, by up to 2.7 %. A 6 dB, 150 ms duck at 110 Hz and 60 BPM over
   10 beats, under the 36 dB fade, reads 59.479 BPM [synthetic].
-- A grid read of none takes any fitted beat lock with no fold test, and fades
-  feed that path. Of the same 9,600 stems per level, 122 move this way on a
-  flat level, 174, 198 and 297 under fades of 12, 18 and 36 dB, by up to 2.7 %.
-  At 128 BPM and 110 Hz over 11.2 or 12.3 beats under the 36 dB fade, 4 of 160
-  move, to 127.09 to 127.8 BPM. The set holds only stems on the tempo, so it
-  counts what this path costs and not the ducks off the tempo it finds
-  [synthetic].
+- A grid read of none takes any fitted beat lock with no fold or shape test, and
+  fades feed that path. Of the same 9,600 stems per level, which hold only ducks
+  on the tempo, 120 move this way on a flat level, and 203, 222 and 294 under
+  fades of 12, 18 and 36 dB, by up to 2.46 %. The duck is real there, and the
+  moved reads leave less ripple: a mean of 1.04 dB against 2.0 dB on a flat level
+  and 1.63 dB against 2.08 dB under fades. The table adds 46,080 ducks 0.5 to
+  2.5 % off, of 6, 12 and 18 dB, and 13,824 gates, on the flat level and under
+  the fades. It counts this path alone [synthetic]:
+
+  | Check on this path | Moves of 38,400 on the tempo | Ducks off the tempo that strip | Gates that strip |
+  | :-- | :-- | :-- | :-- |
+  | None, as read | 839 | 16,427 | 1733 |
+  | Lower fold error | 210 | 15,610 | 1607 |
+  | A duck's shape | 617 | 15,571 | 2 |
+
 - A level step inside a beat stays in that beat's fold error, and a step on a
   beat edge does not, so a slightly different period can win by moving an edge
   onto the step. One step of 6, 12 or 24 dB, about 0.35 or 0.65 through the run
