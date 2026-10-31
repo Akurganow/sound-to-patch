@@ -1624,7 +1624,7 @@ fn a_fitted_read_needs_its_fold_error_gain() {
         };
         pump(&ducked(&x, duck, phase), &notes, CHORD[0]).unwrap()
     };
-    // The search's fold error falls by 0.149 dB on the first, and 0.155 dB on
+    // The search's fold error falls by 0.149 dB on the first, and 0.156 dB on
     // the second.
     assert_eq!(read(8.9, -0.005, 0.15, 0.5).bpm().get(), BPM);
     assert_ne!(read(12.0, 0.005, 0.3, 0.75).bpm().get(), BPM);
@@ -1682,7 +1682,7 @@ fn a_fitted_read_can_gain_the_strip() {
 #[test]
 fn a_fitted_read_must_fold_better_to_gain_the_strip() {
     // 8.9 beats at 96 BPM, 1 % fast: the fitted read counts 8 beats against 7
-    // but folds worse, at 1.55 dB of fold error against 1.30 dB.
+    // but folds worse, at 1.53 dB of fold error against 1.28 dB.
     let (x, notes) = chord_at(CHORD[0], 8.9, 96.0);
     let duck = Duck {
         depth_db: 12.0,

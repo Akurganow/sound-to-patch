@@ -103,9 +103,9 @@ pub const FOLD_ERROR_SHARE: f64 = 0.9;
 /// A fold error must also fall by at least this much, in dB, for the search's
 /// read to replace a read that locks on the grid.
 ///
-/// A sub's fold error is small: at 174 BPM, 15 beats on the grid read 0.15 to
-/// 0.40 dB and 14 at a tempo 0.1 % off read 0.11 to 0.29 dB, which the share
-/// passes and which moved the sustain by up to 2.6 dB.
+/// A sub's fold error is small: at 174 BPM a read 0.1 % off, one beat
+/// shorter, passes the share by under this gain, and moved the sustain by up
+/// to 2.6 dB.
 pub const FOLD_ERROR_GAIN: Decibels = Decibels::from_const(0.15);
 /// A tremolo counts when its line swings the level by at least this much
 /// either way. The slow beating of a chord's near-coinciding harmonics
