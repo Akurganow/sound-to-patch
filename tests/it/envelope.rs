@@ -52,6 +52,11 @@ fn layer(x: &[f64], notes: &NoteList, bpm: f64) -> EnvelopeLayer {
 
 /// The pump of a stem whose notes hold from their onsets to their ends.
 fn pump(x: &[f64], notes: &NoteList, f0: f64) -> Option<Pump> {
+    pump_at(x, notes, f0, BPM)
+}
+
+/// [`pump`] on a grid at `bpm`.
+fn pump_at(x: &[f64], notes: &NoteList, f0: f64, bpm: f64) -> Option<Pump> {
     let end = f64::from(u32::try_from(x.len()).unwrap()) / fs();
     let track = LevelTrack::rms(
         x,
@@ -66,7 +71,7 @@ fn pump(x: &[f64], notes: &NoteList, f0: f64) -> Option<Pump> {
         .iter()
         .map(|n| (n.onset().get(), n.offset().get()))
         .collect();
-    Pump::find(&track, grid(BPM), notes, &held)
+    Pump::find(&track, grid(bpm), notes, &held)
 }
 
 /// The held three-note chord of the pump table, 16 beats long.
@@ -1622,6 +1627,26 @@ fn a_duck_past_the_search_reach_stays_free() {
     let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
     assert_eq!(p.lock, PumpLock::Free, "{p:?}");
     assert_eq!(p.bpm().get(), BPM, "{p:?}");
+}
+
+#[test]
+fn a_fold_that_never_comes_back_is_no_duck() {
+    // A wide gate 3.5 % off over 64 beats smears into a shallow fold, whose
+    // curve stays under a quarter of its depth either way from the dip.
+    let bpm = 96.0;
+    let seconds = 64.0 * 60.0 / bpm;
+    let notes = note_list(&CHORD.map(|f| (0.0, seconds, f)));
+    let period = 60.0 / (bpm * 1.035);
+    let x = chord(&CHORD, fs(), seconds, 1);
+    let gated = under(&x, |t| {
+        if (t / period).fract() < 0.3 {
+            -9.0
+        } else {
+            0.0
+        }
+    });
+    let p = pump_at(&gated, &notes, CHORD[0], bpm).unwrap();
+    assert_eq!(p.lock, PumpLock::Free, "{p:?}");
 }
 
 #[test]

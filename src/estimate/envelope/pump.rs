@@ -74,9 +74,11 @@ pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
 /// The search reaches 43 cents, and the line of a duck that far off reads
 /// up to 51 cents over a short span. 60 cents also holds a duck 3 % off.
 pub const FREE_REACH: Cents = Cents::from_const(60.0);
-/// A duck's recovery takes at least this many bins from half its depth back
-/// to a quarter of it. A gate comes back at once: at 128 BPM the median is
-/// 1 bin for a gate and 7 to 13 for a duck's release of 80 ms or more.
+/// A duck takes at least this many bins from half its depth back to a
+/// quarter of it.
+///
+/// A gate comes back at once: at 128 BPM the median is 1 bin for a gate and
+/// 7 to 13 for a duck's release of 80 ms or more.
 pub const DUCK_TAIL_BINS: usize = 5;
 /// The period search's read replaces a read that locks on the grid when it
 /// reads at least this much deeper.
@@ -914,6 +916,39 @@ mod tests {
         };
         assert!(!pump.carries(0.6, 1.6), "beats 0 and 1 do not fall");
         assert!(pump.carries(1.6, 2.6), "beats 2 and 3 fall");
+    }
+
+    #[test]
+    fn a_ducks_shape_recovers_slower_than_it_falls() {
+        // A dip of 8 dB at bin 32, by the bins it takes each way.
+        let shaped = |fall: f64, rise: f64| {
+            let curve: Vec<f64> = (0..PUMP_BINS)
+                .map(|bin| {
+                    let k = cast::usize_to_f64(bin) - 32.0;
+                    let width = if k < 0.0 { fall } else { rise };
+                    -8.0 * (1.0 - k.abs() / width).max(0.0)
+                })
+                .collect();
+            Pump {
+                depth: Decibels::clamped(8.0),
+                back: None,
+                tau: None,
+                lock: PumpLock::Beat,
+                beats: 8,
+                curve,
+                grid: grid(),
+                falls: Vec::new(),
+                longest: (0.0, 0.0),
+            }
+            .has_a_ducks_shape()
+        };
+        assert!(shaped(4.0, 20.0));
+        assert!(!shaped(40.0, 24.0), "falls slower than it recovers");
+        assert!(!shaped(24.0, 24.0), "falls as it recovers");
+        assert!(
+            !shaped(4.0, 12.0),
+            "3 bins from half its depth to a quarter"
+        );
     }
 
     #[test]
