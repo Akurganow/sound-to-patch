@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.26.0](https://github.com/Akurganow/sound-to-patch/compare/a95a7b23ed93bbefe0a4381e1ae29ec20cd93fd0..v0.26.0) - 2026-10-31
+#### Features
+- (**analyze**) report the amplitude envelope and the sidechain pump (#307) - ([a713c34](https://github.com/Akurganow/sound-to-patch/commit/a713c34eda38b1031f2162e1609c05c32ac5b87b)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.25.0](https://github.com/Akurganow/sound-to-patch/compare/e2307d36076451e017c450cb217c63017f186e33..v0.25.0) - 2026-10-30
 #### Features
 - (**notes**) split decoded notes at attacks inside them (#305) - ([e2307d3](https://github.com/Akurganow/sound-to-patch/commit/e2307d36076451e017c450cb217c63017f186e33)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
