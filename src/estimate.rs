@@ -5,5 +5,8 @@
 //! `layers.json`, and a synth mapper turns them into edits.
 //!
 //! - [`pitch`]: glides, pitch drops and vibrato of a monophonic line.
+//! - [`envelope`]: the amplitude envelope of the notes and the sidechain
+//!   pump.
 
+pub mod envelope;
 pub mod pitch;

@@ -1512,6 +1512,221 @@ def glide_issue_table():
     )
 
 
+ENVELOPE_HOP_S = 0.001
+
+
+def envelope_saw(f0, rate, length, phase, top_hz=6000.0):
+    """The saw of the envelope tests: harmonic h at 1/h up to 6 kHz or the
+    Nyquist frequency, starting at `phase` cycles."""
+    n = np.arange(length, dtype=np.float64)
+    x = np.zeros(length)
+    for h in range(1, int(math.floor(min(top_hz, 0.5 * rate) / f0)) + 1):
+        x += np.sin(2.0 * np.pi * h * phase + 2.0 * np.pi * h * f0 / rate * n) / h
+    return x
+
+
+def centred_rms_db(x, rate, f0, periods, floor_s, start_s, end_s):
+    """Centred RMS in dB on a 1 ms hop over the fewest whole periods of f0
+    that reach both `periods` and `floor_s`; the window shrinks at the ends."""
+    window = max(periods, math.ceil(floor_s * f0)) / f0
+    half = max(int(round(0.5 * window * rate)), 1)
+    sums = np.concatenate([[0.0], np.cumsum(x * x)])
+    count = int(math.floor((end_s - start_s) / ENVELOPE_HOP_S + 1e-9)) + 1
+    out = np.empty(count)
+    for i in range(count):
+        centre = int(round((start_s + i * ENVELOPE_HOP_S) * rate))
+        lo, hi = min(max(centre - half, 0), len(x)), min(centre + half, len(x))
+        power = (sums[hi] - sums[lo]) / (hi - lo) if hi > lo else 0.0
+        out[i] = max(10.0 * math.log10(power), -200.0) if power > 0 else -200.0
+    return out
+
+
+def attack_top(db, onset, least):
+    """The top level of an attack from frame `onset`, in dB: at the first
+    frame that the level exceeds by less than 1 dB over as long again as it
+    took to rise to it from under 10 % of it, and at least over `least`
+    frames, the highest frame over that span."""
+    for i in range(max(onset, 1), len(db)):
+        under = [j for j in range(i) if db[j] < db[i] - 20.0]
+        if not under:
+            continue
+        ahead = db[i:min(i + max(i - under[-1], least), len(db) - 1) + 1].max()
+        if ahead < db[i] + 1.0:
+            return ahead
+    raise ValueError("no attack top")
+
+
+def rise_10_90(db, onset, least=None):
+    """The 10-90 % rise of the linear amplitude from frame `onset`, in
+    seconds, both crossings linear between frames: to the attack's top with
+    `least` frames of look-ahead, or without it to the highest frame from
+    the onset on."""
+    amp = 10.0 ** ((db - (db[onset:].max() if least is None else attack_top(db, onset, least))) / 20.0)
+
+    def cross(i, level):
+        a, b = amp[i - 1], amp[i]
+        w = (level - a) / (b - a) if b > a else 1.0
+        return i - 1 + min(max(w, 0.0), 1.0)
+
+    up = next(i for i in range(max(onset, 1), len(amp)) if amp[i] >= 0.9)
+    low = next(i for i in range(up - 1, -1, -1) if amp[i] < 0.1)
+    return (cross(up, 0.9) - cross(low + 1, 0.1)) * ENVELOPE_HOP_S
+
+
+ATTACK_RECIPE = {
+    "sample_rate": 22050,
+    "f0_hz": [55.0, 220.0],
+    "attack_s": [0.001, 0.005, 0.02, 0.1],
+    "note": "one saw note, harmonic h at 1/h up to 6 kHz, at phase uniform(31, 1) cycles and level 0.3, from 0.2 s; a linear attack to 1, then a decay linear in dB over 0.2 s to -6 dB, held to 0.8 s past the attack and released linearly over 50 ms",
+    "track": "centred RMS on a 1 ms hop from 30 ms before the onset",
+    "top": "ours rises to the attack's top: the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, here 1.5 RMS windows, and the shares are of the highest frame over that span; the #69 window rises to the highest frame from the onset on",
+    "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
+    "issue": "the #69 window: two periods of f0 and at least 5 ms, in whole periods",
+    "seed": 31,
+}
+
+# The 10-90 % rise ranges that #69 prints, in ms, per f0 and attack.
+ISSUE_69_ATTACK = {
+    55.0: {0.001: (14.0, 16.6), 0.005: (14.0, 17.1), 0.02: (10.0, 19.0), 0.1: (74.3, 87.3)},
+    220.0: {0.001: (2.7, 4.6), 0.005: (5.0, 7.8), 0.02: (15.1, 18.0), 0.1: (78.2, 81.8)},
+}
+
+
+def attack_note(f0, attack_s, rate):
+    off = 0.2 + attack_s + 0.8
+    length = int(round((off + 0.5) * rate))
+    start, stop = int(round(0.2 * rate)), min(int(round((off + 0.05) * rate)), length)
+    t = np.arange(stop - start) / rate
+    held = np.where(t < attack_s, t / attack_s, 10.0 ** (-6.0 * np.clip((t - attack_s) / 0.2, 0.0, 1.0) / 20.0))
+    at_off = 10.0 ** (-6.0 * min((off - 0.2 - attack_s) / 0.2, 1.0) / 20.0)
+    gain = np.where(t < off - 0.2, held, at_off * np.maximum(1.0 - (t - (off - 0.2)) / 0.05, 0.0))
+    x = np.zeros(length)
+    x[start:stop] = 0.3 * envelope_saw(f0, rate, stop - start, uniform(31, 1)[0]) * gain
+    return x, off
+
+
+def attack_table():
+    r = ATTACK_RECIPE
+    rate = r["sample_rate"]
+    rows, reproduced = [], []
+    for f0 in r["f0_hz"]:
+        for attack_s in r["attack_s"]:
+            x, off = attack_note(f0, attack_s, rate)
+            start = 0.2 - 0.03
+            periods = max(1.0, math.ceil(0.002 * f0))
+            least = math.ceil(1.5 * periods / f0 / ENVELOPE_HOP_S)
+            ours = rise_10_90(centred_rms_db(x, rate, f0, 1.0, 0.002, start, off + 0.09), 30, least)
+            issue = rise_10_90(centred_rms_db(x, rate, f0, 2.0, 0.005, start, off + 0.09), 30)
+            lo, hi = ISSUE_69_ATTACK[f0][attack_s]
+            hop_ms = 1000.0 * ENVELOPE_HOP_S
+            reproduced.append(bool(lo - hop_ms <= 1000.0 * issue <= hi + hop_ms))
+            rows.append({"f0_hz": f0, "attack_s": attack_s, "true_rise_s": 0.8 * attack_s, "rise_s": ours, "issue_window_rise_s": issue})
+    return document(
+        "69-attack",
+        69,
+        "10-90 % rise of the centred RMS of a saw note with a linear attack, with the layer's window and with the #69 window.",
+        "attack_table",
+        ["python", "numpy"],
+        r,
+        {"rows": rows},
+        {"abs": 1e-4, "rel": 0.0},
+        tag="[own, synthetic]",
+        tolerance_note="rise_s within 0.1 ms: both sides read the same frames, and the saws differ only in the last bits of their sines",
+        issue_figures={"figures_ms": {str(f): {str(a): list(v) for a, v in rows_.items()} for f, rows_ in ISSUE_69_ATTACK.items()}, "rows": reproduced, "reproduced": all(reproduced), "why": "the issue gives ranges over estimators; a row reproduces when the #69 window's rise lies within one hop of its range"},
+    )
+
+
+PUMP_RECIPE = {
+    "sample_rate": 22050,
+    "bpm": 128.0,
+    "beats": 16,
+    "chord_hz": [110.0, 130.81, 164.81],
+    "seed": 1,
+    "chord": "saws of the envelope tests, each at phase uniform(1, 3) cycles in chord order, summed and scaled to a peak of 0.5, held from 0 s to the end",
+    "duck": "gain 1 - (1 - 10^(-depth / 20)) exp(-(t mod beat) / release) on every beat from 0 s",
+    "rows": [[0.0, 0.15], [6.0, 0.15], [12.0, 0.08], [12.0, 0.15], [12.0, 0.3], [18.0, 0.15]],
+    "track": "centred RMS in dB over two periods of 110 Hz on a 1 ms hop from 0 s to the end",
+    "beats_counted": "a beat counts when it starts 50 ms or more after 0 s and ends by the end",
+    "curve": "64 phase bins per beat, each beat minus its 90th percentile, the median over the beats",
+    "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within 1.5 dB, linear between bins",
+}
+
+# The rows that #71 prints at 128 BPM: depth read in dB and time back in s.
+ISSUE_71_PUMP = [(1.6, None), (5.6, 0.212), (9.4, 0.176), (10.1, 0.234), (9.3, 0.264), (13.7, 0.242)]
+
+
+def pump_curve(db, period):
+    bins = 64
+    curves = []
+    b = 0
+    while True:
+        start = b * period
+        end = start + period
+        b += 1
+        if end > len(db) * ENVELOPE_HOP_S:
+            break
+        if start - 0.05 < 0.0:
+            continue
+        lo = int(math.ceil(start / ENVELOPE_HOP_S - 1e-9))
+        hi = int(math.ceil(end / ENVELOPE_HOP_S - 1e-9))
+        sums, counts = np.zeros(bins), np.zeros(bins)
+        for i in range(lo, hi):
+            k = min(int(math.floor((i * ENVELOPE_HOP_S - start) / period * bins)), bins - 1)
+            sums[k] += db[i]
+            counts[k] += 1
+        means = sums / counts
+        curves.append(means - np.quantile(means, 0.9))
+    return np.median(np.array(curves), axis=0), len(curves)
+
+
+def pump_recovery(curve, period):
+    bins = len(curve)
+    low = int(np.argmin(curve))
+    at = lambda k: curve[(low + k) % bins]
+    for k in range(1, bins):
+        if at(k) >= -1.5:
+            a, b = at(k - 1), at(k)
+            w = (-1.5 - a) / (b - a) if b > a else 1.0
+            return (k - 1 + min(max(w, 0.0), 1.0)) * period / bins
+    return None
+
+
+def pump_table():
+    r = PUMP_RECIPE
+    rate = r["sample_rate"]
+    period = 60.0 / r["bpm"]
+    seconds = r["beats"] * period
+    length = int(round(seconds * rate))
+    x = np.zeros(length)
+    for f0, phase in zip(r["chord_hz"], uniform(r["seed"], len(r["chord_hz"]))):
+        x += envelope_saw(f0, rate, length, phase)
+    x *= 0.5 / np.abs(x).max()
+    t = np.arange(length) / rate
+    rows, reproduced = [], []
+    for (depth, release), (figure, back_figure) in zip(r["rows"], ISSUE_71_PUMP):
+        gain = 1.0 - (1.0 - 10.0 ** (-depth / 20.0)) * np.exp(-np.mod(t, period) / release)
+        db = centred_rms_db(x * gain, rate, 110.0, 2.0, 0.002, 0.0, length / rate)
+        curve, beats = pump_curve(db, period)
+        read = float(-min(curve.min(), 0.0))
+        back = pump_recovery(curve, period)
+        rows.append({"depth_db": depth, "release_s": release, "read_depth_db": read, "back_s": back if depth > 0 else None, "beats": beats})
+        ok = abs(read - figure) <= 0.5 and (back_figure is None or abs(back / back_figure - 1.0) <= 0.3)
+        reproduced.append(bool(ok))
+    return document(
+        "71-pump",
+        71,
+        "The #71 pump detector on a held saw chord at 128 BPM under an exponential duck: depth and time back within 1.5 dB.",
+        "pump_table",
+        ["python", "numpy"],
+        r,
+        {"rows": rows},
+        {"abs": 0.01, "rel": 0.0},
+        tag="[own, synthetic]",
+        tolerance_note="depth within 0.01 dB and time back within 0.01 s: both sides bin the same frames, and the saws differ only in the last bits of their sines",
+        issue_figures={"figures": [{"read_depth_db": d, "back_s": b} for d, b in ISSUE_71_PUMP], "rows": reproduced, "reproduced": all(reproduced), "why": "a row reproduces within 0.5 dB of depth and 30 % of the time back; the issue does not give its chord phases"},
+    )
+
+
 VECTORS = {
     "window": window_vectors,
     "stft": stft_vectors,
@@ -1535,6 +1750,8 @@ VECTORS = {
     "prototype/54-crest": crest_values,
     "prototype/59-min-note-length": min_note_length,
     "prototype/61-glide": glide_issue_table,
+    "prototype/69-attack": attack_table,
+    "prototype/71-pump": pump_table,
 }
 
 

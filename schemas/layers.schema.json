@@ -4,7 +4,9 @@
   "title": "layers.json",
   "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _ms, _db, _dbfs, _deg, _st, _ct) where the value has one; a field without a suffix is a count, a ratio, a share, a power, a flag or a tempo. The conventions group names the convention of every number in the stem group and of every record in the layer groups.",
   "type": "object",
-  "required": ["schema", "source", "synth", "stem", "transcription", "pitch", "conventions"],
+  "required": [
+    "schema", "source", "synth", "stem", "transcription", "pitch", "envelope", "conventions"
+  ],
   "additionalProperties": false,
   "properties": {
     "schema": { "const": "layers/1" },
@@ -17,6 +19,7 @@
     "stem": { "$ref": "#/$defs/stem" },
     "transcription": { "$ref": "#/$defs/transcription" },
     "pitch": { "$ref": "#/$defs/pitch" },
+    "envelope": { "$ref": "#/$defs/envelope" },
     "conventions": { "$ref": "#/$defs/conventions" }
   },
   "$defs": {
@@ -207,7 +210,7 @@
         "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
         "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
         "flatness", "band_share", "stereo", "confidence", "pitch", "glides", "drops",
-        "sub_band_line", "vibrato"
+        "sub_band_line", "vibrato", "envelope", "note_off", "level_spread_db", "pump"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
@@ -243,6 +246,74 @@
       },
       "if": { "$ref": "#/$defs/no_estimate" },
       "then": { "properties": { "values": { "type": "null" } } }
+    },
+    "envelope": {
+      "description": "The envelope layer: the amplitude envelope over the pooled notes, the peak level, attack and note-off knee of each read note, and the sidechain pump. values is null when no note was read.",
+      "allOf": [
+        { "$ref": "#/$defs/layer_group" },
+        {
+          "properties": {
+            "values": {
+              "oneOf": [
+                { "type": "null" },
+                {
+                  "type": "object",
+                  "required": [
+                    "attack_s", "hold_s", "decay_s", "sustain_db", "note_off_offset_s",
+                    "level_spread_db", "ripple_db", "fit_residual_db", "n_notes_used",
+                    "overlap_fraction",
+                    "pump_depth_db", "pump_recovery_s", "pump_tau_ms", "pump_locked_to",
+                    "pump_beats", "pump_bpm", "notes"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "attack_s": { "$ref": "#/$defs/unit_statistic" },
+                    "hold_s": { "$ref": "#/$defs/unit_statistic" },
+                    "decay_s": { "$ref": "#/$defs/unit_statistic" },
+                    "sustain_db": { "$ref": "#/$defs/statistic" },
+                    "note_off_offset_s": { "$ref": "#/$defs/statistic" },
+                    "level_spread_db": { "$ref": "#/$defs/value" },
+                    "ripple_db": { "type": ["number", "null"], "minimum": 0 },
+                    "fit_residual_db": { "type": ["number", "null"], "minimum": 0 },
+                    "n_notes_used": { "type": "integer", "minimum": 0 },
+                    "overlap_fraction": { "type": "number", "minimum": 0, "maximum": 1 },
+                    "pump_depth_db": { "type": ["number", "null"], "minimum": 0 },
+                    "pump_recovery_s": { "type": ["number", "null"], "minimum": 0 },
+                    "pump_tau_ms": { "type": ["number", "null"], "minimum": 0 },
+                    "pump_locked_to": { "enum": ["beat", "note", "free", "none", null] },
+                    "pump_beats": { "type": "integer", "minimum": 0 },
+                    "pump_bpm": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+                    "notes": { "type": "array", "items": { "$ref": "#/$defs/note_envelope" } }
+                  }
+                }
+              ]
+            },
+            "flags": {
+              "required": ["no_notes", "attack_is_upper_bound", "pump_stripped"],
+              "additionalProperties": false,
+              "properties": {
+                "no_notes": { "type": "boolean" },
+                "attack_is_upper_bound": { "type": "boolean" },
+                "pump_stripped": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "note_envelope": {
+      "description": "One read note: its onset, the peak of its amp proxy, its attack, its note-off knee, and whether the pool holds it.",
+      "type": "object",
+      "required": ["onset_s", "peak_db", "attack_s", "attack_upper_bound", "knee_s", "pooled"],
+      "additionalProperties": false,
+      "properties": {
+        "onset_s": { "type": "number", "minimum": 0 },
+        "peak_db": { "type": "number" },
+        "attack_s": { "type": ["number", "null"], "minimum": 0 },
+        "attack_upper_bound": { "type": "boolean" },
+        "knee_s": { "type": ["number", "null"], "minimum": 0 },
+        "pooled": { "type": "boolean" }
+      }
     },
     "pitch": {
       "description": "The pitch layer of a monophonic line: glides, pitch drops and vibrato, each record with its own confidence. values is null when the line plays chords or has no notes; a line without a glide holds an empty list.",

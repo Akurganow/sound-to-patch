@@ -1,8 +1,8 @@
 # Analysing a stem
 
 `sound-to-patch analyze` reads one stem and writes a report of its tempo,
-notes, level, spectrum, band edge, stereo image, glides, pitch drops and
-vibrato, with a spectrogram image. The report is what an agent reads
+notes, level, spectrum, band edge, stereo image, glides, pitch drops,
+vibrato, amplitude envelope and sidechain pump, with a spectrogram image. The report is what an agent reads
 before it writes an edit list for the [preset commands](preset.md). The
 [CLI reference](../reference/cli.md#analyze) lists every flag, and the
 [layer report page](../reference/formats/layers.md) every field.
@@ -33,6 +33,9 @@ glides: 0, 0 too short
 pitch drops: 0 of 15 low strikes
 drop skips: 1 no onset, 15 no fall
 vibrato: 0 of 0 steady spans
+envelope: 16 of 16 notes read, 16 pooled, 16 with a note-off knee
+envelope: attack 19 ms (upper bound), hold 0 ms, decay none, sustain 0.0 dB
+pump: too few sustained beats
 wrote bass/layers.json
 wrote bass/spectrogram.png
 ```
@@ -42,12 +45,19 @@ The first line is the tempo: `--bpm` refined from the stem's onsets, as
 4 s stem is too short to refine it. The next lines are the notes step of
 [notes](notes.md), which `analyze` runs once to know the stem's notes;
 `--profile` overrides its settings as there. `analyze` writes no MIDI file.
-The last four lines are the [pitch layer](../analysis/pitch.md): this
+The four lines after them are the [pitch layer](../analysis/pitch.md): this
 saw repeats one note with no glide or vibrato, and none of its 15 low
 strikes falls in pitch. Each line lists what it found, with its numbers;
 `drop skips` counts the low notes with no drop by the gate that stopped
 each: no onset, settling, quiet, no strike, weak fundamental, no fall, tau
 on bound, residual or off note.
+The next three lines are the [envelope layer](../analysis/envelope.md).
+The first counts the notes read, those pooled and those with a note-off
+knee, and any skipped. The second gives the pooled medians: this saw
+starts each note at full level, under 1.5 periods of 55 Hz, so the attack
+is an upper bound; it holds its level, so it has no decay and a sustain
+of 0 dB. The last is the pump: no beat here lies inside one held note from
+50 ms before it, so none counts.
 The files go into a folder named after the stem, next to it. `--out` picks
 another folder. A warning about a packet that did not decode goes to
 standard error; the stem keeps its timing, with silence in its place.

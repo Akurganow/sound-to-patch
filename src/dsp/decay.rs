@@ -304,7 +304,7 @@ fn fit_range(
 }
 
 /// Least-squares line through `(x, y)` points: `(slope, intercept)`.
-fn fit_line(points: &[(f64, f64)]) -> Option<(f64, f64)> {
+pub(crate) fn fit_line(points: &[(f64, f64)]) -> Option<(f64, f64)> {
     if points.len() < 2 {
         return None;
     }

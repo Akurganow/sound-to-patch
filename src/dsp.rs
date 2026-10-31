@@ -31,6 +31,7 @@ pub use analytic::{
     ATTACK_LOW_PASS_HZ, AnalyticSignal, Baseband, FilterError, HeterodyneParams, am_depth,
     band_magnitude, band_pass_zero_phase, heterodyne, low_pass_zero_phase,
 };
+pub(crate) use decay::fit_line;
 pub use decay::{Decay, DecayFailure, FitRange, backward_integral};
 pub use descriptors::{
     BAND_CONVENTION, BAND_EDGES_HZ, BandShare, Descriptors, FLATNESS_CONVENTION, FLATNESS_FLOOR,
