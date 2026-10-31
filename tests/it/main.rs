@@ -13,6 +13,8 @@ mod decay;
 mod decode;
 #[cfg(test)]
 mod descriptors;
+#[cfg(test)]
+mod envelope;
 mod fixtures;
 #[cfg(test)]
 mod golden;

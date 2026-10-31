@@ -1,5 +1,5 @@
-//! The `layers.json` report: the `stem` group and the `pitch` layer group,
-//! with a convention for every number.
+//! The `layers.json` report: the `stem` group and the `pitch` and
+//! `envelope` layer groups, with a convention for every number.
 
 use serde::Serialize;
 
@@ -10,6 +10,10 @@ use crate::audio::{
 use crate::confidence::{Confidence, Estimate, NoSpread, Spread};
 use crate::dsp::{
     BAND_CONVENTION, Descriptors, FLATNESS_CONVENTION, LEVEL_CONVENTION, SHAPE_CONVENTION, Stats,
+};
+use crate::estimate::envelope::{
+    ENVELOPE_CONVENTION, EnvelopeFlags, EnvelopeLayer, KNEE_CONVENTION, LEVEL_SPREAD_CONVENTION,
+    NoteEnvelope, PUMP_CONVENTION, Pump, lock_name,
 };
 use crate::estimate::pitch::{
     DROP_CONVENTION, DropFit, GLIDE_CONVENTION, GlideFit, LINE_CONVENTION, PitchFlags, PitchLayer,
@@ -34,8 +38,8 @@ when its RMS lies within 40 dB of the loudest frame";
 ///
 /// `source` is the stem's file name without its folder, `tempo` the
 /// given and refined tempo, `transcription` the record of the
-/// transcriber that gave the notes, or `None` when none ran, and `pitch`
-/// the pitch layer.
+/// transcriber that gave the notes, or `None` when none ran, and
+/// `layers` the pitch and envelope layers.
 ///
 /// # Errors
 ///
@@ -48,7 +52,7 @@ pub fn layers_json(
     source: &str,
     tempo: &Tempo,
     transcription: Option<&TranscriptionRecord>,
-    pitch: &PitchLayer,
+    (pitch, envelope): (&PitchLayer, &EnvelopeLayer),
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
@@ -57,6 +61,7 @@ pub fn layers_json(
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
         pitch: PitchGroup::new(pitch),
+        envelope: EnvelopeGroup::new(envelope),
         conventions: Conventions::new(descriptors.frame_len),
     };
     let mut text = serde_json::to_string_pretty(&report)?;
@@ -74,7 +79,99 @@ struct Layers<'a> {
     /// The transcriber's model and settings, `null` when none ran.
     transcription: Option<&'a TranscriptionRecord>,
     pitch: PitchGroup<'a>,
+    envelope: EnvelopeGroup<'a>,
     conventions: Conventions,
+}
+
+/// The envelope layer as a layer group. The mapping step fills
+/// `suggested_edits`; until then the list is empty.
+#[derive(Serialize)]
+struct EnvelopeGroup<'a> {
+    values: Option<EnvelopeValues<'a>>,
+    confidence: &'a Confidence<NoSpread>,
+    flags: EnvelopeFlags,
+    needs_render: bool,
+    suggested_edits: [(); 0],
+}
+
+#[derive(Serialize)]
+struct EnvelopeValues<'a> {
+    attack_s: Statistic<'a, Seconds>,
+    hold_s: Statistic<'a, Seconds>,
+    decay_s: Statistic<'a, Seconds>,
+    sustain_db: Statistic<'a, Decibels>,
+    note_off_offset_s: Statistic<'a, Seconds>,
+    level_spread_db: Value<'a, Decibels, NoSpread>,
+    ripple_db: Option<Decibels>,
+    fit_residual_db: Option<Decibels>,
+    n_notes_used: usize,
+    overlap_fraction: f64,
+    pump_depth_db: Option<Decibels>,
+    pump_recovery_s: Option<Seconds>,
+    pump_tau_ms: Option<f64>,
+    pump_locked_to: Option<&'static str>,
+    pump_beats: usize,
+    pump_bpm: Option<Bpm>,
+    notes: Vec<NoteRecord>,
+}
+
+#[derive(Serialize)]
+struct NoteRecord {
+    onset_s: Seconds,
+    peak_db: Decibels,
+    attack_s: Option<Seconds>,
+    attack_upper_bound: bool,
+    knee_s: Option<Seconds>,
+    pooled: bool,
+}
+
+impl<'a> EnvelopeGroup<'a> {
+    fn new(layer: &'a EnvelopeLayer) -> Self {
+        let pump = layer.pump.as_ref();
+        Self {
+            values: layer.confidence.is_estimate().then(|| EnvelopeValues {
+                attack_s: Statistic::of(&layer.attack),
+                hold_s: Statistic::of(&layer.hold),
+                decay_s: Statistic::of(&layer.decay),
+                sustain_db: Statistic::of(&layer.sustain),
+                note_off_offset_s: Statistic::of(&layer.note_off_offset),
+                level_spread_db: Value::of(&layer.level_spread),
+                ripple_db: layer.ripple,
+                fit_residual_db: layer.residual,
+                n_notes_used: layer.pooled.iter().filter(|&&p| p).count(),
+                overlap_fraction: layer.overlap_fraction,
+                pump_depth_db: pump.map(|p| p.depth),
+                pump_recovery_s: pump.and_then(|p| p.back),
+                pump_tau_ms: pump.and_then(|p| p.tau).map(|t| 1000.0 * t.get()),
+                pump_locked_to: pump.map(|p| lock_name(p.lock)),
+                pump_beats: pump.map_or(0, |p| p.beats),
+                pump_bpm: pump.map(Pump::bpm),
+                notes: layer
+                    .notes
+                    .iter()
+                    .zip(&layer.pooled)
+                    .map(|(n, &pooled)| NoteRecord::of(n, pooled))
+                    .collect(),
+            }),
+            confidence: &layer.confidence,
+            flags: layer.flags,
+            needs_render: false,
+            suggested_edits: [],
+        }
+    }
+}
+
+impl NoteRecord {
+    fn of(note: &NoteEnvelope, pooled: bool) -> Self {
+        Self {
+            onset_s: note.onset,
+            peak_db: note.peak_db,
+            attack_s: note.attack,
+            attack_upper_bound: note.attack_upper_bound,
+            knee_s: note.knee,
+            pooled,
+        }
+    }
 }
 
 /// The pitch layer as a layer group. The mapping step fills
@@ -366,6 +463,10 @@ struct Conventions {
     drops: &'static str,
     sub_band_line: &'static str,
     vibrato: &'static str,
+    envelope: &'static str,
+    note_off: &'static str,
+    level_spread_db: &'static str,
+    pump: &'static str,
 }
 
 impl Conventions {
@@ -406,6 +507,10 @@ audio time from the start of the stem",
             drops: DROP_CONVENTION,
             sub_band_line: LINE_CONVENTION,
             vibrato: VIBRATO_CONVENTION,
+            envelope: ENVELOPE_CONVENTION,
+            note_off: KNEE_CONVENTION,
+            level_spread_db: LEVEL_SPREAD_CONVENTION,
+            pump: PUMP_CONVENTION,
         }
     }
 }

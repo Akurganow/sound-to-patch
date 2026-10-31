@@ -211,8 +211,8 @@ fn render(
     reference
 }
 
-/// SplitMix64, for the seeded noise of the reverb.
-fn splitmix(seed: u64, count: usize) -> Vec<u64> {
+/// SplitMix64, for seeded noise.
+pub(super) fn splitmix(seed: u64, count: usize) -> Vec<u64> {
     let mut state = seed;
     (0..count)
         .map(|_| {

@@ -68,12 +68,20 @@ enum Task {
         #[arg(long)]
         out: PathBuf,
     },
-    /// Score the notes step on generated parts with known notes; local only.
+    /// Score the notes step, or the envelope layer, on generated parts with
+    /// known truth; local only.
     Eval {
         /// Run only the parts whose name holds this text, and print their
         /// notes.
         #[arg(long)]
         part: Option<String>,
+        /// The layer to score: the notes step, or the envelope layer on
+        /// parts with known envelopes and pumps.
+        #[arg(long, value_enum, default_value_t = eval::Layer::Notes)]
+        layer: eval::Layer,
+        /// With `--layer envelope`, write one JSON record per part here.
+        #[arg(long)]
+        json: Option<PathBuf>,
     },
     /// Recompute the listener agreement of the producer words from the
     /// pinned listener data (needs uv and network).
@@ -210,7 +218,13 @@ fn main() -> ExitCode {
     let result = match Xtask::parse().task {
         Task::Dist { out_dir } => dist::write(&out_dir),
         Task::Fetch { url, sha256, out } => fetch::fetch(&url, &sha256, &out),
-        Task::Eval { part } => eval::run(part.as_deref()),
+        Task::Eval { part, layer, json } => match layer {
+            eval::Layer::Notes if json.is_some() => {
+                Err("--json works with --layer envelope only".into())
+            }
+            eval::Layer::Notes => eval::run(part.as_deref()),
+            eval::Layer::Envelope => eval::envelope::run(part.as_deref(), json.as_deref()),
+        },
         Task::Agreement { data } => agreement::run(root(), &data),
         Task::Golden => golden::generate(root()),
         Task::GoldenCheck => golden::check(root()),

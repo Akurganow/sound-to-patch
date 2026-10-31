@@ -88,7 +88,10 @@ joins `READY` when its adapter lands.
 - `estimate`: the layer estimators that read the note list and the f0
   track. `pitch` holds the pitch layer of a monophonic line: the sub-band
   line, pitch drops at the strike of a low note, glides between notes and
-  vibrato, each record with its own confidence.
+  vibrato, each record with its own confidence. `envelope` holds the
+  envelope layer: per-note level tracks, the attack, hold, decay, sustain
+  and note-off knee pooled over the notes, and the sidechain pump read on
+  the beats that a held note covers.
 - `notes`: the note list that the transcriber and the MIDI reader produce
   and every layer reads. The transcriber runs the model once per stem and
   decodes that run with the settings of a profile or of the register and

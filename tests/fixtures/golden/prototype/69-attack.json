@@ -1,0 +1,147 @@
+{
+ "description": "10-90 % rise of the centred RMS of a saw note with a linear attack, with the layer's window and with the #69 window.",
+ "generator": "xtask/golden/generate.py:attack_table",
+ "issue": 69,
+ "issue_figures": {
+  "figures_ms": {
+   "220.0": {
+    "0.001": [
+     2.7,
+     4.6
+    ],
+    "0.005": [
+     5.0,
+     7.8
+    ],
+    "0.02": [
+     15.1,
+     18.0
+    ],
+    "0.1": [
+     78.2,
+     81.8
+    ]
+   },
+   "55.0": {
+    "0.001": [
+     14.0,
+     16.6
+    ],
+    "0.005": [
+     14.0,
+     17.1
+    ],
+    "0.02": [
+     10.0,
+     19.0
+    ],
+    "0.1": [
+     74.3,
+     87.3
+    ]
+   }
+  },
+  "reproduced": false,
+  "rows": [
+   false,
+   false,
+   false,
+   true,
+   false,
+   true,
+   true,
+   true
+  ],
+  "why": "the issue gives ranges over estimators; a row reproduces when the #69 window's rise lies within one hop of its range"
+ },
+ "name": "69-attack",
+ "recipe": {
+  "attack_s": [
+   0.001,
+   0.005,
+   0.02,
+   0.1
+  ],
+  "f0_hz": [
+   55.0,
+   220.0
+  ],
+  "issue": "the #69 window: two periods of f0 and at least 5 ms, in whole periods",
+  "note": "one saw note, harmonic h at 1/h up to 6 kHz, at phase uniform(31, 1) cycles and level 0.3, from 0.2 s; a linear attack to 1, then a decay linear in dB over 0.2 s to -6 dB, held to 0.8 s past the attack and released linearly over 50 ms",
+  "ours": "a window of one period of f0, or the fewest whole periods spanning 2 ms",
+  "sample_rate": 22050,
+  "seed": 31,
+  "top": "ours rises to the attack's top: the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, here 1.5 RMS windows, and the shares are of the highest frame over that span; the #69 window rises to the highest frame from the onset on",
+  "track": "centred RMS on a 1 ms hop from 30 ms before the onset"
+ },
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.0001,
+  "rel": 0.0
+ },
+ "tolerance_note": "rise_s within 0.1 ms: both sides read the same frames, and the saws differ only in the last bits of their sines",
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7"
+ },
+ "values": {
+  "rows": [
+   {
+    "attack_s": 0.001,
+    "f0_hz": 55.0,
+    "issue_window_rise_s": 0.022672226064227332,
+    "rise_s": 0.013592891242911919,
+    "true_rise_s": 0.0008
+   },
+   {
+    "attack_s": 0.005,
+    "f0_hz": 55.0,
+    "issue_window_rise_s": 0.03315224913422789,
+    "rise_s": 0.018253493019490044,
+    "true_rise_s": 0.004
+   },
+   {
+    "attack_s": 0.02,
+    "f0_hz": 55.0,
+    "issue_window_rise_s": 0.03395926444697907,
+    "rise_s": 0.01935583393701257,
+    "true_rise_s": 0.016
+   },
+   {
+    "attack_s": 0.1,
+    "f0_hz": 55.0,
+    "issue_window_rise_s": 0.08527173089605233,
+    "rise_s": 0.07537715486217485,
+    "true_rise_s": 0.08000000000000002
+   },
+   {
+    "attack_s": 0.001,
+    "f0_hz": 220.0,
+    "issue_window_rise_s": 0.008174299665208171,
+    "rise_s": 0.004443267610108691,
+    "true_rise_s": 0.0008
+   },
+   {
+    "attack_s": 0.005,
+    "f0_hz": 220.0,
+    "issue_window_rise_s": 0.008630684012902816,
+    "rise_s": 0.005002669281913395,
+    "true_rise_s": 0.004
+   },
+   {
+    "attack_s": 0.02,
+    "f0_hz": 220.0,
+    "issue_window_rise_s": 0.018065182411287035,
+    "rise_s": 0.014976757282449576,
+    "true_rise_s": 0.016
+   },
+   {
+    "attack_s": 0.1,
+    "f0_hz": 220.0,
+    "issue_window_rise_s": 0.0788028014935081,
+    "rise_s": 0.07924681852864102,
+    "true_rise_s": 0.08000000000000002
+   }
+  ]
+ }
+}

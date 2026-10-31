@@ -161,6 +161,17 @@ reason_codes! {
     /// within 100 cents of a sounding note. Noise or DC under a note list
     /// reads near 0.
     NoteFrames,
+    /// The interquartile range of a value over the notes, divided by the
+    /// absolute value of its median. Above 0.5 the notes disagree too much
+    /// for a preset.
+    RelativeSpread,
+    /// The share of the pooled notes whose attack is an upper bound: its
+    /// rise is shorter than 1.5 RMS windows, or for an overlapping note
+    /// twice the rise of its band filter on an instant step.
+    UpperBoundShare,
+    /// The interquartile range of a value over the notes whose median is 0,
+    /// so the range has no ratio to the median. The value reads low.
+    ZeroMedian,
 }
 
 /// The value of the signal behind a [`ReasonCode`].
