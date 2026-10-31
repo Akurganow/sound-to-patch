@@ -1623,6 +1623,21 @@ fn a_fitted_read_does_not_give_up_the_strip() {
 }
 
 #[test]
+fn a_fitted_read_replaces_a_grid_lock_that_does_not_strip() {
+    // 8.9 beats, 0.5 % slow: both reads count 7 beats and neither strips.
+    let (x, notes) = chord_at(CHORD[0], 8.9, BPM);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 0.995,
+    };
+    let p = pump_at(&ducked(&x, duck, 0.75), &notes, CHORD[0], BPM).unwrap();
+    assert_eq!(p.lock, PumpLock::Beat, "{p:?}");
+    assert!(!p.strips(), "{p:?}");
+    assert_ne!(p.bpm().get(), BPM, "{p:?}");
+}
+
+#[test]
 fn a_fitted_read_can_gain_the_strip() {
     // 8.9 beats count 7 on the grid, and a faster period counts 8.
     let (x, notes) = chord_at(CHORD[0], 8.9, BPM);
