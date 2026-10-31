@@ -10,3 +10,4 @@
 
 pub mod envelope;
 pub mod pitch;
+pub mod voices;

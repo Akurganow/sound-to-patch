@@ -92,6 +92,7 @@ fn analyze_writes_both_files_for_a_generated_wav() {
              envelope: 1 of 1 notes read, 1 pooled, 0 with a note-off knee\n\
              envelope: attack none, hold 0 ms, decay none, sustain 0.0 dB\n\
              pump: too few sustained beats\n\
+             voices: mono, up to 1, mean 1.00; 0 joins, 0 legato\n\
              wrote {}\nwrote {}\n",
             out.join("layers.json").display(),
             out.join("spectrogram.png").display()

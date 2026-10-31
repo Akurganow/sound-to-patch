@@ -19,6 +19,7 @@ use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
 use crate::estimate::envelope::{EnvelopeError, EnvelopeInput, EnvelopeLayer};
 use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
+use crate::estimate::voices::{VoicesError, VoicesInput, VoicesLayer};
 use crate::notes::{
     DEFAULT_VELOCITY, MidiError, MidiWriteError, NoteList, NotesError, PitchTrack, Profile,
     QUIET_GATE, Transcriber, Transcription, Velocities, Voicing, midi_track_name, read_midi_near,
@@ -109,6 +110,8 @@ pub struct Analysis {
     pub transcription: Option<Transcription>,
     /// The pitch layer: glides, pitch drops and vibrato.
     pub pitch: PitchLayer,
+    /// The voices layer: the count of voices and the joins of a mono line.
+    pub voices: VoicesLayer,
     /// The envelope layer: the amplitude envelope and the pump.
     pub envelope: EnvelopeLayer,
     /// The packets that did not decode and became silence.
@@ -125,6 +128,7 @@ impl Analysis {
             .chain(self.transcription.iter().flat_map(transcription_summary))
             .chain(self.pitch.summary())
             .chain(self.envelope.summary())
+            .chain(self.voices.summary())
             .collect()
     }
 }
@@ -203,7 +207,7 @@ pub fn analyze(
     let empty = NoteList::default();
     let note_list = notes.as_ref().unwrap_or(&empty);
     let grid = BeatGrid::new(tempo.used(), Seconds::clamped(0.0));
-    let (pitch, envelope) = read_layers(
+    let (pitch, envelope, voices) = read_layers(
         &mono,
         stem_audio.sample_rate(),
         note_list,
@@ -235,7 +239,7 @@ pub fn analyze(
         &source,
         &tempo,
         record,
-        (&pitch, &envelope),
+        (&pitch, &envelope, &voices),
     )?;
     let png = Spectrogram::of(stem.mid(), stem.sample_rate()).to_png()?;
 
@@ -268,6 +272,7 @@ pub fn analyze(
         tempo,
         transcription,
         pitch,
+        voices,
         envelope,
         skipped,
     })
@@ -281,7 +286,7 @@ fn read_layers(
     track: &PitchTrack,
     voicing: Voicing,
     grid: BeatGrid,
-) -> Result<(PitchLayer, EnvelopeLayer), AnalyzeError> {
+) -> Result<(PitchLayer, EnvelopeLayer, VoicesLayer), AnalyzeError> {
     let pitch = PitchLayer::of(&PitchInput {
         mono,
         rate,
@@ -297,7 +302,14 @@ fn read_layers(
         grid,
     })
     .map_err(AnalyzeError::Envelope)?;
-    Ok((pitch, envelope))
+    let voices = VoicesLayer::of(&VoicesInput {
+        mono,
+        rate,
+        notes,
+        envelope: &envelope,
+    })
+    .map_err(AnalyzeError::Voices)?;
+    Ok((pitch, envelope, voices))
 }
 
 /// The tempo of a stem: `bpm` as given when `exact`, else refined from
@@ -590,6 +602,8 @@ pub enum AnalyzeError {
     Pitch(PitchError),
     /// The envelope layer failed.
     Envelope(EnvelopeError),
+    /// The voices layer failed.
+    Voices(VoicesError),
     /// The stem gave no note.
     NoNotes {
         /// The file name of the stem.
@@ -642,6 +656,7 @@ impl fmt::Display for AnalyzeError {
             Self::Transcription(error) => write!(f, "{error}"),
             Self::Pitch(error) => write!(f, "{error}"),
             Self::Envelope(error) => write!(f, "{error}"),
+            Self::Voices(error) => write!(f, "{error}"),
             Self::NoNotes { source } => write!(
                 f,
                 "`{source}` gave no note, so nothing was written: it is silent, or no note sounds within {} dB of its loudest passage. Check the stem, or pass --profile bass|lead|pad",
@@ -669,6 +684,7 @@ impl Error for AnalyzeError {
             Self::Transcription(error) => Some(error),
             Self::Pitch(error) => Some(error),
             Self::Envelope(error) => Some(error),
+            Self::Voices(error) => Some(error),
             Self::Midi(error) => Some(error),
             Self::Write { source, .. } => Some(source),
             Self::OutIsFile { .. }
