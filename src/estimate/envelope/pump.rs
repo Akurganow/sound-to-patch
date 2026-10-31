@@ -55,8 +55,9 @@ pub const PHASE_SHARE: f64 = 0.5;
 /// The first stage of the period search reads this far either side of the
 /// grid's period, as a share of it; the second reads one step past it.
 ///
-/// A step moves the last beat by 1 bin, so a read reaches up to 2.68 % from
-/// 7 counted beats on, 2.73 % at 4 and 2.81 % at 5.
+/// A step moves the last beat of the longest run of counted beats by 1 bin,
+/// so the reach follows that run: 2.73 % at 4 beats, 2.81 % at 5, 2.60 % at
+/// 6, 2.68 % at 7, 2.66 % at 10, 2.58 % at 20 and 2.52 % at 64.
 ///
 /// A sidechain follows the song's own tempo, and a stem's tempo may be off
 /// by 1 or 2 %. Over 32 beats a 1 % error moves the duck by a third of a
@@ -74,8 +75,9 @@ pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
 /// A free line lies within the period search's reach when it lies this far
 /// or nearer from the nearest division.
 ///
-/// The search reaches 47 cents, and the line of a duck 2.5 % off reads up
-/// to 52 cents over a short span. 60 cents also holds a duck 3 % off.
+/// The search reaches 43 to 49 cents, by its longest run, and the line of a
+/// duck 2.5 % off reads up to 52 cents over a short span. 60 cents also holds
+/// a duck 3 % off.
 pub const FREE_REACH: Cents = Cents::from_const(60.0);
 /// A duck takes at least this many bins, and [`DUCK_TAIL_WINDOWS`] more,
 /// from half its depth back to a quarter of it.
@@ -162,7 +164,8 @@ pub struct Pump {
     /// `None` where a beat holds no frames.
     falls: Vec<Option<f64>>,
     /// The standard deviation of the level minus the curve over the counted
-    /// beats, in dB: how well the curve explains them.
+    /// beats, each beat about its own mean, in dB: how well the curve explains
+    /// them.
     fold_error: f64,
     /// The cents from the nearest division to the level's strongest line
     /// over the longest run of counted beats; `None` under [`FREE_SWING`].
@@ -683,25 +686,28 @@ fn folds_better(error: f64, other: f64) -> bool {
 }
 
 /// The standard deviation of the level minus `curve` over the beats from
-/// `starts`, in dB.
+/// `starts`, in dB, each beat about its own mean: a fade or a level step
+/// between beats is no misfit of the fold.
 fn fold_error(track: &LevelTrack, starts: &[f64], period: f64, curve: &[f64]) -> f64 {
     let bins = cast::usize_to_f64(PUMP_BINS);
-    let rests: Vec<f64> = starts
-        .iter()
-        .flat_map(|&start| {
-            (track.index(start)..track.index(start + period)).map(move |i| (start, i))
-        })
-        .filter_map(|(start, i)| {
-            let phase = (track.time(i) - start) / period;
-            let bin = cast::floor_to_usize(phase * bins)
-                .unwrap_or(0)
-                .min(PUMP_BINS - 1);
-            track.db().get(i).map(|db| db - curve[bin])
-        })
-        .collect();
-    let count = cast::usize_to_f64(rests.len().max(1));
-    let mean = rests.iter().sum::<f64>() / count;
-    (rests.iter().map(|r| (r - mean).powi(2)).sum::<f64>() / count).sqrt()
+    let mut squares = 0.0;
+    let mut count = 0.0;
+    for &start in starts {
+        let rests: Vec<f64> = (track.index(start)..track.index(start + period))
+            .map(|i| {
+                let phase = (track.time(i) - start) / period;
+                let bin = cast::floor_to_usize(phase * bins)
+                    .unwrap_or(0)
+                    .min(PUMP_BINS - 1);
+                track.db()[i] - curve[bin]
+            })
+            .collect();
+        let frames = cast::usize_to_f64(rests.len());
+        let mean = rests.iter().sum::<f64>() / frames.max(1.0);
+        squares += rests.iter().map(|r| (r - mean).powi(2)).sum::<f64>();
+        count += frames;
+    }
+    (squares / f64::max(count, 1.0)).sqrt()
 }
 
 /// The cents from the nearest division to the strongest line of the
@@ -1014,6 +1020,8 @@ mod tests {
         assert!(folds_better(1.0, 1.2));
         assert!(!folds_better(1.0, 1.1), "0.1 dB");
         assert!(!folds_better(3.0, 3.2), "a fifteenth");
+        assert!(folds_better(2.68, 3.0));
+        assert!(!folds_better(2.72, 3.0));
     }
 
     #[test]

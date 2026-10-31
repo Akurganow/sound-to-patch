@@ -123,11 +123,14 @@ from every note division; else beat when the curve dips 3 dB or more in one run 
 depth down, falls into its dip within 8 bins, reading on into the beat before, the odd and the even \
 beats' own median curves do the same to half its depth at its dip, and half the beats fall by half \
 its depth from their highest bin over the 8 bins before the 3 bins either side of the dip to their \
-lowest within those; else none; the read at the period up to 2.68 % from the tempo's, 2.81 % over 4 to 6 counted beats, whose counted \
-beats fold onto the deepest mean curve replaces this read if that reads beat and this one reads \
-note or none, reads beat with a fold error over 1 / 0.9 of that read's and 0.15 dB higher, or reads free on a \
-line within 60 cents of a division under a curve that falls faster than it recovers and takes 3 \
-bins and half the level window from half its depth back to a quarter; \
+lowest within those; else none; the read at the period up to 2.81 % from the tempo's, \
+by the longest run of counted beats, whose counted beats fold onto the deepest mean curve replaces \
+this read if that reads beat and this one reads note or none, or reads beat at a fold error, the \
+standard deviation of the level minus the curve over the counted beats, each beat about its own \
+mean, over 1 / 0.9 of that read's and 0.15 dB higher, or, when only one of the reads strips, if that \
+read strips and has the lower fold error, or reads free on a line within 60 cents of a division \
+under a curve that falls faster than it recovers and takes 3 bins and half the level window from \
+half its depth back to a quarter; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \
 or more and the median fall of the beats over the note reaches half the curve's depth, the beats \
 counted again over each note to 25 ms before its end when the held parts give fewer \
