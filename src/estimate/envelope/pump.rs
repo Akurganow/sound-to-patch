@@ -56,8 +56,8 @@ pub const PHASE_SHARE: f64 = 0.5;
 /// grid's period, as a share of it; the second reads one step past it.
 ///
 /// A step moves the last beat of the longest run of counted beats by 1 bin,
-/// so the reach follows that run: 2.73 % at 4 beats, 2.81 % at 5, 2.60 % at
-/// 6, 2.68 % at 7, 2.66 % at 10, 2.58 % at 20 and 2.52 % at 64.
+/// so the reach follows that run: up to 2.73 % at 4 beats, 2.81 % at 5, 2.60 %
+/// at 6, 2.68 % at 7, 2.66 % at 10, 2.58 % at 20 and 2.51 % at 64.
 ///
 /// A sidechain follows the song's own tempo, and a stem's tempo may be off
 /// by 1 or 2 %. Over 32 beats a 1 % error moves the duck by a third of a
@@ -97,8 +97,9 @@ pub const DUCK_TAIL_WINDOWS: f64 = 0.5;
 /// A smeared duck still locks on the grid: 12 dB, 2.5 % off over 16 beats,
 /// read 4.4 dB against 9.8 dB at its own period, and stripping it leaves its
 /// ripple in the notes. Depth is no test: the search deepens a duck on the
-/// tempo by fitting a chord's beating, up to 2.3 dB, and a gain of 1.5 dB
-/// still left a duck 1 % off with 6.5 dB of ripple against 1.1 dB.
+/// tempo by fitting a chord's beating, up to 2.3 dB, and on a flat level a gain
+/// of 1.5 dB moved 15 such ducks against 3 with this share and
+/// [`FOLD_ERROR_GAIN`].
 pub const FOLD_ERROR_SHARE: f64 = 0.9;
 /// A fold error must also fall by at least this much, in dB, for the search's
 /// read to replace a read that locks on the grid.
@@ -189,11 +190,11 @@ impl Pump {
     /// curve. A second read that locks to the beat replaces the first when
     /// the first:
     ///
-    /// - locks to the beat, and the second's fold error is under
-    ///   [`FOLD_ERROR_SHARE`] of the first's and [`FOLD_ERROR_GAIN`] lower.
-    ///   When only one of them strips, as
-    ///   the periods count different beats, the second must strip and have
-    ///   the lower fold error;
+    /// - locks to the beat, and, when both strip or neither does, the second's
+    ///   fold error is under [`FOLD_ERROR_SHARE`] of the first's and
+    ///   [`FOLD_ERROR_GAIN`] lower. When only one of them strips, as the
+    ///   periods count different beats, the second must strip and have the
+    ///   lower fold error;
     /// - runs free on a line within [`FREE_REACH`], and the second has a
     ///   duck's shape: over a short span, a duck near the search's end reads
     ///   free. A gate near a division folds onto one curve as well, but
@@ -214,10 +215,7 @@ impl Pump {
             return Some(read);
         };
         let replaces = match read.lock {
-            PumpLock::Beat if fitted.strips() == read.strips() => {
-                folds_better(fitted.fold_error, read.fold_error)
-            }
-            PumpLock::Beat => fitted.strips() && fitted.fold_error < read.fold_error,
+            PumpLock::Beat => fitted.replaces_a_beat_lock(&read),
             PumpLock::Free => {
                 read.free_line
                     .is_some_and(|cents| cents <= FREE_REACH.get())
@@ -226,6 +224,16 @@ impl Pump {
             PumpLock::Note | PumpLock::None => true,
         };
         Some(if replaces { fitted } else { read })
+    }
+
+    /// Whether this read, from the period search, replaces `read`, a read on
+    /// the grid that locks to the beat.
+    fn replaces_a_beat_lock(&self, read: &Self) -> bool {
+        if self.strips() == read.strips() {
+            folds_better(self.fold_error, read.fold_error)
+        } else {
+            self.strips() && self.fold_error < read.fold_error
+        }
     }
 
     /// Reads the pump on the beats of one grid.
@@ -703,11 +711,11 @@ fn fold_error(track: &LevelTrack, starts: &[f64], period: f64, curve: &[f64]) ->
             })
             .collect();
         let frames = cast::usize_to_f64(rests.len());
-        let mean = rests.iter().sum::<f64>() / frames.max(1.0);
+        let mean = rests.iter().sum::<f64>() / frames;
         squares += rests.iter().map(|r| (r - mean).powi(2)).sum::<f64>();
         count += frames;
     }
-    (squares / f64::max(count, 1.0)).sqrt()
+    (squares / count).sqrt()
 }
 
 /// The cents from the nearest division to the strongest line of the
@@ -1022,6 +1030,32 @@ mod tests {
         assert!(!folds_better(3.0, 3.2), "a fifteenth");
         assert!(folds_better(2.68, 3.0));
         assert!(!folds_better(2.72, 3.0));
+        assert!(
+            !folds_better(FOLD_ERROR_SHARE * 3.0, 3.0),
+            "the share itself"
+        );
+        assert!(folds_better(0.0, FOLD_ERROR_GAIN.get()), "the gain itself");
+    }
+
+    #[test]
+    fn a_gained_strip_needs_a_lower_fold_error_and_a_lost_one_never_replaces() {
+        let read = |beats: usize, fold_error: f64| Pump {
+            depth: Decibels::clamped(8.0),
+            back: None,
+            tau: None,
+            lock: PumpLock::Beat,
+            beats,
+            curve: vec![0.0; PUMP_BINS],
+            grid: BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.0)),
+            falls: Vec::new(),
+            fold_error,
+            free_line: None,
+        };
+        assert!(read(8, 1.99).replaces_a_beat_lock(&read(7, 2.0)));
+        assert!(!read(8, 2.0).replaces_a_beat_lock(&read(7, 2.0)));
+        assert!(!read(7, 1.0).replaces_a_beat_lock(&read(8, 2.0)));
+        assert!(read(8, 1.0).replaces_a_beat_lock(&read(8, 2.0)));
+        assert!(!read(8, 1.9).replaces_a_beat_lock(&read(8, 2.0)));
     }
 
     #[test]

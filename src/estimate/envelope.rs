@@ -125,10 +125,10 @@ beats' own median curves do the same to half its depth at its dip, and half the 
 its depth from their highest bin over the 8 bins before the 3 bins either side of the dip to their \
 lowest within those; else none; the read at the period up to 2.81 % from the tempo's, \
 by the longest run of counted beats, whose counted beats fold onto the deepest mean curve replaces \
-this read if that reads beat and this one reads note or none, or reads beat at a fold error, the \
-standard deviation of the level minus the curve over the counted beats, each beat about its own \
-mean, over 1 / 0.9 of that read's and 0.15 dB higher, or, when only one of the reads strips, if that \
-read strips and has the lower fold error, or reads free on a line within 60 cents of a division \
+this read if that reads beat and this one reads note or none, or reads beat and, when both strip \
+or neither does, at a fold error, the standard deviation of the level minus the curve over the \
+counted beats, each beat about its own mean, over 1 / 0.9 of that read's and 0.15 dB higher, or, \
+when only one of the reads strips, that read strips and has the lower fold error, or reads free on a line within 60 cents of a division \
 under a curve that falls faster than it recovers and takes 3 bins and half the level window from \
 half its depth back to a quarter; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \

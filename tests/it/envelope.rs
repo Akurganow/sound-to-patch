@@ -1708,16 +1708,11 @@ fn a_gained_strip_needs_no_margin() {
     assert!(p.strips(), "{p:?}");
 }
 
-/// `ducked` under a further gain in dB over the stem's time.
-fn ducked_under(x: &[f64], duck: Duck, phase: f64, gain_db: impl Fn(f64) -> f64) -> Vec<f64> {
-    under(&ducked(x, duck, phase), gain_db)
-}
-
 #[test]
 fn a_fade_does_not_hide_a_better_fold() {
-    // 1 % fast under a 12 dB fade: raw dB read a fold error of 3.51 against
-    // 3.52, with the fade in both. Each beat about its own mean reads 1.75
-    // against 1.31.
+    // 1 % fast under a 12 dB fade: raw dB read a fold error of 3.75 against
+    // 3.53, with the fade in both. Each beat about its own mean reads 1.80
+    // against 1.33.
     let (x, notes) = held_chord_over(16.0);
     let seconds = 16.0 * beat();
     let duck = Duck {
@@ -1725,7 +1720,7 @@ fn a_fade_does_not_hide_a_better_fold() {
         release_s: 0.08,
         bpm: BPM * 1.01,
     };
-    let faded = ducked_under(&x, duck, 0.5, |t| -12.0 * t / seconds);
+    let faded = under(&ducked(&x, duck, 0.5), |t| -12.0 * t / seconds);
     let bpm = pump(&faded, &notes, CHORD[0]).unwrap().bpm().get();
     assert!((bpm / (BPM * 1.01) - 1.0).abs() <= 0.002, "{bpm}");
 }
@@ -1741,7 +1736,7 @@ fn level_steps_do_not_hide_a_better_fold() {
         release_s: 0.08,
         bpm: BPM * 1.01,
     };
-    let stepped = ducked_under(&x, duck, 0.0, |t| {
+    let stepped = under(&ducked(&x, duck, 0.0), |t| {
         if (t / (8.0 * beat())).fract() >= 0.5 {
             -6.0
         } else {
@@ -1762,10 +1757,55 @@ fn a_fade_does_not_move_a_duck_on_the_tempo() {
             release_s: 0.08,
             bpm: BPM,
         };
-        let faded = ducked_under(&x, duck, 0.0, |t| -fade_db * t / seconds);
+        let faded = under(&ducked(&x, duck, 0.0), |t| -fade_db * t / seconds);
         let p = pump(&faded, &notes, CHORD[0]).unwrap();
         assert_eq!(p.bpm().get(), BPM, "{beats} {fade_db}: {p:?}");
     }
+}
+
+#[test]
+fn a_fade_does_not_move_a_duck_that_raw_db_moves() {
+    // Raw dB read 127.78 BPM on the first and 127.2 BPM on the second.
+    let seconds = |beats: f64| beats * 60.0 / 128.0;
+    let (x, notes) = chord_at(110.0, 10.0, 128.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: 128.0,
+    };
+    let faded = under(&ducked(&x, duck, 0.5), |t| -12.0 * t / seconds(10.0));
+    let read = layer(&faded, &notes, 128.0).pump.unwrap();
+    assert_eq!(read.bpm().get(), 128.0, "{read:?}");
+
+    let (x, notes) = chord_at(110.0, 16.0, 128.0);
+    let duck = Duck {
+        depth_db: 6.0,
+        release_s: 0.15,
+        bpm: 128.0,
+    };
+    let faded = under(&ducked(&x, duck, 0.0), |t| {
+        -24.0 * ((t / seconds(16.0) - 0.75).max(0.0) / 0.25)
+    });
+    let read = layer(&faded, &notes, 128.0).pump.unwrap();
+    assert_eq!(read.bpm().get(), 128.0, "{read:?}");
+}
+
+#[test]
+fn a_level_step_inside_a_beat_can_move_a_duck_on_the_tempo() {
+    // A limit, pinned: the step stays in its beat's fold error, and 127.57 BPM
+    // moves a beat edge onto it.
+    let (x, notes) = chord_at(110.0, 16.0, 128.0);
+    let seconds = 16.0 * 60.0 / 128.0;
+    let duck = Duck {
+        depth_db: 6.0,
+        release_s: 0.15,
+        bpm: 128.0,
+    };
+    let stepped = under(&ducked(&x, duck, 0.25), |t| {
+        if t >= 0.63 * seconds { -12.0 } else { 0.0 }
+    });
+    let bpm = layer(&stepped, &notes, 128.0).pump.unwrap().bpm().get();
+    assert!((bpm - 127.571).abs() < 0.001, "{bpm}");
 }
 
 #[test]

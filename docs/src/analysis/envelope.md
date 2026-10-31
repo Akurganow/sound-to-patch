@@ -274,8 +274,8 @@ notes [fact].
   longest run of counted beats and then over all of them, in steps that
   move the last beat of the span by 1 bin [fact, proposal for 2.5 %]. The
   second stage searches one step either side of the first, so the reach
-  follows the longest run of counted beats: 2.73 % at 4 beats, 2.81 % at 5,
-  2.60 % at 6, 2.68 % at 7, 2.66 % at 10, 2.58 % at 20 and 2.52 % at 64
+  follows the longest run of counted beats: up to 2.73 % at 4 beats, 2.81 % at
+  5, 2.60 % at 6, 2.68 % at 7, 2.66 % at 10, 2.58 % at 20 and 2.51 % at 64
   [fact]. Of 72
   ducks up to 2 % off the grid over 32 and 64 beats, 15 locked and stripped
   on the grid alone, and all 72 do with the search [synthetic].
@@ -284,8 +284,9 @@ notes [fact].
   [fact, proposal for 0.9, 0.15 dB, 60 cents, 3 bins and half a window]:
   - The grid's read follows the notes or nothing: always, with no shape
     test.
-  - The grid's read locks to the beat: when the search's fold error is under
-    0.9 of the grid's and 0.15 dB lower. The fold error is the standard
+  - The grid's read locks to the beat: when both reads strip or neither does,
+    the search's fold error must be under 0.9 of the grid's and 0.15 dB lower.
+    The fold error is the standard
     deviation of the level minus the curve over the counted beats, each beat
     about its own mean, so a fade or a level step between beats does not
     count as misfit [fact]. When only one read strips, as a
@@ -293,8 +294,9 @@ notes [fact].
     strips and have the lower fold error. A 12 dB duck 2.5 % off over 16
     beats reads 4.4 dB on the grid and 9.8 dB at its own period [synthetic].
     Depth is no test: the search deepens a duck on the tempo by fitting a
-    chord's beating, and a gain of 1.5 dB left a duck 1 % off with 6.5 dB of
-    ripple against 1.1 dB [synthetic]. A sub's fold error is small enough
+    chord's beating, and on the flat level of the 76,836 stems of Limits a gain
+    of 1.5 dB moved 15 ducks on the tempo, against 3 with this rule
+    [synthetic]. A sub's fold error is small enough
     that a share alone moved ducks on the tempo at 174 BPM, and the sustain
     with them by up to 2.6 dB [synthetic].
   - The grid's read runs free: when the line lies within 60 cents of a
@@ -461,10 +463,36 @@ chord's beating moves the crossing [synthetic].
   can lie off it [fact]. Of 11,161 ducks up to 2.5 % off that stayed, the
   tempo was off by a median of 0.99 % and at most 2.56 %; of 35,821 fitted
   reads, by a median of 0.08 % and at most 2.22 % [synthetic].
-- A duck on the tempo can move: on the set above, 1 of 4847 grid locks does,
-  6 dB at 110 Hz and 60 BPM, by 0.89 %. Read through the layer on 76,836
-  stems that add fades and level steps, 3 of 4595 do, by up to 0.89 %, all
-  on a flat level [synthetic].
+- A duck on the tempo can move from a grid lock. On the 123,840 signals,
+  1 of 4847 grid locks does, 6 dB at 110 Hz and 60 BPM, by 0.89 %. The 76,836
+  stems, read through the layer, hold runs of 8.9 to 32 beats, ducks of 6, 12
+  and 18 dB and 4 phases, on a flat level, under fades of 12, 18 and 36 dB
+  and under 6 dB steps every 4 beats. There 3 of 4595 grid locks move, by up to
+  0.89 %: 3 on the flat level and 0 under each fade or the steps. A wider set
+  reaches more: 9,600 stems on the tempo per level, from 3 pitches and 5
+  tempos, with 10 runs of 8.9 to 32 beats, 8 duck settings of 3 to 18 dB and 8
+  phases. Its grid locks move in 6 stems on a flat level, 7, 12 and 10 under
+  those fades, and 0 under the steps. These are ducks of 6 dB or less over 8.9
+  to 12.3 beats, by up to 2.7 %. A 6 dB, 150 ms duck at 110 Hz and 60 BPM over
+  10 beats, under the 36 dB fade, reads 59.479 BPM [synthetic].
+- A grid read of none takes any fitted beat lock with no fold test, and fades
+  feed that path. Of the same 9,600 stems per level, 122 move this way on a
+  flat level, 174, 198 and 297 under fades of 12, 18 and 36 dB, by up to 2.7 %.
+  At 128 BPM and 110 Hz over 11.2 or 12.3 beats under the 36 dB fade, 4 of 160
+  move, to 127.09 to 127.8 BPM. The set holds only stems on the tempo, so it
+  counts what this path costs and not the ducks off the tempo it finds
+  [synthetic].
+- A level step inside a beat stays in that beat's fold error, and a step on a
+  beat edge does not, so a slightly different period can win by moving an edge
+  onto the step. One step of 6, 12 or 24 dB, about 0.35 or 0.65 through the run
+  and up to 0.15 of a beat from a beat edge, at 55 and 110 Hz, 96 to 174 BPM and
+  16 and 32 beats, moves 21 of 4465 grid locks, by up to 1.15 % and with up to
+  1.09 dB of lost depth. A 6 dB, 150 ms duck at 110 Hz and 128 BPM over 16
+  beats, with a 12 dB step at 0.63 of the stem, reads 127.571 BPM. Its recovery
+  reads 130 ms and its ripple 1.31 dB, against 203 ms and 0.69 dB on the grid.
+  The same cause can hold a duck off its tempo. At 1 % off, a 48 dB fade over
+  the last quarter finds the duck's tempo in 18 of 29, and 6 dB steps every 4
+  beats in 22 of 31, against 28 of 31 with no steps [synthetic].
 - A chord's own beating sets a floor of about 1.3 dB under the fold error,
   so a smeared duck can stay on the grid. On the 76,836 stems, of 9205 ducks
   that stayed where both reads lock, 654 would have read 1 dB or more less
@@ -496,7 +524,7 @@ chord's beating moves the crossing [synthetic].
   rises over the beat, strips as a duck too. Of 360 saw tremolos each, 266
   strip at 3 % above the tempo against 63 with no search on free reads, 232
   against 8 at 3 % below, 138 against 0 at 3.5 % above and 10 against 0 at
-  3.5 % below, and none at 4 to 5 %, on the set above [synthetic].
+  3.5 % below, and none at 4 to 5 %, on the 123,840 signals [synthetic].
 - The release time is not read yet [fact].
 
 ## Sources
