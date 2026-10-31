@@ -226,7 +226,7 @@ A join record:
 | `dip_db` | dB | 0 or more | How far the level falls at the join under the quieter note; `null` when neither note has a level beside the join. |
 | `centroid_change` | ratio | | The centroid over f0 after the join over the same before it, minus 1; `null` when either side holds no signal or runs past either end of the stem. |
 | `legato` | | | `dip_db` is under 1; `null` without a dip. |
-| `confidence` | | | Low when the verdict is legato (reason `level_kept_at_join`), no attack was read (`no_attack_read`), the stem's edge cuts a level window beside the join (`stem_edge_at_join`) or the median attack is over 100 ms (`attack_hides_join`), else medium; no estimate without a dip. |
+| `confidence` | | | Low when the verdict is legato (reason `level_kept_at_join`), no attack was read (`no_attack_read`), the stem's edge reaches a level window beside the join (`stem_edge_at_join`) or the median attack is over 100 ms (`attack_hides_join`), else medium; no estimate without a dip. |
 
 ## The envelope group
 

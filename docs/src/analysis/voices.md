@@ -13,7 +13,7 @@ this count [fact].
 - A note holds a voice from its onset to its note-off knee, or to 25 ms before
   its end without a knee, so a release tail holds no voice, and a note the
   envelope layer reads as silent holds none. A held part stops at the stem end,
-  so a note listed past the stem holds none either. A note under 25 ms holds none
+  so a note listed past the stem holds none either. A note of 25 ms or less holds none
   without a knee [fact]. The issue asks
   for the first note to lie within 3 dB of its sustain level. This reads the
   knee instead and has no level test [fact].
@@ -35,8 +35,8 @@ this count [fact].
 Consecutive notes of a mono line join when the later onset lies under 30 ms past
 the earlier end in the note list, starts after the earlier onset, and lies less
 than 50 ms inside the earlier held part. A note stacked on another joins nothing
-and leaves the earlier note in place unless it ends sooner, and a silent note
-leaves it in place too [fact]. `gap_ms` is
+and leaves the earlier note in place unless the stacked note ends later, and a
+silent note leaves it in place too [fact]. `gap_ms` is
 negative when they overlap in the list. The split join of the notes step merges a same-key repeat with no
 attack of its own, so that repeat reaches no join [fact].
 
@@ -56,9 +56,10 @@ attack of its own, so that repeat reaches no join [fact].
   above the -120 dB silence floor beside the join, as with notes of about 25 ms or
   notes listed past the stem [fact].
 - A join reads low when its verdict is legato, as a retrigger with an instant
-  attack keeps its level too; when no attack was read; when the 25 ms beside the
-  join and one period more do not fit in the stem, as the later note's level is then
-  unread or short; or when the median attack of the pool is over 100 ms, because a long attack hides a retrigger [fact, proposal
+  attack keeps its level too; when no attack was read; when half a period before
+  the earlier level window or one period before the dip read falls before the stem
+  start; when one period past the 25 ms after the onset falls past the stem end, as
+  a level is then unread or short; or when the median attack of the pool is over 100 ms, because a long attack hides a retrigger [fact, proposal
   for 100 ms]. Otherwise it reads medium [fact].
 
 The set: 4000 joins sampled over 41 to 440 Hz, steps of -12 to +12 semitones,
@@ -105,9 +106,12 @@ retriggers of 12 dB or more [synthetic]:
 - With under 30 ms of audio after a join, the later note has no level, so a legato
   join reads as a retrigger: 682 of 960 over four pairs, against 17 of 160 at each
   length from 40 ms. A 12 dB, 20 ms retrigger reads as one in all but 27 of 960, so
-  the verdict stays and the join reads low, rather than losing those [synthetic]. At the stem start there is
-  no such excess past 5 ms: 45 and 47 of 160 at leads of 3 and 5 ms, and 18 to 40 from
-  10 ms on, against 29 from 1.0 s [synthetic].
+  the verdict stays and the join reads low, rather than losing those [synthetic]. At the stem start, a join
+  reads low while its earlier level window reaches the start, so up to a lead of
+  about 125 ms. A legato join there reads as a retrigger in 18 to 47 of 160 by lead,
+  from 150 ms on in 27 to 40, and from 1.0 s in 29, so this low level marks a short
+  first note and not a higher error rate. A 12 dB, 20 ms retrigger reads as one in
+  160 of 160 at every lead [synthetic].
 - `dip_db` reaches 100 to 190 dB on exact digital zeros, since the -200 dB floor stands
   in for a level. The verdict does not change [synthetic].
 - A filter that restarts with no dip in level reads legato. In the set, 228 of 433

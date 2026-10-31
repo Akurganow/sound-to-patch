@@ -52,7 +52,7 @@ const AGREE_MEDIUM: f64 = 0.7;
 
 /// The convention of the count.
 pub const VOICES_CONVENTION: &str = "each note counts from its onset to its note-off knee, or to \
-25 ms before its end without one, so a release tail holds no voice, and up to the stem end; pitches within 60 cents form \
+25 ms before its end without one, so a release tail holds no voice, and a held part stops at the stem end; pitches within 60 cents form \
 one voice; max_polyphony is the most voices that have started by any onset and are held 50 ms after \
 it, mono when that is 1; mean_polyphony is the mean count over the time any note is held, so short \
 overlaps can lift it above max_polyphony; null without notes, or when no note holds a sounding part";
@@ -67,7 +67,7 @@ after the join over the same before it, minus 1, over 20 ms or two periods each 
 verdict does not read it, and it is null when either side holds no signal or runs past either end of the stem; \
 legato when dip_db is under 1; dip_db and legato are null with no estimate when neither note has a \
 level beside the join; confidence is low when the verdict is legato, as a retrigger with an instant \
-attack keeps its level too, when no attack was read, when the stem's edge cuts a level window beside the join, or when the median attack is over 100 ms, else \
+attack keeps its level too, when no attack was read, when half a period before the earlier level window or one period before the dip read falls before the stem start, when one period past the 25 ms after the onset falls past the stem end, or when the median attack is over 100 ms, else \
 medium";
 
 /// What the voices layer reads.
@@ -345,7 +345,8 @@ fn joins(input: &VoicesInput<'_>, notes: &[Note]) -> Result<Vec<Join>, VoicesErr
         let start = note.onset().get();
         if let Some(before) = earlier {
             let stacked = start <= before.onset().get()
-                || start + OVERLAP_MIN.get() < held_end(before, input.envelope);
+                || start + OVERLAP_MIN.get()
+                    < held_end(before, input.envelope).min(stem_end(input));
             if stacked {
                 if note.offset().get() > before.offset().get() {
                     earlier = Some(note);
@@ -434,7 +435,9 @@ fn join(
         (Some(_), Some(attack)) => {
             let hides = attack > ATTACK_HIDES_JOIN.get();
             let kept = legato == Some(true);
-            let cut = dip_from - margin < 0.0 || at + span + margin > stem_end(input);
+            let cut = from - 0.5 * margin < 0.0
+                || dip_from - margin < 0.0
+                || at + span + margin > stem_end(input);
             Confidence::estimate(
                 if hides || kept || cut {
                     Level::Low

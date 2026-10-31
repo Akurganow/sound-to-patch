@@ -179,8 +179,8 @@ reason_codes! {
     /// The level holds through a join, which a retrigger with an instant attack
     /// does too.
     LevelKeptAtJoin,
-    /// The stem's edge cuts a level window beside a join, so a level is unread or
-    /// held still for less than a period.
+    /// The stem's edge reaches a level window beside a join, so a level is unread
+    /// or short.
     StemEdgeAtJoin,
     /// The interquartile range of a value over the notes whose median is 0,
     /// so the range has no ratio to the median. The value reads low.

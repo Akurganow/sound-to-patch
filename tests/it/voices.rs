@@ -530,31 +530,32 @@ fn join_before_stem_end(dip_db: f64, after: f64) -> VoicesLayer {
     read(&x, &note_list(&[(0.1, at, 110.0), (at, at + 0.3, 165.0)]))
 }
 
-/// A join `lead` seconds into the stem, with a later note after silence to read
-/// an attack from.
-fn join_after_stem_start(lead: f64) -> VoicesLayer {
+/// A join `lead` seconds into a signal that starts `pad` seconds into the stem,
+/// with a later note after silence to read an attack from.
+fn join_after_start(lead: f64, pad: f64) -> VoicesLayer {
     let third = lead + 0.6;
     let length = samples(third + 0.4, FS);
     let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
     let floor = 10f64.powf(-12.0 / 20.0);
-    let x: Vec<f64> = (0..length)
-        .map(|i| {
-            let t = f64::from(u32::try_from(i).unwrap()) / FS;
-            if t < lead {
-                0.2 * a[i]
-            } else if t < third - 0.1 {
-                0.2 * (floor + (1.0 - floor) * ((t - lead) / 0.02).min(1.0)) * b[i]
-            } else if t < third {
-                0.0
-            } else {
-                0.2 * ((t - third) / 0.01).min(1.0) * a[i]
-            }
-        })
+    let signal = (0..length).map(|i| {
+        let t = f64::from(u32::try_from(i).unwrap()) / FS;
+        if t < lead {
+            0.2 * a[i]
+        } else if t < third - 0.1 {
+            0.2 * (floor + (1.0 - floor) * ((t - lead) / 0.02).min(1.0)) * b[i]
+        } else if t < third {
+            0.0
+        } else {
+            0.2 * ((t - third) / 0.01).min(1.0) * a[i]
+        }
+    });
+    let x: Vec<f64> = std::iter::repeat_n(0.0, samples(pad, FS))
+        .chain(signal)
         .collect();
     let list = [
-        (0.0, lead, 110.0),
-        (lead, lead + 0.5, 165.0),
-        (third, third + 0.4, 110.0),
+        (pad, pad + lead, 110.0),
+        (pad + lead, pad + lead + 0.5, 165.0),
+        (pad + third, pad + third + 0.4, 110.0),
     ];
     read(&x, &note_list(&list))
 }
@@ -571,12 +572,36 @@ fn a_join_cut_by_the_stem_end_keeps_its_verdict_at_low() {
 
 #[test]
 fn a_join_cut_by_the_stem_start_keeps_its_verdict_at_low() {
-    let cut = join_after_stem_start(10.0 / 55.0 / 10.0);
+    let cut = join_after_start(10.0 / 55.0 / 10.0, 0.0);
     assert_eq!(cut.joins[0].legato, Some(false), "{:?}", cut.joins[0]);
     assert_eq!(cut.joins[0].confidence.level(), Some(Level::Low));
-    let whole = join_after_stem_start(10.0 / 55.0);
+    let whole = join_after_start(10.0 / 55.0, 0.0);
     assert_eq!(whole.joins[0].legato, Some(false), "{:?}", whole.joins[0]);
     assert_eq!(whole.joins[0].confidence.level(), Some(Level::Medium));
+}
+
+#[test]
+fn a_level_window_on_the_stem_start_reads_low() {
+    for k in 2..=7 {
+        let lead = 0.060 + f64::from(k) * 0.00031;
+        let cut = join_after_start(lead, 0.0);
+        assert_eq!(cut.joins[0].legato, Some(false), "{:?}", cut.joins[0]);
+        assert_eq!(cut.joins[0].confidence.level(), Some(Level::Low));
+        let away = join_after_start(lead, 0.5);
+        let at = away.joins[0].confidence.level();
+        assert_eq!(at, Some(Level::Medium), "{:?}", away.joins[0]);
+    }
+}
+
+#[test]
+fn a_held_part_past_the_stem_stacks_nothing() {
+    // No knee in the earlier note, which runs on past the stem.
+    let list = [(0.1, 1.5, 110.0), (0.7, 1.0, 165.0)];
+    let mut x = vec![0.0; samples(0.72, FS)];
+    tone(&mut x, (0.1, 0.7), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.7, 0.72), 165.0, 0.0, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins.len(), 1, "{layer:?}");
 }
 
 #[test]
