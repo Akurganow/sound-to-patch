@@ -21,10 +21,10 @@ pub use knee::{
     KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
-    DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FOLD_ERROR_SHARE, FREE_RATE_MIN, FREE_REACH,
-    FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PERIOD_RUN_BEATS, PHASE_DEPTH, PHASE_SHARE,
-    PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE, PUMP_STRIP_BEATS,
-    Pump, PumpLock, SUSTAIN_LEAD,
+    DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FOLD_ERROR_GAIN, FOLD_ERROR_SHARE, FREE_RATE_MIN,
+    FREE_REACH, FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PERIOD_RUN_BEATS, PHASE_DEPTH,
+    PHASE_SHARE, PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE,
+    PUMP_STRIP_BEATS, Pump, PumpLock, SUSTAIN_LEAD,
 };
 pub use track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, PUMP_RMS_PERIODS, RMS_PERIODS,
@@ -125,7 +125,7 @@ beats' own median curves do the same to half its depth at its dip, and half the 
 its depth from their highest bin over the 8 bins before the 3 bins either side of the dip to their \
 lowest within those; else none; the read at the period up to 2.68 % from the tempo's, 2.81 % over 4 to 6 counted beats, whose counted \
 beats fold onto the deepest mean curve replaces this read if that reads beat and this one reads \
-note or none, reads beat with a fold error over 1 / 0.9 of that read's, or reads free on a \
+note or none, reads beat with a fold error over 1 / 0.9 of that read's and 0.15 dB higher, or reads free on a \
 line within 60 cents of a division under a curve that falls faster than it recovers and takes 3 \
 bins and half the level window from half its depth back to a quarter; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \

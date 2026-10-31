@@ -98,6 +98,13 @@ pub const DUCK_TAIL_WINDOWS: f64 = 0.5;
 /// tempo by fitting a chord's beating, up to 2.3 dB, and a gain of 1.5 dB
 /// still left a duck 1 % off with 6.5 dB of ripple against 1.1 dB.
 pub const FOLD_ERROR_SHARE: f64 = 0.9;
+/// A fold error must also fall by at least this much, in dB, for the search's
+/// read to replace a read that locks on the grid.
+///
+/// A sub's fold error is small: at 174 BPM, 15 beats on the grid read 0.15 to
+/// 0.40 dB and 14 at a tempo 0.1 % off read 0.11 to 0.29 dB, which the share
+/// passes and which moved the sustain by up to 2.6 dB.
+pub const FOLD_ERROR_GAIN: Decibels = Decibels::from_const(0.15);
 /// A tremolo counts when its line swings the level by at least this much
 /// either way. The slow beating of a chord's near-coinciding harmonics
 /// stays below it.
@@ -180,7 +187,8 @@ impl Pump {
     /// the first:
     ///
     /// - locks to the beat, and the second's fold error is under
-    ///   [`FOLD_ERROR_SHARE`] of the first's. When only one of them strips, as
+    ///   [`FOLD_ERROR_SHARE`] of the first's and [`FOLD_ERROR_GAIN`] lower.
+    ///   When only one of them strips, as
     ///   the periods count different beats, the second must strip and have
     ///   the lower fold error;
     /// - runs free on a line within [`FREE_REACH`], and the second has a
@@ -204,7 +212,7 @@ impl Pump {
         };
         let replaces = match read.lock {
             PumpLock::Beat if fitted.strips() == read.strips() => {
-                fitted.fold_error < FOLD_ERROR_SHARE * read.fold_error
+                folds_better(fitted.fold_error, read.fold_error)
             }
             PumpLock::Beat => fitted.strips() && fitted.fold_error < read.fold_error,
             PumpLock::Free => {
@@ -668,6 +676,12 @@ fn lock(
     PumpLock::None
 }
 
+/// Whether a fold error beats another by [`FOLD_ERROR_SHARE`] and
+/// [`FOLD_ERROR_GAIN`].
+fn folds_better(error: f64, other: f64) -> bool {
+    error < FOLD_ERROR_SHARE * other && other - error >= FOLD_ERROR_GAIN.get()
+}
+
 /// The standard deviation of the level minus `curve` over the beats from
 /// `starts`, in dB.
 fn fold_error(track: &LevelTrack, starts: &[f64], period: f64, curve: &[f64]) -> f64 {
@@ -993,6 +1007,13 @@ mod tests {
         assert!(!shaped(4.0, 8.0, 0.0), "2 bins without a window");
         assert!(!shaped(40.0, 24.0, 0.0), "falls slower than it recovers");
         assert!(!shaped(24.0, 24.0, 0.0), "falls as it recovers");
+    }
+
+    #[test]
+    fn a_better_fold_needs_both_a_share_and_a_gain() {
+        assert!(folds_better(1.0, 1.2));
+        assert!(!folds_better(1.0, 1.1), "0.1 dB");
+        assert!(!folds_better(3.0, 3.2), "a fifteenth");
     }
 
     #[test]

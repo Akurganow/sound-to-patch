@@ -1565,8 +1565,8 @@ fn chord_at(f0: f64, beats: f64, bpm: f64) -> (Vec<f64>, NoteList) {
 
 #[test]
 fn a_duck_on_the_grid_keeps_the_grids_tempo() {
-    // Over 60 to 174 BPM and 55 to 220 Hz, up to 3 of 4847 grid locks on the
-    // tempo move, all 6 dB at 110 Hz and 60 BPM, by up to 0.89 %.
+    // Over 60 to 174 BPM and 55 to 220 Hz, 1 of 4847 grid locks on the tempo
+    // moves, 6 dB at 110 Hz and 60 BPM, by 0.89 %.
     let cases = [(6.0, 0.15), (12.0, 0.08), (18.0, 0.3)];
     for (f0, beats) in [
         (110.0, 10.0),
@@ -1593,20 +1593,41 @@ fn a_duck_on_the_grid_keeps_the_grids_tempo() {
 }
 
 #[test]
-fn a_fitted_read_on_the_tempo_needs_a_tenth_less_fold_error() {
-    let read = |f0: f64, beats: f64, bpm: f64, release_s: f64| {
-        let (x, notes) = chord_at(f0, beats, bpm);
+fn a_sub_on_the_tempo_keeps_the_grids_tempo() {
+    // The fold error falls by up to 0.12 dB at a tempo 0.1 % off, as the fit
+    // drops the last beat: under 0.15 dB, and a tenth less all the same.
+    let bpm = 174.0;
+    let seconds = 16.0 * 60.0 / bpm;
+    let notes = note_list(&[(0.0, seconds, 55.0)]);
+    for seed in [1, 2] {
+        let x = chord(&[55.0], fs(), seconds, seed);
+        for (depth_db, release_s) in [(6.0, 0.08), (12.0, 0.15), (18.0, 0.3)] {
+            let duck = Duck {
+                depth_db,
+                release_s,
+                bpm,
+            };
+            let p = pump_at(&duck.apply(&x, fs()), &notes, 55.0, bpm).unwrap();
+            assert_eq!(p.bpm().get(), bpm, "{seed} {depth_db}: {p:?}");
+        }
+    }
+}
+
+#[test]
+fn a_fitted_read_needs_its_fold_error_gain() {
+    let read = |beats: f64, off: f64, release_s: f64, phase: f64| {
+        let (x, notes) = chord_at(CHORD[0], beats, BPM);
         let duck = Duck {
-            depth_db: 6.0,
+            depth_db: 12.0,
             release_s,
-            bpm,
+            bpm: BPM * (1.0 + off),
         };
-        pump_at(&ducked(&x, duck, 0.5), &notes, f0, bpm).unwrap()
+        pump(&ducked(&x, duck, phase), &notes, CHORD[0]).unwrap()
     };
-    // The search's fold error is 0.906 of the grid's on the first, and 0.891
-    // on the second.
-    assert_eq!(read(220.0, 8.9, 80.0, 0.08).bpm().get(), 80.0);
-    assert_ne!(read(110.0, 10.0, 60.0, 0.15).bpm().get(), 60.0);
+    // The search's fold error falls by 0.149 dB on the first, and 0.155 dB on
+    // the second.
+    assert_eq!(read(8.9, -0.005, 0.15, 0.5).bpm().get(), BPM);
+    assert_ne!(read(12.0, 0.005, 0.3, 0.75).bpm().get(), BPM);
 }
 
 #[test]
