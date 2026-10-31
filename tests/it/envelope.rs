@@ -1146,6 +1146,8 @@ fn a_duck_off_the_given_tempo_is_found_and_stripped() {
                 depth <= depth_db && depth >= depth_db - 5.0,
                 "{off} {depth_db}: {depth}"
             );
+            let bpm = p.bpm().get() / (BPM * (1.0 + off));
+            assert!((bpm - 1.0).abs() <= 0.001, "{off} {depth_db}: {p:?}");
         }
     }
 }
@@ -1195,6 +1197,32 @@ fn dips_near_most_beats_at_random_depths_are_not_stripped() {
 /// A gain in dB over the time since a note's onset.
 type GainDb = fn(f64) -> f64;
 
+/// A saw note of 1.5 s from 0.2 s under a linear attack, a 50 ms release
+/// and a gain over the note's time.
+fn swelling_note(rate: u32, f0: f64, attack_s: f64, gain_db: GainDb) -> EnvelopeLayer {
+    let fs = f64::from(rate);
+    let (on, length) = (0.2, 1.5);
+    let n = samples(on + length + 0.3, fs);
+    let tone = saw(f0, fs, n, 0.0);
+    let x: Vec<f64> = (0..n)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / fs - on;
+            if !(0.0..=length).contains(&t) {
+                return 0.0;
+            }
+            let ramp = (t / attack_s).min(1.0) * ((length - t) / 0.05).min(1.0);
+            0.3 * tone[i] * ramp * 10f64.powf(gain_db(t) / 20.0)
+        })
+        .collect();
+    EnvelopeLayer::of(&EnvelopeInput {
+        mono: &x,
+        rate: SampleRate::new(rate).unwrap(),
+        notes: &note_list(&[(on, on + length, f0)]),
+        grid: grid(120.0),
+    })
+    .unwrap()
+}
+
 #[test]
 fn an_attack_that_swells_or_ripples_on_reads_its_fast_rise() {
     // A 50 ms attack, then a swell of 2 or 3 dB over 600 ms or a ripple of
@@ -1202,7 +1230,6 @@ fn an_attack_that_swells_or_ripples_on_reads_its_fast_rise() {
     // rise to 90 % of it read 400 to 514 ms; the attack's top is where the
     // fast rise ends.
     for rate in [22_050, 44_100] {
-        let fs = f64::from(rate);
         for f0 in [110.0, 261.63] {
             let swells: [(&str, GainDb); 4] = [
                 ("swell 2", |t: f64| -2.0 + 2.0 * (t / 0.6).min(1.0)),
@@ -1211,26 +1238,7 @@ fn an_attack_that_swells_or_ripples_on_reads_its_fast_rise() {
                 ("ripple 6", |t: f64| 3.0 * (TAU * 5.0 * t).sin()),
             ];
             for (name, gain_db) in swells {
-                let (on, length) = (0.2, 1.5);
-                let n = samples(on + length + 0.3, fs);
-                let tone = saw(f0, fs, n, 0.0);
-                let x: Vec<f64> = (0..n)
-                    .map(|i| {
-                        let t = f64::from(u32::try_from(i).unwrap()) / fs - on;
-                        if !(0.0..=length).contains(&t) {
-                            return 0.0;
-                        }
-                        let ramp = (t / 0.05).min(1.0) * ((length - t) / 0.05).min(1.0);
-                        0.3 * tone[i] * ramp * 10f64.powf(gain_db(t) / 20.0)
-                    })
-                    .collect();
-                let read = EnvelopeLayer::of(&EnvelopeInput {
-                    mono: &x,
-                    rate: SampleRate::new(rate).unwrap(),
-                    notes: &note_list(&[(on, on + length, f0)]),
-                    grid: grid(120.0),
-                })
-                .unwrap();
+                let read = swelling_note(rate, f0, 0.05, gain_db);
                 let rise = read.notes[0].attack.unwrap().get() / 1.25;
                 assert!(
                     (rise / 0.04 - 1.0).abs() <= 0.15,
@@ -1239,6 +1247,22 @@ fn an_attack_that_swells_or_ripples_on_reads_its_fast_rise() {
             }
         }
     }
+}
+
+#[test]
+fn a_steep_swell_hides_the_top_of_a_slow_attack() {
+    // A 300 ms attack under a swell over 0.8 s: up to 2.9 dB the attack has
+    // a top, and from 3.1 dB the level still rises 1 dB past every frame.
+    let attack = |gain: GainDb| {
+        swelling_note(48_000, 110.0, 0.3, gain).notes[0]
+            .attack
+            .unwrap()
+            .get()
+    };
+    let below = attack(|t: f64| -2.5 + 2.5 * (t / 0.8).min(1.0));
+    let above = attack(|t: f64| -3.5 + 3.5 * (t / 0.8).min(1.0));
+    assert!((0.32..=0.37).contains(&below), "{below}");
+    assert!((0.64..=0.71).contains(&above), "{above}");
 }
 
 /// A held A2 and an E3 on every other beat whose onset the list puts
@@ -1516,10 +1540,96 @@ fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
 }
 
 #[test]
+fn a_duck_on_the_grid_keeps_the_grids_tempo() {
+    // The search deepens a duck on the grid by under `FIT_GAIN`, and reads
+    // a tempo up to 0.4 % off.
+    let (x, notes) = held_chord_over(32.0);
+    for (depth_db, release_s) in [(6.0, 0.15), (12.0, 0.08), (18.0, 0.3)] {
+        let duck = Duck {
+            depth_db,
+            release_s,
+            bpm: BPM,
+        };
+        let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+        assert_eq!(p.lock, PumpLock::Beat, "{depth_db}: {p:?}");
+        assert_eq!(p.bpm().get(), BPM, "{depth_db}: {p:?}");
+    }
+}
+
+#[test]
+fn a_smeared_grid_lock_gives_way_to_the_ducks_own_tempo() {
+    // Phase 0.25 at 2.5 % and 0 at -1 % lock on the grid, at 4.4 and 7.2 dB.
+    let (x, notes) = held_chord_over(16.0);
+    for (off, phase) in [(0.025, 0.25), (-0.01, 0.0)] {
+        let period = 60.0 / (BPM * (1.0 + off));
+        let duck = Duck {
+            depth_db: 12.0,
+            release_s: 0.08,
+            bpm: BPM * (1.0 + off),
+        };
+        let gained: Vec<f64> = x
+            .iter()
+            .enumerate()
+            .map(|(n, v)| {
+                v * duck.gain(f64::from(u32::try_from(n).unwrap()) / fs() + phase * period)
+            })
+            .collect();
+        let p = pump(&gained, &notes, CHORD[0]).unwrap();
+        assert_eq!(p.lock, PumpLock::Beat, "{off}: {p:?}");
+        assert!(p.depth.get() >= 9.0, "{off}: {p:?}");
+        let bpm = p.bpm().get() / (BPM * (1.0 + off));
+        assert!((bpm - 1.0).abs() <= 0.002, "{off}: {p:?}");
+    }
+}
+
+#[test]
+fn a_duck_that_reads_free_near_the_search_end_is_found_by_its_shape() {
+    // 10 beats at -2.5 %: the short span reads the beat rate over 50 cents
+    // off, so the grid's read runs free.
+    let (x, notes) = held_chord_over(10.0);
+    for (depth_db, release_s, least) in [(6.0, 0.15, 6.0), (12.0, 0.08, 8.0)] {
+        let off = -0.025;
+        let period = 60.0 / (BPM * (1.0 + off));
+        let duck = Duck {
+            depth_db,
+            release_s,
+            bpm: BPM * (1.0 + off),
+        };
+        let gained: Vec<f64> = x
+            .iter()
+            .enumerate()
+            .map(|(n, v)| {
+                v * duck.gain(f64::from(u32::try_from(n).unwrap()) / fs() + 0.25 * period)
+            })
+            .collect();
+        let p = pump(&gained, &notes, CHORD[0]).unwrap();
+        assert_eq!(p.lock, PumpLock::Beat, "{depth_db}: {p:?}");
+        assert!(p.strips(), "{depth_db}: {p:?}");
+        assert!(p.depth.get() >= least, "{depth_db}: {p:?}");
+    }
+}
+
+#[test]
+fn a_duck_past_the_search_reach_stays_free() {
+    // 4 % off over 12 beats: the search folds it at 2.6 %, and the free line
+    // lies 71 cents from the beat rate.
+    let (x, notes) = held_chord_over(12.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.15,
+        bpm: BPM * 0.96,
+    };
+    let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+    assert_eq!(p.lock, PumpLock::Free, "{p:?}");
+    assert_eq!(p.bpm().get(), BPM, "{p:?}");
+}
+
+#[test]
 fn a_square_gate_near_a_division_stays_free_after_the_period_search() {
-    // A gate 50 to 93 cents off the tempo: the search moves the tempo by up
-    // to 43 cents, and a fitted read would fold the gate onto one curve.
-    for (beats, off, low) in [(12.0, 0.035, 0.3), (16.0, 0.03, 0.1)] {
+    // A gate 51 to 82 cents off the tempo: the search moves the tempo by up
+    // to 43 cents, and a fitted read folds the gate onto one curve, but the
+    // curve comes back at once.
+    for (beats, off, low) in [(12.0, 0.035, 0.3), (16.0, 0.03, 0.1), (16.0, 0.0485, 0.1)] {
         let (x, notes) = held_chord_over(beats);
         let period = 60.0 / (BPM * (1.0 + off));
         let gated = under(&x, |t| {

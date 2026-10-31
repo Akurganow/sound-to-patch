@@ -268,19 +268,38 @@ notes [fact].
   null [fact].
 - Period. A sidechain follows the song's tempo, and a stem's tempo may be
   off by 1 or 2 % [fact]. Over 32 beats a 1 % error moves the duck a third
-  of a beat, so its beats no longer fold onto one curve [fact]. When the
-  grid's read locks neither to the beat nor to a free tremolo, the layer
-  searches periods within
-  2.5 % of the grid's for the one whose counted beats fold onto the deepest
-  mean curve, over up to 64 beats of the longest run of counted beats and
-  then over all of them, in steps that move the last beat of the span by 1 bin [fact,
-  proposal for 2.5 %]. It keeps that read when it locks to the beat
-  [fact]. Of 72 ducks up to 2 % off the grid over 32 and 64 beats, 15
-  locked and stripped on the grid alone, and all 72 do with the search
-  [synthetic]. `pump_bpm` reports the tempo of the read [fact]. A free read
-  stays free: the search moves the tempo by up to 43 cents, and a square
-  gate 3 to 3.5 % off the tempo, 12 to 16 beats long, stripped as a duck
-  when the search ran after it [synthetic].
+  of a beat, so its beats no longer fold onto one curve [fact]. The layer
+  searches periods within 2.5 % of the grid's for the one whose counted
+  beats fold onto the deepest mean curve, over up to 64 beats of the
+  longest run of counted beats and then over all of them, in steps that
+  move the last beat of the span by 1 bin [fact, proposal for 2.5 %]. Of 72
+  ducks up to 2 % off the grid over 32 and 64 beats, 15 locked and stripped
+  on the grid alone, and all 72 do with the search [synthetic].
+  `pump_bpm` reports the tempo of the read that stays [fact]. The search's
+  read must lock to the beat, and it replaces the grid's read as follows
+  [fact, proposal for 1 dB, 60 cents and 5 bins]:
+  - The grid's read follows the notes or nothing: always.
+  - The grid's read locks to the beat: when the search's read dips 1 dB or
+    more deeper. A 12 dB duck 2.5 % off over 16 beats reads 4.4 dB on the
+    grid and 9.8 dB at its own period. Of 449 ducks on the tempo at 96, 128
+    and 174 BPM that lock on the grid, none gains 1 dB. With no margin, 144
+    of 183 at 128 BPM move, by up to 0.43 % [synthetic].
+  - The grid's read runs free: when the line lies within 60 cents of a
+    division, and the search's curve falls faster than it recovers and
+    takes 5 bins or more from half its depth back to a quarter. A gate near
+    a division folds onto one curve as well, but comes back at once
+    [synthetic]. Over 10 to 64 beats at 96, 128 and 174 BPM, the table
+    below counts the signals that strip [synthetic].
+
+  | Signal | Off the tempo | Signals | Search skips free reads | No free rule | This rule |
+  | :-- | :-- | :-- | :-- | :-- | :-- |
+  | Duck, release 80 ms or more | up to 2.5 % | 7128 | 6591 | 6603 | 6603 |
+  | | 3 % | 1296 | 80 | 870 | 860 |
+  | | 3.5 to 5 % | 5184 | 12 | 1122 | 190 |
+  | Square or sloped gate | 3 % | 1728 | 50 | 381 | 53 |
+  | | 3.5 to 5 % | 6912 | 0 | 453 | 0 |
+
+  A gate up to 2.5 % off strips either way; see Limits [synthetic].
 - `pump_depth_db` is minus the curve's minimum [fact].
 - `pump_recovery_s` is the time from the minimum until the curve comes
   back within 1.5 dB, going on over the beat's wrap, so a duck that sits
@@ -304,8 +323,11 @@ notes [fact].
    spectrum over the longest covered span [fact]. It comes before the
    beat: a 5.3 Hz tremolo over 17 beats at 128 BPM left a 3.6 dB dip in
    the median curve that passed the beat test [synthetic]. A duck's
-   strongest line lies on the beat rate, a division, so it does not read
-   free [fact].
+   strongest line lies on the beat rate, so it reads free when that rate
+   lies 50 cents or more from every division of the grid [fact]. That
+   holds 3 % off the tempo, and over a short span from 2.5 %, where the
+   line reads 50 to 52 cents [synthetic]. The period search then decides,
+   as above [fact].
 3. `beat`: the curve dips 3 dB or more in one run of bins half its depth
    down, and falls into its dip within 8 bins, reading on into the beat
    before and not round the beat's wrap. The odd beats and the even beats
@@ -396,9 +418,21 @@ chord's beating moves the crossing [synthetic].
   finds one constant tempo within 2.5 % of it; a tempo that moves inside
   the stem still smears the curve [fact]. Its first stage reads up to 64
   beats of the longest run, so a duck off the tempo that starts later in
-  one held note can go unfound [fact]. A 12 dB duck locks at every phase up
-  to 2.4 % off the tempo. A 6 dB duck locks at every phase up to 2 %, and
-  at 2.2 to 2.5 % below the tempo in 3 of 12 phase cells [synthetic].
+  one held note can go unfound [fact]. Across runs of 10, 12, 16, 24, 32
+  and 64 beats at four phases of the beat, up to 2.5 % off the tempo
+  [synthetic]:
+  - A 12 dB duck with an 80 ms release locks in every cell at 96 and 128
+    BPM, and in all but 3 of 264 at 174 BPM.
+  - A 6 dB duck with a 150 ms release at 128 BPM locks in every cell from
+    1 % below the tempo to 2.5 % above, and in 50 of 72 at 1.5 to 2.5 %
+    below.
+  - The same 6 dB duck at 96 BPM locks in 8 of 24 cells on the tempo itself,
+    and at 174 BPM in none of 24 at 2.5 % above.
+- A read that stays on the grid reports the grid's tempo, though the duck
+  can lie off it [fact]. Of 821 ducks up to 2.5 % off that stayed, the tempo
+  was off by a median of 0.5 % and at most 2.56 %, most over 16 beats or
+  fewer; of 8724 fitted reads, by a median of 0.04 % and at most 1.4 %
+  [synthetic].
 - The depth reads shallow, by up to 11.8 dB on an 18 dB duck, and the bias
   depends on the shape [synthetic].
 - `peak_db` compares two notes directly only when they read the same
@@ -408,7 +442,9 @@ chord's beating moves the crossing [synthetic].
   as a beat-locked pump; over fewer than 8 beats it is not stripped
   [synthetic].
 - A gate cuts across notes on the beat as a pump does; no test tells the
-  two apart [fact].
+  two apart on a read that does not run free [fact]. A lock on a level with a
+  duck's shape off a division, such as a saw tremolo that falls at once and
+  rises over the beat, strips as a duck too [synthetic].
 - The release time is not read yet [fact].
 
 ## Sources
