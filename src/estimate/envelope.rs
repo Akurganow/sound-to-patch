@@ -21,10 +21,10 @@ pub use knee::{
     KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
-    DUCK_TAIL_BINS, FALL_MAX, FIT_GAIN, FREE_RATE_MIN, FREE_REACH, FREE_RESIDUAL, FREE_SWING,
-    PERIOD_RANGE, PERIOD_RUN_BEATS, PHASE_DEPTH, PHASE_SHARE, PHASE_SLACK, PUMP_BACK,
-    PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE, PUMP_STRIP_BEATS, Pump, PumpLock,
-    SUSTAIN_LEAD,
+    DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FIT_GAIN, FREE_RATE_MIN, FREE_REACH,
+    FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PERIOD_RUN_BEATS, PHASE_DEPTH, PHASE_SHARE,
+    PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE, PUMP_STRIP_BEATS,
+    Pump, PumpLock, SUSTAIN_LEAD,
 };
 pub use track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, PUMP_RMS_PERIODS, RMS_PERIODS,
@@ -123,10 +123,11 @@ from every note division; else beat when the curve dips 3 dB or more in one run 
 depth down, falls into its dip within 8 bins, reading on into the beat before, the odd and the even \
 beats' own median curves do the same to half its depth at its dip, and half the beats fall by half \
 its depth from their highest bin over the 8 bins before the 3 bins either side of the dip to their \
-lowest within those; else none; the read at the period within 2.5 % of the tempo's whose counted beats fold onto the deepest mean \
-curve replaces this read if that reads beat and this one reads note or none, reads beat 1 dB or more \
-shallower, or reads free on a line within 60 cents of a division under a curve that falls faster \
-than it recovers and takes 5 bins or more from half its depth back to a quarter; \
+lowest within those; else none; the read at the period up to about 2.7 % from the tempo's whose counted \
+beats fold onto the deepest mean curve replaces this read if that reads beat and this one reads \
+note or none, reads beat 1.5 dB or more shallower without giving up the strip, or reads free on a \
+line within 60 cents of a division under a curve that falls faster than it recovers and takes 3 \
+bins and half the level window from half its depth back to a quarter; \
 the curve is stripped from the tracks of a note only when it locks to the beat over 8 counted beats \
 or more and the median fall of the beats over the note reaches half the curve's depth, the beats \
 counted again over each note to 25 ms before its end when the held parts give fewer \

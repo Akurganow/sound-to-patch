@@ -44,13 +44,18 @@ const FLOOR_DB: f64 = -200.0;
 pub struct LevelTrack {
     start: Seconds,
     db: Vec<f64>,
+    window: Seconds,
 }
 
 impl LevelTrack {
     /// Pairs dB values with the time of the first.
     #[must_use]
     pub fn new(start: Seconds, db: Vec<f64>) -> Self {
-        Self { start, db }
+        Self {
+            start,
+            db,
+            window: Seconds::clamped(0.0),
+        }
     }
 
     /// The centred RMS of `samples` in dB, from `from` to `to`, over the
@@ -67,8 +72,10 @@ impl LevelTrack {
         periods: f64,
     ) -> Self {
         let fs = rate.hz().get();
-        let window = rms_window(f0, periods).get();
-        let half = cast::round_to_usize(0.5 * window * fs).unwrap_or(0).max(1);
+        let window = rms_window(f0, periods);
+        let half = cast::round_to_usize(0.5 * window.get() * fs)
+            .unwrap_or(0)
+            .max(1);
         let mut sums = Vec::with_capacity(samples.len() + 1);
         sums.push(0.0);
         let mut total = 0.0;
@@ -89,7 +96,17 @@ impl LevelTrack {
                 power_db((sums[hi] - sums[lo]) / cast::usize_to_f64(hi - lo))
             })
             .collect();
-        Self { start: from, db }
+        Self {
+            start: from,
+            db,
+            window,
+        }
+    }
+
+    /// Returns the RMS window of the track, 0 s when it has none.
+    #[must_use]
+    pub fn window(&self) -> Seconds {
+        self.window
     }
 
     /// The summed power of single partials in dB, from `from` to `to`.
@@ -130,6 +147,7 @@ impl LevelTrack {
         Ok(Self {
             start: from,
             db: power.into_iter().map(power_db).collect(),
+            window: Seconds::clamped(0.0),
         })
     }
 
@@ -180,7 +198,11 @@ impl LevelTrack {
                 power_db(0.5 * amplitude * amplitude)
             })
             .collect();
-        Self { start: from, db }
+        Self {
+            start: from,
+            db,
+            window: Seconds::clamped(0.0),
+        }
     }
 
     /// Returns the time of the first value.

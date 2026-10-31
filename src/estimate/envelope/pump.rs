@@ -71,23 +71,29 @@ pub const FREE_RESIDUAL: Cents = Cents::from_const(50.0);
 /// A free line lies within the period search's reach when it lies this far
 /// or nearer from the nearest division.
 ///
-/// The search reaches 43 cents, and the line of a duck that far off reads
-/// up to 51 cents over a short span. 60 cents also holds a duck 3 % off.
+/// The search reaches 46 cents, and the line of a duck 2.5 % off reads up
+/// to 52 cents over a short span. 60 cents also holds a duck 3 % off.
 pub const FREE_REACH: Cents = Cents::from_const(60.0);
-/// A duck takes at least this many bins from half its depth back to a
-/// quarter of it.
+/// A duck takes at least this many bins, and [`DUCK_TAIL_WINDOWS`] more,
+/// from half its depth back to a quarter of it.
 ///
 /// A gate comes back at once: at 128 BPM the median is 1 bin for a gate and
 /// 7 to 13 for a duck's release of 80 ms or more.
-pub const DUCK_TAIL_BINS: usize = 5;
+pub const DUCK_TAIL_BINS: f64 = 3.0;
+/// The shares of the level window that [`DUCK_TAIL_BINS`] grows by.
+///
+/// The window smears a gate's edge over its own length, and a bin's time
+/// follows the tempo. A flat 5 bins let a gate through at 55 Hz and 174 BPM,
+/// and cost ducks at 60 and 80 BPM.
+pub const DUCK_TAIL_WINDOWS: f64 = 0.5;
 /// The period search's read replaces a read that locks on the grid when it
 /// reads at least this much deeper.
 ///
 /// A smeared duck still locks on the grid: 12 dB, 2.5 % off over 16 beats,
-/// read 4.4 dB against 9.8 dB at its own period. The search also deepens
-/// any duck on the grid a little, by fitting a chord's beating: by under
-/// 1 dB on all 449 generated ducks at 96, 128 and 174 BPM.
-pub const FIT_GAIN: Decibels = Decibels::from_const(1.0);
+/// read 4.4 dB against 9.8 dB at its own period. The search also deepens a
+/// duck on the tempo by fitting a chord's beating: at 1.5 dB, 34 of 4847
+/// generated grid locks move by up to 0.22 %; at 1 dB, 231 by up to 1.95 %.
+pub const FIT_GAIN: Decibels = Decibels::from_const(1.5);
 /// A tremolo counts when its line swings the level by at least this much
 /// either way. The slow beating of a chord's near-coinciding harmonics
 /// stays below it.
@@ -144,8 +150,9 @@ pub struct Pump {
     /// For a beat lock, each beat's fall into the dip, by beat of the grid;
     /// `None` where a beat holds no frames.
     falls: Vec<Option<f64>>,
-    /// The start and end of the longest run of counted beats, in seconds.
-    longest: (f64, f64),
+    /// The cents from the nearest division to the level's strongest line
+    /// over the longest run of counted beats; `None` under [`FREE_SWING`].
+    free_line: Option<f64>,
 }
 
 impl Pump {
@@ -165,7 +172,8 @@ impl Pump {
     /// curve. A second read that locks to the beat replaces the first when
     /// the first:
     ///
-    /// - locks to the beat, and the second reads [`FIT_GAIN`] deeper;
+    /// - locks to the beat, and the second reads [`FIT_GAIN`] deeper and does
+    ///   not give up the strip, as a slower period counts fewer beats;
     /// - runs free on a line within [`FREE_REACH`], and the second has a
     ///   duck's shape: over a short span, a duck near the search's end reads
     ///   free. A gate near a division folds onto one curve as well, but
@@ -186,11 +194,14 @@ impl Pump {
             return Some(read);
         };
         let replaces = match read.lock {
-            PumpLock::Beat => fitted.depth.get() >= read.depth.get() + FIT_GAIN.get(),
+            PumpLock::Beat => {
+                fitted.depth.get() >= read.depth.get() + FIT_GAIN.get()
+                    && (fitted.strips() || !read.strips())
+            }
             PumpLock::Free => {
-                free_residual(track, read.longest, grid)
+                read.free_line
                     .is_some_and(|cents| cents <= FREE_REACH.get())
-                    && fitted.has_a_ducks_shape()
+                    && fitted.has_a_ducks_shape(track.window().get())
             }
             PumpLock::Note | PumpLock::None => true,
         };
@@ -236,8 +247,9 @@ impl Pump {
         let depth = dip(&curve);
         let low = PUMP_BINS + dip_bin(&curve);
         let falls: Vec<f64> = beats.iter().map(|b| fall_into(b, low)).collect();
+        let free_line = free_line(track, longest, grid);
         let lock = lock(&beats, &onset_beats, &odd, &falls, &wide, depth, || {
-            free_tremolo(track, longest, grid)
+            free_line.is_some_and(|cents| cents >= FREE_RESIDUAL.get())
         });
         let falls = if lock == PumpLock::Beat {
             let end = track.time(track.db().len()) - grid.offset().get();
@@ -263,7 +275,7 @@ impl Pump {
             curve,
             grid,
             falls,
-            longest,
+            free_line,
         })
     }
 
@@ -302,9 +314,10 @@ impl Pump {
         self.grid.bpm()
     }
 
-    /// Whether the curve falls faster than it recovers, and takes
-    /// [`DUCK_TAIL_BINS`] or more from half its depth back to a quarter.
-    fn has_a_ducks_shape(&self) -> bool {
+    /// Whether the curve falls faster than it recovers, and takes long
+    /// enough from half its depth back to a quarter: [`DUCK_TAIL_BINS`] and
+    /// [`DUCK_TAIL_WINDOWS`] of a level window of `window` seconds.
+    fn has_a_ducks_shape(&self, window: f64) -> bool {
         let low = dip_bin(&self.curve);
         let depth = self.depth.get();
         let first = |at: &dyn Fn(usize) -> usize, level: f64| {
@@ -314,7 +327,9 @@ impl Pump {
         };
         let (after, before) = (|k| low + k, |k| low + PUMP_BINS - k);
         let rise = first(&after, 0.25);
-        rise >= first(&after, 0.5) + DUCK_TAIL_BINS && rise > first(&before, 0.25)
+        let bins = cast::usize_to_f64(PUMP_BINS) * window / self.grid.beat_period().get();
+        let tail = cast::usize_to_f64(rise.saturating_sub(first(&after, 0.5)));
+        tail >= DUCK_TAIL_BINS + DUCK_TAIL_WINDOWS * bins && rise > first(&before, 0.25)
     }
 
     /// Returns the curve at time `t`, linear between bin centres and
@@ -408,7 +423,6 @@ fn fit(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Option<BeatGr
         let n = cast::floor_to_usize(half / step).unwrap_or(0);
         (0..=2 * n)
             .map(|k| centre + (cast::usize_to_f64(k) - cast::usize_to_f64(n)) * step)
-            .filter(|share| share.abs() <= PERIOD_RANGE)
             .map(|share| (share, folded_depth(track, at(share), held, span)))
             .max_by(|a, b| a.1.total_cmp(&b.1))
             .map(|(share, _)| share)
@@ -642,17 +656,10 @@ fn lock(
     PumpLock::None
 }
 
-/// Whether the level over the longest covered span swings at a rate tied
-/// to no note division: its line lies [`FREE_RESIDUAL`] or more from the
-/// nearest division.
-fn free_tremolo(track: &LevelTrack, span: (f64, f64), grid: BeatGrid) -> bool {
-    free_residual(track, span, grid).is_some_and(|cents| cents >= FREE_RESIDUAL.get())
-}
-
 /// The cents from the nearest division to the strongest line of the
 /// modulation spectrum between [`FREE_RATE_MIN`] and 20 Hz, over a span of
 /// the level. `None` when that line swings by under [`FREE_SWING`].
-fn free_residual(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> Option<f64> {
+fn free_line(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> Option<f64> {
     let (lo, hi) = (track.index(start), track.index(end));
     let block = cast::round_to_usize(1.0 / (TRACK_RATE_HZ.get() * HOP.get())).unwrap_or(5);
     // Each block averages in dB, as the curve does, so its mean is the
@@ -913,7 +920,7 @@ mod tests {
             curve: vec![0.0; PUMP_BINS],
             grid: BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.6)),
             falls: [0.0, 0.0, 8.0, 8.0, 8.0, 8.0, 8.0, 8.0].map(Some).to_vec(),
-            longest: (0.0, 0.0),
+            free_line: None,
         };
         assert!(!pump.carries(0.6, 1.6), "beats 0 and 1 do not fall");
         assert!(pump.carries(1.6, 2.6), "beats 2 and 3 fall");
@@ -922,7 +929,7 @@ mod tests {
     #[test]
     fn a_ducks_shape_recovers_slower_than_it_falls() {
         // A dip of 8 dB at bin 32, by the bins it takes each way.
-        let shaped = |fall: f64, rise: f64| {
+        let shaped = |fall: f64, rise: f64, window: f64| {
             let curve: Vec<f64> = (0..PUMP_BINS)
                 .map(|bin| {
                     let k = cast::usize_to_f64(bin) - 32.0;
@@ -939,17 +946,18 @@ mod tests {
                 curve,
                 grid: grid(),
                 falls: Vec::new(),
-                longest: (0.0, 0.0),
+                free_line: None,
             }
-            .has_a_ducks_shape()
+            .has_a_ducks_shape(window)
         };
-        assert!(shaped(4.0, 20.0));
-        assert!(!shaped(40.0, 24.0), "falls slower than it recovers");
-        assert!(!shaped(24.0, 24.0), "falls as it recovers");
-        assert!(
-            !shaped(4.0, 12.0),
-            "3 bins from half its depth to a quarter"
-        );
+        // Beat 0.5 s: 128 bins to the second, so a 16 ms window spans 2 bins
+        // and asks 4 bins of the tail. A rise of `r` bins has a tail of `r / 4`.
+        assert!(shaped(4.0, 16.0, 0.0156));
+        assert!(!shaped(4.0, 12.0, 0.0156), "3 bins under a window");
+        assert!(shaped(4.0, 12.0, 0.0));
+        assert!(!shaped(4.0, 8.0, 0.0), "2 bins without a window");
+        assert!(!shaped(40.0, 24.0, 0.0), "falls slower than it recovers");
+        assert!(!shaped(24.0, 24.0, 0.0), "falls as it recovers");
     }
 
     #[test]
@@ -965,7 +973,7 @@ mod tests {
             curve,
             grid: BeatGrid::new(Bpm::new(120.0).unwrap(), Seconds::clamped(0.1)),
             falls: Vec::new(),
-            longest: (0.0, 0.0),
+            free_line: None,
         };
         assert!((pump.at(0.1 + 0.5 / 128.0) + 8.0).abs() < 1e-9);
         assert!(pump.at(0.5 / 128.0).abs() < 1e-9);
@@ -984,7 +992,7 @@ mod tests {
             curve,
             grid: grid(),
             falls: Vec::new(),
-            longest: (0.0, 0.0),
+            free_line: None,
         };
         // Beat 0.5 s; bin 0's centre at 0.5 / 128 s, the last bin's at
         // 0.5 - 0.5 / 128 s, and the beat start halfway between them.

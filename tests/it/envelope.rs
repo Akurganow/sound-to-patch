@@ -10,8 +10,7 @@ use std::f64::consts::TAU;
 use sound_to_patch::audio::{BeatGrid, SampleRate};
 use sound_to_patch::confidence::Level;
 use sound_to_patch::estimate::envelope::{
-    EnvelopeInput, EnvelopeLayer, LevelTrack, PERIOD_RANGE, PUMP_RMS_PERIODS, Pump, PumpLock,
-    amp_proxy,
+    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy,
 };
 use sound_to_patch::notes::NoteList;
 use sound_to_patch::units::{Bpm, Hz, Seconds};
@@ -1123,6 +1122,15 @@ fn held_chord_over(beats: f64) -> (Vec<f64>, NoteList) {
     )
 }
 
+/// `x` under a duck that starts `phase` of its beat into the stem.
+fn ducked(x: &[f64], duck: Duck, phase: f64) -> Vec<f64> {
+    let shift = phase * 60.0 / duck.bpm;
+    x.iter()
+        .enumerate()
+        .map(|(n, v)| v * duck.gain(f64::from(u32::try_from(n).unwrap()) / fs() + shift))
+        .collect()
+}
+
 /// `x` under a gain in dB.
 fn under(x: &[f64], gain_db: impl Fn(f64) -> f64) -> Vec<f64> {
     x.iter()
@@ -1265,8 +1273,8 @@ fn a_steep_swell_hides_the_top_of_a_slow_attack() {
             .unwrap()
             .get()
     };
-    let below = attack(|t: f64| -2.5 + 2.5 * (t / 0.8).min(1.0));
-    let above = attack(|t: f64| -3.5 + 3.5 * (t / 0.8).min(1.0));
+    let below = attack(|t: f64| -2.9 + 2.9 * (t / 0.8).min(1.0));
+    let above = attack(|t: f64| -3.1 + 3.1 * (t / 0.8).min(1.0));
     assert!((0.32..=0.37).contains(&below), "{below}");
     assert!((0.64..=0.71).contains(&above), "{above}");
 }
@@ -1545,21 +1553,86 @@ fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
     assert!(p.strips(), "{p:?}");
 }
 
+/// `CHORD` from `f0`, over `beats` of `bpm`.
+fn chord_at(f0: f64, beats: f64, bpm: f64) -> (Vec<f64>, NoteList) {
+    let seconds = beats * 60.0 / bpm;
+    let pitches = CHORD.map(|f| f * f0 / CHORD[0]);
+    (
+        chord(&pitches, fs(), seconds, 1),
+        note_list(&pitches.map(|f| (0.0, seconds, f))),
+    )
+}
+
 #[test]
 fn a_duck_on_the_grid_keeps_the_grids_tempo() {
-    // The search deepens a duck on the grid by under `FIT_GAIN`, and reads
-    // a tempo up to 0.4 % off.
-    let (x, notes) = held_chord_over(32.0);
-    for (depth_db, release_s) in [(6.0, 0.15), (12.0, 0.08), (18.0, 0.3)] {
-        let duck = Duck {
-            depth_db,
-            release_s,
-            bpm: BPM,
-        };
-        let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
-        assert_eq!(p.lock, PumpLock::Beat, "{depth_db}: {p:?}");
-        assert_eq!(p.bpm().get(), BPM, "{depth_db}: {p:?}");
+    // Over 60 to 174 BPM and 55 to 220 Hz, up to 34 of 4847 grid locks on the
+    // tempo gain `FIT_GAIN`, nearly all 18 dB at 220 Hz, and move by up to
+    // 0.22 %. At these depths and this tempo none does.
+    for f0 in [110.0, 220.0] {
+        for beats in [10.0, 12.0, 16.0] {
+            let (x, notes) = chord_at(f0, beats, BPM);
+            for (depth_db, release_s) in [(6.0, 0.15), (12.0, 0.08)] {
+                let duck = Duck {
+                    depth_db,
+                    release_s,
+                    bpm: BPM,
+                };
+                let p = pump_at(&ducked(&x, duck, 0.0), &notes, f0, BPM).unwrap();
+                assert_eq!(p.lock, PumpLock::Beat, "{f0} {beats} {depth_db}: {p:?}");
+                assert_eq!(p.bpm().get(), BPM, "{f0} {beats} {depth_db}: {p:?}");
+            }
+        }
     }
+}
+
+#[test]
+fn a_fitted_read_on_the_tempo_needs_its_gain() {
+    // The search gains 1.49 dB on the first and 1.52 dB on the second.
+    let read = |beats: f64, bpm: f64, phase: f64| {
+        let (x, notes) = chord_at(220.0, beats, bpm);
+        let duck = Duck {
+            depth_db: 12.0,
+            release_s: 0.15,
+            bpm,
+        };
+        pump_at(&ducked(&x, duck, phase), &notes, 220.0, bpm).unwrap()
+    };
+    assert_eq!(read(8.9, 80.0, 0.75).bpm().get(), 80.0);
+    let moved = read(12.0, BPM, 0.3).bpm().get();
+    assert!(
+        moved != BPM && (moved / BPM - 1.0).abs() <= 0.002,
+        "{moved}"
+    );
+}
+
+#[test]
+fn a_fitted_read_does_not_give_up_the_strip() {
+    // A slower period counts fewer beats: each grid lock counts 8 beats and
+    // strips, and the fitted read counts 7 and reads deeper.
+    for (beats, bpm, off, release_s) in [(9.0, 96.0, -0.01, 0.08), (9.2, BPM, -0.02, 0.15)] {
+        let (x, notes) = chord_at(CHORD[0], beats, bpm);
+        let duck = Duck {
+            depth_db: 12.0,
+            release_s,
+            bpm: bpm * (1.0 + off),
+        };
+        let p = pump_at(&ducked(&x, duck, 0.0), &notes, CHORD[0], bpm).unwrap();
+        assert!(p.strips(), "{beats} {bpm}: {p:?}");
+        assert_eq!(p.bpm().get(), bpm, "{beats} {bpm}: {p:?}");
+    }
+}
+
+#[test]
+fn a_fitted_read_can_gain_the_strip() {
+    // 8.9 beats count 7 on the grid, and a faster period counts 8.
+    let (x, notes) = chord_at(CHORD[0], 8.9, BPM);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 1.02,
+    };
+    let p = pump_at(&ducked(&x, duck, 0.0), &notes, CHORD[0], BPM).unwrap();
+    assert!(p.strips(), "{p:?}");
 }
 
 #[test]
@@ -1567,20 +1640,12 @@ fn a_smeared_grid_lock_gives_way_to_the_ducks_own_tempo() {
     // Phase 0.25 at 2.5 % and 0 at -1 % lock on the grid, at 4.4 and 7.2 dB.
     let (x, notes) = held_chord_over(16.0);
     for (off, phase) in [(0.025, 0.25), (-0.01, 0.0)] {
-        let period = 60.0 / (BPM * (1.0 + off));
         let duck = Duck {
             depth_db: 12.0,
             release_s: 0.08,
             bpm: BPM * (1.0 + off),
         };
-        let gained: Vec<f64> = x
-            .iter()
-            .enumerate()
-            .map(|(n, v)| {
-                v * duck.gain(f64::from(u32::try_from(n).unwrap()) / fs() + phase * period)
-            })
-            .collect();
-        let p = pump(&gained, &notes, CHORD[0]).unwrap();
+        let p = pump(&ducked(&x, duck, phase), &notes, CHORD[0]).unwrap();
         assert_eq!(p.lock, PumpLock::Beat, "{off}: {p:?}");
         assert!(p.depth.get() >= 9.0, "{off}: {p:?}");
         let bpm = p.bpm().get() / (BPM * (1.0 + off));
@@ -1590,32 +1655,21 @@ fn a_smeared_grid_lock_gives_way_to_the_ducks_own_tempo() {
 
 #[test]
 fn a_duck_that_reads_free_near_the_search_end_is_found_by_its_shape() {
-    // 10 beats at -2.5 %: the short span reads the beat rate over 50 cents
-    // off, so the grid's read runs free.
+    // 10 beats at -2.5 % and phase 0.25: the short span reads the beat rate
+    // over 50 cents off, so the grid's read runs free. At phase 0.75 the 6 dB
+    // duck reads no lock.
     let (x, notes) = held_chord_over(10.0);
     for (depth_db, release_s, least) in [(6.0, 0.15, 6.0), (12.0, 0.08, 8.0), (12.0, 0.3, 8.0)] {
         let off = -0.025;
-        let period = 60.0 / (BPM * (1.0 + off));
         let duck = Duck {
             depth_db,
             release_s,
             bpm: BPM * (1.0 + off),
         };
-        let gained: Vec<f64> = x
-            .iter()
-            .enumerate()
-            .map(|(n, v)| {
-                v * duck.gain(f64::from(u32::try_from(n).unwrap()) / fs() + 0.25 * period)
-            })
-            .collect();
-        let p = pump(&gained, &notes, CHORD[0]).unwrap();
+        let p = pump(&ducked(&x, duck, 0.25), &notes, CHORD[0]).unwrap();
         assert_eq!(p.lock, PumpLock::Beat, "{depth_db}: {p:?}");
         assert!(p.strips(), "{depth_db}: {p:?}");
         assert!(p.depth.get() >= least, "{depth_db}: {p:?}");
-        assert!(
-            p.bpm().get() >= BPM * (1.0 - PERIOD_RANGE),
-            "{depth_db}: {p:?}"
-        );
     }
 }
 
@@ -1632,6 +1686,46 @@ fn a_duck_past_the_search_reach_stays_free() {
     let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
     assert_eq!(p.lock, PumpLock::Free, "{p:?}");
     assert_eq!(p.bpm().get(), BPM, "{p:?}");
+    // 3.5 % off over 10 beats: the line lies 67 cents off.
+    let (x, notes) = held_chord_over(10.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 0.965,
+    };
+    let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+    assert_eq!(p.lock, PumpLock::Free, "{p:?}");
+}
+
+#[test]
+fn a_duck_3_percent_off_strips_inside_the_free_reach() {
+    let (x, notes) = held_chord_over(10.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: BPM * 0.97,
+    };
+    let p = pump(&ducked(&x, duck, 0.0), &notes, CHORD[0]).unwrap();
+    assert!(p.strips(), "{p:?}");
+}
+
+#[test]
+fn a_gate_smeared_by_a_low_notes_window_stays_free() {
+    // At 55 Hz the 36 ms window smears the edge over 7 bins at 174 BPM.
+    let bpm = 174.0;
+    for beats in [12.0, 16.0] {
+        let (x, notes) = chord_at(55.0, beats, bpm);
+        let period = 60.0 / (bpm * 0.97);
+        let gated = under(&x, |t| {
+            if (t / period).fract() < 0.1 {
+                -12.0
+            } else {
+                0.0
+            }
+        });
+        let p = pump_at(&gated, &notes, 55.0, bpm).unwrap();
+        assert_ne!(p.lock, PumpLock::Beat, "{beats}: {p:?}");
+    }
 }
 
 #[test]
