@@ -13,7 +13,8 @@ this count [fact].
 - A note holds a voice from its onset to its note-off knee, or to 25 ms before
   its end without a knee, so a release tail holds no voice, and a note the
   envelope layer reads as silent holds none. A held part stops at the stem end,
-  so a note listed past the stem holds none either [fact]. The issue asks
+  so a note listed past the stem holds none either. A note under 25 ms holds none
+  without a knee [fact]. The issue asks
   for the first note to lie within 3 dB of its sustain level. This reads the
   knee instead and has no level test [fact].
 - Pitches within 60 cents form one voice, so seven detuned copies of one pitch
@@ -34,7 +35,8 @@ this count [fact].
 Consecutive notes of a mono line join when the later onset lies under 30 ms past
 the earlier end in the note list, starts after the earlier onset, and lies less
 than 50 ms inside the earlier held part. A note stacked on another joins nothing
-and leaves the earlier note in place, as a silent note does [fact]. `gap_ms` is
+and leaves the earlier note in place unless it ends sooner, and a silent note
+leaves it in place too [fact]. `gap_ms` is
 negative when they overlap in the list. The split join of the notes step merges a same-key repeat with no
 attack of its own, so that repeat reaches no join [fact].
 
@@ -54,8 +56,9 @@ attack of its own, so that repeat reaches no join [fact].
   above the -120 dB silence floor beside the join, as with notes of about 25 ms or
   notes listed past the stem [fact].
 - A join reads low when its verdict is legato, as a retrigger with an instant
-  attack keeps its level too; when no attack was read; or when the median attack
-  of the pool is over 100 ms, because a long attack hides a retrigger [fact, proposal
+  attack keeps its level too; when no attack was read; when the 25 ms beside the
+  join and one period more do not fit in the stem, as the later note's level is then
+  unread or short; or when the median attack of the pool is over 100 ms, because a long attack hides a retrigger [fact, proposal
   for 100 ms]. Otherwise it reads medium [fact].
 
 The set: 4000 joins sampled over 41 to 440 Hz, steps of -12 to +12 semitones,
@@ -86,14 +89,27 @@ retriggers of 12 dB or more [synthetic]:
   the chord gate calls monophonic, 136 read poly from transcribed notes, 131 of them
   at low confidence. With exact note lists, 463 of 463 read mono [synthetic]. On 22
   real instrument stems, 1 read mono and none reported a join, at mostly low
-  confidence. The other 21 read a maximum of 3 to 9 and a mean of 1.06 to 2.52
+  confidence. The other 21 read a maximum of 3 to 8 and a mean of 1.06 to 2.52
   [fact]. So a mapper must not take `mono: false` or missing joins as evidence at low confidence.
 - The verdict depends on where the join falls in the period, and the acceptance
-  test sits on a whole-cycle position. A review moved the join in 0.31 ms steps over
-  40 positions, between the same saws. At 110 and 165 Hz, 31 of 40 of a 0 dB join read
-  legato and 24 of 40 of a 12 dB, 5 ms retrigger read as one. The same pairs of counts
-  are 34 and 40 at 220 and 330 Hz, 40 and 20 at 110 and 146.83 Hz, and 39 and 16 at
-  82.41 and 123.47 Hz [synthetic].
+  test sits on a whole-cycle position. Moving a join from 1.0 s in 0.31 ms steps over
+  40 positions, between the same saws, read these counts [synthetic]:
+
+  | Hz | 0 dB join read legato | 12 dB, 5 ms retrigger found |
+  | :-- | :-- | :-- |
+  | 110, 165 | 31 | 24 |
+  | 220, 330 | 34 | 40 |
+  | 110, 146.83 | 37 | 24 |
+  | 82.41, 123.47 | 29 | 24 |
+
+- With under 30 ms of audio after a join, the later note has no level, so a legato
+  join reads as a retrigger: 682 of 960 over four pairs, against 17 of 160 at each
+  length from 40 ms. A 12 dB, 20 ms retrigger reads as one in all but 27 of 960, so
+  the verdict stays and the join reads low, rather than losing those [synthetic]. At the stem start there is
+  no such excess past 5 ms: 45 and 47 of 160 at leads of 3 and 5 ms, and 18 to 40 from
+  10 ms on, against 29 from 1.0 s [synthetic].
+- `dip_db` reaches 100 to 190 dB on exact digital zeros, since the -200 dB floor stands
+  in for a level. The verdict does not change [synthetic].
 - A filter that restarts with no dip in level reads legato. In the set, 228 of 433
   filter joins read as a retrigger, against 289 of 436 to 358 of 476 for the other
   timbres [synthetic].

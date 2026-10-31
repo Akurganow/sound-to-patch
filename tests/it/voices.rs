@@ -365,6 +365,22 @@ fn a_stacked_note_does_not_end_a_line() {
 }
 
 #[test]
+fn a_stacked_note_that_ends_later_carries_the_line() {
+    let times = |list: &[(f64, f64, f64)], stem: f64| -> Vec<f64> {
+        let mut x = vec![0.0; samples(stem, FS)];
+        for &(a, b, f) in list {
+            tone(&mut x, (a, b), f, 0.005, 0.0);
+        }
+        let layer = read(&x, &note_list(list));
+        layer.joins.iter().map(|j| j.time.get()).collect()
+    };
+    let same_onset = [(0.1, 0.13, 110.0), (0.1, 1.0, 165.0), (1.0, 1.5, 220.0)];
+    assert_eq!(times(&same_onset, 1.6), [1.0]);
+    let inside = [(0.1, 1.0, 110.0), (0.5, 1.5, 110.5), (1.5, 2.0, 165.0)];
+    assert_eq!(times(&inside, 2.1), [1.5]);
+}
+
+#[test]
 fn a_silent_note_joins_nothing_and_does_not_end_a_line() {
     // Two real notes around a silent listed one in the gap of digital silence.
     let list = [(0.1, 0.5, 110.0), (0.7, 0.75, 220.0), (0.75, 1.1, 165.0)];
@@ -489,7 +505,78 @@ fn the_dip_window_stops_at_the_stem_end() {
     // Past the stem the level is the floor, 200 dB down.
     let layer = cut_after_join(0.0, 0.015);
     let dip = layer.joins[0].dip.expect("a level before the join");
-    assert!(dip.get() < 3.0, "{:?}", layer.joins[0]);
+    assert!(dip.get() < 1.5, "{:?}", layer.joins[0]);
+}
+
+/// A note after silence, then a join with `dip_db` over 20 ms and `after` seconds
+/// of stem past it.
+fn join_before_stem_end(dip_db: f64, after: f64) -> VoicesLayer {
+    let at = 30.0 / 55.0;
+    let length = samples(at + after, FS);
+    let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
+    let floor = 10f64.powf(-dip_db / 20.0);
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / FS;
+            if t < 0.1 {
+                0.0
+            } else if t < at {
+                0.2 * a[i]
+            } else {
+                0.2 * (floor + (1.0 - floor) * ((t - at) / 0.02).min(1.0)) * b[i]
+            }
+        })
+        .collect();
+    read(&x, &note_list(&[(0.1, at, 110.0), (at, at + 0.3, 165.0)]))
+}
+
+/// A join `lead` seconds into the stem, with a later note after silence to read
+/// an attack from.
+fn join_after_stem_start(lead: f64) -> VoicesLayer {
+    let third = lead + 0.6;
+    let length = samples(third + 0.4, FS);
+    let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
+    let floor = 10f64.powf(-12.0 / 20.0);
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / FS;
+            if t < lead {
+                0.2 * a[i]
+            } else if t < third - 0.1 {
+                0.2 * (floor + (1.0 - floor) * ((t - lead) / 0.02).min(1.0)) * b[i]
+            } else if t < third {
+                0.0
+            } else {
+                0.2 * ((t - third) / 0.01).min(1.0) * a[i]
+            }
+        })
+        .collect();
+    let list = [
+        (0.0, lead, 110.0),
+        (lead, lead + 0.5, 165.0),
+        (third, third + 0.4, 110.0),
+    ];
+    read(&x, &note_list(&list))
+}
+
+#[test]
+fn a_join_cut_by_the_stem_end_keeps_its_verdict_at_low() {
+    let cut = join_before_stem_end(12.0, 0.015);
+    assert_eq!(cut.joins[0].legato, Some(false), "{:?}", cut.joins[0]);
+    assert_eq!(cut.joins[0].confidence.level(), Some(Level::Low));
+    let whole = join_before_stem_end(12.0, 0.1);
+    assert_eq!(whole.joins[0].legato, Some(false), "{:?}", whole.joins[0]);
+    assert_eq!(whole.joins[0].confidence.level(), Some(Level::Medium));
+}
+
+#[test]
+fn a_join_cut_by_the_stem_start_keeps_its_verdict_at_low() {
+    let cut = join_after_stem_start(10.0 / 55.0 / 10.0);
+    assert_eq!(cut.joins[0].legato, Some(false), "{:?}", cut.joins[0]);
+    assert_eq!(cut.joins[0].confidence.level(), Some(Level::Low));
+    let whole = join_after_stem_start(10.0 / 55.0);
+    assert_eq!(whole.joins[0].legato, Some(false), "{:?}", whole.joins[0]);
+    assert_eq!(whole.joins[0].confidence.level(), Some(Level::Medium));
 }
 
 #[test]

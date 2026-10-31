@@ -18,6 +18,10 @@ expression: "serde_json::to_string_pretty(&shape(&joins[0])).unwrap()"
       {
         "code": "level_kept_at_join",
         "value": true
+      },
+      {
+        "code": "stem_edge_at_join",
+        "value": false
       }
     ],
     "estimate": true

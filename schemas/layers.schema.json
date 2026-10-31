@@ -317,7 +317,7 @@
       }
     },
     "voices": {
-      "description": "The count of voices, read on any line, and the joins of a mono line. values is null without notes.",
+      "description": "The count of voices, read on any line, and the joins of a mono line. values is null without notes (reason no_note_list) or when no note holds a sounding part in the stem (reason too_few_notes).",
       "allOf": [
         { "$ref": "#/$defs/layer_group" },
         {

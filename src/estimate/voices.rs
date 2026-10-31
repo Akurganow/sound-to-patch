@@ -55,7 +55,7 @@ pub const VOICES_CONVENTION: &str = "each note counts from its onset to its note
 25 ms before its end without one, so a release tail holds no voice, and up to the stem end; pitches within 60 cents form \
 one voice; max_polyphony is the most voices that have started by any onset and are held 50 ms after \
 it, mono when that is 1; mean_polyphony is the mean count over the time any note is held, so short \
-overlaps can lift it above max_polyphony; null when no note holds a sounding part";
+overlaps can lift it above max_polyphony; null without notes, or when no note holds a sounding part";
 
 /// The convention of a join.
 pub const JOIN_CONVENTION: &str = "consecutive notes of a mono line whose gap, the later onset \
@@ -67,7 +67,7 @@ after the join over the same before it, minus 1, over 20 ms or two periods each 
 verdict does not read it, and it is null when either side holds no signal or runs past either end of the stem; \
 legato when dip_db is under 1; dip_db and legato are null with no estimate when neither note has a \
 level beside the join; confidence is low when the verdict is legato, as a retrigger with an instant \
-attack keeps its level too, when no attack was read, or when the median attack is over 100 ms, else \
+attack keeps its level too, when no attack was read, when the stem's edge cuts a level window beside the join, or when the median attack is over 100 ms, else \
 medium";
 
 /// What the voices layer reads.
@@ -117,7 +117,8 @@ pub struct VoicesLayer {
     pub mean_polyphony: f64,
     /// The joins of a mono line, in time order; empty on any other line.
     pub joins: Vec<Join>,
-    /// The confidence of the count; no estimate without notes.
+    /// The confidence of the count; no estimate without notes or when no note
+    /// holds a sounding part in the stem.
     pub confidence: Confidence<NoSpread>,
 }
 
@@ -334,8 +335,8 @@ fn frame_counts(held: &[Held], max: usize) -> (f64, f64) {
 }
 
 /// The joins of a mono line. A note that starts well inside the earlier one's
-/// held part stacks on it, joins nothing and leaves the earlier note in place, as
-/// a silent note does.
+/// held part stacks on it and joins nothing. It leaves the earlier note in place
+/// unless that note ends sooner. A silent note leaves it in place too.
 fn joins(input: &VoicesInput<'_>, notes: &[Note]) -> Result<Vec<Join>, VoicesError> {
     let attack = input.envelope.attack.value().map(|s| s.median().get());
     let mut read = Vec::new();
@@ -346,6 +347,9 @@ fn joins(input: &VoicesInput<'_>, notes: &[Note]) -> Result<Vec<Join>, VoicesErr
             let stacked = start <= before.onset().get()
                 || start + OVERLAP_MIN.get() < held_end(before, input.envelope);
             if stacked {
+                if note.offset().get() > before.offset().get() {
+                    earlier = Some(note);
+                }
                 continue;
             }
             let gap = start - before.offset().get();
@@ -430,8 +434,9 @@ fn join(
         (Some(_), Some(attack)) => {
             let hides = attack > ATTACK_HIDES_JOIN.get();
             let kept = legato == Some(true);
+            let cut = dip_from - margin < 0.0 || at + span + margin > stem_end(input);
             Confidence::estimate(
-                if hides || kept {
+                if hides || kept || cut {
                     Level::Low
                 } else {
                     Level::Medium
@@ -440,6 +445,7 @@ fn join(
                 vec![
                     Reason::new(ReasonCode::AttackHidesJoin, Signal::Flag(hides))?,
                     Reason::new(ReasonCode::LevelKeptAtJoin, Signal::Flag(kept))?,
+                    Reason::new(ReasonCode::StemEdgeAtJoin, Signal::Flag(cut))?,
                 ],
             )?
         }
