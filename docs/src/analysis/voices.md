@@ -32,9 +32,9 @@ this count [fact].
 
 Consecutive notes of a mono line join when the later onset lies under 30 ms past
 the earlier end in the note list, starts after the earlier onset, and lies less
-than 50 ms inside the earlier held part, so a note stacked on another joins nothing
-[fact]. `gap_ms` is negative when they overlap
-in the list. The split join of the notes step merges a same-key repeat with no
+than 50 ms inside the earlier held part. A note stacked on another joins nothing
+and leaves the earlier note in place, as a silent note does [fact]. `gap_ms` is
+negative when they overlap in the list. The split join of the notes step merges a same-key repeat with no
 attack of its own, so that repeat reaches no join [fact].
 
 - `dip_db` is the level of the quieter note minus the lowest level from 25 ms
@@ -45,12 +45,13 @@ attack of its own, so that repeat reaches no join [fact].
   window still ripples on the higher note [fact].
 - `centroid_change` is the centroid over f0 after the join over the same before
   it, minus 1, over 20 ms or two periods each side, and null when either side holds
-  no signal or runs past the stem [fact]. The verdict does not read it, because it
-  gained nothing on the set below [synthetic].
+  no signal or runs past either end of the stem [fact]. The verdict does not read
+  it, because it gained nothing on the set below [synthetic].
 - `legato` is true when `dip_db` is under 1 [fact, proposal for 1 dB]. A 12 dB dip
   that rises over 5 ms at 110 Hz reads 1.35 dB [synthetic].
 - `dip_db` and `legato` are null, with no estimate, when neither note has a level
-  beside the join, as with notes of about 25 ms [fact].
+  above the -120 dB silence floor beside the join, as with notes of about 25 ms or
+  notes listed past the stem [fact].
 - A join reads low when its verdict is legato, as a retrigger with an instant
   attack keeps its level too; when no attack was read; or when the median attack
   of the pool is over 100 ms, because a long attack hides a retrigger [fact, proposal
@@ -84,8 +85,14 @@ retriggers of 12 dB or more [synthetic]:
   the chord gate calls monophonic, 136 read poly from transcribed notes, 131 of them
   at low confidence. With exact note lists, 463 of 463 read mono [synthetic]. On 22
   real instrument stems, 1 read mono and none reported a join, at mostly low
-  confidence, with a maximum of 3 to 9 and a mean of 1.06 to 2.52 [fact]. So a mapper
-  must not take `mono: false` or missing joins as evidence at low confidence.
+  confidence. The other 21 read a maximum of 3 to 9 and a mean of 1.06 to 2.52
+  [fact]. So a mapper must not take `mono: false` or missing joins as evidence at low confidence.
+- The verdict depends on where the join falls in the period, and the acceptance
+  test sits on a whole-cycle position. A review moved the join in 0.31 ms steps over
+  40 positions, between the same saws. At 110 and 165 Hz, 31 of 40 of a 0 dB join read
+  legato and 24 of 40 of a 12 dB, 5 ms retrigger read as one. The same pairs of counts
+  are 34 and 40 at 220 and 330 Hz, 40 and 20 at 110 and 146.83 Hz, and 39 and 16 at
+  82.41 and 123.47 Hz [synthetic].
 - A filter that restarts with no dip in level reads legato. In the set, 228 of 433
   filter joins read as a retrigger, against 289 of 436 to 358 of 476 for the other
   timbres [synthetic].

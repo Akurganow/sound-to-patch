@@ -323,6 +323,206 @@ fn a_flat_line_with_no_dip_reads_legato_under_a_wobble() {
 }
 
 #[test]
+fn a_note_joins_up_to_50_ms_inside_the_earlier_held_part() {
+    // The first note holds to 0.575 s, with both tones running on past it.
+    let joins_of = |list: &[(f64, f64, f64)]| {
+        let mut x = vec![0.0; samples(1.3, FS)];
+        tone(&mut x, (0.1, 1.3), 110.0, 0.005, 0.0);
+        tone(&mut x, (list[1].0, 1.3), 165.0, 0.005, 0.0);
+        let layer = read(&x, &note_list(list));
+        assert!(layer.mono, "{layer:?}");
+        layer.joins
+    };
+    let inside = joins_of(&[(0.1, 0.6, 110.0), (0.545, 1.1, 165.0)]);
+    assert_eq!(inside.len(), 1, "{inside:?}");
+    assert!(inside[0].gap < 0.0, "{:?}", inside[0]);
+    // A short note, so it stays mono, 70 ms inside.
+    assert_eq!(joins_of(&[(0.1, 0.6, 110.0), (0.505, 0.53, 165.0)]), []);
+}
+
+#[test]
+fn a_stacked_note_does_not_end_a_line() {
+    let read_line = |ghosts: &[(f64, f64, f64)]| {
+        let mut list = vec![(0.1, 0.6, 110.0), (0.6, 1.1, 165.0)];
+        list.extend_from_slice(ghosts);
+        list.sort_by(|a, b| a.0.total_cmp(&b.0));
+        let mut x = vec![0.0; samples(1.2, FS)];
+        tone(&mut x, (0.1, 0.6), 110.0, 0.005, 0.0);
+        tone(&mut x, (0.6, 1.1), 165.0, 0.005, 0.0);
+        for &(a, b, f) in ghosts {
+            tone(&mut x, (a, b), f, 0.005, 0.0);
+        }
+        read(&x, &note_list(&list))
+    };
+    let times =
+        |layer: &VoicesLayer| -> Vec<f64> { layer.joins.iter().map(|j| j.time.get()).collect() };
+    assert_eq!(times(&read_line(&[])), [0.6]);
+    assert_eq!(times(&read_line(&[(0.3, 0.34, 220.0)])), [0.6]);
+    assert_eq!(
+        times(&read_line(&[(0.3, 0.33, 220.0), (0.34, 0.37, 196.0)])),
+        [0.6]
+    );
+}
+
+#[test]
+fn a_silent_note_joins_nothing_and_does_not_end_a_line() {
+    // Two real notes around a silent listed one in the gap of digital silence.
+    let list = [(0.1, 0.5, 110.0), (0.7, 0.75, 220.0), (0.75, 1.1, 165.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.76, 1.1), 165.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins, []);
+
+    // A silent note between two that nearly touch leaves them a line.
+    let list = [(0.1, 2.0, 110.0), (1.0, 1.5, 247.0), (2.0, 2.4, 165.0)];
+    let mut x = vec![0.0; samples(2.5, FS)];
+    tone(&mut x, (0.1, 0.3), 110.0, 0.005, 0.0);
+    tone(&mut x, (2.0, 2.4), 165.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    let times: Vec<f64> = layer.joins.iter().map(|j| j.time.get()).collect();
+    assert_eq!(times, [2.0], "{layer:?}");
+
+    // Touching notes over zeros, past one that sounds.
+    let list = [(0.1, 0.5, 110.0), (0.7, 0.9, 165.0), (0.9, 1.1, 220.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    assert_eq!(read(&x, &note_list(&list)).joins, []);
+}
+
+#[test]
+fn notes_that_all_sound_silent_have_no_count() {
+    let list = [(0.1, 0.5, 110.0), (0.5, 0.9, 165.0)];
+    let layer = read(&vec![0.0; samples(1.0, FS)], &note_list(&list));
+    assert!(!layer.confidence.is_estimate(), "{layer:?}");
+    assert_eq!(layer.max_polyphony, 0);
+    assert!(!layer.mono);
+    assert_eq!(layer.joins, []);
+}
+
+#[test]
+fn a_join_past_the_stem_has_no_verdict() {
+    let list = [
+        (0.1, 0.5, 110.0),
+        (0.5, 0.9, 165.0),
+        (2.0, 2.4, 110.0),
+        (2.4, 2.8, 165.0),
+    ];
+    let mut x = vec![0.0; samples(1.0, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.5, 0.9), 165.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert!(layer.joins[0].dip.is_some(), "{layer:?}");
+    for join in &layer.joins[1..] {
+        assert_eq!(join.dip, None, "{join:?}");
+        assert_eq!(join.legato, None, "{join:?}");
+        assert!(!join.confidence.is_estimate(), "{join:?}");
+    }
+}
+
+#[test]
+fn a_join_onto_zeros_is_no_legato() {
+    // The later note sounds only from 0.9 s, so the level after the join is the floor.
+    let list = [(0.1, 0.5, 110.0), (0.5, 1.1, 165.0)];
+    let mut x = vec![0.0; samples(1.2, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    tone(&mut x, (0.9, 1.1), 165.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_ne!(layer.joins[0].legato, Some(true), "{layer:?}");
+}
+
+#[test]
+fn notes_held_for_no_time_have_no_count() {
+    let list = [(0.5, 0.51, 110.0), (0.51, 0.52, 165.0)];
+    let mut x = vec![0.0; samples(1.0, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.0, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert!(!layer.confidence.is_estimate(), "{layer:?}");
+    assert_eq!(layer.max_polyphony, 0);
+}
+
+#[test]
+fn a_join_just_past_the_stem_end_has_no_dip() {
+    let list = [(0.1, 0.95, 110.0), (0.95, 1.3, 165.0)];
+    let mut x = vec![0.0; samples(0.9, FS)];
+    tone(&mut x, (0.1, 0.9), 110.0, 0.005, 0.0);
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins[0].dip, None, "{layer:?}");
+    assert_eq!(layer.joins[0].legato, None, "{layer:?}");
+}
+
+/// A 0 dB saw, then a saw of `after_db` from a whole-cycle join to the stem end,
+/// with the later note listed 0.3 s on.
+fn cut_after_join(after_db: f64, stem_after_join: f64) -> VoicesLayer {
+    let at = 30.0 / 55.0;
+    let length = samples(at + stem_after_join, FS);
+    let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
+    let gain = 10f64.powf(after_db / 20.0);
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            if f64::from(u32::try_from(i).unwrap()) / FS < at {
+                0.2 * a[i]
+            } else {
+                0.2 * gain * b[i]
+            }
+        })
+        .collect();
+    read(&x, &note_list(&[(0.0, at, 110.0), (at, at + 0.3, 165.0)]))
+}
+
+#[test]
+fn the_window_after_a_join_stops_at_the_stem_end() {
+    // The quieter later note sets the level, though 0.1 s of it is all there is.
+    let layer = cut_after_join(-12.0, 0.1);
+    assert_eq!(layer.joins[0].legato, Some(true), "{:?}", layer.joins[0]);
+}
+
+#[test]
+fn the_dip_window_stops_at_the_stem_end() {
+    // Past the stem the level is the floor, 200 dB down.
+    let layer = cut_after_join(0.0, 0.015);
+    let dip = layer.joins[0].dip.expect("a level before the join");
+    assert!(dip.get() < 3.0, "{:?}", layer.joins[0]);
+}
+
+#[test]
+fn a_join_near_the_stem_start_reads_no_centroid() {
+    // 2 samples into the stem.
+    let at = 2.0 / FS;
+    let list = [(0.0, at, 110.0), (at, 0.5, 165.0)];
+    let mut x = vec![0.0; samples(0.6, FS)];
+    tone(&mut x, (0.0, 0.5), 165.0, 0.0, 0.0);
+    let layer = read(&x, &note_list(&list));
+    for join in &layer.joins {
+        assert_eq!(join.centroid_change, None, "{join:?}");
+    }
+}
+
+#[test]
+fn a_note_listed_past_the_stem_still_reads_its_dip() {
+    // 12 dB, 20 ms retrigger, the later note listed 0.3 s on and the stem ending
+    // 0.1 s after the join.
+    let at = 0.5;
+    let length = samples(at + 0.1, FS);
+    let (a, b) = (saw(110.0, FS, length, 0.0), saw(165.0, FS, length, 0.0));
+    let floor = 10f64.powf(-12.0 / 20.0);
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / FS;
+            if t < at {
+                0.2 * a[i]
+            } else {
+                0.2 * (floor + (1.0 - floor) * ((t - at) / 0.02).min(1.0)) * b[i]
+            }
+        })
+        .collect();
+    let layer = read(&x, &note_list(&[(0.0, at, 110.0), (at, at + 0.3, 165.0)]));
+    assert_eq!(layer.joins[0].legato, Some(false), "{:?}", layer.joins[0]);
+}
+
+#[test]
 fn a_stem_without_notes_has_no_count() {
     let layer = read(&vec![0.0; 2205], &NoteList::default());
     assert!(!layer.confidence.is_estimate());
@@ -341,8 +541,9 @@ fn a_silent_note_holds_no_voice() {
 
 #[test]
 fn a_join_with_no_level_beside_it_has_no_verdict() {
-    let list = [(0.5, 0.51, 110.0), (0.51, 0.52, 165.0)];
-    let mut x = vec![0.0; samples(1.0, FS)];
+    // A later note holds, so the stem has a count while the short pair has no level.
+    let list = [(0.5, 0.51, 110.0), (0.51, 0.52, 165.0), (0.8, 1.2, 110.0)];
+    let mut x = vec![0.0; samples(1.3, FS)];
     for &(a, b, f) in &list {
         tone(&mut x, (a, b), f, 0.0, 0.0);
     }

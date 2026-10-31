@@ -12,7 +12,9 @@ use crate::audio::SampleRate;
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
 use crate::dsp::{Stft, StftError, StftParams, frame_descriptors, quantile};
-use crate::estimate::envelope::{EnvelopeLayer, KNEE_END_GAP, LevelTrack, RMS_PERIODS, rms_window};
+use crate::estimate::envelope::{
+    EnvelopeLayer, KNEE_END_GAP, LevelTrack, RMS_PERIODS, SILENCE_DB, rms_window,
+};
 use crate::notes::{Note, NoteList};
 use crate::units::{Cents, Decibels, Hz, Seconds};
 
@@ -60,9 +62,9 @@ pub const JOIN_CONVENTION: &str = "consecutive notes of a mono line whose gap, t
 minus the earlier end in the note list, is under 30 ms, and whose later onset lies less than 50 ms \
 inside the earlier note's held part; dip_db is the 10th percentile of the \
 level of the quieter note over up to 100 ms beside the join minus the lowest level from 25 ms before \
-the onset, or from the earlier held end when that comes first, on an RMS over one period of the lower note; centroid_change is the centroid over f0 \
+the onset, or from the earlier held end when that comes first, to 25 ms after it, on an RMS over one period of the lower note; centroid_change is the centroid over f0 \
 after the join over the same before it, minus 1, over 20 ms or two periods each side, and the \
-verdict does not read it, and it is null when either side holds no signal or runs past the stem; \
+verdict does not read it, and it is null when either side holds no signal or runs past either end of the stem; \
 legato when dip_db is under 1; dip_db and legato are null with no estimate when neither note has a \
 level beside the join; confidence is low when the verdict is legato, as a retrigger with an instant \
 attack keeps its level too, when no attack was read, or when the median attack is over 100 ms, else \
@@ -93,7 +95,8 @@ pub struct Join {
     /// when neither note has a level beside the join.
     pub dip: Option<Decibels>,
     /// The centroid over f0 after the join over the same before it, minus 1;
-    /// `None` when either side holds no signal or runs past the stem.
+    /// `None` when either side holds no signal or runs past either end of the
+    /// stem.
     pub centroid_change: Option<f64>,
     /// The join shows no new attack; `None` without a dip.
     pub legato: Option<bool>,
@@ -168,18 +171,12 @@ impl VoicesLayer {
     pub fn of(input: &VoicesInput<'_>) -> Result<Self, VoicesError> {
         let notes = input.notes.notes();
         if notes.is_empty() {
-            return Ok(Self {
-                mono: false,
-                max_polyphony: 0,
-                mean_polyphony: 0.0,
-                joins: Vec::new(),
-                confidence: Confidence::no_estimate(vec![Reason::new(
-                    ReasonCode::NoNoteList,
-                    Signal::Flag(true),
-                )?])?,
-            });
+            return Self::no_count(Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?);
         }
         let held = held_parts(notes, input.envelope);
+        if held.is_empty() {
+            return Self::no_count(Reason::new(ReasonCode::TooFewNotes, Signal::Count(0))?);
+        }
         let max_polyphony = held
             .iter()
             .map(|h| voices_at(&held, h.onset, h.onset + OVERLAP_MIN.get()).max(1))
@@ -211,6 +208,16 @@ impl VoicesLayer {
                     Signal::Number(agree),
                 )?],
             )?,
+        })
+    }
+
+    fn no_count(reason: Reason) -> Result<Self, VoicesError> {
+        Ok(Self {
+            mono: false,
+            max_polyphony: 0,
+            mean_polyphony: 0.0,
+            joins: Vec::new(),
+            confidence: Confidence::no_estimate(vec![reason])?,
         })
     }
 
@@ -247,16 +254,22 @@ fn held_end(note: &Note, envelope: &EnvelopeLayer) -> f64 {
         .max(note.onset().get())
 }
 
-/// Each note's held part. A note that does not sound holds none.
+fn is_silent(note: &Note, envelope: &EnvelopeLayer) -> bool {
+    envelope.silent.contains(&(note.onset(), note.pitch()))
+}
+
+/// Each note's held part. A note that does not sound holds none, nor does one
+/// that ends within [`KNEE_END_GAP`] of its onset.
 fn held_parts(notes: &[Note], envelope: &EnvelopeLayer) -> Vec<Held> {
     notes
         .iter()
-        .filter(|n| !envelope.silent.contains(&(n.onset(), n.pitch())))
+        .filter(|n| !is_silent(n, envelope))
         .map(|n| Held {
             onset: n.onset().get(),
             end: held_end(n, envelope),
             hz: hz(n),
         })
+        .filter(|h| h.end > h.onset)
         .collect()
 }
 
@@ -302,19 +315,27 @@ fn frame_counts(held: &[Held], max: usize) -> (f64, f64) {
     }
 }
 
-/// The joins of a mono line. A later note that starts well inside the earlier
-/// one's held part stacks on it and joins nothing.
+/// The joins of a mono line. A note that starts well inside the earlier one's
+/// held part stacks on it, joins nothing and leaves the earlier note in place, as
+/// a silent note does.
 fn joins(input: &VoicesInput<'_>, notes: &[Note]) -> Result<Vec<Join>, VoicesError> {
     let attack = input.envelope.attack.value().map(|s| s.median().get());
     let mut read = Vec::new();
-    for pair in notes.windows(2) {
-        let gap = pair[1].onset().get() - pair[0].offset().get();
-        let start = pair[1].onset().get();
-        let stacked = start <= pair[0].onset().get()
-            || start + OVERLAP_MIN.get() < held_end(&pair[0], input.envelope);
-        if gap < JOIN_GAP_MAX.get() && !stacked {
-            read.push(join(input, &pair[0], &pair[1], gap, attack)?);
+    let mut earlier: Option<&Note> = None;
+    for note in notes.iter().filter(|n| !is_silent(n, input.envelope)) {
+        let start = note.onset().get();
+        if let Some(before) = earlier {
+            let stacked = start <= before.onset().get()
+                || start + OVERLAP_MIN.get() < held_end(before, input.envelope);
+            if stacked {
+                continue;
+            }
+            let gap = start - before.offset().get();
+            if gap < JOIN_GAP_MAX.get() {
+                read.push(join(input, before, note, gap, attack)?);
+            }
         }
+        earlier = Some(note);
     }
     Ok(read)
 }
@@ -332,7 +353,10 @@ fn join(
     // from the earlier note's held end at the latest.
     let dip_from = (at - span).min(held_end(before, input.envelope));
     let from = (dip_from - SUSTAIN_SPAN.get()).max(before.onset().get());
-    let to = (at + span + SUSTAIN_SPAN.get()).min(after.offset().get());
+    let stem_end = cast::usize_to_f64(input.mono.len()) / input.rate.hz().get();
+    let to = (at + span + SUSTAIN_SPAN.get())
+        .min(after.offset().get())
+        .min(stem_end);
     // Shorter than a period, a window ripples with the waveform.
     let lower = Hz::clamped(hz(before).min(hz(after)));
     let fs = input.rate.hz().get();
@@ -358,7 +382,7 @@ fn join(
     let low_level = |a: f64, b: f64| {
         let mut sorted = level(a, b).to_vec();
         sorted.sort_by(f64::total_cmp);
-        quantile(&sorted, SUSTAIN_QUANTILE)
+        quantile(&sorted, SUSTAIN_QUANTILE).filter(|v| *v > SILENCE_DB.get())
     };
     let left = low_level(from, dip_from);
     let right = low_level(at + span, to);
@@ -371,7 +395,9 @@ fn join(
         (Some(v), None) | (None, Some(v)) => Some(v),
         (None, None) => None,
     };
-    let dip = quieter.map(|q| (q - low).max(0.0));
+    let dip = quieter
+        .filter(|_| low.is_finite())
+        .map(|q| (q - low).max(0.0));
     let centroid_change = centroid_change(input, before, after)?;
     let legato = dip.map(|d| d < DIP_RETRIGGER.get());
     let confidence = match (dip, attack) {
@@ -413,7 +439,7 @@ fn join(
 
 /// The centroid over f0 over [`CENTROID_SPAN`] after the join over the same
 /// before it, minus 1; `None` when either side holds no signal or runs past
-/// the stem.
+/// either end of the stem.
 fn centroid_change(
     input: &VoicesInput<'_>,
     before: &Note,
@@ -425,6 +451,9 @@ fn centroid_change(
     let len = cast::round_to_usize(f64::max(CENTROID_SPAN.get(), 2.0 / lower) * fs)
         .unwrap_or(0)
         .max(4);
+    if at < len {
+        return Ok(None);
+    }
     let side = |range: std::ops::Range<usize>, f0: f64| -> Result<Option<f64>, VoicesError> {
         let Some(samples) = input.mono.get(range) else {
             return Ok(None);
@@ -436,7 +465,7 @@ fn centroid_change(
         Ok(frame_descriptors(&magnitudes, params.bin_hz(1, input.rate))
             .map(|d| d.centroid.get() / f0))
     };
-    let early = side(at.saturating_sub(len)..at, hz(before))?;
+    let early = side(at - len..at, hz(before))?;
     let late = side(at..at + len, hz(after))?;
     Ok(match (early, late) {
         (Some(e), Some(l)) if e > 0.0 => Some(l / e - 1.0),

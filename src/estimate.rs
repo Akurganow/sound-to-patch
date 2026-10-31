@@ -7,6 +7,7 @@
 //! - [`pitch`]: glides, pitch drops and vibrato of a monophonic line.
 //! - [`envelope`]: the amplitude envelope of the notes and the sidechain
 //!   pump.
+//! - [`voices`]: the count of voices and the joins of a mono line.
 
 pub mod envelope;
 pub mod pitch;
