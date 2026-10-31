@@ -1680,6 +1680,21 @@ fn a_fitted_read_can_gain_the_strip() {
 }
 
 #[test]
+fn a_fitted_read_must_fold_better_to_gain_the_strip() {
+    // 8.9 beats at 96 BPM, 1 % fast: the fitted read counts 8 beats against 7
+    // but folds worse, at 1.55 dB of fold error against 1.30 dB.
+    let (x, notes) = chord_at(CHORD[0], 8.9, 96.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.15,
+        bpm: 96.0 * 1.01,
+    };
+    let p = pump_at(&ducked(&x, duck, 0.0), &notes, CHORD[0], 96.0).unwrap();
+    assert_eq!(p.bpm().get(), 96.0, "{p:?}");
+    assert!(!p.strips(), "{p:?}");
+}
+
+#[test]
 fn a_smeared_grid_lock_gives_way_to_the_ducks_own_tempo() {
     // Phase 0.25 at 2.5 % and 0 at -1 % lock on the grid, at 4.4 and 7.2 dB.
     let (x, notes) = held_chord_over(16.0);
