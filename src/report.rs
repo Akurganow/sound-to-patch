@@ -120,8 +120,8 @@ pub struct Analysis {
 
 impl Analysis {
     /// Returns the lines that tell what each step found, in order: the
-    /// tempo, the notes step when it ran, the pitch layer, then the
-    /// envelope layer.
+    /// tempo, the notes step when it ran, the pitch layer, the
+    /// envelope layer, then the voices layer.
     #[must_use]
     pub fn summary(&self) -> Vec<String> {
         std::iter::once(self.tempo.summary())

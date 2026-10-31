@@ -221,9 +221,9 @@ struct VoicesValues<'a> {
 struct JoinRecord<'a> {
     time_s: Seconds,
     gap_ms: f64,
-    dip_db: Decibels,
-    centroid_change: f64,
-    legato: bool,
+    dip_db: Option<Decibels>,
+    centroid_change: Option<f64>,
+    legato: Option<bool>,
     confidence: &'a Confidence<NoSpread>,
 }
 

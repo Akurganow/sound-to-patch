@@ -12,9 +12,7 @@ use crate::audio::SampleRate;
 use crate::cast;
 use crate::confidence::{Confidence, ConfidenceError, Level, NoSpread, Reason, ReasonCode, Signal};
 use crate::dsp::{Stft, StftError, StftParams, frame_descriptors, quantile};
-use crate::estimate::envelope::{
-    EnvelopeLayer, KNEE_END_GAP, LevelTrack, NoteEnvelope, RMS_PERIODS,
-};
+use crate::estimate::envelope::{EnvelopeLayer, KNEE_END_GAP, LevelTrack, RMS_PERIODS};
 use crate::notes::{Note, NoteList};
 use crate::units::{Cents, Decibels, Hz, Seconds};
 
@@ -36,11 +34,11 @@ pub const SUSTAIN_QUANTILE: f64 = 0.1;
 pub const CENTROID_SPAN: Seconds = Seconds::from_const(0.02);
 /// A join that dips this far under the quieter neighbour is a retrigger.
 ///
-/// Between a 0 dB join and a 12 dB dip that rises over 5 ms, which reads about
-/// 3 dB through a window of one period. On a sampled set of generated joins, 2 dB
-/// keeps 95 % of legato joins and finds 80 % of retriggers of 12 dB or more
-/// with attacks of 5 ms or more.
-pub const DIP_RETRIGGER: Decibels = Decibels::from_const(2.0);
+/// Between a 0 dB join and a 12 dB dip that rises over 5 ms at 110 Hz, which
+/// reads 1.35 dB through a window of one period. On a sampled set of generated
+/// joins, 1 dB keeps 91 % of legato joins and finds 85 % of retriggers of 12 dB
+/// or more with attacks of 5 ms or more.
+pub const DIP_RETRIGGER: Decibels = Decibels::from_const(1.0);
 /// An attack longer than this hides a retrigger, so a join reads low.
 pub const ATTACK_HIDES_JOIN: Seconds = Seconds::from_const(0.1);
 /// The share of frames that agree for a high count.
@@ -60,8 +58,9 @@ minus the earlier end in the note list, is under 30 ms; dip_db is the 10th perce
 level of the quieter note over up to 100 ms beside the join minus the lowest level within 25 ms of \
 the onset, on an RMS over one period of the lower note; centroid_change is the centroid over f0 \
 after the join over the same before it, minus 1, over 20 ms or two periods each side, and the \
-verdict does not read it; legato when dip_db is under 2; confidence low when the median attack is \
-over 100 ms";
+verdict does not read it, and it is null when either side holds no signal or runs past the stem; \
+legato when dip_db is under 1; dip_db and legato are null with no estimate when neither note has a \
+level beside the join; confidence low when the median attack is over 100 ms";
 
 /// What the voices layer reads.
 #[derive(Clone, Copy, Debug)]
@@ -84,12 +83,14 @@ pub struct Join {
     /// The later onset minus the earlier note's end in the list; negative
     /// when they overlap there.
     pub gap: f64,
-    /// How far the level falls at the join under the quieter neighbour.
-    pub dip: Decibels,
-    /// The centroid over f0 after the join over the same before it, minus 1.
-    pub centroid_change: f64,
-    /// The join shows no new attack.
-    pub legato: bool,
+    /// How far the level falls at the join under the quieter neighbour; `None`
+    /// when neither note has a level beside the join.
+    pub dip: Option<Decibels>,
+    /// The centroid over f0 after the join over the same before it, minus 1;
+    /// `None` when either side holds no signal or runs past the stem.
+    pub centroid_change: Option<f64>,
+    /// The join shows no new attack; `None` without a dip.
+    pub legato: Option<bool>,
     /// How far the layer trusts the verdict.
     pub confidence: Confidence<NoSpread>,
 }
@@ -170,7 +171,7 @@ impl VoicesLayer {
                 )?])?,
             });
         }
-        let held = held_parts(notes, &input.envelope.notes);
+        let held = held_parts(notes, input.envelope);
         let max_polyphony = held
             .iter()
             .map(|h| voices_at(&held, h.onset + OVERLAP_MIN.get()).max(1))
@@ -211,7 +212,7 @@ impl VoicesLayer {
         if !self.confidence.is_estimate() {
             return vec!["voices: no notes, so no count".to_owned()];
         }
-        let legato = self.joins.iter().filter(|j| j.legato).count();
+        let legato = self.joins.iter().filter(|j| j.legato == Some(true)).count();
         vec![format!(
             "voices: {}, up to {}, mean {:.2}; {} joins, {legato} legato",
             if self.mono { "mono" } else { "poly" },
@@ -227,13 +228,16 @@ fn hz(note: &Note) -> f64 {
 }
 
 /// Each note's held part: from its onset to its knee, or to [`KNEE_END_GAP`]
-/// before its end when it has none. A release tail holds no voice.
-fn held_parts(notes: &[Note], read: &[NoteEnvelope]) -> Vec<Held> {
+/// before its end when it has none. A release tail holds no voice, and a note
+/// that does not sound holds none.
+fn held_parts(notes: &[Note], envelope: &EnvelopeLayer) -> Vec<Held> {
     notes
         .iter()
+        .filter(|n| !envelope.silent.contains(&(n.onset(), n.pitch())))
         .map(|n| {
             let onset = n.onset().get();
-            let knee = read
+            let knee = envelope
+                .notes
                 .iter()
                 .find(|e| e.onset == n.onset() && e.pitch == n.pitch())
                 .and_then(|e| e.knee);
@@ -322,33 +326,48 @@ fn join(
         Hz::clamped(hz(before).min(hz(after))),
         RMS_PERIODS,
     );
-    let level = |a: f64, b: f64| -> &[f64] { &track.db()[track.index(a)..track.index(b)] };
-    let left = quantile(level(from, at - span), SUSTAIN_QUANTILE);
-    let right = quantile(level(at + span, to), SUSTAIN_QUANTILE);
+    let level = |a: f64, b: f64| -> &[f64] {
+        let (lo, hi) = (track.index(a), track.index(b));
+        &track.db()[lo.min(hi)..hi]
+    };
+    let low_level = |a: f64, b: f64| {
+        let mut sorted = level(a, b).to_vec();
+        sorted.sort_by(f64::total_cmp);
+        quantile(&sorted, SUSTAIN_QUANTILE)
+    };
+    let left = low_level(from, at - span);
+    let right = low_level(at + span, to);
     let low = level(at - span, at + span)
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min);
     let quieter = match (left, right) {
-        (Some(l), Some(r)) => l.min(r),
-        (Some(v), None) | (None, Some(v)) => v,
-        (None, None) => low,
+        (Some(l), Some(r)) => Some(l.min(r)),
+        (Some(v), None) | (None, Some(v)) => Some(v),
+        (None, None) => None,
     };
-    let dip = (quieter - low).max(0.0);
+    let dip = quieter.map(|q| (q - low).max(0.0));
     let centroid_change = centroid_change(input, before, after)?;
-    let legato = dip < DIP_RETRIGGER.get();
-    let confidence = Confidence::estimate(
-        if hides { Level::Low } else { Level::Medium },
-        None,
-        vec![Reason::new(
-            ReasonCode::AttackHidesJoin,
-            Signal::Flag(hides),
-        )?],
-    )?;
+    let legato = dip.map(|d| d < DIP_RETRIGGER.get());
+    let confidence = if dip.is_none() {
+        Confidence::no_estimate(vec![Reason::new(
+            ReasonCode::TooFewFrames,
+            Signal::Count(0),
+        )?])?
+    } else {
+        Confidence::estimate(
+            if hides { Level::Low } else { Level::Medium },
+            None,
+            vec![Reason::new(
+                ReasonCode::AttackHidesJoin,
+                Signal::Flag(hides),
+            )?],
+        )?
+    };
     Ok(Join {
         time: after.onset(),
         gap,
-        dip: Decibels::clamped(dip),
+        dip: dip.map(Decibels::clamped),
         centroid_change,
         legato,
         confidence,
@@ -356,12 +375,13 @@ fn join(
 }
 
 /// The centroid over f0 over [`CENTROID_SPAN`] after the join over the same
-/// before it, minus 1; 0 when either side holds no signal.
+/// before it, minus 1; `None` when either side holds no signal or runs past
+/// the stem.
 fn centroid_change(
     input: &VoicesInput<'_>,
     before: &Note,
     after: &Note,
-) -> Result<f64, VoicesError> {
+) -> Result<Option<f64>, VoicesError> {
     let fs = input.rate.hz().get();
     let at = cast::round_to_usize(after.onset().get() * fs).unwrap_or(0);
     let lower = hz(before).min(hz(after));
@@ -382,7 +402,7 @@ fn centroid_change(
     let early = side(at.saturating_sub(len)..at, hz(before))?;
     let late = side(at..at + len, hz(after))?;
     Ok(match (early, late) {
-        (Some(e), Some(l)) if e > 0.0 => l / e - 1.0,
-        _ => 0.0,
+        (Some(e), Some(l)) if e > 0.0 => Some(l / e - 1.0),
+        _ => None,
     })
 }

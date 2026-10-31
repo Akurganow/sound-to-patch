@@ -222,9 +222,9 @@ A join record:
 | :-- | :-- | :-- | :-- |
 | `time_s` | seconds | 0 or more | The later note's onset. |
 | `gap_ms` | milliseconds | under 30 | The later onset minus the earlier end in the note list; negative when they overlap there. |
-| `dip_db` | dB | 0 or more | How far the level falls at the join under the quieter note. |
-| `centroid_change` | ratio | | The centroid over f0 after the join over the same before it, minus 1. |
-| `legato` | | | `dip_db` is under 2. |
+| `dip_db` | dB | 0 or more | How far the level falls at the join under the quieter note; `null` when neither note has a level beside the join. |
+| `centroid_change` | ratio | | The centroid over f0 after the join over the same before it, minus 1; `null` when either side holds no signal or runs past the stem. |
+| `legato` | | | `dip_db` is under 1; `null` without a dip. |
 | `confidence` | | | Low when the median attack is over 100 ms (reason `attack_hides_join`), else medium. |
 
 ## The envelope group

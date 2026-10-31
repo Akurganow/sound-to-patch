@@ -350,9 +350,9 @@
       "properties": {
         "time_s": { "type": "number", "minimum": 0 },
         "gap_ms": { "type": "number" },
-        "dip_db": { "type": "number", "minimum": 0 },
-        "centroid_change": { "type": "number" },
-        "legato": { "type": "boolean" },
+        "dip_db": { "type": ["number", "null"], "minimum": 0 },
+        "centroid_change": { "type": ["number", "null"] },
+        "legato": { "type": ["boolean", "null"] },
         "confidence": { "$ref": "#/$defs/confidence" }
       }
     },

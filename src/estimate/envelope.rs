@@ -38,7 +38,7 @@ use crate::confidence::{
 };
 use crate::dsp::{FilterError, Stats, Summary, quantile};
 use crate::notes::{Note, NoteList};
-use crate::units::{Decibels, Hz, Seconds};
+use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
 /// A value over the pool needs this many notes; with fewer it reads low.
 pub const POOL_NOTES_MIN: usize = 3;
@@ -215,6 +215,9 @@ pub struct EnvelopeLayer {
     pub confidence: Confidence<NoSpread>,
     /// The counts behind the summary.
     pub counts: EnvelopeCounts,
+    /// The onset and pitch of each note whose amp proxy peaks at the silence
+    /// floor.
+    pub silent: Vec<(Seconds, MidiPitch)>,
 }
 
 impl EnvelopeLayer {
@@ -262,7 +265,8 @@ impl EnvelopeLayer {
             no_notes: notes.is_empty(),
             ..EnvelopeFlags::default()
         };
-        let (read, pump) = read_with_pump(input, notes, &mut counts)?;
+        let mut silent = Vec::new();
+        let (read, pump) = read_with_pump(input, notes, &mut counts, &mut silent)?;
         flags.pump_stripped = pump.as_ref().is_some_and(Pump::strips);
         counts.read = read.len();
         counts.knees = read.iter().filter(|n| n.knee.is_some()).count();
@@ -339,6 +343,7 @@ impl EnvelopeLayer {
             counts,
             pooled,
             notes: read,
+            silent,
         })
     }
 
@@ -405,8 +410,9 @@ fn read_with_pump(
     input: &EnvelopeInput<'_>,
     notes: &[Note],
     counts: &mut EnvelopeCounts,
+    silent: &mut Vec<(Seconds, MidiPitch)>,
 ) -> Result<(Vec<NoteEnvelope>, Option<Pump>), FilterError> {
-    let first = read_notes(input, notes, None, counts)?;
+    let first = read_notes(input, notes, None, (&mut *counts, &mut *silent))?;
     let mut knees = vec![None; notes.len()];
     for (i, e) in &first {
         knees[*i] = e.knee;
@@ -434,7 +440,7 @@ fn read_with_pump(
     };
     let read = if pump.as_ref().is_some_and(Pump::strips) {
         *counts = EnvelopeCounts::default();
-        read_notes(input, notes, pump.as_ref(), counts)?
+        read_notes(input, notes, pump.as_ref(), (counts, silent))?
     } else {
         first
     };
@@ -447,9 +453,10 @@ fn read_notes(
     input: &EnvelopeInput<'_>,
     notes: &[Note],
     pump: Option<&Pump>,
-    counts: &mut EnvelopeCounts,
+    (counts, silent): (&mut EnvelopeCounts, &mut Vec<(Seconds, MidiPitch)>),
 ) -> Result<Vec<(usize, NoteEnvelope)>, FilterError> {
     let mut read = Vec::new();
+    silent.clear();
     for (i, note) in notes.iter().enumerate() {
         let others: Vec<&Note> = notes
             .iter()
@@ -463,7 +470,10 @@ fn read_notes(
             Ok(envelope) => read.push((i, envelope)),
             Err(NoteSkip::NoFreeHarmonic) => counts.no_free_harmonic += 1,
             Err(NoteSkip::TooShort) => counts.too_short += 1,
-            Err(NoteSkip::Silent) => counts.silent += 1,
+            Err(NoteSkip::Silent) => {
+                counts.silent += 1;
+                silent.push((note.onset(), note.pitch()));
+            }
         }
     }
     Ok(read)

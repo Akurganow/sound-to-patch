@@ -141,10 +141,15 @@ fn joined(dip_db: f64, attack: f64) -> VoicesLayer {
 fn a_join_that_keeps_its_level_is_legato_and_a_new_attack_is_not() {
     let legato = joined(0.0, 0.005);
     assert_eq!(legato.joins.len(), 1, "{legato:?}");
-    assert!(legato.joins[0].legato, "{:?}", legato.joins[0]);
+    assert_eq!(legato.joins[0].legato, Some(true), "{:?}", legato.joins[0]);
     let retrigger = joined(12.0, 0.005);
     assert_eq!(retrigger.joins.len(), 1, "{retrigger:?}");
-    assert!(!retrigger.joins[0].legato, "{:?}", retrigger.joins[0]);
+    assert_eq!(
+        retrigger.joins[0].legato,
+        Some(false),
+        "{:?}",
+        retrigger.joins[0]
+    );
 }
 
 #[test]
@@ -187,4 +192,39 @@ fn a_stem_without_notes_has_no_count() {
     let layer = read(&vec![0.0; 2205], &NoteList::default());
     assert!(!layer.confidence.is_estimate());
     assert_eq!(layer.max_polyphony, 0);
+}
+
+#[test]
+fn a_silent_note_holds_no_voice() {
+    // Two listed notes overlap over digital silence, after the one that sounds.
+    let mut x = vec![0.0; samples(1.2, FS)];
+    tone(&mut x, (0.1, 0.5), 110.0, 0.005, 0.0);
+    let list = [(0.1, 0.5, 110.0), (0.7, 1.1, 165.0), (0.7, 1.1, 220.0)];
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.max_polyphony, 1, "{layer:?}");
+}
+
+#[test]
+fn a_join_with_no_level_beside_it_has_no_verdict() {
+    let list = [(0.5, 0.51, 110.0), (0.51, 0.52, 165.0)];
+    let mut x = vec![0.0; samples(1.0, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.0, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins.len(), 1, "{layer:?}");
+    assert_eq!(layer.joins[0].legato, None);
+    assert_eq!(layer.joins[0].dip, None);
+    assert!(!layer.joins[0].confidence.is_estimate());
+}
+
+#[test]
+fn a_centroid_past_the_stem_is_not_read() {
+    let list = [(0.1, 0.5, 110.0), (0.5, 0.505, 110.0 * 1.5)];
+    let mut x = vec![0.0; samples(0.51, FS)];
+    for &(a, b, f) in &list {
+        tone(&mut x, (a, b), f, 0.0, 0.0);
+    }
+    let layer = read(&x, &note_list(&list));
+    assert_eq!(layer.joins[0].centroid_change, None, "{layer:?}");
 }

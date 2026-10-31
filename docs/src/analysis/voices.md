@@ -11,7 +11,8 @@ this count [fact].
 ## The count
 
 - A note holds a voice from its onset to its note-off knee, or to 25 ms before
-  its end without a knee, so a release tail holds no voice [fact]. The issue asks
+  its end without a knee, so a release tail holds no voice, and a note the
+  envelope layer reads as silent holds none [fact]. The issue asks
   for the first note to lie within 3 dB of its sustain level; the knee reads the
   same end and needs no second level read [fact].
 - Pitches within 60 cents form one voice, so seven detuned copies of one pitch
@@ -35,24 +36,28 @@ attack of its own, so that repeat reaches no join [fact].
   level is the 10th percentile over up to 100 ms beside the join, because that
   window still ripples on the higher note [fact].
 - `centroid_change` is the centroid over f0 after the join over the same before
-  it, minus 1, over 20 ms or two periods each side [fact]. The verdict does not
-  read it, because it gained nothing on the set below [synthetic].
-- `legato` is true when `dip_db` is under 2 [fact, proposal for 2 dB].
+  it, minus 1, over 20 ms or two periods each side, and null when either side holds
+  no signal or runs past the stem [fact]. The verdict does not read it, because it
+  gained nothing on the set below [synthetic].
+- `legato` is true when `dip_db` is under 1 [fact, proposal for 1 dB]. A 12 dB dip
+  that rises over 5 ms at 110 Hz reads 1.35 dB [synthetic].
+- `dip_db` and `legato` are null, with no estimate, when neither note has a level
+  beside the join, as with notes of about 25 ms [fact].
 - A join reads low when the median attack of the pool is over 100 ms, because a
   long attack hides a retrigger, and medium otherwise [fact, proposal for 100 ms].
 
 The set: 4000 joins sampled over 41 to 440 Hz, steps of -12 to +12 semitones,
 four timbres, dips of 3 to 60 dB, attacks of 1 to 50 ms, level changes of up to
 6 dB, onsets off by up to 20 ms and gaps of -20 to 10 ms, of which 3669 reach a
-join. At 2 dB, 95 % of the legato joins read legato [synthetic]. Of the
+join. At 1 dB, 91 % of the legato joins read legato [synthetic]. Of the
 retriggers of 12 dB or more [synthetic]:
 
 | Attack | Read as a retrigger |
 | :-- | :-- |
-| 1 ms | 83 of 274 |
-| 5 ms | 152 of 288 |
-| 20 ms | 243 of 271 |
-| 50 ms | 289 of 296 |
+| 1 ms | 101 of 274 |
+| 5 ms | 186 of 288 |
+| 20 ms | 253 of 271 |
+| 50 ms | 292 of 296 |
 
 ## Limits
 
@@ -60,16 +65,16 @@ retriggers of 12 dB or more [synthetic]:
   retrigger with an attack of 5 ms or less often reads legato, as the table shows.
   No level read shorter than a period holds still on a periodic wave [fact].
 - A retrigger with an instant attack keeps its level, so on generated lines with
-  exact note lists it mostly reads legato: 250 of 270 joins of a retriggered 808,
-  114 of 127 of a soft retrigger and 63 of 131 of a stepped one, against 152 of 174
-  of a legato 808. A legato line with a dip reads legato in 26 of 73 joins
+  exact note lists it mostly reads legato: 242 of 270 joins of a retriggered 808,
+  107 of 127 of a soft retrigger and 97 of 131 of a stepped one, against 150 of 174
+  of a legato 808. A legato line with a dip reads legato in 46 of 73 joins
   [synthetic].
 - The count reads the note list as it is, so a transcriber's wrong overlap counts.
   On 889 generated mono lines the chord gate calls monophonic, 139 read poly from
   transcribed notes, 134 of them at low confidence. With exact note lists, 463 of
   463 read mono [synthetic]. Such a line reports no joins.
-- A filter that restarts with no dip in level reads legato: 47 % of the filter
-  joins in the set read as a retrigger, against 58 to 70 % for the other timbres
+- A filter that restarts with no dip in level reads legato: 53 % of the filter
+  joins in the set read as a retrigger, against 66 to 75 % for the other timbres
   [synthetic].
 - A long attack hides a retrigger, and the amplitude envelope may not restart from
   zero, which makes a dip shallower [fact].
