@@ -1981,38 +1981,43 @@ fn a_gate_over_no_lock_with_a_tail_of_2_bins_does_not_strip() {
             0.0
         }
     });
-    let read = layer(&gated, &notes, 128.0).pump.unwrap();
+    let read = pump_at(&gated, &notes, 220.0, 128.0).unwrap();
     assert!(!read.strips(), "{read:?}");
     assert_eq!(read.bpm().get(), 128.0, "{read:?}");
 }
 
 #[test]
 fn a_fitted_read_over_a_note_lock_needs_no_shape_test() {
-    // A held A2 and an E3 struck every 4 beats, under a duck 2 % fast: the grid's
-    // read follows the notes.
+    // A held A2 and an E3 struck every 4 beats, which dips the mix 9 dB, under a
+    // duck 2 % fast: the grid's read follows the notes.
     let bpm = 80.0;
-    let seconds = 32.0 * 60.0 / bpm;
+    let beat = 60.0 / bpm;
+    let seconds = 32.0 * beat;
     let length = samples(seconds, fs());
     let held = saw(110.0, fs(), length, 0.0);
     let upper = saw(164.81, fs(), length, 0.3);
-    let mix: Vec<f64> = held
-        .iter()
-        .zip(&upper)
-        .map(|(a, b)| 0.3 * (a + b))
-        .collect();
+    let onsets: Vec<f64> = (0..8).map(|k| (4.0 * f64::from(k) + 0.3) * beat).collect();
     let mut list = vec![(0.0, seconds, 110.0)];
-    for bar in 0..8 {
-        let start = f64::from(bar) * 4.0 * 60.0 / bpm;
-        list.push((start, start + 4.0 * 60.0 / bpm, 164.81));
-    }
+    list.extend(onsets.iter().map(|&on| (on, on + 0.6 * beat, 164.81)));
     let duck = Duck {
         depth_db: 9.0,
         release_s: 0.08,
         bpm: bpm * 1.02,
     };
-    let read = layer(&duck.apply(&mix, fs()), &note_list(&list), bpm)
-        .pump
-        .unwrap();
+    let x: Vec<f64> = (0..length)
+        .map(|i| {
+            let t = f64::from(u32::try_from(i).unwrap()) / fs();
+            let since = onsets
+                .iter()
+                .filter(|&&on| on <= t)
+                .map(|&on| t - on)
+                .fold(f64::INFINITY, f64::min);
+            let dip = 1.0 - (1.0 - 10f64.powf(-9.0 / 20.0)) * (-since / 0.04).exp();
+            let sounding = since < 0.6 * beat;
+            0.3 * dip * duck.gain(t) * (held[i] + if sounding { upper[i] } else { 0.0 })
+        })
+        .collect();
+    let read = pump_at(&x, &note_list(&list), 110.0, bpm).unwrap();
     assert_eq!(read.lock, PumpLock::Beat, "{read:?}");
     assert!(read.strips(), "{read:?}");
     assert!((read.bpm().get() - 81.61).abs() < 0.05, "{read:?}");
