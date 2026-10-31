@@ -1540,9 +1540,24 @@ fn a_duck_off_the_given_tempo_is_found_past_the_search_cap() {
 
 #[test]
 fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
-    // A 10 ms release leaves few bins to move: over 480 beats the period of
-    // the first 64 still misses the duck by more than its width, and only
-    // the fit over all of them locks. The first stage alone reads 1.56 dB.
+    // A 30 ms release leaves few bins to move: over 480 beats the period of the
+    // first 64 misses the duck, and reads 7.21 dB against 7.40 dB over all of
+    // them.
+    let (x, notes) = held_chord_over(480.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.03,
+        bpm: BPM * 1.02,
+    };
+    let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
+    assert!(p.strips(), "{p:?}");
+    assert!(p.depth.get() > 7.3, "{p:?}");
+}
+
+#[test]
+fn a_duck_too_short_for_the_shape_test_stays_on_the_grid() {
+    // A limit, pinned: a 10 ms release comes back as fast as a gate, so this
+    // duck's grid read of no lock stays.
     let (x, notes) = held_chord_over(480.0);
     let duck = Duck {
         depth_db: 12.0,
@@ -1550,7 +1565,8 @@ fn a_short_duck_off_the_tempo_needs_the_second_stage_of_the_search() {
         bpm: BPM * 1.02,
     };
     let p = pump(&duck.apply(&x, fs()), &notes, CHORD[0]).unwrap();
-    assert!(p.strips(), "{p:?}");
+    assert!(!p.strips(), "{p:?}");
+    assert_eq!(p.bpm().get(), BPM, "{p:?}");
 }
 
 /// `CHORD` from `f0`, over `beats` of `bpm`.
@@ -1886,8 +1902,7 @@ fn a_duck_3_percent_off_strips_inside_the_free_reach() {
 fn a_gate_smeared_by_a_low_notes_window_stays_free() {
     // At 55 Hz the 36 ms window smears the edge over 7 bins at 174 BPM. These
     // runs read free on the grid, and the tail is 6 bins against the 6.29
-    // asked, a thin margin. Over 8 phases and 9 to 32 beats, 6 of 376 strip,
-    // 5 of them from a grid read of none, which takes no shape test.
+    // asked, a thin margin.
     let bpm = 174.0;
     for beats in [12.0, 16.0] {
         let (x, notes) = chord_at(55.0, beats, bpm);
@@ -1902,6 +1917,37 @@ fn a_gate_smeared_by_a_low_notes_window_stays_free() {
         let p = pump_at(&gated, &notes, 55.0, bpm).unwrap();
         assert_ne!(p.lock, PumpLock::Beat, "{beats}: {p:?}");
     }
+}
+
+#[test]
+fn a_fitted_read_over_no_lock_needs_a_ducks_shape() {
+    // Both read no lock on the grid. A gate 2 % fast folds at 131.14 BPM and
+    // comes back at once, and a duck 1 % slow folds at about its own tempo.
+    let (x, notes) = chord_at(110.0, 9.05, 128.0);
+    let period = 60.0 / (128.0 * 1.02);
+    let gated = under(&x, |t| {
+        if (t / period).fract() < 0.1 {
+            -9.0
+        } else {
+            0.0
+        }
+    });
+    let read = layer(&gated, &notes, 128.0).pump.unwrap();
+    assert!(!read.strips(), "{read:?}");
+    assert_eq!(read.bpm().get(), 128.0, "{read:?}");
+
+    let (x, notes) = chord_at(110.0, 16.0, 128.0);
+    let duck = Duck {
+        depth_db: 12.0,
+        release_s: 0.08,
+        bpm: 128.0 * 0.99,
+    };
+    let read = layer(&ducked(&x, duck, 0.0), &notes, 128.0).pump.unwrap();
+    assert!(read.strips(), "{read:?}");
+    assert!(
+        (read.bpm().get() / (128.0 * 0.99) - 1.0).abs() < 0.004,
+        "{read:?}"
+    );
 }
 
 #[test]
