@@ -408,6 +408,7 @@ fn fit(track: &LevelTrack, grid: BeatGrid, held: &[(f64, f64)]) -> Option<BeatGr
         let n = cast::floor_to_usize(half / step).unwrap_or(0);
         (0..=2 * n)
             .map(|k| centre + (cast::usize_to_f64(k) - cast::usize_to_f64(n)) * step)
+            .filter(|share| share.abs() <= PERIOD_RANGE)
             .map(|share| (share, folded_depth(track, at(share), held, span)))
             .max_by(|a, b| a.1.total_cmp(&b.1))
             .map(|(share, _)| share)

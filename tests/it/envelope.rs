@@ -10,7 +10,8 @@ use std::f64::consts::TAU;
 use sound_to_patch::audio::{BeatGrid, SampleRate};
 use sound_to_patch::confidence::Level;
 use sound_to_patch::estimate::envelope::{
-    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy,
+    EnvelopeInput, EnvelopeLayer, LevelTrack, PERIOD_RANGE, PUMP_RMS_PERIODS, Pump, PumpLock,
+    amp_proxy,
 };
 use sound_to_patch::notes::NoteList;
 use sound_to_patch::units::{Bpm, Hz, Seconds};
@@ -1592,7 +1593,7 @@ fn a_duck_that_reads_free_near_the_search_end_is_found_by_its_shape() {
     // 10 beats at -2.5 %: the short span reads the beat rate over 50 cents
     // off, so the grid's read runs free.
     let (x, notes) = held_chord_over(10.0);
-    for (depth_db, release_s, least) in [(6.0, 0.15, 6.0), (12.0, 0.08, 8.0)] {
+    for (depth_db, release_s, least) in [(6.0, 0.15, 6.0), (12.0, 0.08, 8.0), (12.0, 0.3, 8.0)] {
         let off = -0.025;
         let period = 60.0 / (BPM * (1.0 + off));
         let duck = Duck {
@@ -1611,13 +1612,17 @@ fn a_duck_that_reads_free_near_the_search_end_is_found_by_its_shape() {
         assert_eq!(p.lock, PumpLock::Beat, "{depth_db}: {p:?}");
         assert!(p.strips(), "{depth_db}: {p:?}");
         assert!(p.depth.get() >= least, "{depth_db}: {p:?}");
+        assert!(
+            p.bpm().get() >= BPM * (1.0 - PERIOD_RANGE),
+            "{depth_db}: {p:?}"
+        );
     }
 }
 
 #[test]
 fn a_duck_past_the_search_reach_stays_free() {
-    // 4 % off over 12 beats: the search folds it at 2.6 %, and the free line
-    // lies 71 cents from the beat rate.
+    // 4 % off over 12 beats: the search folds it at its end, and the free
+    // line lies 71 cents from the beat rate.
     let (x, notes) = held_chord_over(12.0);
     let duck = Duck {
         depth_db: 12.0,
