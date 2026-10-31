@@ -273,19 +273,25 @@ notes [fact].
   beats fold onto the deepest mean curve, over up to 64 beats of the
   longest run of counted beats and then over all of them, in steps that
   move the last beat of the span by 1 bin [fact, proposal for 2.5 %]. The
-  second stage searches one step either side of the first, so a read can
-  reach about 2.7 % [fact]: 0.9732 to 1.0268 of the grid [synthetic]. Of 72
+  second stage searches one step either side of the first, so a read
+  reaches up to 2.68 % from 7 counted beats on, 2.73 % at 4 and 2.81 % at 5,
+  and reads of so few beats never strip [fact]. Of 72
   ducks up to 2 % off the grid over 32 and 64 beats, 15 locked and stripped
   on the grid alone, and all 72 do with the search [synthetic].
   `pump_bpm` reports the tempo of the read that stays [fact]. The search's
   read must lock to the beat, and it replaces the grid's read as follows
-  [fact, proposal for 1.5 dB, 60 cents, 3 bins and half a window]:
-  - The grid's read follows the notes or nothing: always.
-  - The grid's read locks to the beat: when the search's read dips 1.5 dB
-    or more deeper and does not give up the strip. A slower period counts
-    fewer beats, so a grid lock over 8 beats can read deeper over 7
-    [synthetic]. A 12 dB duck 2.5 % off over 16 beats reads 4.4 dB on the
-    grid and 9.8 dB at its own period [synthetic].
+  [fact, proposal for 0.9, 60 cents, 3 bins and half a window]:
+  - The grid's read follows the notes or nothing: always, with no shape
+    test.
+  - The grid's read locks to the beat: when the search's fold error is under
+    0.9 of the grid's. The fold error is the standard deviation of the level
+    minus the curve over the counted beats. When only one read strips, as a
+    slower period counts fewer beats, the search's read must be the one that
+    strips and have the lower fold error. A 12 dB duck 2.5 % off over 16
+    beats reads 4.4 dB on the grid and 9.8 dB at its own period [synthetic].
+    Depth is no test: the search deepens a duck on the tempo by fitting a
+    chord's beating, and a gain of 1.5 dB left a duck 1 % off with 6.5 dB of
+    ripple against 1.1 dB [synthetic].
   - The grid's read runs free: when the line lies within 60 cents of a
     division, and the search's curve falls faster than it recovers and
     takes long enough from half its depth back to a quarter: 3 bins, and
@@ -296,14 +302,21 @@ notes [fact].
   The set behind the numbers below holds 123,840 generated signals: a
   three-note chord from 55, 110 and 220 Hz, 60 to 174 BPM, runs of 8.9 to
   32 beats, four phases for ducks and two for gates and saw tremolos. Each
-  cell counts the signals that strip [synthetic].
+  cell counts the signals that strip, from one build. The columns differ
+  only for a grid read that runs free: it stays free, it takes any search
+  read that locks, or it takes one under this rule. A free read never
+  strips, so this rule reads no more than the column before it [synthetic].
 
-  | Signal | Off the tempo | Signals | Search skips free reads | No free rule | This rule |
+  | Signal | Off the tempo | Signals | Free read stays | No free rule | This rule |
   | :-- | :-- | :-- | :-- | :-- | :-- |
-  | Duck, release 80 ms or more | up to 2.5 % | 47520 | 35121 | 35220 | 35858 |
-  | | 3 % | 8640 | 1242 | 4927 | 4867 |
-  | | 3.5 % | 8640 | 168 | 4131 | 1716 |
-  | | 4 to 5 % | 17280 | 128 | 4723 | 134 |
+  | Duck, release 80 ms or more | up to 2.5 % | 47520 | 36064 | 36163 | 36134 |
+  | | 3 % | 8640 | 1349 | 5034 | 4889 |
+  | | 3.5 % | 8640 | 170 | 4133 | 1717 |
+  | | 4 to 5 % | 17280 | 129 | 4724 | 135 |
+  | Duck, release 30 ms | up to 2.5 % | 15840 | 8983 | 9005 | 8996 |
+  | | 3 % | 2880 | 918 | 1097 | 1030 |
+  | | 3.5 % | 2880 | 527 | 713 | 560 |
+  | | 4 to 5 % | 5760 | 224 | 351 | 224 |
   | Square gate | 3 % | 2880 | 434 | 1181 | 438 |
   | | 3.5 % | 2880 | 181 | 806 | 186 |
   | | 4 to 5 % | 5760 | 35 | 624 | 35 |
@@ -428,7 +441,7 @@ chord's beating moves the crossing [synthetic].
   second fall, since the last corner wins to pass over a decay [synthetic].
   Its sustain window then reaches into the first fall [fact].
 - The beat grid starts at 0 s with the tempo as used. The period search
-  finds one constant tempo within 2.5 % of it; a tempo that moves inside
+  finds one constant tempo within about 2.7 % of it; a tempo that moves inside
   the stem still smears the curve [fact]. Its first stage reads up to 64
   beats of the longest run, so a duck off the tempo that starts later in
   one held note can go unfound [fact]. On the 110 Hz chord, over runs of
@@ -440,12 +453,29 @@ chord's beating moves the crossing [synthetic].
     60, 80, 96, 128 and 174 BPM. It locks in 8 of 16 on the tempo at 96 BPM,
     and in 1 of 16 at 2.5 % above at 174 BPM.
 - A read that stays on the grid reports the grid's tempo, though the duck
-  can lie off it [fact]. Of 14,502 ducks up to 2.5 % off that stayed, the
-  tempo was off by a median of 0.99 % and at most 2.56 %; of 32,480 fitted
-  reads, by a median of 0.07 % and at most 2.22 % [synthetic].
-- A duck on the tempo can move: up to 34 of 4847 grid locks gain 1.5 dB by
-  fitting the chord's beating, nearly all 18 dB at 220 Hz, and read up to
-  0.22 % off [synthetic].
+  can lie off it [fact]. Of 11,113 ducks up to 2.5 % off that stayed, the
+  tempo was off by a median of 0.99 % and at most 2.56 %; of 35,869 fitted
+  reads, by a median of 0.08 % and at most 2.22 % [synthetic].
+- A duck on the tempo can move: up to 3 of 4847 grid locks do, all 6 dB at
+  110 Hz and 60 BPM, by up to 0.89 % [synthetic].
+- A chord's own beating sets a floor of about 1.3 dB under the fold error,
+  so a smeared duck can stay on the grid. Of 5812 ducks that stayed where
+  both reads lock, 289 would have read 1 dB or more less ripple at the fitted
+  period, 1.84 dB on average [synthetic].
+- A gate that reads no lock on the grid takes the search's read with no shape
+  test. Over 8 phases and 9 to 32 beats, a 12 dB gate 3 % below the tempo at
+  55 Hz and 174 BPM strips in 6 of 376 runs, 5 of them this way; at the
+  phases where the grid read runs free the shape test holds it in all but 1
+  [synthetic].
+- The depth reads shallow, by up to 11.8 dB on an 18 dB duck under noise and
+  by up to 9.2 dB without, and the bias depends on the shape; see Depth bias
+  [synthetic].
+- `peak_db` compares two notes directly only when they read the same
+  harmonic, so the pool's level gate can leave out a note that reads a
+  higher harmonic of a timbre with weak upper harmonics [fact].
+- A second sound on the beat, such as a kick in the same stem, can read
+  as a beat-locked pump; over fewer than 8 beats it is not stripped
+  [synthetic].
 - The search takes the deepest fold, so a second modulation near the tempo
   can take it [fact]. Under a duck on the tempo, a deeper second duck 0.5 to
   2.5 % off took 53 of 64 locks, and a shallower sine, duck or gate took 15

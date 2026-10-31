@@ -222,7 +222,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `pump_tau_ms` | milliseconds | 0 or more | `pump_recovery_s` over `ln(pump_depth_db / 1.5)`, the one time field in milliseconds; `null` unless the pump locks to the beat. |
 | `pump_locked_to` | | | `beat`, `note`, `free` or `none`; `null` without a pump. |
 | `pump_beats` | count | 0 or more | The beats behind the curve. |
-| `pump_bpm` | BPM | above 0 | The tempo the curve was read at: `bpm` for a read that stays on the grid, or a fitted tempo up to about 2.7 % from it when that read replaced it. A sidechain's rate follows a fitted tempo closely. A read that stays on the grid says only that the duck locks there: up to 2.56 % off on generated ducks, as [the envelope page](../../analysis/envelope.md#limits) says. `null` without a pump. |
+| `pump_bpm` | BPM | above 0 | The tempo the curve was read at: `bpm` for a read that stays on the grid, or a fitted tempo up to 2.68 % from it when that read replaced it, and 2.81 % at most over the 4 to 6 counted beats that never strip. A sidechain's rate follows a fitted tempo closely. A read that stays on the grid says only that the duck locks there: up to 2.56 % off on generated ducks, as [the envelope page](../../analysis/envelope.md#limits) says. `null` without a pump. |
 | `notes` | | | One record per read note, in note order. |
 
 A statistic reads low over fewer than 3 notes or with an interquartile
