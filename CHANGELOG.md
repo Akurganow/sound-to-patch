@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.27.0](https://github.com/Akurganow/sound-to-patch/compare/a930c52258b56f6fb9e5c9b2d5b205579d50e95a..v0.27.0) - 2026-10-31
+#### Features
+- (**analyze**) count voices and read how a mono line joins its notes (#309) - ([a930c52](https://github.com/Akurganow/sound-to-patch/commit/a930c52258b56f6fb9e5c9b2d5b205579d50e95a)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.26.0](https://github.com/Akurganow/sound-to-patch/compare/a95a7b23ed93bbefe0a4381e1ae29ec20cd93fd0..v0.26.0) - 2026-10-31
 #### Features
 - (**analyze**) report the amplitude envelope and the sidechain pump (#307) - ([a713c34](https://github.com/Akurganow/sound-to-patch/commit/a713c34eda38b1031f2162e1609c05c32ac5b87b)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
