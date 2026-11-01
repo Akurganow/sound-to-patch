@@ -630,12 +630,7 @@ fn release_of(
         (Some(value), Some(sign)) => {
             let mut reasons = release.confidence().reasons().to_vec();
             reasons.push(sign);
-            Estimate::new(
-                value.clone(),
-                Level::Low,
-                release.confidence().spread(),
-                reasons,
-            )?
+            Estimate::new(*value, Level::Low, release.confidence().spread(), reasons)?
         }
         _ => release,
     };

@@ -2152,10 +2152,10 @@ fn a_release_under_a_reverb_is_never_confident_when_far_off() {
     ] {
         let (x, notes) = tail_line(release_s, rt60, wet, seed);
         let layer = layer(&x, &notes, BPM);
-        if let (Some(release), _, _) = tail_medians(&layer) {
-            if (release / release_s - 1.0).abs() > 0.5 {
-                assert_eq!(layer.release_confidence, Some(Level::Low), "{seed}");
-            }
+        if let (Some(release), _, _) = tail_medians(&layer)
+            && (release / release_s - 1.0).abs() > 0.5
+        {
+            assert_eq!(layer.release_confidence, Some(Level::Low), "{seed}");
         }
     }
 }
