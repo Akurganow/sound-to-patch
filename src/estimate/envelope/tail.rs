@@ -52,6 +52,9 @@ pub struct TailFit {
     pub residual: Decibels,
     /// The shortest RT60 that the filter of the track can show.
     pub rt60_floor: Seconds,
+    /// The median size of the second difference of the held level in dB, over
+    /// [`TAIL_HOLD_FRAMES`] before the knee, [`TAIL_HOLD_LAG`] frames each way.
+    pub hold_bend: Decibels,
 }
 
 impl TailFit {
@@ -137,6 +140,7 @@ pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
         rt60_observed: cast::usize_to_f64(above) * HOP.get() >= RT60_SPAN_SHARE * rt60,
         residual: Decibels::clamped((value / frames).sqrt()),
         rt60_floor: Seconds::clamped(0.0),
+        hold_bend: Decibels::clamped(0.0),
     })
 }
 
@@ -149,6 +153,17 @@ pub const TAIL_WEIGHT_MAX: f64 = 0.5;
 /// Over this residual the release is not identifiable, and no release is
 /// written.
 pub const TAIL_RESIDUAL_MAX: Decibels = Decibels::from_const(3.0);
+/// A written release reads low when the median residual is over this and the
+/// median [`TailFit::hold_bend`] over [`TAIL_HOLD_BEND`]: a tremolo carries on
+/// through the release, which the fit cannot follow.
+pub const TAIL_WOBBLE_RESIDUAL: Decibels = Decibels::from_const(2.0);
+/// See [`TAIL_WOBBLE_RESIDUAL`].
+pub const TAIL_HOLD_BEND: Decibels = Decibels::from_const(0.3);
+/// The frames before the knee that [`TailFit::hold_bend`] reads.
+pub const TAIL_HOLD_FRAMES: usize = 300;
+/// The frames each way of [`TailFit::hold_bend`]. Slower than the knee's bend, to
+/// see a tremolo under 10 Hz.
+pub const TAIL_HOLD_LAG: usize = 25;
 /// A tail over [`TAIL_WEIGHT_MAX`] that fits within this RMS reads as the note's
 /// own exponential release: a reverb's level wobbles more.
 pub const TAIL_SMOOTH: Decibels = Decibels::from_const(1.1);
@@ -156,8 +171,6 @@ pub const TAIL_SMOOTH: Decibels = Decibels::from_const(1.1);
 /// chord's release through a band reads 3 to 5 periods, whatever its length up
 /// to 50 ms.
 pub const TAIL_BAND_PERIODS: f64 = 6.0;
-/// The votes that a tail is reverb need this many in favour.
-pub const TAIL_VOTES_MIN: usize = 2;
 /// A tail outlasts a gap when its level before the next note lies above this
 /// level under the sustain level.
 pub const GAP_LEVEL: Decibels = Decibels::from_const(-40.0);

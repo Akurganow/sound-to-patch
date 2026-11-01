@@ -36,6 +36,8 @@ record [fact].
   [fact]. A stem without notes gets `values: null` with the reason
   `no_note_list` and the flag `no_notes` [fact].
 - The mono mix at the native rate [fact].
+- The two channels of the stem for the side vote of the tail, when it has
+  two [fact].
 - The beat grid of the used tempo, from 0 s, for the pump [fact]. The
   offset is never estimated: a stem whose first beat is late shifts every
   beat window [fact].
@@ -215,7 +217,11 @@ on the linear amplitude of the amp proxy, from the first frame within
     difference in dB, 10 ms each way, is over 0.4 dB. A decay and a sustain are
     near 0 dB, as both are straight in dB, however short the sustain.
   - The level after the corner rises by more than a twentieth of the mean
-    before it. A note-off falls for good.
+    before it. A note-off falls for good. The rise reads the first 20 ms as they
+    are and the mean over 20 ms after them, since a noise floor wobbles over the
+    silence after a release [fact, proposal for 20 ms]. On a note that overlaps
+    another it leaves out the frames that the band's filter rings ahead of the next
+    attack, or half a level window on any other note [fact].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a
@@ -270,6 +276,15 @@ release, which is what fails to fit [fact]:
 - A `tail_weight` over 0.5 or a residual over 3 dB writes no `release_s`, and
   `release_confidence` reads low [fact, proposal for 3 dB]. Both still report the
   tail [fact].
+- A written `release_s` reads low, with `tail_wobble`, when the median residual is over
+  2 dB and the median second difference of the level in dB over the 300 ms before the
+  knee, 25 ms each way, is over 0.3 dB [fact, proposal for all three]. A tremolo
+  carries on through the release, which the fit cannot follow [synthetic]. Of 2000 dry
+  tremolos of 0.3 to 3 dB at 1 to 12 Hz, 727 read medium and 139 of them lay over 50 %
+  off before this rule. It lowers 96 of the 139 wrong ones and 141 of the 588 right
+  ones, which leaves 43 of 490 [synthetic]. On 2000 stems each it lowers 18 wrong and
+  11 right short sustains, and 3 wrong and 3 right reverbs. It lowers none of the plain
+  dry or legato stems and 2 wrong chords [synthetic].
 - `tail_rt60_s` reads over the notes with a `tail_weight` of 0.05 or more whose
   frames span a 15 dB fall of it, and is null under a median `tail_weight` of 0.05, because a dry note often leaves a
   little weight whose RT60 is noise [fact, proposal for both].
@@ -298,18 +313,17 @@ points at this size. On it:
 | :-- | :-- | :-- | :-- |
 | Dry, release up to 400 ms | 1157 | 1152 | 1108 |
 | Dry, release 800 ms | 215 | 0 | - |
-| Reverb, release up to 400 ms | 2227 | 1433 | 1319 |
-| Reverb, release 800 ms | 401 | 29 | 4 |
+| Reverb, release up to 400 ms | 2227 | 1417 | 1301 |
+| Reverb, release 800 ms | 401 | 28 | 4 |
 
 - The median written release over its truth on dry stems is 0.98 to 1.12 by
   release, with the 1.12 at 20 ms [synthetic].
-- Over the true RT60, the median read is 1.16 at 0.3 s, 1.03 at 0.6 s, 0.96 at
-  1.5 s and 0.96 at 3 s, and 33 to 44 % lie within 10 % [synthetic]. A dry stem
-  reports an RT60 in 55 of 1372 [synthetic].
-- `tail_weight` over 0.5 holds out 3.8 % of stems at a true 0.05 wet, 30 % at 0.4
-  and 55 % at 0.8 [synthetic]. Of the 647 reverb stems over 0.5, 74 read as smooth and
+- Over the true RT60, the median read is 1.16 at 0.3 s, 1.02 at 0.6 s, 0.96 at
+  1.5 s and 0.95 at 3 s, and 33 to 44 % lie within 10 % [synthetic].
+- `tail_weight` over 0.5 holds out 4.8 % of stems at a true 0.05 wet, 30 % at 0.4
+  and 55 % at 0.8 [synthetic]. Of the 662 reverb stems over 0.5, 79 read as smooth and
   lose their RT60 [synthetic].
-- A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 70.4 % under
+- A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 69.6 % under
   a reverb, against 98.8 % and 42.1 % at commit 057d63c [synthetic].
 - On a line of 6 notes with a release of 50 ms at 0.15 wet, over 60 noise reverbs
   each, the RT60 lies within 10 % on 53 of 60 at 0.6 s and 56 of 60 at 1.5 s, with
@@ -569,40 +583,66 @@ chord's beating moves the crossing [synthetic].
   Its sustain window then reaches into the first fall [fact].
 - A release over about 400 ms shows no knee, because its right line must fall by
   half the held level over 200 ms: no dry 800 ms release reads [synthetic]. Under a
-  reverb, 29 of 401 such stems wrote a release, 4 of them within 50 %, from a knee in
+  reverb, 28 of 401 such stems wrote a release, 4 of them within 50 %, from a knee in
   the tail [synthetic].
-- Under a reverb, 29.6 % of the knees on the 4000 stems lie over 15 ms from the
+- Under a reverb, 30.4 % of the knees on the 4000 stems lie over 15 ms from the
   note-off [synthetic]. A fade in the tail with a smooth level before it and no rise
   after it still replaces the note-off [fact].
 - A tremolo bends too: a swing of 1 dB at 12 Hz reads 0.38 dB and 6 dB at 5 Hz about
   0.4 dB. When an earlier decay forms a corner, the note-off of such a sustain can lose
   to it [fact].
 - The bend and rise rule loses some notes that commit 057d63c read within 15 ms, on a
-  one-off sweep of generated signals, and gains more [synthetic]:
+  one-off sweep of 1000 generated stems a set, and gains more [synthetic]:
 
   | Set | Notes | 057d63c | This rule | Worse | Better |
   | :-- | :-- | :-- | :-- | :-- | :-- |
-  | Tremolo | 2400 | 758 | 873 | 8 | 76 |
-  | Legato | 1476 | 1059 | 1167 | 28 | 114 |
-  | Reverb | 3600 | 1012 | 1809 | 1 | 278 |
-  | Recipes of #70 | 2160 | 306 | 856 | 0 | 176 |
-  | ADSR | 16000 | 11286 | 11319 | 14 | 28 |
-  | Chord | 5700 | 4503 | 4503 | 0 | 0 |
+  | Plain dry | 2986 | 2453 | 2453 | 0 | 0 |
+  | Short sustain | 2698 | 2017 | 2064 | 0 | 47 |
+  | Tremolo | 2991 | 732 | 777 | 107 | 152 |
+  | Legato | 3011 | 2962 | 2967 | 0 | 5 |
+  | Reverb | 3042 | 1220 | 1663 | 24 | 467 |
+  | Chord | 1176 | 820 | 836 | 9 | 25 |
+  | Noise at -35 dBFS | 2898 | 2010 | 2065 | 82 | 137 |
+  | Noise at -40 dBFS | 2898 | 2200 | 2215 | 33 | 48 |
+  | Noise at -50 dBFS | 2898 | 2286 | 2315 | 0 | 29 |
+  | Noise at -60 dBFS | 2898 | 2306 | 2327 | 0 | 21 |
+  | Note end 10 ms past the next onset | 1583 | 1227 | 1231 | 2 | 6 |
+  | Note end 20 ms past the next onset | 1583 | 1172 | 1225 | 1 | 54 |
+  | Note end 40 ms past the next onset | 1583 | 1015 | 1151 | 1 | 137 |
 
-- An earlier rule at commit 96babff, which replaced a corner only from a level held
-  for 100 ms, read more knees under a reverb (2179 of 3600) and on tremolo (978 of
-  2400), but lost short sustains and read 10628 of 16000 on ADSR [synthetic].
-- Under a reverb, 63 of the 926 stems whose release reads medium on the 4000 stems lie
-  over 50 % off, 29 of them with a release of 20 ms [synthetic]. Lowering every
-  release with a true vote or a median `tail_weight` of 0.05 would leave 2, and would
-  also lower the 857 right ones, so the level stays [synthetic].
+- A medium release lies over 50 % off on 50 of the 875 reverb stems, 26 of them with
+  a release of 20 ms, and on 23 of the 779 dry stems, all with a release of 20 ms, on
+  the 4000 stems [synthetic]. Lowering every reverb release with a true vote or a
+  median `tail_weight` of 0.05 would leave 2 of 8, and would also lower the 819 right
+  ones, so the level stays [synthetic].
+- Under a tremolo, 43 of the 490 medium releases lie over 50 % off, on 2000 dry stems,
+  after the rule above [synthetic].
+- The RT60 reads about 50 % high under a release of 400 ms: at a true 0.6 s and 0.15
+  or 0.4 wet the median is 0.90 s, on about half of 300 stems each [synthetic]. The
+  space layer takes this up [fact].
+- A dry stem can report an RT60, on 2000 generated stems a set [synthetic]:
+
+  | Set | With an RT60 |
+  | :-- | :-- |
+  | Plain dry | 82 |
+  | Short sustain | 211 |
+  | Tremolo | 330 |
+  | Legato | 25 |
+  | Chord | 185 |
+
+  The 4000 stems above read it on 55 of 1372 dry stems, so that 4 % is no general
+  rate [synthetic].
 - A note list that ends at the note-off shows no knee, so `--notes` with such a list
   reads no release [fact].
 - The 3 dB residual, the 0.05 weight of an RT60 and the five vote thresholds were
   chosen on generated signals and are untested on real tails; #91 checks them [fact].
-- A release of 20 ms at 41 Hz is shorter than the level window: of the 114 reverb
-  stems written more than 50 % off with a release up to 400 ms, 62 have a release of
+- A release of 20 ms at 41 Hz is shorter than the level window: of the 116 reverb
+  stems written more than 50 % off with a release up to 400 ms, 64 have a release of
   20 ms [synthetic].
+- #70 asks that the fit never returns a confident release more than 50 % off. Read with
+  its scope, where the fit reports a `tail_weight` over 0.5, it holds, because no release
+  is written there. It does not hold unscoped: the medium releases above lie over 50 %
+  off under that weight [synthetic].
 - The fit has no echo term, so a delay reads as release or tail [fact].
 - The bench has no pre-delay, and the reverb is noise [fact].
 - The beat grid starts at 0 s with the tempo as used. The period search

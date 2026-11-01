@@ -10,8 +10,7 @@ use std::f64::consts::TAU;
 use sound_to_patch::audio::{BeatGrid, SampleRate};
 use sound_to_patch::confidence::{Level, ReasonCode};
 use sound_to_patch::estimate::envelope::{
-    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, TAIL_VOTES_MIN,
-    amp_proxy, fit_tail,
+    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy, fit_tail,
 };
 use sound_to_patch::notes::NoteList;
 use sound_to_patch::units::{Bpm, Hz, Seconds};
@@ -1370,6 +1369,72 @@ fn a_20_ms_release_ending_30_ms_before_the_note_end_reads_its_knee() {
 }
 
 #[test]
+fn a_tremolo_lowers_a_release_it_hides_and_a_dry_line_keeps_its_level() {
+    let swing = |x: &[f64], db: f64| -> Vec<f64> {
+        x.iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let t = f64::from(u32::try_from(i).unwrap()) / fs();
+                v * 10f64.powf(db * (std::f64::consts::TAU * 3.0 * t).sin() / 20.0)
+            })
+            .collect()
+    };
+    let (dry, notes) = tail_line(0.2, 0.0, 0.0, 0);
+    let plain = layer(&dry, &notes, BPM);
+    assert_eq!(plain.release_confidence, Some(Level::Medium));
+    let shaken = layer(&swing(&dry, 3.0), &notes, BPM);
+    assert_eq!(shaken.release_confidence, Some(Level::Low));
+    let reasons = shaken.release.confidence().reasons();
+    assert!(
+        reasons.iter().any(|r| r.code() == ReasonCode::TailWobble),
+        "{reasons:?}"
+    );
+}
+
+#[test]
+fn a_note_end_past_the_next_onset_keeps_the_note_off_over_an_earlier_decay() {
+    // A decay corner at 0.385 s after the onset and a note-off at 0.485 s. The
+    // list runs past the next attack, which a rise would count against the note-off.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.009,
+        decay_s: 0.36,
+        sustain_db: -12.0,
+        release_s: 0.331,
+    };
+    let held = 0.485;
+    let period = held + adsr.release_s + 0.02;
+    let on = |i: u32| 0.1 + period * f64::from(i);
+    let semitones = [-3.0, 5.0, 0.0, 0.0];
+    let levels = [-6.0, 0.0, -3.0, -9.0];
+    let pitch = |i: usize| 102.03 * 2f64.powf(semitones[i] / 12.0);
+    let notes: Vec<_> = (0..4_u32)
+        .zip(0..)
+        .map(|(n, i)| (on(n), on(n) + held, pitch(i), levels[i]))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    for past in [0.01, 0.02] {
+        let list: Vec<_> = (0..4_u32)
+            .zip(0..)
+            .map(|(n, i)| (on(n), on(n + 1) + past, pitch(i)))
+            .collect();
+        let read = layer(&x, &note_list(&list), BPM);
+        assert!(
+            read.notes
+                .iter()
+                .any(|n| (n.onset.get() - on(0)).abs() < 1e-9)
+        );
+        for note in &read.notes {
+            let (onset, knee) = (note.onset.get(), note.knee.unwrap().get());
+            assert!(
+                (knee - onset - held).abs() <= 0.015,
+                "{past} {onset} {knee}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_quiet_second_voice_stays_out_of_the_pool() {
     // Eight A2 notes decay over 300 ms to -6 dB; under each an E3 18 dB
     // quieter decays over 50 ms to -20 dB. Pooled, the E3 notes would put
@@ -2118,6 +2183,10 @@ fn a_dry_release_reads_within_a_quarter_and_its_knee_within_15_ms() {
     assert!((release / 0.05 - 1.0).abs() <= 0.25, "{release}");
     assert!(weight.is_some_and(|w| w < 0.05), "{weight:?}");
     assert_eq!(rt60, None);
+    assert_eq!(
+        layer.tail_rt60.confidence().reasons()[0].code(),
+        ReasonCode::TailLight
+    );
     assert_eq!(layer.notes.len(), 6);
     for (i, note) in layer.notes.iter().enumerate() {
         let off = note.onset.get() + 0.6;
@@ -2332,6 +2401,10 @@ fn a_tail_that_weighs_over_half_writes_no_release() {
             crossed += 1;
             assert_eq!(release, None);
             assert_eq!(layer.release_confidence, Some(Level::Low));
+            assert_eq!(
+                layer.release.confidence().reasons()[0].code(),
+                ReasonCode::TailWeight
+            );
         }
     }
     assert!(crossed >= 1);
@@ -2364,7 +2437,7 @@ fn the_votes_of_a_wide_reverb_pass_and_of_a_dry_line_stay_short() {
     let (dry, notes) = tail_line(0.05, 0.0, 0.0, 0);
     let dry_layer = layer(&dry, &notes, BPM);
     assert!(
-        dry_layer.tail_votes.count() < TAIL_VOTES_MIN,
+        dry_layer.tail_votes.count() < 2,
         "{:?}",
         dry_layer.tail_votes
     );
@@ -2386,11 +2459,7 @@ fn the_votes_of_a_wide_reverb_pass_and_of_a_dry_line_stay_short() {
         "{:?}",
         wide.tail_votes
     );
-    assert!(
-        wide.tail_votes.count() >= TAIL_VOTES_MIN,
-        "{:?}",
-        wide.tail_votes
-    );
+    assert!(wide.tail_votes.count() >= 2, "{:?}", wide.tail_votes);
     let summary = wide.summary().join("\n");
     assert!(summary.contains("reverb votes"), "{summary}");
 }

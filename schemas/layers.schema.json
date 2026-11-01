@@ -276,7 +276,10 @@
                     "sustain_db": { "$ref": "#/$defs/statistic" },
                     "note_off_offset_s": { "$ref": "#/$defs/statistic" },
                     "release_s": { "$ref": "#/$defs/unit_statistic" },
-                    "tail_rt60_s": { "$ref": "#/$defs/unit_statistic" },
+                    "tail_rt60_s": {
+                      "$ref": "#/$defs/unit_statistic",
+                      "description": "Null with the reason tail_light, tail_smooth or tail_band when the tail shows no RT60."
+                    },
                     "tail_weight": { "$ref": "#/$defs/unit_statistic" },
                     "release_confidence": { "enum": ["medium", "low", null] },
                     "tail_votes": {

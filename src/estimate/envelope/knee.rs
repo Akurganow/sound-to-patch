@@ -50,6 +50,9 @@ pub const KNEE_BEND_LAG: usize = 10;
 /// by at most this share of the level before it. A note-off falls for good,
 /// and a fade of a reverb comes back.
 pub const KNEE_RISE: f64 = 0.05;
+/// The frames of the mean that the rise reads past its start, so that a noise
+/// floor's wobble after the note-off does not count as a level that comes back.
+pub const KNEE_RISE_FRAMES: usize = 20;
 
 /// A level that stays under this share of the held level has left it for good.
 const KNEE_LEAVE: f64 = 0.85;
@@ -63,7 +66,8 @@ const KNEE_DB_FLOOR: f64 = 1e-4;
 /// right one up to [`KNEE_RIGHT`] after it, and the crossing takes the line
 /// over the first [`KNEE_SIDE_MIN`] frames after the split.
 ///
-/// `amp` holds the linear amplitude, one value per [`HOP`] from `start`.
+/// `amp` holds the linear amplitude, one value per [`HOP`] from `start`. The last
+/// `settle` frames can read what follows the track, so the rise leaves them out.
 /// Every split leaves at least [`KNEE_SIDE_MIN`] frames on each side. A
 /// split counts when the right line is steeper by [`KNEE_STEEPEN`] times
 /// the left side's mean per second, falls by [`KNEE_FALL`] times that
@@ -84,12 +88,12 @@ const KNEE_DB_FLOOR: f64 = 1e-4;
 /// let amp: Vec<f64> = (0..800)
 ///     .map(|i| (1.0 - (f64::from(i) - 500.0).max(0.0) / 200.0).max(0.0))
 ///     .collect();
-/// let knee = find_knee(0.0, &amp);
+/// let knee = find_knee(0.0, &amp, 0);
 /// assert!(knee.is_some_and(|t| (t - 0.5).abs() < 0.002));
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 #[must_use]
-pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
+pub fn find_knee(start: f64, amp: &[f64], settle: usize) -> Option<f64> {
     let n = amp.len();
     if n < 2 * KNEE_SIDE_MIN {
         return None;
@@ -153,8 +157,9 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
         .collect();
     let mut best = first;
     for corner in later {
-        if bend(&db, best.k, corner.first) <= KNEE_BEND.get()
-            && rise(&amp[corner.k..]) <= KNEE_RISE * corner.level
+        if bend(&db, best.k, corner.first, KNEE_BEND_LAG) <= KNEE_BEND.get()
+            && rise(&amp[corner.k..n.saturating_sub(settle).max(corner.k)])
+                <= KNEE_RISE * corner.level
         {
             best = corner;
         }
@@ -208,27 +213,37 @@ struct Corner {
 
 /// The median size of the second difference of `db` over the frames `from..to`,
 /// in dB; 0 when the span holds no second difference.
-fn bend(db: &[f64], from: usize, to: usize) -> f64 {
-    let (lo, hi) = (from + KNEE_BEND_LAG, to.saturating_sub(KNEE_BEND_LAG));
+pub(super) fn bend(db: &[f64], from: usize, to: usize, lag: usize) -> f64 {
+    let (lo, hi) = (from + lag, to.saturating_sub(lag));
     if hi <= lo {
         return 0.0;
     }
     let mut sizes: Vec<f64> = (lo..hi)
-        .map(|i| (db[i - KNEE_BEND_LAG] - 2.0 * db[i] + db[i + KNEE_BEND_LAG]).abs())
+        .map(|i| (db[i - lag] - 2.0 * db[i] + db[i + lag]).abs())
         .collect();
     sizes.sort_by(f64::total_cmp);
     sizes[(sizes.len() - 1) / 2]
 }
 
-/// The largest rise of `amp` from any lower level before it.
+/// The largest rise of `amp` over its first [`KNEE_RISE_FRAMES`], and of its mean
+/// over that many frames after them.
 fn rise(amp: &[f64]) -> f64 {
+    let head = amp.iter().take(KNEE_RISE_FRAMES).copied();
+    let means = amp
+        .windows(KNEE_RISE_FRAMES)
+        .map(|w| w.iter().sum::<f64>() / cast::usize_to_f64(KNEE_RISE_FRAMES));
+    climb(head).max(climb(means))
+}
+
+/// The largest rise of a sequence from any lower value before it.
+fn climb(values: impl Iterator<Item = f64>) -> f64 {
     let mut low = f64::INFINITY;
-    let mut rise = 0.0_f64;
-    for &v in amp {
+    let mut climb = 0.0_f64;
+    for v in values {
         low = low.min(v);
-        rise = rise.max(v - low);
+        climb = climb.max(v - low);
     }
-    rise
+    climb
 }
 
 /// A least-squares line over frame indices, with its squared error.
@@ -352,7 +367,7 @@ mod tests {
     fn a_sustain_shorter_than_its_decay_still_has_its_knee_at_the_note_off() {
         // The 0.2 s decay would fill any look-back over the 50 ms sustain.
         let amp = adsr(-12.0, 0.2, 0.05, |_| 0.0);
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.355).abs() < 0.002, "{knee}");
     }
 
@@ -368,10 +383,163 @@ mod tests {
                 }
             })
         };
-        let smooth = find_knee(0.0, &bend_of(0.3, 25.0)).unwrap();
+        let smooth = find_knee(0.0, &bend_of(0.3, 25.0), 0).unwrap();
         assert!((smooth - off).abs() < 0.002, "{smooth}");
-        let wobbling = find_knee(0.0, &bend_of(3.0, 25.0)).unwrap();
+        let wobbling = find_knee(0.0, &bend_of(3.0, 25.0), 0).unwrap();
         assert!(wobbling < 0.2, "{wobbling}");
+    }
+
+    #[test]
+    fn the_rise_leaves_out_the_frames_that_read_past_the_track() {
+        // A decay into a shelf, a release, and a next note's attack in the last 10
+        // frames. A rise over them would keep the corner of the decay.
+        let amp: Vec<f64> = (0..800_u32)
+            .map(|i| match i {
+                0..200 => 1.0,
+                200..300 => 1.0 - 0.75 * f64::from(i - 200) / 100.0,
+                300..500 => 0.25,
+                500..550 => 0.25 * (1.0 - f64::from(i - 500) / 50.0),
+                550..790 => 0.0,
+                _ => f64::from(i - 790) / 10.0,
+            })
+            .collect();
+        let at = |settle| find_knee(0.0, &amp, settle).unwrap();
+        assert!((at(10) - 0.5).abs() < 0.002, "{}", at(10));
+        assert!((at(0) - 0.2).abs() < 0.002, "{}", at(0));
+    }
+
+    /// A decay at 200 ms into a shelf, and a release at 500 ms into silence.
+    fn two_corners(shelf: impl Fn(u32) -> f64, after: impl Fn(u32) -> f64) -> Vec<f64> {
+        (0..800_u32)
+            .map(|i| match i {
+                0..200 => 1.0,
+                200..300 => 1.0 - 0.75 * f64::from(i - 200) / 100.0,
+                300..500 => shelf(i),
+                500..550 => 0.25 * (1.0 - f64::from(i - 500) / 50.0),
+                _ => after(i),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_later_corner_needs_a_bend_of_at_most_0_4_db() {
+        // A decay straight in dB at 200 ms into a shelf and a release at 500 ms, under
+        // a triangle 20 frames long whose bend reads 2.4 times its peak: 0.384 and 0.408.
+        let read = |peak_db: f64| {
+            let amp: Vec<f64> = (0..800_u32)
+                .map(|i| {
+                    let phase = f64::from(i % 20) / 5.0;
+                    let shape = if phase < 2.0 {
+                        phase - 1.0
+                    } else {
+                        3.0 - phase
+                    };
+                    let body = -12.0 * (f64::from(i.max(200) - 200) / 100.0).min(1.0);
+                    let level = 10f64.powf((body + peak_db * shape) / 20.0);
+                    match i {
+                        0..500 => level,
+                        500..550 => 0.25 * (1.0 - f64::from(i - 500) / 50.0),
+                        _ => 0.0,
+                    }
+                })
+                .collect();
+            find_knee(0.0, &amp, 0).unwrap()
+        };
+        assert!((read(0.16) - 0.5).abs() < 0.01, "{}", read(0.16));
+        assert!((read(0.17) - 0.19).abs() < 0.01, "{}", read(0.17));
+    }
+
+    #[test]
+    fn a_later_corner_needs_a_rise_of_at_most_a_twentieth_of_the_level_before_it() {
+        let read = |share: f64| {
+            let back = |i: u32| 0.25 * share * (f64::from(i.saturating_sub(600)) / 50.0).min(1.0);
+            find_knee(0.0, &two_corners(|_| 0.25, back), 0).unwrap()
+        };
+        assert!((read(0.045) - 0.5).abs() < 0.002, "{}", read(0.045));
+        assert!((read(0.055) - 0.2).abs() < 0.002, "{}", read(0.055));
+    }
+
+    #[test]
+    fn the_fall_is_read_from_a_level_of_85_percent_of_the_held_one() {
+        // At 0.82 of the held level a step reads no fall, where 80 % would.
+        let step: Vec<f64> = (0..600_u32)
+            .map(|i| match i {
+                0..300 => 1.0,
+                300..330 => 0.82,
+                330..430 => 0.82 * (1.0 - f64::from(i - 330) / 100.0),
+                _ => 0.0,
+            })
+            .collect();
+        let knee = find_knee(0.0, &step, 0).unwrap();
+        assert!((knee - 0.285).abs() < 0.003, "{knee}");
+        // A slope down to 0.89 before a steeper fall reads the fall from it, where 95 %
+        // would read it from the slope's start.
+        let points = [
+            (0.0, 1.0),
+            (312.0, 1.0),
+            (366.0, 0.89),
+            (397.0, 0.37),
+            (447.0, 0.0),
+            (647.0, 0.0),
+        ];
+        let amp: Vec<f64> = (0..647_u32)
+            .map(|i| {
+                let x = f64::from(i);
+                let w = points.windows(2).find(|w| x < w[1].0).unwrap();
+                w[0].1 + (w[1].1 - w[0].1) * (x - w[0].0) / (w[1].0 - w[0].0)
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
+        assert!((knee - 0.362).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
+    fn a_fall_read_stops_at_the_frame_it_starts_from() {
+        // A swell after a fall: the line over the last fall starts above the held level,
+        // so it crosses that level past the frame it starts from.
+        let points = [
+            (0.0, 1.0),
+            (99.0, 0.91),
+            (129.0, 0.91),
+            (173.0, 0.49),
+            (201.0, 0.49),
+            (239.0, 0.35),
+            (268.0, 0.004),
+            (283.0, 3.85),
+            (298.0, 3.85),
+            (328.0, 0.0),
+            (498.0, 0.0),
+        ];
+        let amp: Vec<f64> = (0..498_u32)
+            .map(|i| {
+                let x = f64::from(i);
+                let w = points.windows(2).find(|w| x < w[1].0).unwrap();
+                w[0].1 + (w[1].1 - w[0].1) * (x - w[0].0) / (w[1].0 - w[0].0)
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
+        assert!((knee - 0.299).abs() < 1e-3, "{knee}");
+    }
+
+    #[test]
+    fn a_noise_floor_under_the_tail_does_not_hide_the_note_off() {
+        // A floor that wobbles by a tenth of the shelf after the release, as noise
+        // at -40 dBFS does under a quiet sustain.
+        let amp: Vec<f64> = (0..800_u32)
+            .map(|i| match i {
+                0..200 => 1.0,
+                200..300 => 1.0 - 0.75 * f64::from(i - 200) / 100.0,
+                300..500 => 0.25,
+                500..550 => 0.25 - 0.235 * f64::from(i - 500) / 50.0,
+                _ => 0.015 + if i % 20 < 10 { 0.0 } else { 0.025 },
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
+        assert!((knee - 0.5).abs() < 0.002, "{knee}");
+        // A wobble twice as long shows through a mean of 20 frames.
+        let slow = |i: u32| if i % 40 < 20 { 0.0 } else { 0.05 };
+        let knee = find_knee(0.0, &two_corners(|_| 0.25, slow), 0).unwrap();
+        assert!((knee - 0.2).abs() < 0.01, "{knee}");
     }
 
     #[test]
@@ -387,7 +555,7 @@ mod tests {
                 _ => 0.25 * 0.3,
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.2).abs() < 0.002, "{knee}");
     }
 
@@ -407,7 +575,7 @@ mod tests {
                 }
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.3445).abs() < 0.002, "{knee}");
     }
 
@@ -420,7 +588,7 @@ mod tests {
                 0.5 * (1.0 - (t - 0.4).max(0.0) / 0.2)
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.4).abs() < 0.002, "{knee}");
     }
 
@@ -436,7 +604,7 @@ mod tests {
             },
             0.5,
         );
-        let knee = find_knee(1.0, &db).unwrap();
+        let knee = find_knee(1.0, &db, 0).unwrap();
         assert!((knee - 1.4).abs() < 0.002, "{knee}");
     }
 
@@ -455,7 +623,7 @@ mod tests {
                 held * (1.0 - (t - 0.8).max(0.0) / 0.02).max(0.0)
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.8).abs() < 0.002, "{knee}");
     }
 
@@ -469,7 +637,7 @@ mod tests {
                 1.0 - (t / 150.0).powf(1.1)
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.5011).abs() < 5e-4, "{knee}");
     }
 
@@ -485,21 +653,21 @@ mod tests {
                 first * (1.0 - ((t - 0.7) / 0.1).clamp(0.0, 1.0))
             })
             .collect();
-        let knee = find_knee(0.0, &amp).unwrap();
+        let knee = find_knee(0.0, &amp, 0).unwrap();
         assert!((knee - 0.7).abs() < 0.002, "{knee}");
     }
 
     #[test]
     fn a_fall_at_one_rate_has_no_knee() {
         let db = track(|t| -40.0 * t, 1.0);
-        assert_eq!(find_knee(0.0, &db), None);
+        assert_eq!(find_knee(0.0, &db, 0), None);
     }
 
     #[test]
     fn a_slope_that_flattens_is_no_knee() {
         // A decay into its sustain level steepens nowhere.
         let db = track(|t| if t < 0.3 { -20.0 * t / 0.3 } else { -20.0 }, 0.8);
-        assert_eq!(find_knee(0.0, &db), None);
+        assert_eq!(find_knee(0.0, &db, 0), None);
     }
 
     #[test]
@@ -516,7 +684,7 @@ mod tests {
             },
             0.8,
         );
-        let knee = find_knee(0.0, &db).unwrap();
+        let knee = find_knee(0.0, &db, 0).unwrap();
         assert!((knee - 0.7).abs() < 0.002, "{knee}");
     }
 
@@ -532,7 +700,7 @@ mod tests {
                 _ => 0.0,
             })
             .collect();
-        let knee = find_knee(1.0, &amp).unwrap();
+        let knee = find_knee(1.0, &amp, 0).unwrap();
         assert!(
             (knee - (1.0 + 20.0 * HOP.get())).abs() < 1.5 * HOP.get(),
             "{knee}"
@@ -545,7 +713,7 @@ mod tests {
             amp in proptest::collection::vec(0.0..1.0f64, 0..400),
             start in 0.0..10.0f64,
         ) {
-            if let Some(knee) = find_knee(start, &amp) {
+            if let Some(knee) = find_knee(start, &amp, 0) {
                 let end = start + cast::usize_to_f64(amp.len()) * HOP.get();
                 proptest::prop_assert!(knee >= start && knee <= end, "{knee}");
             }

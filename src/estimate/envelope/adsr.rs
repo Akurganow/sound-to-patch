@@ -7,10 +7,10 @@ use crate::dsp::{FilterError, fit_line, quantile};
 use crate::notes::Note;
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
-use super::knee::find_knee;
+use super::knee::{bend, find_knee};
 use super::median;
 use super::pump::Pump;
-use super::tail::{TAIL_BAND_PERIODS, TailFit, fit_tail};
+use super::tail::{TAIL_BAND_PERIODS, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG, TailFit, fit_tail};
 use super::track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
 };
@@ -217,7 +217,8 @@ pub fn read_note(
         .iter()
         .map(|db| 10f64.powf(db / 20.0))
         .collect();
-    let knee = find_knee(proxy.time(top), &amp);
+    let settle = settle_frames(overlap, f0, &partials);
+    let knee = find_knee(proxy.time(top), &amp, settle);
     let held_end = knee.map_or(knee_end, |k| proxy.index(k)).max(top + 1);
     let window = cast::floor_to_usize(SUSTAIN_SHARE * cast::usize_to_f64(held_end - top))
         .unwrap_or(0)
@@ -279,6 +280,22 @@ pub fn read_note(
     }))
 }
 
+/// The last frames of a track that can read what follows it: half the window of
+/// the level, or the rise of the band for a note that overlaps another, whose
+/// zero-phase filter rings ahead of a next note's attack.
+fn settle_frames(overlap: bool, f0: Hz, partials: &[(Hz, Hz)]) -> usize {
+    let reach = if overlap {
+        let narrowest = partials
+            .iter()
+            .map(|p| p.1.get())
+            .fold(f64::INFINITY, f64::min);
+        BAND_STEPS_MIN * BAND_STEP_RISE / narrowest
+    } else {
+        0.5 * rms_window(f0, RMS_PERIODS).get()
+    };
+    cast::round_to_usize(reach / HOP.get()).unwrap_or(0)
+}
+
 /// The shortest RT60 the note's track shows: only a note that overlaps another
 /// reads its tail through a band, and the narrowest band rings longest.
 fn rt60_floor(overlap: bool, partials: &[(Hz, Hz)]) -> Seconds {
@@ -314,7 +331,9 @@ fn read_tail(
     let from = a.saturating_sub(LEVEL_FRAMES).max(onset.min(a));
     let level = median(&timing.db()[from..a]).unwrap_or(0.0);
     let db: Vec<f64> = timing.db()[a.min(b)..b].iter().map(|v| v - level).collect();
-    fit_tail(&db)
+    let held = a.saturating_sub(TAIL_HOLD_FRAMES).max(onset.min(a));
+    let hold_bend = Decibels::clamped(bend(timing.db(), held, a, TAIL_HOLD_LAG));
+    fit_tail(&db).map(|fit| TailFit { hold_bend, ..fit })
 }
 
 /// The span of a note's tracks: from [`TRACK_LEAD`] before its onset to its
@@ -561,6 +580,83 @@ fn ripple(values: &[f64]) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_tail_level_is_the_median_of_the_50_frames_before_the_knee() {
+        // Over the 100 frames before the knee the level is -6 dB, and over the last
+        // 20 it is 0 dB, or over the last 30 for the window of 25.
+        let read = |last: usize| {
+            let fall: Vec<f64> = (0..300).map(|i| -0.1 * f64::from(i)).collect();
+            let mut db = vec![-6.0; 1000 - last];
+            db.extend(vec![0.0; last]);
+            db.extend(&fall);
+            let track = LevelTrack::new(Seconds::clamped(0.0), db);
+            let f0 = Hz::clamped(440.0);
+            let knee = 1000.0 * HOP.get();
+            read_tail(&track, 0, knee, Seconds::clamped(1.3), &[], f0).unwrap()
+        };
+        let weight_at = |level: f64| {
+            let f0_frames = cast::round_to_usize(
+                0.5 * rms_window(Hz::clamped(440.0), RMS_PERIODS).get() / HOP.get(),
+            )
+            .unwrap();
+            let db: Vec<f64> = (0..300 - f0_frames)
+                .map(|i| -0.1 * cast::usize_to_f64(i) - level)
+                .collect();
+            fit_tail(&db).unwrap().weight
+        };
+        // 20 of 50 frames: the median stays at -6 dB, where a window of 25 reads 0 dB.
+        assert!((read(20).weight - weight_at(-6.0)).abs() < 1e-9);
+        // 30 of 50 frames: the median reads 0 dB, where a window of 100 reads -6 dB.
+        assert!((read(30).weight - weight_at(0.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn the_shortest_rt60_is_6_periods_of_the_narrowest_cutoff() {
+        let partials = [
+            (Hz::clamped(220.0), Hz::clamped(40.0)),
+            (Hz::clamped(440.0), Hz::clamped(20.0)),
+        ];
+        assert_eq!(rt60_floor(true, &partials).get(), 6.0 / 20.0);
+        assert_eq!(rt60_floor(false, &partials).get(), 0.0);
+    }
+
+    #[test]
+    fn the_hold_bend_reads_300_frames_before_the_knee_25_each_way() {
+        // A triangle 50 frames long reads 4 times its median size over the last
+        // 300 frames, and a flat level reads 0 dB before them.
+        let triangle = |i: usize, peak: f64| {
+            let phase = cast::usize_to_f64(i % 50) / 12.5;
+            peak * if phase < 2.0 {
+                phase - 1.0
+            } else {
+                3.0 - phase
+            }
+        };
+        let read = |flat_frames: usize, bent: usize| {
+            let mut db = vec![0.0; flat_frames];
+            db.extend((0..bent).map(|i| triangle(i, 1.0)));
+            let knee = db.len();
+            db.extend((0..300).map(|i| -0.1 * f64::from(i)));
+            let track = LevelTrack::new(Seconds::clamped(0.0), db);
+            let end = cast::usize_to_f64(knee + 300) * HOP.get();
+            read_tail(
+                &track,
+                0,
+                cast::usize_to_f64(knee) * HOP.get(),
+                Seconds::clamped(end),
+                &[],
+                Hz::clamped(440.0),
+            )
+            .unwrap()
+            .hold_bend
+            .get()
+        };
+        assert!((read(1000, 300) - 2.0).abs() < 0.2, "{}", read(1000, 300));
+        // Under half the 300 frames bend, so a window of 300 reads no median bend,
+        // where a window of 200 would.
+        assert!(read(1000, 100) < 0.01, "{}", read(1000, 100));
+    }
 
     #[test]
     fn the_residual_is_the_rms_against_hold_decay_and_sustain() {
