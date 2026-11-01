@@ -286,6 +286,13 @@ mod tests {
         assert!((knee - 0.496).abs() < 0.002, "{knee}");
     }
 
+    /// The linear amplitude of a dB curve, one value per hop.
+    fn track(f: impl Fn(f64) -> f64, seconds: f64) -> Vec<f64> {
+        (0..cast::round_to_usize(seconds / HOP.get()).unwrap())
+            .map(|i| 10f64.powf(f(cast::usize_to_f64(i) * HOP.get()) / 20.0))
+            .collect()
+    }
+
     #[test]
     fn a_linear_release_has_its_knee_at_the_note_off() {
         // Held at -6 dB, then a linear 200 ms fade, read up to 190 ms in.
