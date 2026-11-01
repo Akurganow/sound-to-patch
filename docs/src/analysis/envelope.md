@@ -218,12 +218,14 @@ on the linear amplitude of the amp proxy, from the first frame within
     near 0 dB, as both are straight in dB, however short the sustain.
   - The level after the corner rises by more than a twentieth of the mean
     before it. A note-off falls for good. The rise reads the first 20 ms as they
-    are and the mean over 20 ms after them, since a noise floor wobbles over the
+    are and the mean over every 20 ms span, since a noise floor wobbles over the
     silence after a release [fact, proposal for 20 ms]. The rise and the read of the
-    fall below stop before a next note that overlaps, by the frames that the band's
-    filter rings ahead of its attack, and half a level window before the end of any
-    other note [fact]. A later corner past that point can still replace an earlier
-    one, since a note can be held past the next onset [fact].
+    fall stop before a next note that overlaps, by the frames that the band's
+    filter rings ahead of its attack, and half a level window before the end of a
+    note that overlaps no other [fact]. A later corner past the stop reads no rise, so
+    it replaces an earlier one whenever the bend allows it [fact]. That keeps the
+    note-off of a note held over a shorter one, and takes the next note's corner after
+    a long gap, see #312 [synthetic].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a
@@ -285,10 +287,14 @@ release, which is what fails to fit [fact]:
   tremolos of 0.3 to 3 dB at 1 to 12 Hz, 727 read medium and 139 of them lay over 50 %
   off before this rule. It lowers 96 of the 139 wrong ones and 141 of the 588 right
   ones, which leaves 43 of 490 [synthetic]. On 2000 stems each it lowers 18 wrong and
-  11 right short sustains, and 3 wrong and 3 right reverbs. It lowers none of the plain
-  dry or legato stems and 2 wrong chords [synthetic].
+  11 right short sustains, and 3 wrong and 3 right reverbs, 1 wrong and 3 right on the
+  first 1000. It lowers none of the plain dry or legato stems and 2 wrong chords
+  [synthetic]. The rest of the move in the reverb figures below comes from the knee rule
+  [synthetic]. Its effect depends on the recipe: another set of generated tremolos,
+  with a wrong share of 23 %, lost 66 of its 637 right and 63 of its 189 wrong medium
+  releases, for a wrong share of 18 % [synthetic].
 - `tail_rt60_s` reads over the notes with a `tail_weight` of 0.05 or more whose
-  frames span a 15 dB fall of it, and is null under a median `tail_weight` of 0.05, because a dry note often leaves a
+  frames span a 15 dB fall of it, and is null, with `tail_light`, under a median `tail_weight` of 0.05, because a dry note often leaves a
   little weight whose RT60 is noise [fact, proposal for both].
 - `tail_rt60_s` is null, with `tail_smooth`, when the median `tail_weight` is over
   0.5 and the median residual is at most 1.1 dB [fact, proposal for 1.1 dB]. A dry
@@ -305,10 +311,6 @@ release, which is what fails to fit [fact]:
   of 36 at 0.6 and 1.5 s [synthetic].
 - `release_confidence` is null when no pooled note has a fit [fact].
 
-The figures of this section and the sweeps under Limits were read before the rise and
-the read of the fall stopped at a next note that overlaps, except where they say
-otherwise [fact].
-
 The set: 4000 stems sampled over 41 to 440 Hz, releases of 20 to 800 ms, dry or
 with an RT60 of 0.3 to 3 s at 0.05 to 0.8 wet, three timbres, 1 to 6 notes of 0.3
 to 1.2 s, gaps of 0.2 to 1.5 s, sustains of 0 to -12 dB, mono or wide reverbs, and
@@ -319,15 +321,15 @@ points at this size. On it:
 | :-- | :-- | :-- | :-- |
 | Dry, release up to 400 ms | 1157 | 1152 | 1108 |
 | Dry, release 800 ms | 215 | 0 | - |
-| Reverb, release up to 400 ms | 2227 | 1417 | 1301 |
+| Reverb, release up to 400 ms | 2227 | 1418 | 1302 |
 | Reverb, release 800 ms | 401 | 28 | 4 |
 
 - The median written release over its truth on dry stems is 0.98 to 1.12 by
   release, with the 1.12 at 20 ms [synthetic].
-- Over the true RT60, the median read is 1.16 at 0.3 s, 1.02 at 0.6 s, 0.96 at
+- Over the true RT60, the median read is 1.16 at 0.3 s, 1.02 at 0.6 s, 0.95 at
   1.5 s and 0.95 at 3 s, and 33 to 44 % lie within 10 % [synthetic].
 - `tail_weight` over 0.5 holds out 4.8 % of stems at a true 0.05 wet, 30 % at 0.4
-  and 55 % at 0.8 [synthetic]. Of the 662 reverb stems over 0.5, 79 read as smooth and
+  and 55 % at 0.8 [synthetic]. Of the 661 reverb stems over 0.5, 79 read as smooth and
   lose their RT60 [synthetic].
 - A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 69.6 % under
   a reverb, against 98.8 % and 42.1 % at commit 057d63c [synthetic].
@@ -606,19 +608,18 @@ chord's beating moves the crossing [synthetic].
   | Short sustain | 2698 | 2017 | 2064 | 0 | 47 |
   | Tremolo | 2991 | 732 | 777 | 107 | 152 |
   | Legato | 3011 | 2962 | 2967 | 0 | 5 |
-  | Reverb | 3042 | 1220 | 1663 | 24 | 467 |
-  | Chord | 1176 | 820 | 836 | 9 | 25 |
+  | Reverb | 3042 | 1220 | 1662 | 25 | 467 |
+  | Chord | 1176 | 820 | 841 | 6 | 27 |
   | Noise at -35 dBFS | 2898 | 2010 | 2065 | 82 | 137 |
   | Noise at -40 dBFS | 2898 | 2200 | 2215 | 33 | 48 |
   | Noise at -50 dBFS | 2898 | 2286 | 2315 | 0 | 29 |
   | Noise at -60 dBFS | 2898 | 2306 | 2327 | 0 | 21 |
-  | Note end 10 ms past the next onset | 1583 | 1227 | 1231 | 2 | 6 |
+  | Note end 10 ms past the next onset | 1583 | 1227 | 1230 | 2 | 5 |
   | Note end 20 ms past the next onset | 1583 | 1172 | 1225 | 1 | 54 |
-  | Note end 40 ms past the next onset | 1583 | 1015 | 1151 | 1 | 137 |
+  | Note end 40 ms past the next onset | 1583 | 1015 | 1148 | 0 | 133 |
 
 - With that stop, a note list that runs past the next onset reads fewer knees than
-  without it, and none worse than commit 057d63c, on 600 stems a row and 964 notes
-  [synthetic]:
+  without it, on 600 stems a row and 964 notes [synthetic]:
 
   | List end past the next onset | 057d63c | Without the stop | Worse | With the stop | Worse |
   | :-- | :-- | :-- | :-- | :-- | :-- |
@@ -626,6 +627,21 @@ chord's beating moves the crossing [synthetic].
   | 220 ms | 609 | 691 | 15 | 676 | 0 |
   | 420 ms | 589 | 686 | 13 | 670 | 0 |
 
+- Other generated recipes still read knees over 15 ms worse than commit 057d63c
+  [synthetic]:
+
+  | Recipe | Notes | Worse | Better |
+  | :-- | :-- | :-- | :-- |
+  | Mono bass line at 175 BPM, 14 notes a signal, under a 5 dB pump left unstripped, see #313 | 3038 | 44 | 997 |
+  | The same line, medium notes, see #313 | 3530 | 31 | 2133 |
+  | A tremolo under a reverb | 1500 | 42 | 270 |
+  | A next note 15 dB louder | 1419 | 3 | - |
+
+- A long gap after a note-off can read late, see #312 [synthetic]. On a mono bass line at
+  175 BPM with a gate of 55 to 90 % and list ends 20 to 200 ms past the next onset,
+  54 % of the notes of 1.37 to 2.74 s read over 15 ms late, against 81 % at commit
+  057d63c. Dry notes with a list end 40 ms past the next onset read 781 of 1431 right,
+  against 707 at that commit.
 - A medium release lies over 50 % off on 50 of the 875 reverb stems, 26 of them with
   a release of 20 ms, and on 23 of the 779 dry stems, all with a release of 20 ms, on
   the 4000 stems [synthetic]. Lowering every reverb release with a true vote or a

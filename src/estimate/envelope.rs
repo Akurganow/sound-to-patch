@@ -112,7 +112,7 @@ side, and the two lines leave at most half the squared error of one; splits that
 form a corner, and the split with the largest gain wins it; a later corner replaces an earlier one \
 when the median size of the second difference of the level in dB between them, 10 ms each way, is \
 at most 0.4 dB and the level after it rises by at most a twentieth of the mean before it, read as \
-is over 20 ms and as a mean over 20 ms after that, up to what follows the note; the knee \
+is over its first 20 ms and as the mean over every 20 ms span, up to what follows the note; the knee \
 is where the left line crosses a line over the first 10 ms after the split, or the split itself \
 when that crossing lies outside the two lines; when the level stays at 85 % or more of the left \
 line's end for over 10 ms more, the knee is where a line over its fall from there to half that \
