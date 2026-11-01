@@ -20,7 +20,7 @@ use sound_to_patch::estimate::envelope::{
 use sound_to_patch::notes::{Note, NoteList};
 use sound_to_patch::units::{Bpm, Hz, MidiPitch, Seconds};
 
-use super::signals::splitmix;
+use super::signals::{convolve, splitmix};
 
 /// The rate the set renders at.
 const RATE: u32 = 44_100;
@@ -44,8 +44,12 @@ enum Truth {
         offs: Vec<f64>,
         db_linear: bool,
     },
+    /// A line whose knees should read the note-offs, with its tally row.
+    Knees { offs: Vec<f64>, row: KneeRow },
     /// Plucks that decay at one rate: no knee.
     Pluck,
+    /// A line with a linear release, and a noise reverb when `rt60_s` is above 0.
+    Tail { release_s: f64, rt60_s: f64 },
     /// Notes at known levels: the spread of their peaks.
     Spread { spread_db: f64 },
     /// A duck on every beat.
@@ -57,6 +61,13 @@ enum Truth {
     },
     /// A level motion that is no pump, and the lock it should read.
     Lock { lock: PumpLock },
+}
+
+/// The tally rows of [`Truth::Knees`].
+#[derive(Clone, Copy)]
+enum KneeRow {
+    ShortSustain,
+    Tremolo,
 }
 
 /// An ADSR: a linear attack, a hold, a decay to the sustain level and a
@@ -284,6 +295,94 @@ fn envelope_parts() -> Vec<Part> {
     parts
 }
 
+/// Four notes with a sustain shorter than their decay, each listed up to the next.
+fn short_sustain_parts() -> Vec<Part> {
+    let mut parts = Vec::new();
+    for decay in [0.2, 0.4] {
+        for gap in [0.02, 0.05, 0.1] {
+            for sustain_db in [-6.0, -12.0, -24.0] {
+                for release in [0.05, 0.2] {
+                    let adsr = Adsr {
+                        attack: 0.005,
+                        hold: 0.1,
+                        decay,
+                        sustain_db,
+                        release,
+                    };
+                    let length = 0.105 + decay + gap;
+                    let step = length + release + 0.4;
+                    let on = |i: usize| 0.1 + step * index(i);
+                    let notes: Vec<(f64, f64, f64, f64)> = (0..4)
+                        .map(|i| (on(i), on(i) + length, 220.0, 0.0))
+                        .collect();
+                    let list: Vec<(f64, f64, f64)> =
+                        (0..4).map(|i| (on(i), on(i + 1) - 0.002, 220.0)).collect();
+                    parts.push(Part {
+                        name: format!(
+                            "short D{:.0} G{:.0} S{sustain_db} R{:.0}",
+                            decay * 1e3,
+                            gap * 1e3,
+                            release * 1e3
+                        ),
+                        audio: adsr_notes(&notes, adsr, true, on(4)),
+                        notes: note_list(&list),
+                        bpm: 120.0,
+                        truth: Truth::Knees {
+                            offs: notes.iter().map(|n| n.1).collect(),
+                            row: KneeRow::ShortSustain,
+                        },
+                    });
+                }
+            }
+        }
+    }
+    parts
+}
+
+/// Four dry notes under a tremolo in dB and a release of 200 ms or more.
+fn tremolo_parts() -> Vec<Part> {
+    let rate = f64::from(RATE);
+    let mut parts = Vec::new();
+    for hz in [2.0, 4.0, 8.0, 12.0] {
+        for swing_db in [0.5, 1.0] {
+            for release in [0.2, 0.4] {
+                let adsr = Adsr {
+                    attack: 0.005,
+                    hold: 0.0,
+                    decay: 0.01,
+                    sustain_db: 0.0,
+                    release,
+                };
+                let step = 1.2 + release + 0.4;
+                let on = |i: usize| 0.1 + step * index(i);
+                let notes: Vec<(f64, f64, f64, f64)> =
+                    (0..4).map(|i| (on(i), on(i) + 1.2, 220.0, 0.0)).collect();
+                let list: Vec<(f64, f64, f64)> =
+                    (0..4).map(|i| (on(i), on(i + 1) - 0.002, 220.0)).collect();
+                let audio = adsr_notes(&notes, adsr, true, on(4))
+                    .iter()
+                    .enumerate()
+                    .map(|(n, v)| {
+                        let t = index(n) / rate;
+                        v * 10f64.powf(swing_db * (TAU * hz * t).sin() / 20.0)
+                    })
+                    .collect();
+                parts.push(Part {
+                    name: format!("tremolo {hz} Hz {swing_db} dB R{:.0}", release * 1e3),
+                    audio,
+                    notes: note_list(&list),
+                    bpm: 120.0,
+                    truth: Truth::Knees {
+                        offs: notes.iter().map(|n| n.1).collect(),
+                        row: KneeRow::Tremolo,
+                    },
+                });
+            }
+        }
+    }
+    parts
+}
+
 /// Plucks that decay exponentially and are cut by the next note.
 fn pluck_parts() -> Vec<Part> {
     let rate = f64::from(RATE);
@@ -307,6 +406,69 @@ fn pluck_parts() -> Vec<Part> {
                 notes: note_list(&notes),
                 bpm: 120.0,
                 truth: Truth::Pluck,
+            });
+        }
+    }
+    parts
+}
+
+/// Six notes under a release, each listed up to the next, dry or through a
+/// noise reverb of unit energy times `wet`.
+fn tail_parts() -> Vec<Part> {
+    let rate = f64::from(RATE);
+    let pitches = [110.0, 130.81, 146.83, 164.81, 196.0, 123.47];
+    let mut parts = Vec::new();
+    for release_s in [0.02, 0.05, 0.2, 0.4] {
+        for (rt60_s, wet) in [
+            (0.0, 0.0),
+            (0.6, 0.15),
+            (1.5, 0.15),
+            (3.0, 0.15),
+            (0.6, 0.4),
+            (1.5, 0.4),
+            (3.0, 0.4),
+        ] {
+            let adsr = Adsr {
+                attack: 0.01,
+                hold: 0.0,
+                decay: 0.01,
+                sustain_db: 0.0,
+                release: release_s,
+            };
+            let step = 0.6 + release_s + f64::max(1.1 * rt60_s, 0.2);
+            let on = |i: usize| 0.1 + step * index(i);
+            let notes: Vec<(f64, f64, f64, f64)> = pitches
+                .iter()
+                .enumerate()
+                .map(|(i, &f)| (on(i), on(i) + 0.6, f, 0.0))
+                .collect();
+            let dry = adsr_notes(&notes, adsr, true, on(6));
+            let audio = if rt60_s > 0.0 {
+                let shaped: Vec<f64> = gaussian(70_000, samples(1.1 * rt60_s))
+                    .iter()
+                    .enumerate()
+                    .map(|(n, v)| v * 10f64.powf(-3.0 * index(n) / rate / rt60_s))
+                    .collect();
+                let energy = shaped.iter().map(|v| v * v).sum::<f64>().sqrt();
+                let ir: Vec<f64> = shaped.iter().map(|v| v * wet / energy).collect();
+                dry.iter()
+                    .zip(convolve(&dry, &ir))
+                    .map(|(a, b)| a + b)
+                    .collect()
+            } else {
+                dry
+            };
+            let list: Vec<(f64, f64, f64)> = pitches
+                .iter()
+                .enumerate()
+                .map(|(i, &f)| (on(i), on(i + 1) - 0.002, f))
+                .collect();
+            parts.push(Part {
+                name: format!("tail R{:.0} T{rt60_s} W{wet}", release_s * 1e3),
+                audio,
+                notes: note_list(&list),
+                bpm: 120.0,
+                truth: Truth::Tail { release_s, rt60_s },
             });
         }
     }
@@ -605,7 +767,10 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
     let parts: Vec<Part> = [
         attack_parts(),
         envelope_parts(),
+        short_sustain_parts(),
+        tremolo_parts(),
         pluck_parts(),
+        tail_parts(),
         spread_parts(),
         pump_parts(),
         lock_parts(),
@@ -622,6 +787,7 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
     let mut out = String::new();
     for part in &parts {
         let layer = EnvelopeLayer::of(&EnvelopeInput {
+            stereo: None,
             mono: &part.audio,
             rate,
             notes: &part.notes,
@@ -652,11 +818,17 @@ struct Tally {
     decay: (usize, usize),
     sustain: (usize, usize),
     knee: (usize, usize),
+    knee_short: (usize, usize),
+    knee_tremolo: (usize, usize),
     pluck: (usize, usize),
     spread: (usize, usize),
     pump_depth: (usize, usize),
     pump_back: (usize, usize),
     lock: (usize, usize),
+    release: (usize, usize),
+    release_read: (usize, usize),
+    rt60: (usize, usize),
+    rt60_read: (usize, usize),
     /// Measured minus true depth, per shape, true depth and recovery.
     bias: std::collections::BTreeMap<(&'static str, i64, i64), Vec<f64>>,
 }
@@ -677,11 +849,20 @@ impl Tally {
             ("pooled decay within 20 %", self.decay),
             ("pooled sustain within 2 dB", self.sustain),
             ("knee within 15 ms of the note-off", self.knee),
+            ("same, sustain shorter than the decay", self.knee_short),
+            (
+                "same, dry tremolo with a release from 200 ms",
+                self.knee_tremolo,
+            ),
             ("pluck has no knee", self.pluck),
             ("level spread within 1 dB", self.spread),
             ("pump depth within 5 dB below the truth", self.pump_depth),
             ("pump recovery within 30 % of the truth", self.pump_back),
             ("lock as expected", self.lock),
+            ("tail parts that write a release", self.release_read),
+            ("written release within 50 %", self.release),
+            ("reverb parts that read a tail RT60", self.rt60_read),
+            ("tail RT60 within 25 % where read", self.rt60),
         ] {
             println!("{name:<48} {p:>5} / {n}");
         }
@@ -724,6 +905,10 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
         "pump_back_s": pump.and_then(|p| p.back).map(Seconds::get),
         "pump_lock": pump.map(|p| lock_name(p.lock)),
         "residual_db": layer.residual.map(sound_to_patch::units::Decibels::get),
+        "release_s": layer.release.value().map(|s| s.median().get()),
+        "tail_rt60_s": layer.tail_rt60.value().map(|s| s.median().get()),
+        "tail_weight": layer.tail_weight.value().map(|s| s.median().get()),
+        "tail_votes": layer.tail_votes.count(),
     });
     match &part.truth {
         Truth::Attack { f0, attack_s } => {
@@ -769,10 +954,42 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
             record["truth"] = json!({"decay_s": adsr.decay, "sustain_db": adsr.sustain_db,
                 "hold_s": adsr.hold, "release_s": adsr.release, "offs": offs, "db_linear": db_linear});
         }
+        Truth::Knees { offs, row } => {
+            let pair = match row {
+                KneeRow::ShortSustain => &mut tally.knee_short,
+                KneeRow::Tremolo => &mut tally.knee_tremolo,
+            };
+            for (note, off) in layer.notes.iter().zip(offs) {
+                tick(
+                    pair,
+                    note.knee.is_some_and(|k| (k.get() - off).abs() <= 0.015),
+                );
+            }
+            record["truth"] = json!({"offs": offs});
+        }
         Truth::Pluck => {
             for note in &layer.notes {
                 tick(&mut tally.pluck, note.knee.is_none());
             }
+        }
+        Truth::Tail { release_s, rt60_s } => {
+            tick(&mut tally.release_read, layer.release.value().is_some());
+            if *rt60_s > 0.0 {
+                tick(&mut tally.rt60_read, layer.tail_rt60.value().is_some());
+            }
+            if let Some(release) = layer.release.value() {
+                tick(
+                    &mut tally.release,
+                    (release.median().get() / release_s - 1.0).abs() <= 0.5,
+                );
+            }
+            if let Some(rt60) = layer.tail_rt60.value().filter(|_| *rt60_s > 0.0) {
+                tick(
+                    &mut tally.rt60,
+                    (rt60.median().get() / rt60_s - 1.0).abs() <= 0.25,
+                );
+            }
+            record["truth"] = json!({"release_s": release_s, "rt60_s": rt60_s});
         }
         Truth::Spread { spread_db } => {
             let read = layer.level_spread.value().map(|d| d.get());

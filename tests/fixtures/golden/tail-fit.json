@@ -1,0 +1,103 @@
+{
+ "description": "scipy.optimize.least_squares on the tail model of #70, in dB to -55 dB, from 4 x 3 starts, on curves with a Gaussian ripple in dB. The Rust fit must reach the same residual, and the parameters where the curve shows them.",
+ "generator": "xtask/golden/generate.py:tail_fit",
+ "issue": 70,
+ "name": "tail-fit",
+ "recipe": {
+  "cases": [
+   {
+    "release_s": 0.05,
+    "ripple_db": 0.0,
+    "rt60_s": 0.6,
+    "seed": 7101,
+    "weight": 0.15
+   },
+   {
+    "release_s": 0.05,
+    "ripple_db": 0.5,
+    "rt60_s": 1.5,
+    "seed": 7102,
+    "weight": 0.15
+   },
+   {
+    "release_s": 0.2,
+    "ripple_db": 1.0,
+    "rt60_s": 1.5,
+    "seed": 7103,
+    "weight": 0.4
+   },
+   {
+    "release_s": 0.02,
+    "ripple_db": 0.5,
+    "rt60_s": 3.0,
+    "seed": 7104,
+    "weight": 0.05
+   },
+   {
+    "release_s": 0.4,
+    "ripple_db": 1.0,
+    "rt60_s": 0.6,
+    "seed": 7105,
+    "weight": 0.1
+   },
+   {
+    "release_s": 0.1,
+    "ripple_db": 1.0,
+    "rt60_s": 0.6,
+    "seed": 7106,
+    "weight": 0.6
+   }
+  ],
+  "floor_db": -55.0,
+  "frames": 4000,
+  "hop_s": 0.001,
+  "kind": "tail_model"
+ },
+ "tolerance": {
+  "abs": 0.002,
+  "rel": 0.01
+ },
+ "tools": {
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": [
+  {
+   "release_s": 0.05000000000000001,
+   "residual_db": 1.1340506300604932e-15,
+   "rt60_s": 0.6,
+   "weight": 0.15
+  },
+  {
+   "release_s": 0.04999999955235582,
+   "residual_db": 0.38780758064329207,
+   "rt60_s": 1.4990042686961238,
+   "weight": 0.15164171704061322
+  },
+  {
+   "release_s": 0.19999995872218077,
+   "residual_db": 0.7662103896306389,
+   "rt60_s": 1.5030128126597555,
+   "weight": 0.39995882543155814
+  },
+  {
+   "release_s": 0.01993829703077241,
+   "residual_db": 0.4097546336790513,
+   "rt60_s": 2.9894316496149953,
+   "weight": 0.050360293145504886
+  },
+  {
+   "release_s": 0.3993132618323592,
+   "residual_db": 0.735375732019474,
+   "rt60_s": 0.6360552340232642,
+   "weight": 0.11057990628699554
+  },
+  {
+   "release_s": 0.1004032552025552,
+   "residual_db": 0.7303386149332991,
+   "rt60_s": 0.6051169670907497,
+   "weight": 0.5894514749478689
+  }
+ ]
+}

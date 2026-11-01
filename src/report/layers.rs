@@ -7,13 +7,13 @@ use crate::audio::{
     BAND_EDGE_CONVENTION, Band, HARD_LIMITED_CONVENTION, STEREO_CONVENTION, Stem, StereoScreen,
     TEMPO_CONVENTION, Tempo,
 };
-use crate::confidence::{Confidence, Estimate, NoSpread, Spread};
+use crate::confidence::{Confidence, Estimate, Level, NoSpread, Spread};
 use crate::dsp::{
     BAND_CONVENTION, Descriptors, FLATNESS_CONVENTION, LEVEL_CONVENTION, SHAPE_CONVENTION, Stats,
 };
 use crate::estimate::envelope::{
     ENVELOPE_CONVENTION, EnvelopeFlags, EnvelopeLayer, KNEE_CONVENTION, LEVEL_SPREAD_CONVENTION,
-    NoteEnvelope, PUMP_CONVENTION, Pump, lock_name,
+    NoteEnvelope, PUMP_CONVENTION, Pump, TAIL_CONVENTION, TailVotes, lock_name,
 };
 use crate::estimate::pitch::{
     DROP_CONVENTION, DropFit, GLIDE_CONVENTION, GlideFit, LINE_CONVENTION, PitchFlags, PitchLayer,
@@ -104,6 +104,13 @@ struct EnvelopeValues<'a> {
     decay_s: Statistic<'a, Seconds>,
     sustain_db: Statistic<'a, Decibels>,
     note_off_offset_s: Statistic<'a, Seconds>,
+    release_s: Statistic<'a, Seconds>,
+    tail_rt60_s: Statistic<'a, Seconds>,
+    tail_weight: Statistic<'a, Ratio>,
+    release_confidence: Option<Level>,
+    tail_votes: TailVotes,
+    tail_vote_count: usize,
+    tail_is_reverb: bool,
     level_spread_db: Value<'a, Decibels, NoSpread>,
     ripple_db: Option<Decibels>,
     fit_residual_db: Option<Decibels>,
@@ -138,6 +145,13 @@ impl<'a> EnvelopeGroup<'a> {
                 decay_s: Statistic::of(&layer.decay),
                 sustain_db: Statistic::of(&layer.sustain),
                 note_off_offset_s: Statistic::of(&layer.note_off_offset),
+                release_s: Statistic::of(&layer.release),
+                tail_rt60_s: Statistic::of(&layer.tail_rt60),
+                tail_weight: Statistic::of(&layer.tail_weight),
+                release_confidence: layer.release_confidence,
+                tail_votes: layer.tail_votes,
+                tail_vote_count: layer.tail_votes.count(),
+                tail_is_reverb: false,
                 level_spread_db: Value::of(&layer.level_spread),
                 ripple_db: layer.ripple,
                 fit_residual_db: layer.residual,
@@ -533,6 +547,7 @@ struct Conventions {
     vibrato: &'static str,
     envelope: &'static str,
     note_off: &'static str,
+    tail: &'static str,
     level_spread_db: &'static str,
     pump: &'static str,
 }
@@ -579,6 +594,7 @@ audio time from the start of the stem",
             vibrato: VIBRATO_CONVENTION,
             envelope: ENVELOPE_CONVENTION,
             note_off: KNEE_CONVENTION,
+            tail: TAIL_CONVENTION,
             level_spread_db: LEVEL_SPREAD_CONVENTION,
             pump: PUMP_CONVENTION,
         }

@@ -8,18 +8,20 @@
 use std::f64::consts::TAU;
 
 use sound_to_patch::audio::{BeatGrid, SampleRate};
-use sound_to_patch::confidence::Level;
+use sound_to_patch::confidence::{Level, ReasonCode};
 use sound_to_patch::estimate::envelope::{
-    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy,
+    EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy, fit_tail,
 };
 use sound_to_patch::notes::NoteList;
 use sound_to_patch::units::{Bpm, Hz, Seconds};
 
 use crate::support::envelope::{
     Adsr, CHORD, Duck, adsr_notes, chord, note_list, plucks, samples, saw, swept_saw, tremolo,
+    with_reverb,
 };
 use crate::support::golden::{Golden, float};
-use crate::support::rng::uniform;
+use crate::support::rng::{gaussian, uniform};
+use crate::support::signals::convolve;
 
 const RATE: u32 = 22_050;
 const BPM: f64 = 128.0;
@@ -42,6 +44,7 @@ fn beat() -> f64 {
 
 fn layer(x: &[f64], notes: &NoteList, bpm: f64) -> EnvelopeLayer {
     EnvelopeLayer::of(&EnvelopeInput {
+        stereo: None,
         mono: x,
         rate: rate(),
         notes,
@@ -1229,6 +1232,7 @@ fn swelling_note(rate: u32, f0: f64, attack_s: f64, gain_db: GainDb) -> Envelope
         })
         .collect();
     EnvelopeLayer::of(&EnvelopeInput {
+        stereo: None,
         mono: &x,
         rate: SampleRate::new(rate).unwrap(),
         notes: &note_list(&[(on, on + length, f0)]),
@@ -1362,6 +1366,101 @@ fn a_20_ms_release_ending_30_ms_before_the_note_end_reads_its_knee() {
     let read = layer(&x, &note_list(&[(0.2, off + 0.02 + 0.03, 110.0)]), 120.0);
     let knee = read.notes[0].knee.unwrap().get();
     assert!((knee - off).abs() <= 0.005, "{knee}");
+}
+
+#[test]
+fn a_tremolo_lowers_a_release_it_hides_and_a_dry_line_keeps_its_level() {
+    let swing = |x: &[f64], db: f64| -> Vec<f64> {
+        x.iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let t = f64::from(u32::try_from(i).unwrap()) / fs();
+                v * 10f64.powf(db * (std::f64::consts::TAU * 3.0 * t).sin() / 20.0)
+            })
+            .collect()
+    };
+    let (dry, notes) = tail_line(0.2, 0.0, 0.0, 0);
+    let plain = layer(&dry, &notes, BPM);
+    assert_eq!(plain.release_confidence, Some(Level::Medium));
+    let shaken = layer(&swing(&dry, 3.0), &notes, BPM);
+    assert_eq!(shaken.release_confidence, Some(Level::Low));
+    let reasons = shaken.release.confidence().reasons();
+    assert!(
+        reasons.iter().any(|r| r.code() == ReasonCode::TailWobble),
+        "{reasons:?}"
+    );
+}
+
+#[test]
+fn a_note_held_past_a_shorter_note_keeps_its_note_off_over_an_earlier_decay() {
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.05,
+        decay_s: 0.1,
+        sustain_db: -12.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 2.0 * f64::from(i);
+    let mut notes = Vec::new();
+    let mut list = Vec::new();
+    for i in 0..4 {
+        notes.push((on(i), on(i) + 1.4, 110.0, 0.0));
+        notes.push((on(i) + 0.8, on(i) + 1.0, 330.0, 0.0));
+        list.push((on(i), on(i) + 1.5, 110.0));
+        list.push((on(i) + 0.8, on(i) + 1.05, 330.0));
+    }
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let read = layer(&x, &note_list(&list), BPM);
+    assert_eq!(read.notes.len(), 4);
+    for note in &read.notes {
+        let held = note.knee.unwrap().get() - note.onset.get();
+        assert!((held - 1.4).abs() <= 0.015, "{held}");
+    }
+}
+
+#[test]
+fn a_note_end_past_the_next_onset_keeps_the_note_off_over_an_earlier_decay() {
+    // A decay corner at 0.385 s after the onset and a note-off at 0.485 s. The
+    // list runs past the next attack, which a rise would count against the note-off.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.009,
+        decay_s: 0.36,
+        sustain_db: -12.0,
+        release_s: 0.331,
+    };
+    let held = 0.485;
+    let period = held + adsr.release_s + 0.02;
+    let on = |i: u32| 0.1 + period * f64::from(i);
+    let semitones = [-3.0, 5.0, 0.0, 0.0];
+    let levels = [-6.0, 0.0, -3.0, -9.0];
+    let pitch = |i: usize| 102.03 * 2f64.powf(semitones[i] / 12.0);
+    let notes: Vec<_> = (0..4_u32)
+        .zip(0..)
+        .map(|(n, i)| (on(n), on(n) + held, pitch(i), levels[i]))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    for past in [0.01, 0.02] {
+        let list: Vec<_> = (0..4_u32)
+            .zip(0..)
+            .map(|(n, i)| (on(n), on(n + 1) + past, pitch(i)))
+            .collect();
+        let read = layer(&x, &note_list(&list), BPM);
+        for i in [0, 1] {
+            assert!(
+                read.notes
+                    .iter()
+                    .any(|n| (n.onset.get() - on(i)).abs() < 1e-9)
+            );
+        }
+        for note in &read.notes {
+            let (onset, knee) = (note.onset.get(), note.knee.unwrap().get());
+            assert!(
+                (knee - onset - held).abs() <= 0.015,
+                "{past} {onset} {knee}"
+            );
+        }
+    }
 }
 
 #[test]
@@ -2061,4 +2160,450 @@ fn a_square_gate_near_a_division_stays_free_after_the_period_search() {
         let p = pump(&gated, &notes, CHORD[0]).unwrap();
         assert_eq!(p.lock, PumpLock::Free, "{beats} {off}: {p:?}");
     }
+}
+
+/// Saw notes of 0.6 s under a release of `release_s`, with `rt60` and `wet` of
+/// reverb when `rt60` is above 0, each listed up to the next, as a transcribed
+/// note rings on.
+fn tail_line(release_s: f64, rt60: f64, wet: f64, seed: u64) -> (Vec<f64>, NoteList) {
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s,
+    };
+    let step = 0.6 + release_s + (1.1 * rt60).max(0.2);
+    let pitches = [110.0, 130.81, 146.83, 164.81, 196.0, 123.47];
+    let on = |i: usize| 0.1 + step * f64::from(u32::try_from(i).unwrap());
+    let notes: Vec<_> = pitches
+        .iter()
+        .enumerate()
+        .map(|(i, &f)| (on(i), on(i) + 0.6, f, 0.0))
+        .collect();
+    let dry = adsr_notes(&notes, adsr, fs(), on(6));
+    let x = if rt60 > 0.0 {
+        with_reverb(&dry, fs(), rt60, wet, seed)
+    } else {
+        dry
+    };
+    let list: Vec<_> = pitches
+        .iter()
+        .enumerate()
+        .map(|(i, &f)| (on(i), on(i + 1) - 0.002, f))
+        .collect();
+    (x, note_list(&list))
+}
+
+fn tail_medians(layer: &EnvelopeLayer) -> (Option<f64>, Option<f64>, Option<f64>) {
+    (
+        layer.release.value().map(|s| s.median().get()),
+        layer.tail_rt60.value().map(|s| s.median().get()),
+        layer.tail_weight.value().map(|s| s.median().get()),
+    )
+}
+
+#[test]
+fn a_dry_release_reads_within_a_quarter_and_its_knee_within_15_ms() {
+    let (x, notes) = tail_line(0.05, 0.0, 0.0, 0);
+    let layer = layer(&x, &notes, BPM);
+    let (release, rt60, weight) = tail_medians(&layer);
+    let release = release.expect("a release");
+    assert!((release / 0.05 - 1.0).abs() <= 0.25, "{release}");
+    assert!(weight.is_some_and(|w| w < 0.05), "{weight:?}");
+    assert_eq!(rt60, None);
+    assert_eq!(
+        layer.tail_rt60.confidence().reasons()[0].code(),
+        ReasonCode::TailLight
+    );
+    assert_eq!(layer.notes.len(), 6);
+    for (i, note) in layer.notes.iter().enumerate() {
+        let off = note.onset.get() + 0.6;
+        let knee = note.knee.expect("a knee").get();
+        assert!((knee - off).abs() <= 0.015, "{i}: {knee} against {off}");
+    }
+}
+
+#[test]
+fn a_short_release_under_a_light_reverb_reads_both() {
+    // One noise reverb can miss by more than 10 %, so the check takes the median
+    // over its seeds.
+    for (rt60, first) in [(0.6, 7001), (1.5, 7101)] {
+        let mut releases = Vec::new();
+        let mut tails = Vec::new();
+        for seed in first..first + 5 {
+            let (x, notes) = tail_line(0.05, rt60, 0.15, seed);
+            let (release, tail, _) = tail_medians(&layer(&x, &notes, BPM));
+            releases.push(release.expect("a release"));
+            tails.push(tail.expect("an rt60"));
+        }
+        releases.sort_by(f64::total_cmp);
+        tails.sort_by(f64::total_cmp);
+        let (release, tail) = (releases[2], tails[2]);
+        assert!((0.035..=0.06).contains(&release), "{rt60}: {releases:?}");
+        assert!((tail / rt60 - 1.0).abs() <= 0.1, "{rt60}: {tails:?}");
+    }
+}
+
+#[test]
+fn a_note_held_under_the_level_window_reads_its_release() {
+    // Held 22 ms: 50 ms before the knee would reach far before the onset, for a
+    // residual of up to 97 dB.
+    let adsr = Adsr {
+        attack_s: 0.003,
+        hold_s: 0.0,
+        decay_s: 0.002,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 0.6 * f64::from(i);
+    let notes: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i) + 0.022, 220.0, 0.0))
+        .collect();
+    let list: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i + 1) - 0.002, 220.0))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(6));
+    let layer = layer(&x, &note_list(&list), BPM);
+    let release = layer.release.value().expect("a release").median().get();
+    assert!((release / 0.05 - 1.0).abs() <= 0.25, "{release}");
+}
+
+#[test]
+fn a_gap_inside_the_release_window_casts_no_gap_vote() {
+    // The next note starts 10 ms past the release, so the 20 ms before it still
+    // reads the release.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 0.66 * f64::from(i);
+    let notes: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i) + 0.6, 220.0, 0.0))
+        .collect();
+    let list: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i + 1) - 0.002, 220.0))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(6) + 0.3);
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert_eq!(
+        layer.tail_votes.outlasts_gap, None,
+        "{:?}",
+        layer.tail_votes
+    );
+}
+
+#[test]
+fn a_note_struck_with_the_fitted_one_that_rings_on_casts_no_gap_vote() {
+    // A second note from the same onset rings through every gap: the gap reads it,
+    // not a tail.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 1.6 * f64::from(i);
+    let mut notes = Vec::new();
+    let mut list = Vec::new();
+    for i in 0..4_u32 {
+        notes.push((on(i), on(i) + 0.5, 220.0, 0.0));
+        notes.push((on(i), on(i) + 1.57, 330.0, -12.0));
+        list.push((on(i), on(i) + 0.6, 220.0));
+        list.push((on(i), on(i + 1) - 0.002, 330.0));
+    }
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert_eq!(
+        layer.tail_votes.outlasts_gap, None,
+        "{:?}",
+        layer.tail_votes
+    );
+}
+
+#[test]
+fn an_exponential_release_reads_as_the_notes_own_and_shows_no_rt60() {
+    // The level falls 60 dB over 0.4 s from the note-off: no reverb in it.
+    let rate = fs();
+    let on = |i: u32| 0.1 + 1.6 * f64::from(i);
+    let mut x = vec![0.0; samples(on(4), rate)];
+    for i in 0..4_u32 {
+        let start = samples(on(i), rate);
+        let tone = saw(220.0, rate, samples(1.4, rate), 0.0);
+        for (k, v) in tone.iter().enumerate() {
+            let t = f64::from(u32::try_from(k).unwrap()) / rate;
+            let gain = (t / 0.01).min(1.0) * 10f64.powf(-3.0 * (t - 0.6).max(0.0) / 0.4);
+            x[start + k] += 0.3 * v * gain;
+        }
+    }
+    let list: Vec<_> = (0..4).map(|i| (on(i), on(i + 1) - 0.002, 220.0)).collect();
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert_eq!(layer.release.value().map(|s| s.median().get()), None);
+    assert_eq!(layer.release_confidence, Some(Level::Low));
+    assert!(layer.tail_rt60.value().is_none());
+    let reasons = layer.tail_rt60.confidence().reasons();
+    assert_eq!(reasons[0].code(), ReasonCode::TailSmooth, "{reasons:?}");
+    assert_eq!(layer.tail_votes.same_rate, None);
+}
+
+#[test]
+fn a_dry_chord_shows_no_rt60_through_its_bands() {
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.02,
+    };
+    let chords = 0..4_u32;
+    let on = |i: u32| 0.1 + 1.4 * f64::from(i);
+    let pitches = [110.0, 138.6, 165.0];
+    let notes: Vec<_> = chords
+        .clone()
+        .flat_map(|i| pitches.map(|f| (on(i), on(i) + 1.0, f, 0.0)))
+        .collect();
+    let list: Vec<_> = chords
+        .flat_map(|i| pitches.map(|f| (on(i), on(i) + 1.06, f)))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert!(layer.tail_rt60.value().is_none());
+    let reasons = layer.tail_rt60.confidence().reasons();
+    assert_eq!(reasons[0].code(), ReasonCode::TailBand, "{reasons:?}");
+}
+
+#[test]
+fn the_tail_fit_matches_scipy() {
+    let golden = Golden::load("tail-fit");
+    let recipe = golden.recipe();
+    let frames = usize::try_from(recipe["frames"].as_u64().unwrap()).unwrap();
+    let hop = recipe["hop_s"].as_f64().unwrap();
+    let floor = recipe["floor_db"].as_f64().unwrap();
+    let tolerance = golden.tolerance();
+    let cases = recipe["cases"].as_array().unwrap();
+    let values = golden.values().as_array().unwrap();
+    for (case, want) in cases.iter().zip(values) {
+        let read = |key: &str| case[key].as_f64().unwrap();
+        let ripple = gaussian(case["seed"].as_u64().unwrap(), frames);
+        let db: Vec<f64> = ripple
+            .iter()
+            .enumerate()
+            .map(|(i, r)| {
+                let t = f64::from(u32::try_from(i).unwrap()) * hop;
+                let amplitude = (1.0 - t / read("release_s")).max(0.0)
+                    + read("weight") * 10f64.powf(-3.0 * t / read("rt60_s"));
+                (20.0 * amplitude.max(1e-12).log10()).max(floor) + read("ripple_db") * r
+            })
+            .collect();
+        let fit = fit_tail(&db).unwrap();
+        for (name, got) in [
+            ("release_s", fit.release.get()),
+            ("weight", fit.weight),
+            ("rt60_s", fit.rt60.get()),
+            ("residual_db", fit.residual.get()),
+        ] {
+            let expected = want[name].as_f64().unwrap();
+            let bound = tolerance.abs + tolerance.rel * expected.abs();
+            assert!((got - expected).abs() <= bound, "{name}: {fit:?} {want}");
+        }
+    }
+}
+
+#[test]
+fn a_tail_that_weighs_over_half_writes_no_release() {
+    let mut crossed = 0;
+    for (release_s, seed) in [
+        (0.2, 7003),
+        (0.8, 7004),
+        (0.2, 7005),
+        (0.8, 7006),
+        (0.2, 7007),
+    ] {
+        let (x, notes) = tail_line(release_s, 1.5, 0.4, seed);
+        let layer = layer(&x, &notes, BPM);
+        let (release, _, weight) = tail_medians(&layer);
+        if weight.is_some_and(|w| w > 0.5) {
+            crossed += 1;
+            assert_eq!(release, None);
+            assert_eq!(layer.release_confidence, Some(Level::Low));
+            assert_eq!(
+                layer.release.confidence().reasons()[0].code(),
+                ReasonCode::TailWeight
+            );
+        }
+    }
+    assert!(crossed >= 1);
+}
+
+#[test]
+fn a_pluck_has_no_note_off_to_read_a_tail_from() {
+    let (x, notes) = plucks(110.0, fs(), 3.0, 0.75, 0.4);
+    let layer = layer(&x, &notes, BPM);
+    assert_eq!(layer.counts.knees, 0, "{:?}", layer.notes);
+    assert_eq!(tail_medians(&layer), (None, None, None));
+    assert_eq!(layer.release_confidence, None);
+}
+
+#[test]
+fn a_reverb_does_not_move_a_knee_past_the_note_off() {
+    for (rt60, seed) in [(1.5, 7011), (3.0, 7012)] {
+        let (x, notes) = tail_line(0.05, rt60, 0.15, seed);
+        let layer = layer(&x, &notes, BPM);
+        let off = layer.notes.iter().filter(|n| {
+            n.knee
+                .is_some_and(|k| (k.get() - n.onset.get() - 0.6).abs() <= 0.015)
+        });
+        assert!(off.count() >= 3, "{rt60}: {:?}", layer.notes);
+    }
+}
+
+#[test]
+fn the_votes_of_a_wide_reverb_pass_and_of_a_dry_line_stay_short() {
+    let (dry, notes) = tail_line(0.05, 0.0, 0.0, 0);
+    let dry_layer = layer(&dry, &notes, BPM);
+    assert!(
+        dry_layer.tail_votes.count() < 2,
+        "{:?}",
+        dry_layer.tail_votes
+    );
+    let (x, notes) = tail_line(0.05, 1.5, 0.3, 7021);
+    let (plain, _) = tail_line(0.05, 1.5, 0.0, 0);
+    let y = with_reverb(&plain, fs(), 1.5, 0.3, 7022);
+    let mono: Vec<f64> = x.iter().zip(&y).map(|(a, b)| 0.5 * (a + b)).collect();
+    let wide = EnvelopeLayer::of(&EnvelopeInput {
+        stereo: Some((&x, &y)),
+        mono: &mono,
+        rate: rate(),
+        notes: &notes,
+        grid: grid(BPM),
+    })
+    .unwrap();
+    assert_eq!(
+        wide.tail_votes.side_grows,
+        Some(true),
+        "{:?}",
+        wide.tail_votes
+    );
+    assert!(wide.tail_votes.count() >= 2, "{:?}", wide.tail_votes);
+    let summary = wide.summary().join("\n");
+    assert!(summary.contains("reverb votes"), "{summary}");
+}
+
+/// Six notes of 0.6 s under a 50 ms release, 0.6 s apart, through `ir`.
+fn tail_line_through(ir: &[f64]) -> (Vec<f64>, NoteList) {
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let pitches = [110.0, 130.81, 146.83, 164.81, 196.0, 123.47];
+    let on = |i: usize| 0.1 + 1.2 * f64::from(u32::try_from(i).unwrap());
+    let notes: Vec<_> = pitches
+        .iter()
+        .enumerate()
+        .map(|(i, &f)| (on(i), on(i) + 0.6, f, 0.0))
+        .collect();
+    let dry = adsr_notes(&notes, adsr, fs(), on(6));
+    let wet = convolve(&dry, ir);
+    let x = dry.iter().zip(&wet).map(|(a, b)| a + b).collect();
+    let list: Vec<_> = pitches
+        .iter()
+        .enumerate()
+        .map(|(i, &f)| (on(i), on(i + 1) - 0.002, f))
+        .collect();
+    (x, note_list(&list))
+}
+
+/// A noise reverb of 1.5 s, 0.3 wet, whose highs close by `air` octaves.
+fn noise_ir(air: f64) -> Vec<f64> {
+    let mut low = 0.0;
+    let shaped: Vec<f64> = gaussian(7041, samples(1.65, fs()))
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let t = f64::from(u32::try_from(i).unwrap()) / fs();
+            let cutoff = 11_000.0 * 2f64.powf(-air * t / 1.5);
+            let c = (TAU * cutoff / fs()).min(1.0);
+            low += c * (v * 10f64.powf(-2.0 * t) - low);
+            low
+        })
+        .collect();
+    let energy = shaped.iter().map(|v| v * v).sum::<f64>().sqrt();
+    shaped.iter().map(|v| v * 0.3 / energy).collect()
+}
+
+#[test]
+fn the_votes_read_a_reverb_through_a_short_gap() {
+    let (x, notes) = tail_line_through(&noise_ir(0.0));
+    let votes = layer(&x, &notes, BPM).tail_votes;
+    assert_eq!(votes.outlasts_gap, Some(true), "{votes:?}");
+    assert_eq!(votes.same_rate, Some(true), "{votes:?}");
+    assert_eq!(votes.side_grows, None, "{votes:?}");
+}
+
+#[test]
+fn the_high_band_vote_reads_a_reverb_whose_highs_fade_first() {
+    let (x, notes) = tail_line_through(&noise_ir(16.0));
+    let votes = layer(&x, &notes, BPM).tail_votes;
+    assert_eq!(votes.high_band_faster, Some(true), "{votes:?}");
+}
+
+#[test]
+fn a_low_note_tail_stops_before_the_next_note() {
+    let adsr = Adsr {
+        attack_s: 0.005,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: usize| 0.1 + 0.8 * f64::from(u32::try_from(i).unwrap());
+    let notes: Vec<_> = (0..4).map(|i| (on(i), on(i) + 0.6, 41.2, 0.0)).collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let list: Vec<_> = (0..4).map(|i| (on(i), on(i + 1) - 0.002, 41.2)).collect();
+    let layer = layer(&x, &note_list(&list), BPM);
+    let release = layer.release.value().expect("a release").median().get();
+    assert!((release / 0.05 - 1.0).abs() <= 0.25, "{release}");
+}
+
+#[test]
+fn the_flatness_vote_reads_a_tail_noisier_than_its_note() {
+    let (x, notes) = tail_line(0.05, 1.5, 0.15, 7051);
+    let votes = layer(&x, &notes, BPM).tail_votes;
+    assert_eq!(votes.flatness_rises, Some(true), "{votes:?}");
+    assert_eq!(votes.outlasts_gap, Some(false), "{votes:?}");
+}
+
+#[test]
+fn another_note_in_a_gap_casts_no_gap_vote_and_a_short_channel_no_side_vote() {
+    let (x, notes) = tail_line_through(&noise_ir(0.0));
+    let read_with = |notes: &NoteList, stereo| {
+        EnvelopeLayer::of(&EnvelopeInput {
+            stereo,
+            mono: &x,
+            rate: rate(),
+            notes,
+            grid: grid(BPM),
+        })
+        .unwrap()
+        .tail_votes
+    };
+    assert_eq!(read_with(&notes, None).outlasts_gap, Some(true));
+    let mut list: Vec<(f64, f64, f64)> = notes
+        .notes()
+        .iter()
+        .map(|n| (n.onset().get(), n.offset().get(), Hz::from(n.pitch()).get()))
+        .collect();
+    let end = list.last().unwrap().1;
+    list.insert(0, (0.05, end, 55.0));
+    assert_eq!(read_with(&note_list(&list), None).outlasts_gap, None);
+    let short = vec![0.0; 100];
+    let votes = read_with(&notes, Some((&short, &short)));
+    assert_eq!(votes.side_grows, None);
 }

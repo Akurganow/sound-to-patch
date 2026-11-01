@@ -14,7 +14,7 @@ use std::fmt;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
-use crate::audio::{self, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
+use crate::audio::{self, Audio, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
 use crate::confidence::ConfidenceError;
 use crate::dsp::{StftParams, describe};
 use crate::estimate::envelope::{EnvelopeError, EnvelopeInput, EnvelopeLayer};
@@ -209,7 +209,7 @@ pub fn analyze(
     let grid = BeatGrid::new(tempo.used(), Seconds::clamped(0.0));
     let (pitch, envelope, voices) = read_layers(
         &mono,
-        stem_audio.sample_rate(),
+        &stem_audio,
         note_list,
         track
             .as_ref()
@@ -278,15 +278,24 @@ pub fn analyze(
     })
 }
 
+/// The first two channels of a stem that has them.
+fn two_channels(channels: &[Vec<f64>]) -> Option<(&[f64], &[f64])> {
+    match channels {
+        [left, right, ..] => Some((left, right)),
+        _ => None,
+    }
+}
+
 /// Reads the pitch and envelope layers of the mono mix.
 fn read_layers(
     mono: &[f64],
-    rate: SampleRate,
+    audio: &Audio,
     notes: &NoteList,
     track: &PitchTrack,
     voicing: Voicing,
     grid: BeatGrid,
 ) -> Result<(PitchLayer, EnvelopeLayer, VoicesLayer), AnalyzeError> {
+    let rate = audio.sample_rate();
     let pitch = PitchLayer::of(&PitchInput {
         mono,
         rate,
@@ -300,6 +309,7 @@ fn read_layers(
         rate,
         notes,
         grid,
+        stereo: two_channels(audio.channels()),
     })
     .map_err(AnalyzeError::Envelope)?;
     let voices = VoicesLayer::of(&VoicesInput {

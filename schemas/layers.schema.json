@@ -211,7 +211,7 @@
         "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
         "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
         "flatness", "band_share", "stereo", "confidence", "pitch", "voices", "joins", "glides", "drops",
-        "sub_band_line", "vibrato", "envelope", "note_off", "level_spread_db", "pump"
+        "sub_band_line", "vibrato", "envelope", "note_off", "tail", "level_spread_db", "pump"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
@@ -261,6 +261,8 @@
                   "type": "object",
                   "required": [
                     "attack_s", "hold_s", "decay_s", "sustain_db", "note_off_offset_s",
+                    "release_s", "tail_rt60_s", "tail_weight", "release_confidence",
+                    "tail_votes", "tail_vote_count", "tail_is_reverb",
                     "level_spread_db", "ripple_db", "fit_residual_db", "n_notes_used",
                     "overlap_fraction",
                     "pump_depth_db", "pump_recovery_s", "pump_tau_ms", "pump_locked_to",
@@ -273,6 +275,27 @@
                     "decay_s": { "$ref": "#/$defs/unit_statistic" },
                     "sustain_db": { "$ref": "#/$defs/statistic" },
                     "note_off_offset_s": { "$ref": "#/$defs/statistic" },
+                    "release_s": { "$ref": "#/$defs/unit_statistic" },
+                    "tail_rt60_s": {
+                      "$ref": "#/$defs/unit_statistic",
+                      "description": "Null with the reason tail_light, tail_smooth or tail_band when the tail shows no RT60."
+                    },
+                    "tail_weight": { "$ref": "#/$defs/unit_statistic" },
+                    "release_confidence": { "enum": ["medium", "low", null] },
+                    "tail_votes": {
+                      "type": "object",
+                      "required": ["outlasts_gap", "side_grows", "flatness_rises", "same_rate", "high_band_faster"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "outlasts_gap": { "type": ["boolean", "null"] },
+                        "side_grows": { "type": ["boolean", "null"] },
+                        "flatness_rises": { "type": ["boolean", "null"] },
+                        "same_rate": { "type": ["boolean", "null"] },
+                        "high_band_faster": { "type": ["boolean", "null"] }
+                      }
+                    },
+                    "tail_vote_count": { "type": "integer", "minimum": 0, "maximum": 5 },
+                    "tail_is_reverb": { "type": "boolean" },
                     "level_spread_db": { "$ref": "#/$defs/value" },
                     "ripple_db": { "type": ["number", "null"], "minimum": 0 },
                     "fit_residual_db": { "type": ["number", "null"], "minimum": 0 },

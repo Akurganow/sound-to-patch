@@ -182,6 +182,21 @@ reason_codes! {
     /// The stem's edge reaches a level window beside a join, so a level is unread
     /// or short.
     StemEdgeAtJoin,
+    /// The tail weighs too much at the note-off for a release to be identified.
+    TailWeight,
+    /// The tail weighs too little at the note-off to show an RT60: a dry note
+    /// often leaves a little weight whose RT60 is noise.
+    TailLight,
+    /// The tail model fits too poorly for a release to be identified.
+    TailResidual,
+    /// A heavy tail fits too smoothly for a reverb: it reads as the note's own
+    /// exponential release, not as a space.
+    TailSmooth,
+    /// The tail fades faster than the note's band filter can show.
+    TailBand,
+    /// The level wobbles over the hold and the tail fits poorly, as under a
+    /// tremolo, so a written release reads low.
+    TailWobble,
     /// The interquartile range of a value over the notes whose median is 0,
     /// so the range has no ratio to the median. The value reads low.
     ZeroMedian,

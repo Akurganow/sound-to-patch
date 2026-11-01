@@ -6,7 +6,8 @@ use std::f64::consts::TAU;
 use sound_to_patch::notes::{Note, NoteList};
 use sound_to_patch::units::{MidiPitch, Seconds};
 
-use super::rng::uniform;
+use super::rng::{gaussian, uniform};
+use super::signals::convolve;
 
 /// The three-note saw chord of the pump table: A2, C3 and E3.
 pub(crate) const CHORD: [f64; 3] = [110.0, 130.81, 164.81];
@@ -179,6 +180,23 @@ impl Adsr {
             held(off) * (1.0 - (t - off) / self.release_s).max(0.0)
         }
     }
+}
+
+/// `x` plus `wet` times itself through a noise reverb of `rt60` seconds with
+/// unit energy.
+pub(crate) fn with_reverb(x: &[f64], rate: f64, rt60: f64, wet: f64, seed: u64) -> Vec<f64> {
+    let noise = gaussian(seed, samples(1.1 * rt60, rate));
+    let shaped: Vec<f64> = noise
+        .iter()
+        .enumerate()
+        .map(|(i, v)| v * 10f64.powf(-3.0 * index(i) / rate / rt60))
+        .collect();
+    let energy = shaped.iter().map(|v| v * v).sum::<f64>().sqrt();
+    let h: Vec<f64> = shaped.iter().map(|v| v * wet / energy).collect();
+    x.iter()
+        .zip(convolve(x, &h))
+        .map(|(dry, tail)| dry + tail)
+        .collect()
 }
 
 /// Saw notes `(onset, note-off, hz)` under one ADSR, summed into a buffer
