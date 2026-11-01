@@ -107,7 +107,7 @@ expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap(
       "median": "<number>",
       "iqr": "<number>",
       "confidence": {
-        "level": "low",
+        "level": "medium",
         "reasons": [
           {
             "code": "too_few_notes",
@@ -116,10 +116,6 @@ expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap(
           {
             "code": "relative_spread",
             "value": "<number>"
-          },
-          {
-            "code": "tail_votes",
-            "value": "<integer>"
           }
         ],
         "spread": "<number>",
@@ -149,7 +145,7 @@ expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap(
       "median": "<number>",
       "iqr": "<number>",
       "confidence": {
-        "level": "low",
+        "level": "medium",
         "reasons": [
           {
             "code": "too_few_notes",
@@ -164,13 +160,13 @@ expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap(
         "estimate": true
       }
     },
-    "release_confidence": "low",
+    "release_confidence": "medium",
     "tail_votes": {
       "outlasts_gap": null,
       "side_grows": null,
       "flatness_rises": true,
       "same_rate": true,
-      "high_band_faster": null
+      "high_band_faster": false
     },
     "tail_vote_count": "<integer>",
     "tail_is_reverb": false,

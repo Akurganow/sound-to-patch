@@ -9,6 +9,7 @@
 //! late.
 
 use crate::cast;
+use crate::units::Decibels;
 
 use super::track::HOP;
 
@@ -19,7 +20,8 @@ pub const KNEE_LEFT: usize = 100;
 /// The release side of a knee spans up to this many frames, 200 ms.
 pub const KNEE_RIGHT: usize = 200;
 /// At a knee the slope steepens by at least this share of the held level
-/// per second: a release of 2 s or shorter from that level.
+/// per second. With [`KNEE_FALL`] over [`KNEE_RIGHT`], a linear release shows a
+/// knee up to about 400 ms.
 pub const KNEE_STEEPEN: f64 = 0.5;
 /// A two-line fit with a knee removes at least this share of the squared
 /// error that one line leaves.
@@ -35,6 +37,25 @@ pub const KNEE_FALL: f64 = 0.5;
 /// 21 to 98 ms after the note-off.
 pub const KNEE_FLOOR: f64 = 0.02;
 
+/// A later corner replaces an earlier one only when the level between them
+/// bends by at most this much.
+///
+/// The bend is the median size of the second difference in dB over
+/// [`KNEE_BEND_LAG`] frames each way. A decay, a sustain and a slow tremolo read
+/// near 0, and the fades of a reverb read more.
+pub const KNEE_BEND: Decibels = Decibels::from_const(0.4);
+/// The frames each way of the second difference of [`KNEE_BEND`], 10 ms.
+pub const KNEE_BEND_LAG: usize = 10;
+/// A later corner replaces an earlier one only when the level after it rises
+/// by at most this share of the level before it. A note-off falls for good,
+/// and a fade of a reverb comes back.
+pub const KNEE_RISE: f64 = 0.05;
+
+/// A level that stays under this share of the held level has left it for good.
+const KNEE_LEAVE: f64 = 0.85;
+/// The lowest level the bend reads, -80 dB.
+const KNEE_DB_FLOOR: f64 = 1e-4;
+
 /// The knee of a level track: the split where two lines fit best against
 /// one, at the crossing of the left line with the release's first frames.
 ///
@@ -48,7 +69,8 @@ pub const KNEE_FLOOR: f64 = 0.02;
 /// the left side's mean per second, falls by [`KNEE_FALL`] times that
 /// mean over its side, and the two lines leave at most `1 - KNEE_GAIN` of
 /// the squared error of one line. Splits that count in a row form a
-/// corner, and the split with the largest gain in the last corner wins.
+/// corner, and within a corner the split with the largest gain wins. A later
+/// corner replaces an earlier one, by [`KNEE_BEND`] and [`KNEE_RISE`].
 /// The lines are local, so a decay earlier in the note does not hide its
 /// note-off. `None` when no split counts: a pluck that decays
 /// at one rate has no note-off to see.
@@ -73,7 +95,7 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
         return None;
     }
     let sums = Sums::of(amp);
-    let mut best: Option<(f64, Line, usize)> = None;
+    let mut corners: Vec<Corner> = Vec::new();
     let mut last: Option<usize> = None;
     for k in KNEE_SIDE_MIN..=n - KNEE_SIDE_MIN {
         let lo = k.saturating_sub(KNEE_LEFT);
@@ -95,21 +117,67 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
         }
         let gain = 1.0 - (left.error + right.error) / one.error;
         let fall = right.at(k) - right.at(hi - 1);
-        let counts = right.slope <= left.slope - KNEE_STEEPEN * level * HOP.get()
+        if right.slope <= left.slope - KNEE_STEEPEN * level * HOP.get()
             && fall >= KNEE_FALL * level
-            && gain >= KNEE_GAIN;
-        // Splits that count in a row form one corner; a later corner
-        // replaces an earlier one, since a hold that breaks into a linear
-        // decay is a corner too and the note-off comes last.
-        if counts {
-            let new_corner = last.is_none_or(|l| k > l + 1);
-            if new_corner || best.as_ref().is_none_or(|b| gain > b.0) {
-                best = Some((gain, left, k));
+            && gain >= KNEE_GAIN
+        {
+            let found = Corner {
+                first: k,
+                k,
+                gain,
+                left,
+                level,
+            };
+            // Splits that count in a row form one corner.
+            match corners.last_mut() {
+                Some(corner) if last == Some(k - 1) => {
+                    if gain > corner.gain {
+                        *corner = Corner {
+                            first: corner.first,
+                            ..found
+                        };
+                    }
+                }
+                _ => corners.push(found),
             }
             last = Some(k);
         }
     }
-    let (_, left, k) = best?;
+    let (first, later) = corners.split_first()?;
+    // A hold that breaks into a decay is a corner too and the note-off comes
+    // last, so a later corner replaces an earlier one, unless it is a fade of
+    // a reverb: the level before it wobbles, or the level after it comes back.
+    let db: Vec<f64> = amp
+        .iter()
+        .map(|v| 20.0 * v.max(KNEE_DB_FLOOR).log10())
+        .collect();
+    let mut best = first;
+    for corner in later {
+        if bend(&db, best.k, corner.first) <= KNEE_BEND.get()
+            && rise(&amp[corner.k..]) <= KNEE_RISE * corner.level
+        {
+            best = corner;
+        }
+    }
+    let Corner { k, left, .. } = *best;
+    // A level that wobbles over its hold, as under a reverb of the note, can win
+    // a split well before the level leaves for good: read the fall itself there.
+    let held = left.at(k);
+    let reach = (k + KNEE_RIGHT).min(n);
+    let leaves = (k..reach).rev().find(|&j| amp[j] >= KNEE_LEAVE * held);
+    if let Some(from) = leaves.filter(|&j| j > k + KNEE_SIDE_MIN) {
+        let to = (from..reach)
+            .find(|&j| amp[j] <= KNEE_FALL * held)
+            .unwrap_or(reach)
+            .max(from + KNEE_SIDE_MIN)
+            .min(n);
+        if let Some(line) = sums.fit(from, to).filter(|l| l.slope < 0.0) {
+            let back = (held - line.intercept) / line.slope;
+            if back > cast::usize_to_f64(k + KNEE_SIDE_MIN) {
+                return Some(start + back.min(cast::usize_to_f64(from)) * HOP.get());
+            }
+        }
+    }
     // The release side is read again over its first frames only: a line
     // over 200 ms of an exponential release is a secant that crosses the
     // held level late, and the line over the first 10 ms is near its
@@ -126,6 +194,41 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
         k
     };
     Some(start + x * HOP.get())
+}
+
+/// The splits that count in a row, with the values of the one that wins.
+#[derive(Clone, Copy, Debug)]
+struct Corner {
+    first: usize,
+    k: usize,
+    gain: f64,
+    left: Line,
+    level: f64,
+}
+
+/// The median size of the second difference of `db` over the frames `from..to`,
+/// in dB; 0 when the span holds no second difference.
+fn bend(db: &[f64], from: usize, to: usize) -> f64 {
+    let (lo, hi) = (from + KNEE_BEND_LAG, to.saturating_sub(KNEE_BEND_LAG));
+    if hi <= lo {
+        return 0.0;
+    }
+    let mut sizes: Vec<f64> = (lo..hi)
+        .map(|i| (db[i - KNEE_BEND_LAG] - 2.0 * db[i] + db[i + KNEE_BEND_LAG]).abs())
+        .collect();
+    sizes.sort_by(f64::total_cmp);
+    sizes[(sizes.len() - 1) / 2]
+}
+
+/// The largest rise of `amp` from any lower level before it.
+fn rise(amp: &[f64]) -> f64 {
+    let mut low = f64::INFINITY;
+    let mut rise = 0.0_f64;
+    for &v in amp {
+        low = low.min(v);
+        rise = rise.max(v - low);
+    }
+    rise
 }
 
 /// A least-squares line over frame indices, with its squared error.
@@ -231,6 +334,83 @@ mod tests {
             .collect()
     }
 
+    /// A hold that breaks into a dB-linear decay to `sustain`, a note-off, and
+    /// a linear release, with `wobble` in dB over the level.
+    fn adsr(sustain: f64, decay: f64, gap: f64, wobble: impl Fn(f64) -> f64) -> Vec<f64> {
+        let off = 0.1 + decay + gap;
+        track(
+            |t| {
+                let held = sustain * ((t - 0.1) / decay).clamp(0.0, 1.0);
+                let fall = 1.0 - ((t - off) / 0.05).clamp(0.0, 1.0);
+                held + 20.0 * fall.max(1e-4).log10() + wobble(t)
+            },
+            off + 0.1,
+        )
+    }
+
+    #[test]
+    fn a_sustain_shorter_than_its_decay_still_has_its_knee_at_the_note_off() {
+        // The 0.2 s decay would fill any look-back over the 50 ms sustain.
+        let amp = adsr(-12.0, 0.2, 0.05, |_| 0.0);
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!((knee - 0.355).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
+    fn a_bend_over_the_limit_keeps_the_earlier_corner() {
+        let off = 0.1 + 0.1 + 0.3;
+        let bend_of = |size: f64, hz: f64| {
+            adsr(-18.0, 0.1, 0.3, move |t| {
+                if t > 0.2 && t < off {
+                    size * (std::f64::consts::TAU * hz * t).sin()
+                } else {
+                    0.0
+                }
+            })
+        };
+        let smooth = find_knee(0.0, &bend_of(0.3, 25.0)).unwrap();
+        assert!((smooth - off).abs() < 0.002, "{smooth}");
+        let wobbling = find_knee(0.0, &bend_of(3.0, 25.0)).unwrap();
+        assert!(wobbling < 0.2, "{wobbling}");
+    }
+
+    #[test]
+    fn a_later_corner_with_a_rise_after_it_keeps_the_earlier_one() {
+        // A level that returns to a tenth of the shelf after its fall.
+        let amp: Vec<f64> = (0..800_u32)
+            .map(|i| match i {
+                0..200 => 1.0,
+                200..300 => 1.0 - 0.75 * f64::from(i - 200) / 100.0,
+                300..500 => 0.25,
+                500..550 => 0.25 * (1.0 - f64::from(i - 500) / 50.0),
+                550..600 => 0.25 * 0.3 * f64::from(i - 550) / 50.0,
+                _ => 0.25 * 0.3,
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!((knee - 0.2).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
+    fn the_fall_read_starts_from_the_level_at_the_split() {
+        // A slow rise to 1, under which the 100 ms mean lies: the fall from 1
+        // reads from the level at the split, not from the mean.
+        let amp: Vec<f64> = (0..600_u32)
+            .map(|i| {
+                let x = f64::from(i);
+                match i {
+                    0..300 => 0.6 + 0.4 * x / 300.0,
+                    300..315 => 1.0 - 0.45 * (x - 300.0) / 15.0,
+                    315..340 => 0.55 + 0.45 * (x - 315.0) / 25.0,
+                    340..440 => 1.0 - (x - 340.0) / 100.0,
+                    _ => 0.0,
+                }
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!((knee - 0.3445).abs() < 0.002, "{knee}");
+    }
+
     #[test]
     fn a_linear_release_has_its_knee_at_the_note_off() {
         // Held at -6 dB, then a linear 200 ms fade, read up to 190 ms in.
@@ -295,8 +475,8 @@ mod tests {
 
     #[test]
     fn a_two_stage_release_reads_the_later_corner() {
-        // A shelf in the release looks like a decay into a sustain: the last
-        // corner wins, so the knee reads the second stage. Held at 1 to
+        // A shelf in the release looks like a decay into a sustain, so the
+        // knee reads the second stage. Held at 1 to
         // 0.4 s, down to 0.5 by 0.45 s, flat to 0.7 s, then to 0 by 0.8 s.
         let amp: Vec<f64> = (0..820)
             .map(|i| {

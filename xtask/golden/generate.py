@@ -1727,7 +1727,88 @@ def pump_table():
     )
 
 
+def tail_model_db(t, release, weight, rt60, floor):
+    amplitude = np.maximum(1.0 - t / release, 0.0) + weight * 10.0 ** (-3.0 * t / rt60)
+    return np.maximum(20.0 * np.log10(np.maximum(amplitude, 1e-12)), floor)
+
+
+def tail_fit():
+    """SciPy's least squares on the tail model of #70, as the Rust fit reads it."""
+    floor = -55.0
+    hop = 0.001
+    frames = 4000
+    dense = 200
+    sparse = 5
+    cases = [
+        {"release_s": 0.05, "weight": 0.15, "rt60_s": 0.6, "ripple_db": 0.0, "seed": 7101},
+        {"release_s": 0.05, "weight": 0.15, "rt60_s": 1.5, "ripple_db": 0.5, "seed": 7102},
+        {"release_s": 0.2, "weight": 0.4, "rt60_s": 1.5, "ripple_db": 1.0, "seed": 7103},
+        {"release_s": 0.02, "weight": 0.05, "rt60_s": 3.0, "ripple_db": 0.5, "seed": 7104},
+        {"release_s": 0.4, "weight": 0.1, "rt60_s": 0.6, "ripple_db": 1.0, "seed": 7105},
+        {"release_s": 0.1, "weight": 0.6, "rt60_s": 0.6, "ripple_db": 1.0, "seed": 7106},
+    ]
+    values = []
+    for case in cases:
+        t = np.arange(frames) * hop
+        clean = tail_model_db(
+            t, case["release_s"], case["weight"], case["rt60_s"], floor
+        )
+        db = clean + case["ripple_db"] * gaussian(case["seed"], frames)
+        last = int(np.flatnonzero(db > floor)[-1])
+        index = np.array([i for i in range(last + 1) if i < dense or i % sparse == 0])
+        root_weight = np.where(index < dense, 1.0, math.sqrt(sparse))
+        read = np.maximum(db[index], floor)
+        total = float(np.sum(root_weight**2))
+
+        def residual(p):
+            model = tail_model_db(
+                t[index], math.exp(p[0]), math.exp(p[1]), math.exp(p[2]), floor
+            )
+            return root_weight * (read - model)
+
+        best = None
+        for release in [0.02, 0.08, 0.3, 1.0]:
+            for rt60 in [0.4, 1.2, 3.0]:
+                fit = scipy.optimize.least_squares(
+                    residual,
+                    [math.log(release), math.log(0.1), math.log(rt60)],
+                    bounds=(
+                        [math.log(0.001), math.log(1e-4), math.log(0.01)],
+                        [math.log(10.0), math.log(10.0), math.log(30.0)],
+                    ),
+                )
+                if best is None or fit.cost < best.cost:
+                    best = fit
+        values.append(
+            {
+                "release_s": math.exp(best.x[0]),
+                "weight": math.exp(best.x[1]),
+                "rt60_s": math.exp(best.x[2]),
+                "residual_db": math.sqrt(2.0 * best.cost / total),
+            }
+        )
+    return document(
+        "tail-fit",
+        70,
+        "scipy.optimize.least_squares on the tail model of #70, in dB to -55 dB, from "
+        "4 x 3 starts, on curves with a Gaussian ripple in dB. The Rust fit must reach "
+        "the same residual, and the parameters where the curve shows them.",
+        "tail_fit",
+        ["python", "numpy", "scipy"],
+        {
+            "kind": "tail_model",
+            "hop_s": hop,
+            "frames": frames,
+            "floor_db": floor,
+            "cases": cases,
+        },
+        values,
+        {"abs": 0.002, "rel": 0.01},
+    )
+
+
 VECTORS = {
+    "tail-fit": tail_fit,
     "window": window_vectors,
     "stft": stft_vectors,
     "hilbert": hilbert_vectors,
