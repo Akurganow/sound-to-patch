@@ -35,6 +35,13 @@ pub const KNEE_FALL: f64 = 0.5;
 /// 21 to 98 ms after the note-off.
 pub const KNEE_FLOOR: f64 = 0.02;
 
+/// A later corner replaces an earlier one only when the level before it swings
+/// by at most this share of its mean, RMS about its line.
+pub const KNEE_HELD_RIPPLE: f64 = 0.1;
+
+/// A level that stays under this share of the held level has left it for good.
+const KNEE_LEAVE: f64 = 0.85;
+
 /// The knee of a level track: the split where two lines fit best against
 /// one, at the crossing of the left line with the release's first frames.
 ///
@@ -48,7 +55,8 @@ pub const KNEE_FLOOR: f64 = 0.02;
 /// the left side's mean per second, falls by [`KNEE_FALL`] times that
 /// mean over its side, and the two lines leave at most `1 - KNEE_GAIN` of
 /// the squared error of one line. Splits that count in a row form a
-/// corner, and the split with the largest gain in the last corner wins.
+/// corner. A later corner replaces an earlier one when the level before it
+/// holds, by [`KNEE_STEEPEN`] and [`KNEE_HELD_RIPPLE`], and within a corner the split with the largest gain wins.
 /// The lines are local, so a decay earlier in the note does not hide its
 /// note-off. `None` when no split counts: a pluck that decays
 /// at one rate has no note-off to see.
@@ -75,6 +83,7 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
     let sums = Sums::of(amp);
     let mut best: Option<(f64, Line, usize)> = None;
     let mut last: Option<usize> = None;
+    let mut current = false;
     for k in KNEE_SIDE_MIN..=n - KNEE_SIDE_MIN {
         let lo = k.saturating_sub(KNEE_LEFT);
         let level = sums.mean(lo, k);
@@ -98,18 +107,50 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
         let counts = right.slope <= left.slope - KNEE_STEEPEN * level * HOP.get()
             && fall >= KNEE_FALL * level
             && gain >= KNEE_GAIN;
-        // Splits that count in a row form one corner; a later corner
-        // replaces an earlier one, since a hold that breaks into a linear
-        // decay is a corner too and the note-off comes last.
+        // Splits that count in a row form one corner. A later corner replaces
+        // an earlier one, since a hold that breaks into a linear decay is a
+        // corner too and the note-off comes last, but only from a level that
+        // holds: under a reverb, the fades of the tail form corners too.
         if counts {
             let new_corner = last.is_none_or(|l| k > l + 1);
-            if new_corner || best.as_ref().is_none_or(|b| gain > b.0) {
+            let since = best.as_ref().map_or(0, |b| b.2);
+            let from = (k - (k - since) / 2).min(lo).max(since);
+            let held = sums.fit(from, k).is_some_and(|line| {
+                let mean = sums.mean(from, k);
+                line.slope.abs() <= KNEE_STEEPEN * mean * HOP.get()
+                    && line.error / cast::usize_to_f64(k - from)
+                        <= (KNEE_HELD_RIPPLE * mean).powi(2)
+            });
+            if new_corner && (best.is_none() || held) {
+                best = Some((gain, left, k));
+                current = true;
+            } else if new_corner {
+                current = false;
+            } else if current && best.as_ref().is_none_or(|b| gain > b.0) {
                 best = Some((gain, left, k));
             }
             last = Some(k);
         }
     }
     let (_, left, k) = best?;
+    // A level that wobbles over its hold, as under a reverb of the note, can win
+    // a split well before the level leaves for good: read the fall itself there.
+    let held = sums.mean(k.saturating_sub(KNEE_LEFT), k);
+    let reach = (k + KNEE_RIGHT).min(n);
+    let leaves = (k..reach).rev().find(|&j| amp[j] >= KNEE_LEAVE * held);
+    if let Some(from) = leaves.filter(|&j| j > k + KNEE_SIDE_MIN) {
+        let to = (from..reach)
+            .find(|&j| amp[j] <= KNEE_FALL * held)
+            .unwrap_or(reach)
+            .max(from + KNEE_SIDE_MIN)
+            .min(n);
+        if let Some(line) = sums.fit(from, to).filter(|l| l.slope < 0.0) {
+            let back = (held - line.intercept) / line.slope;
+            if back > cast::usize_to_f64(k + KNEE_SIDE_MIN) {
+                return Some(start + back.min(cast::usize_to_f64(from)) * HOP.get());
+            }
+        }
+    }
     // The release side is read again over its first frames only: a line
     // over 200 ms of an exponential release is a secant that crosses the
     // held level late, and the line over the first 10 ms is near its

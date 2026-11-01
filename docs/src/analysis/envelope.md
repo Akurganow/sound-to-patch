@@ -9,10 +9,10 @@ lists its fields. The tags are those of the [pipeline page](pipeline.md).
 The stages follow the envelope of a synth: an attack from the note-on to
 the peak, a hold at the peak, a decay from the peak to the sustain level,
 the sustain level, and a release from the note-off [fact]. The layer
-reads the attack, hold, decay and sustain, and the time of the note-off
-knee; the release time is a later step [fact].
+reads the attack, hold, decay and sustain, the time of the note-off knee,
+and the release and tail after it [fact].
 
-Every figure below comes from `cargo xtask eval --layer envelope`, 1111
+Every figure below comes from `cargo xtask eval --layer envelope`, 1139
 generated parts at 44,100 Hz scored against their recipes, or from the
 acceptance tests at 22,050 Hz, through the release build and with the
 true note list [synthetic]. A real stem adds filters, reverb, bleed and
@@ -202,10 +202,20 @@ on the linear amplitude of the amp proxy, from the first frame within
   it per second, falls by half that mean over its side, and the two lines
   leave at most half the squared error of one [fact, proposal for the
   shares].
-- Splits that count in a row form a corner, and the split with the
-  largest gain in the last corner wins [fact]. A hold that breaks into a
-  linear decay forms an earlier corner; the largest gain over all splits
-  took it for the note-off [synthetic].
+- Splits that count in a row form a corner, and within a corner the split
+  with the largest gain wins [fact]. A hold that breaks into a linear decay
+  forms an earlier corner; the largest gain over all splits took it for the
+  note-off [synthetic].
+- A later corner replaces an earlier one only when the level before it holds
+  [fact]. The level holds when, over half the time
+  since the earlier corner and at least 100 ms, its line moves by at most half
+  its mean per second and it swings by at most a tenth of its mean, RMS [fact,
+  proposal for the shares]. The fades of a reverb tail form corners too, and
+  taking the last one put a knee over 1 s past the note-off [synthetic].
+- When the level stays at 85 % or more of the mean before the split for over
+  10 ms more, the knee is where a line over its fall from there to half that
+  mean crosses that mean [fact, proposal for 85 %]. A hold that wobbles under a
+  reverb can win a split 50 to 100 ms before the note-off [synthetic].
 - The knee is where the left line crosses a line over the first 10 ms
   after the split, or the split itself when the crossing lies outside the
   two lines [fact]. A step down followed by a slow fall crossed 20 ms
@@ -220,6 +230,80 @@ over the pooled notes with a knee [fact]. On the grid, all 1920 knees lie
 -2.0 to +0.01 ms from the true note-off [synthetic]. Read in dB, a 200 ms
 linear release placed the knee 168 ms late, because a linear fall in
 amplitude bends in dB [synthetic].
+
+## Release and tail
+
+After the knee, relative to the median level over the 50 ms before it, the
+level follows a linear release plus a decaying tail [fact]:
+
+`env(t) = max(1 - t / release_s, 0) + tail_weight * 10^(-3 t / tail_rt60_s)`
+
+- The fit is a simplex on the squared error in dB, from 4 releases and 3
+  RT60s as starts, down to -55 dB [fact]. It keeps every frame for 200 ms and
+  every fifth after that, weighted to count the same [fact]. The project has no
+  least-squares crate, so it uses the simplex of the pitch fits [fact].
+- It reads the one-period RMS, not the amp proxy: a reverb of one harmonic fades
+  deeply, and many harmonics fade apart [synthetic]. A note that overlaps another
+  reads the band of the amp proxy [fact].
+- It stops at the note's end or the next note that overlaps it, half a level
+  window before that note [fact]. At 41 and 55 Hz that window otherwise reads the
+  next note and left residuals of 6 dB on dry lines [synthetic].
+- A note with no knee has no fit, so a pluck reports no release [fact]. A given
+  note list that ends at the note-off shows no knee and reads no release [fact].
+
+The write rule reads the medians over the pooled notes with a fit, and never the
+release, which is what fails to fit [fact]:
+
+- A `tail_weight` over 0.5 or a residual over 3 dB writes no `release_s`, and
+  `release_confidence` reads low [fact, proposal for 3 dB]. Both still report the
+  tail [fact].
+- `tail_rt60_s` reads over the notes whose frames span a 15 dB fall of it, and
+  is null under a median `tail_weight` of 0.05, because a dry note often leaves a
+  little weight whose RT60 is noise [fact, proposal for both].
+- `release_confidence` is null when no pooled note has a fit [fact].
+
+The set: 4000 stems sampled over 41 to 440 Hz, releases of 20 to 800 ms, dry or
+with an RT60 of 0.3 to 3 s at 0.05 to 0.8 wet, three timbres, 1 to 6 notes of 0.3
+to 1.2 s, gaps of 0.2 to 1.5 s, sustains of 0 to -12 dB, mono or wide reverbs, and
+a reverb whose highs fade first [synthetic]. Shares hold within about 2 percentage
+points at this size. On it:
+
+| Stems | Count | Release written | Within 50 % of the truth |
+| :-- | :-- | :-- | :-- |
+| Dry, release up to 400 ms | 1157 | 1152 | 1108 |
+| Dry, release 800 ms | 215 | 0 | - |
+| Reverb, release up to 400 ms | 2227 | 1517 | 1417 |
+| Reverb, release 800 ms | 401 | 32 | 3 |
+
+- The median written release over its truth on dry stems is 0.98 to 1.12 by
+  release, with the 1.12 at 20 ms [synthetic].
+- Over the true RT60, the median read is 1.18 at 0.3 s, 1.04 at 0.6 s, 0.98 at
+  1.5 s and 0.97 at 3 s, and 32 to 46 % lie within 10 % [synthetic]. A dry stem
+  reports an RT60 in 55 of 1372 [synthetic].
+- `tail_weight` over 0.5 holds out 1.5 % of stems at a true 0.05 wet, 25 % at 0.4
+  and 52 % at 0.8 [synthetic].
+- A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 78.4 % under
+  a reverb, against 57.8 % when the last corner won [synthetic].
+
+### Votes that a tail is reverb
+
+`tail_votes` counts five signs, each over the pooled notes with a fit and by
+majority where it reads notes, and null where nothing could be read [fact]. All
+thresholds are proposals [fact].
+
+| Vote | True when | Reads true, dry / reverb |
+| :-- | :-- | :-- |
+| `outlasts_gap` | Before the next note, past the release, the level lies above -40 dB of the note body | none read / 43 % |
+| `side_grows` | Side over mid grows 3 dB or more from the body to the tail | none read / 87 % |
+| `flatness_rises` | Flatness rises 0.1 or more from the body to the tail | none read / 91 % |
+| `same_rate` | The RT60 of 3 or more notes spreads under a quarter of its median | 88 % of 25 / 87 % |
+| `high_band_faster` | The share of the bands from 1 kHz falls 3 dB or more over the tail | none read / 38 % |
+
+A dry stem reads none of the first three, as its tail ends with the release
+[synthetic]. Two or more votes pass on none of the 1372 dry stems and on 73 % of the
+2628 under a reverb [synthetic]. `tail_is_reverb` stays false: a reverb is stated only
+when the votes agree and a space layer reads medium or better, and no space layer
+exists yet [fact].
 
 ## Pooling and confidence
 
@@ -451,6 +535,15 @@ chord's beating moves the crossing [synthetic].
 - A release that falls, flattens and falls again reads its knee at the
   second fall, since the last corner wins to pass over a decay [synthetic].
   Its sustain window then reaches into the first fall [fact].
+- A release over about 400 ms shows no knee, because its right line must fall by
+  half the held level over 200 ms: no dry 800 ms release reads [synthetic]. Under a
+  reverb, 32 of 401 such stems wrote a release, 3 of them within 50 %, from a knee in
+  the tail [synthetic].
+- A release of 20 ms at 41 Hz is shorter than the level window: of the 100 reverb
+  stems written more than 50 % off with a release up to 400 ms, 64 have a release of
+  20 ms [synthetic].
+- The fit has no echo term, so a delay reads as release or tail [fact].
+- The bench has no pre-delay, and the reverb is noise [fact].
 - The beat grid starts at 0 s with the tempo as used. The period search
   finds one constant tempo within up to 2.81 % of it; a tempo that moves inside
   the stem still smears the curve [fact]. Its first stage reads up to 64

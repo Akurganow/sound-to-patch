@@ -10,6 +10,7 @@
 mod adsr;
 mod knee;
 mod pump;
+mod tail;
 mod track;
 
 pub use adsr::{
@@ -18,13 +19,20 @@ pub use adsr::{
     PROXY_HARMONICS, RAMP_FACTOR, SILENCE_DB, SUSTAIN_SHARE, TRACK_LEAD, amp_proxy, read_note,
 };
 pub use knee::{
-    KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
+    KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_HELD_RIPPLE, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN,
+    KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
     DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FOLD_ERROR_GAIN, FOLD_ERROR_SHARE, FREE_RATE_MIN,
     FREE_REACH, FREE_RESIDUAL, FREE_SWING, PERIOD_RANGE, PERIOD_RUN_BEATS, PHASE_DEPTH,
     PHASE_SHARE, PHASE_SLACK, PUMP_BACK, PUMP_BEATS_MIN, PUMP_BINS, PUMP_MIN, PUMP_REFERENCE,
     PUMP_STRIP_BEATS, Pump, PumpLock, SUSTAIN_LEAD,
+};
+use tail::read_votes;
+pub use tail::{
+    FLATNESS_RISE, GAP_LEVEL, HIGH_BAND_FALL, SAME_RATE_SPREAD, SIDE_GROWTH, TAIL_FLOOR,
+    TAIL_RESIDUAL_MAX, TAIL_VOTES_MIN, TAIL_WEIGHT_MAX, TAIL_WEIGHT_MIN, TailFit, TailVotes,
+    fit_tail,
 };
 pub use track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, PUMP_RMS_PERIODS, RMS_PERIODS,
@@ -38,7 +46,7 @@ use crate::confidence::{
 };
 use crate::dsp::{FilterError, Stats, Summary, quantile};
 use crate::notes::{Note, NoteList};
-use crate::units::{Decibels, Hz, MidiPitch, Seconds};
+use crate::units::{Decibels, Hz, MidiPitch, Ratio, Seconds};
 
 /// A value over the pool needs this many notes; with fewer it reads low.
 pub const POOL_NOTES_MIN: usize = 3;
@@ -100,9 +108,23 @@ right line is steeper by half the mean before it per second, falls by half that 
 side, and the two lines leave at most half the squared error of one; splits that count in a row \
 form a corner, and the split with the largest gain in the last corner wins; the knee is where the \
 left line crosses a line over the first 10 ms after the split, or the split itself when that \
-crossing lies outside the two lines; null when no split counts, as for a pluck that decays at one \
+crossing lies outside the two lines; a later corner replaces an earlier one only when the level \
+before it, over half the time since the earlier one and at least 100 ms, moves by at most half its \
+mean per second and swings by at most a tenth of its mean; when the level stays \
+at 85 % or more of the mean before the split for over 10 ms more, the knee is where a line over its \
+fall from there to half that mean crosses that mean; null when no split counts, as for a pluck that decays at one \
 rate; note_off_offset_s is the note's end in the note list minus its \
 knee, over the pooled notes with a knee";
+/// The convention of the tail.
+pub const TAIL_CONVENTION: &str = "after the note-off knee, relative to the median level over the \
+50 ms before it, the level follows max(1 - t / release_s, 0) + tail_weight * 10^(-3 t / \
+tail_rt60_s), fitted in dB by least squares to -55 dB under that level, from 4 x 3 starts, up to \
+the note's end or the next note that overlaps it, on the one-period RMS, or on the amp proxy's \
+band for a note that overlaps another; each is a statistic over the pooled notes with a fit, \
+tail_rt60_s over those read over a fall of 15 dB of it, and null under a median tail_weight of 0.05; release_s is null, with \
+release_confidence low, when the median tail_weight is over 0.5 or the median residual is over \
+3 dB; release_confidence is null when no pooled note has a fit; tail_votes hold null where \
+nothing could be read, and tail_is_reverb stays false until a space layer exists";
 /// The convention of the level spread.
 pub const LEVEL_SPREAD_CONVENTION: &str = "the 90th minus the 10th percentile of the peak dB of \
 the amp proxy over the pooled notes, quantiles by linear interpolation; always low confidence, \
@@ -148,6 +170,8 @@ pub struct EnvelopeInput<'a> {
     pub notes: &'a NoteList,
     /// The beat grid of the used tempo, for the pump.
     pub grid: BeatGrid,
+    /// The two channels of the stem, for the side vote of the tail.
+    pub stereo: Option<(&'a [f64], &'a [f64])>,
 }
 
 /// Flags of the envelope layer.
@@ -198,6 +222,17 @@ pub struct EnvelopeLayer {
     /// The note's end in the list minus its knee, over the pooled notes
     /// with a knee.
     pub note_off_offset: Estimate<Stats<Seconds>, Seconds>,
+    /// The linear release over the pool; no estimate when the tail hides it.
+    pub release: Estimate<Stats<Seconds>, Seconds>,
+    /// The RT60 of the tail over the pooled notes that have one.
+    pub tail_rt60: Estimate<Stats<Seconds>, Seconds>,
+    /// The weight of the tail over the pooled notes with a fit.
+    pub tail_weight: Estimate<Stats<Ratio>, Ratio>,
+    /// How far to trust the release: low when no release is written; `None`
+    /// when no pooled note has a tail fit.
+    pub release_confidence: Option<Level>,
+    /// The votes that the tail is reverb.
+    pub tail_votes: TailVotes,
     /// The 90th minus the 10th percentile of the pooled peak levels.
     pub level_spread: Estimate<Decibels, NoSpread>,
     /// The median ripple over the pool.
@@ -244,7 +279,7 @@ impl EnvelopeLayer {
     /// let note = Note::new(Seconds::new(0.1)?, Seconds::new(0.9)?, MidiPitch::new(57.0)?)?;
     /// let notes = NoteList::new(vec![note]);
     /// let grid = BeatGrid::new(Bpm::new(120.0)?, Seconds::new(0.0)?);
-    /// let layer = EnvelopeLayer::of(&EnvelopeInput { mono: &mono, rate, notes: &notes, grid })?;
+    /// let layer = EnvelopeLayer::of(&EnvelopeInput { stereo: None, mono: &mono, rate, notes: &notes, grid })?;
     /// assert_eq!(layer.counts.read, 1);
     /// let sustain = layer.sustain.value().map(|s| s.median().get());
     /// assert!(sustain.is_some_and(|s| s > -1.0));
@@ -287,6 +322,10 @@ impl EnvelopeLayer {
                 .count(),
             notes.len(),
         );
+        let fits: Vec<TailFit> = pool.iter().filter_map(|n| n.tail).collect();
+        let (release, release_confidence) = release_of(&fits)?;
+        let onsets: Vec<f64> = notes.iter().map(|n| n.onset().get()).collect();
+        let tail_votes = read_votes(input.mono, input.stereo, input.rate, &onsets, &pool);
         let confidence = if read.is_empty() {
             Confidence::no_estimate(vec![if notes.is_empty() {
                 Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?
@@ -333,6 +372,11 @@ impl EnvelopeLayer {
                 Seconds::clamped,
                 None,
             )?,
+            release,
+            tail_rt60: tail_rt60_of(&fits)?,
+            tail_weight: statistic(fits.iter().map(|f| f.weight), Ratio::clamped, None)?,
+            release_confidence,
+            tail_votes,
             level_spread: level_spread(&pool)?,
             ripple: pool_median(&pool, |n| n.ripple),
             residual: pool_median(&pool, |n| n.residual),
@@ -385,6 +429,18 @@ impl EnvelopeLayer {
                 // Adding 0 turns a level that rounds to -0.0 into 0.0.
                 |s| format!("{:.1} dB", (10.0 * s.median().get()).round() / 10.0 + 0.0)
             ),
+        ));
+        lines.push(format!(
+            "tail: {}, {}, weight {}, {} of 5 reverb votes",
+            stat("release", &self.release),
+            self.tail_rt60.value().map_or_else(
+                || "rt60 none".to_owned(),
+                |s| format!("rt60 {:.2} s", s.median().get())
+            ),
+            self.tail_weight
+                .value()
+                .map_or_else(|| "none".to_owned(), |s| format!("{:.2}", s.median().get())),
+            self.tail_votes.count(),
         ));
         lines.push(match &self.pump {
             Some(p) => format!(
@@ -490,6 +546,60 @@ fn pool_median(
         .map(Decibels::get)
         .collect();
     median(&values).map(Decibels::clamped)
+}
+
+/// The RT60 over the fits that read long enough to show one; no estimate when
+/// the median tail is too light to have one.
+fn tail_rt60_of(fits: &[TailFit]) -> Result<Estimate<Stats<Seconds>, Seconds>, ConfidenceError> {
+    let weights: Vec<f64> = fits.iter().map(|f| f.weight).collect();
+    match median(&weights).filter(|w| *w < TAIL_WEIGHT_MIN) {
+        Some(weight) => Estimate::none(vec![Reason::new(
+            ReasonCode::TailWeight,
+            Signal::Number(weight),
+        )?]),
+        None => statistic(
+            fits.iter()
+                .filter(|f| f.rt60_observed)
+                .map(|f| f.rt60.get()),
+            Seconds::clamped,
+            None,
+        ),
+    }
+}
+
+/// A statistic in seconds.
+type SecondsStat = Estimate<Stats<Seconds>, Seconds>;
+
+/// The release over the fits, by the write rule on the tail weight and the
+/// residual, never on the release itself, which is what fails to fit.
+fn release_of(fits: &[TailFit]) -> Result<(SecondsStat, Option<Level>), ConfidenceError> {
+    let weights: Vec<f64> = fits.iter().map(|f| f.weight).collect();
+    let residuals: Vec<f64> = fits.iter().map(|f| f.residual.get()).collect();
+    let (Some(weight), Some(residual)) = (median(&weights), median(&residuals)) else {
+        return Ok((
+            Estimate::none(vec![Reason::new(
+                ReasonCode::TooFewNotes,
+                Signal::Count(0),
+            )?])?,
+            None,
+        ));
+    };
+    let hidden = if weight > TAIL_WEIGHT_MAX {
+        Some(Reason::new(ReasonCode::TailWeight, Signal::Number(weight))?)
+    } else if residual > TAIL_RESIDUAL_MAX.get() {
+        Some(Reason::new(
+            ReasonCode::TailResidual,
+            Signal::Number(residual),
+        )?)
+    } else {
+        None
+    };
+    if let Some(reason) = hidden {
+        return Ok((Estimate::none(vec![reason])?, Some(Level::Low)));
+    }
+    let release = statistic(fits.iter().map(|f| f.release.get()), Seconds::clamped, None)?;
+    let level = release.confidence().level();
+    Ok((release, level))
 }
 
 /// The full-band RMS of the stem over two periods of its lowest note,
@@ -693,6 +803,41 @@ impl From<ConfidenceError> for EnvelopeError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn fit(release: f64, weight: f64, rt60: f64, residual: f64) -> TailFit {
+        TailFit {
+            release: Seconds::clamped(release),
+            weight,
+            rt60: Seconds::clamped(rt60),
+            rt60_observed: true,
+            residual: Decibels::clamped(residual),
+        }
+    }
+
+    #[test]
+    fn a_release_is_written_up_to_half_a_weight_and_3_db() {
+        for (weight, residual, written) in
+            [(0.5, 3.0, true), (0.51, 3.0, false), (0.5, 3.01, false)]
+        {
+            let fits = [fit(0.05, weight, 1.0, residual); 3];
+            let (release, level) = release_of(&fits).unwrap();
+            assert_eq!(release.value().is_some(), written, "{weight} {residual}");
+            assert_eq!(
+                level,
+                Some(if written { Level::Medium } else { Level::Low })
+            );
+        }
+        let (release, level) = release_of(&[]).unwrap();
+        assert!(release.value().is_none());
+        assert_eq!(level, None);
+    }
+
+    #[test]
+    fn a_tail_rt60_reads_from_a_median_weight_of_a_twentieth() {
+        let read = |weight| tail_rt60_of(&[fit(0.05, weight, 1.0, 0.0); 3]).unwrap();
+        assert!(read(0.05).value().is_some());
+        assert!(read(0.049).value().is_none());
+    }
     use crate::units::MidiPitch;
     use proptest::prelude::*;
 
@@ -711,6 +856,7 @@ mod tests {
             ripple: None,
             residual: None,
             overlap: false,
+            tail: None,
         }
     }
 

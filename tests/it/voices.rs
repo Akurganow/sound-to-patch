@@ -15,6 +15,7 @@ const FS: f64 = 22_050.0;
 fn read(x: &[f64], notes: &NoteList) -> VoicesLayer {
     let rate = SampleRate::new(22_050).unwrap();
     let envelope = EnvelopeLayer::of(&EnvelopeInput {
+        stereo: None,
         mono: x,
         rate,
         notes,

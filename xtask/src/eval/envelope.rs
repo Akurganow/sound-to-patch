@@ -20,7 +20,7 @@ use sound_to_patch::estimate::envelope::{
 use sound_to_patch::notes::{Note, NoteList};
 use sound_to_patch::units::{Bpm, Hz, MidiPitch, Seconds};
 
-use super::signals::splitmix;
+use super::signals::{convolve, splitmix};
 
 /// The rate the set renders at.
 const RATE: u32 = 44_100;
@@ -46,6 +46,8 @@ enum Truth {
     },
     /// Plucks that decay at one rate: no knee.
     Pluck,
+    /// A line with a linear release, and a noise reverb when `rt60_s` is above 0.
+    Tail { release_s: f64, rt60_s: f64 },
     /// Notes at known levels: the spread of their peaks.
     Spread { spread_db: f64 },
     /// A duck on every beat.
@@ -307,6 +309,69 @@ fn pluck_parts() -> Vec<Part> {
                 notes: note_list(&notes),
                 bpm: 120.0,
                 truth: Truth::Pluck,
+            });
+        }
+    }
+    parts
+}
+
+/// Six notes under a release, each listed up to the next, dry or through a
+/// noise reverb of unit energy times `wet`.
+fn tail_parts() -> Vec<Part> {
+    let rate = f64::from(RATE);
+    let pitches = [110.0, 130.81, 146.83, 164.81, 196.0, 123.47];
+    let mut parts = Vec::new();
+    for release_s in [0.02, 0.05, 0.2, 0.4] {
+        for (rt60_s, wet) in [
+            (0.0, 0.0),
+            (0.6, 0.15),
+            (1.5, 0.15),
+            (3.0, 0.15),
+            (0.6, 0.4),
+            (1.5, 0.4),
+            (3.0, 0.4),
+        ] {
+            let adsr = Adsr {
+                attack: 0.01,
+                hold: 0.0,
+                decay: 0.01,
+                sustain_db: 0.0,
+                release: release_s,
+            };
+            let step = 0.6 + release_s + f64::max(1.1 * rt60_s, 0.2);
+            let on = |i: usize| 0.1 + step * index(i);
+            let notes: Vec<(f64, f64, f64, f64)> = pitches
+                .iter()
+                .enumerate()
+                .map(|(i, &f)| (on(i), on(i) + 0.6, f, 0.0))
+                .collect();
+            let dry = adsr_notes(&notes, adsr, true, on(6));
+            let audio = if rt60_s > 0.0 {
+                let shaped: Vec<f64> = gaussian(70_000, samples(1.1 * rt60_s))
+                    .iter()
+                    .enumerate()
+                    .map(|(n, v)| v * 10f64.powf(-3.0 * index(n) / rate / rt60_s))
+                    .collect();
+                let energy = shaped.iter().map(|v| v * v).sum::<f64>().sqrt();
+                let ir: Vec<f64> = shaped.iter().map(|v| v * wet / energy).collect();
+                dry.iter()
+                    .zip(convolve(&dry, &ir))
+                    .map(|(a, b)| a + b)
+                    .collect()
+            } else {
+                dry
+            };
+            let list: Vec<(f64, f64, f64)> = pitches
+                .iter()
+                .enumerate()
+                .map(|(i, &f)| (on(i), on(i + 1) - 0.002, f))
+                .collect();
+            parts.push(Part {
+                name: format!("tail R{:.0} T{rt60_s} W{wet}", release_s * 1e3),
+                audio,
+                notes: note_list(&list),
+                bpm: 120.0,
+                truth: Truth::Tail { release_s, rt60_s },
             });
         }
     }
@@ -606,6 +671,7 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
         attack_parts(),
         envelope_parts(),
         pluck_parts(),
+        tail_parts(),
         spread_parts(),
         pump_parts(),
         lock_parts(),
@@ -622,6 +688,7 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
     let mut out = String::new();
     for part in &parts {
         let layer = EnvelopeLayer::of(&EnvelopeInput {
+            stereo: None,
             mono: &part.audio,
             rate,
             notes: &part.notes,
@@ -657,6 +724,8 @@ struct Tally {
     pump_depth: (usize, usize),
     pump_back: (usize, usize),
     lock: (usize, usize),
+    release: (usize, usize),
+    rt60: (usize, usize),
     /// Measured minus true depth, per shape, true depth and recovery.
     bias: std::collections::BTreeMap<(&'static str, i64, i64), Vec<f64>>,
 }
@@ -682,6 +751,8 @@ impl Tally {
             ("pump depth within 5 dB below the truth", self.pump_depth),
             ("pump recovery within 30 % of the truth", self.pump_back),
             ("lock as expected", self.lock),
+            ("written release within 50 %", self.release),
+            ("tail RT60 within 25 % where read", self.rt60),
         ] {
             println!("{name:<48} {p:>5} / {n}");
         }
@@ -724,6 +795,10 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
         "pump_back_s": pump.and_then(|p| p.back).map(Seconds::get),
         "pump_lock": pump.map(|p| lock_name(p.lock)),
         "residual_db": layer.residual.map(sound_to_patch::units::Decibels::get),
+        "release_s": layer.release.value().map(|s| s.median().get()),
+        "tail_rt60_s": layer.tail_rt60.value().map(|s| s.median().get()),
+        "tail_weight": layer.tail_weight.value().map(|s| s.median().get()),
+        "tail_votes": layer.tail_votes.count(),
     });
     match &part.truth {
         Truth::Attack { f0, attack_s } => {
@@ -773,6 +848,21 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
             for note in &layer.notes {
                 tick(&mut tally.pluck, note.knee.is_none());
             }
+        }
+        Truth::Tail { release_s, rt60_s } => {
+            if let Some(release) = layer.release.value() {
+                tick(
+                    &mut tally.release,
+                    (release.median().get() / release_s - 1.0).abs() <= 0.5,
+                );
+            }
+            if let Some(rt60) = layer.tail_rt60.value().filter(|_| *rt60_s > 0.0) {
+                tick(
+                    &mut tally.rt60,
+                    (rt60.median().get() / rt60_s - 1.0).abs() <= 0.25,
+                );
+            }
+            record["truth"] = json!({"release_s": release_s, "rt60_s": rt60_s});
         }
         Truth::Spread { spread_db } => {
             let read = layer.level_spread.value().map(|d| d.get());

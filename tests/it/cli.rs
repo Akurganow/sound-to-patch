@@ -91,6 +91,7 @@ fn analyze_writes_both_files_for_a_generated_wav() {
              vibrato: 0 of 0 steady spans\n\
              envelope: 1 of 1 notes read, 1 pooled, 0 with a note-off knee\n\
              envelope: attack none, hold 0 ms, decay none, sustain 0.0 dB\n\
+             tail: release none, rt60 none, weight none, 0 of 5 reverb votes\n\
              pump: too few sustained beats\n\
              voices: mono, up to 1, mean 1.00; 0 joins, 0 legato\n\
              wrote {}\nwrote {}\n",

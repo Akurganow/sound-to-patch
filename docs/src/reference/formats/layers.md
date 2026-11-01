@@ -40,6 +40,11 @@ The envelope group breaks reports of `layers/1` from releases up to 0.25:
 `envelope` is a new required top-level key, and `conventions` requires the
 keys `envelope`, `note_off`, `level_spread_db` and `pump`.
 
+The tail breaks reports of `layers/1` from releases up to 0.27: `values` of
+`envelope` requires `release_s`, `tail_rt60_s`, `tail_weight`,
+`release_confidence`, `tail_votes`, `tail_vote_count` and `tail_is_reverb`, and
+`conventions` requires the key `tail`.
+
 The voices group breaks reports of `layers/1` from releases up to 0.26:
 `voices` is a new required top-level key, and `conventions` requires the
 keys `voices` and `joins`.
@@ -244,6 +249,13 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `decay_s` | seconds | 0 or more | Statistic: the fall from the peak to the sustain level, from the 10 and 90 % shares of the fall in dB. |
 | `sustain_db` | dB | 0 or less | Statistic: the level of the last 30 % of the held part, from the peak. |
 | `note_off_offset_s` | seconds | any | Statistic: the note's end in the note list minus its note-off knee, over the pooled notes with a knee. |
+| `release_s` | seconds | 0 or more | Statistic: the linear release of each pooled note with a tail fit; `null` when the median `tail_weight` is over 0.5 (reason `tail_weight`) or the median residual is over 3 dB (reason `tail_residual`). |
+| `tail_rt60_s` | seconds | 0 or more | Statistic: the RT60 of the tail, over the notes whose frames span a 15 dB fall of it; `null` under a median `tail_weight` of 0.05. |
+| `tail_weight` | ratio | 0 or more | Statistic: the tail's level at the note-off over the level before it. |
+| `release_confidence` | | `medium`, `low` or `null` | `low` when no `release_s` is written, the level of `release_s` otherwise, `null` when no pooled note has a fit. |
+| `tail_votes` | | | Five signs that the tail is reverb, each `true`, `false` or `null` when nothing could be read: `outlasts_gap`, `side_grows`, `flatness_rises`, `same_rate`, `high_band_faster`. |
+| `tail_vote_count` | count | 0 to 5 | The votes that are `true`. |
+| `tail_is_reverb` | | | `false` until a space layer exists. |
 | `level_spread_db` | dB | 0 or more | Value: the 90th minus the 10th percentile of the pooled peak levels; always low. |
 | `ripple_db` | dB | 0 or more | The median ripple of the sustain window after its line; `null` without a sustain. |
 | `fit_residual_db` | dB | 0 or more | The median RMS of the held parts against the hold, decay and sustain model. |
@@ -296,5 +308,6 @@ counted beats or more, and its curve was taken out of the note tracks).
 | `sub_band_line` | The line the drops read. |
 | `envelope` | The tracks, the amp proxy, the stages and the pool of the envelope group. |
 | `note_off` | The note-off knee and `note_off_offset_s`. |
+| `tail` | The release, the tail fit, the write rule and the votes. |
 | `level_spread_db` | The level spread. |
 | `pump` | The pump's track, beats, curve, fields and lock, and when it is stripped. |

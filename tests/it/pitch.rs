@@ -29,6 +29,7 @@ use sound_to_patch::units::{Bpm, Decibels, Hz, MidiPitch, Seconds};
 
 use crate::report::{shape, validator};
 use crate::support::cast::round_to_usize;
+use crate::support::envelope::with_reverb;
 use crate::support::golden::{Golden, Tolerance, assert_close, float, floats};
 use crate::support::pitch::{BassLine, Glide, Hits, PitchDrop, RcGlide, Trill, Vibrato};
 use crate::support::rng::gaussian;
@@ -526,6 +527,45 @@ fn analyze_bass(wav: &Path, mid: &Path, out: &Path) -> (Analysis, Value) {
     let analysis = analyze(&request, &transcriber).unwrap();
     let report = serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
     (analysis, report)
+}
+
+#[test]
+fn both_groups_of_a_bass_line_with_a_reverb_keep_their_shape() {
+    let dir = tempfile::tempdir().unwrap();
+    let (wav, mid) = bass_files(dir.path());
+    let wet = with_reverb(
+        &BassLine::render(f64::from(RATE)),
+        f64::from(RATE),
+        1.0,
+        0.15,
+        7031,
+    );
+    write_wav16(&wav, RATE, &[wet]);
+    let (_, report) = analyze_bass(&wav, &mid, &dir.path().join("a"));
+    let (_, again) = analyze_bass(&wav, &mid, &dir.path().join("b"));
+    assert_eq!(report, again);
+    assert_eq!(
+        report["pitch"]["values"]["glides"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(report["pitch"]["suggested_edits"], json!([]));
+    assert_eq!(report["envelope"]["suggested_edits"], json!([]));
+    assert_eq!(report["envelope"]["values"]["tail_is_reverb"], json!(false));
+    let errors: Vec<String> = validator()
+        .iter_errors(&report)
+        .map(|e| e.to_string())
+        .collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    insta::assert_snapshot!(
+        serde_json::to_string_pretty(&json!({
+            "pitch": shape(&report["pitch"]),
+            "envelope": shape(&report["envelope"]),
+        }))
+        .unwrap()
+    );
 }
 
 #[test]

@@ -35,6 +35,7 @@ drop skips: 1 no onset, 15 no fall
 vibrato: 0 of 0 steady spans
 envelope: 16 of 16 notes read, 16 pooled, 16 with a note-off knee
 envelope: attack 19 ms (upper bound), hold 0 ms, decay none, sustain 0.0 dB
+tail: release none, rt60 none, weight 0.01, 1 of 5 reverb votes
 pump: too few sustained beats
 voices: mono, up to 1, mean 1.00; 15 joins, 0 legato
 wrote bass/layers.json
@@ -52,12 +53,13 @@ strikes falls in pitch. Each line lists what it found, with its numbers;
 `drop skips` counts the low notes with no drop by the gate that stopped
 each: no onset, settling, quiet, no strike, weak fundamental, no fall, tau
 on bound, residual or off note.
-The next three lines are the [envelope layer](../analysis/envelope.md).
+The next four lines are the [envelope layer](../analysis/envelope.md).
 The first counts the notes read, those pooled and those with a note-off
 knee, and any skipped. The second gives the pooled medians: this saw
 starts each note at full level, under 1.5 periods of 55 Hz, so the attack
 is an upper bound; it holds its level, so it has no decay and a sustain
-of 0 dB. The last is the pump: no beat here lies inside one held note from
+of 0 dB. The third gives the release, the RT60 and weight of any tail, and how
+many of five signs say the tail is reverb. The last is the pump: no beat here lies inside one held note from
 50 ms before it, so none counts.
 The last line before the files is the [voices layer](../analysis/voices.md):
 one voice at a time, and each of the 15 joins falls to silence, so none reads

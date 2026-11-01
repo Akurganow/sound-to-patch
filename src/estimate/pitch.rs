@@ -8,7 +8,7 @@
 //! the voices.
 
 mod drop;
-mod fit;
+pub(crate) mod fit;
 mod glide;
 mod line;
 mod vibrato;

@@ -260,7 +260,7 @@ fn reverb(dry: &[f64], rt60: f64, wet_db: f64, seed: u64) -> Vec<f64> {
 }
 
 /// Full linear convolution by FFT.
-fn convolve(x: &[f64], h: &[f64]) -> Vec<f64> {
+pub(crate) fn convolve(x: &[f64], h: &[f64]) -> Vec<f64> {
     let out = x.len() + h.len() - 1;
     let len = out.next_power_of_two();
     let mut planner = RealFftPlanner::<f64>::new();

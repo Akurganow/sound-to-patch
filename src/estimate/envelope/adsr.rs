@@ -10,6 +10,7 @@ use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 use super::knee::find_knee;
 use super::median;
 use super::pump::Pump;
+use super::tail::{TailFit, fit_tail};
 use super::track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
 };
@@ -98,6 +99,8 @@ pub const FREE_GAP: Hz = Hz::from_const(30.0);
 /// fall as 1.091 s, harmonics 1 to 3 summed 1.056 s and the full band
 /// 1.033 s.
 pub const PROXY_HARMONICS: u32 = 3;
+/// The level before a knee reads this many frames, 50 ms.
+const LEVEL_FRAMES: usize = 50;
 
 /// The envelope of one note.
 #[derive(Clone, Debug, PartialEq)]
@@ -138,6 +141,8 @@ pub struct NoteEnvelope {
     /// Another note sounds during this one, so the attack reads the amp
     /// proxy, not the full band.
     pub overlap: bool,
+    /// The tail model after the knee; `None` without a knee or enough frames.
+    pub tail: Option<TailFit>,
 }
 
 /// Why a note has no envelope.
@@ -238,6 +243,7 @@ pub fn read_note(
         0.0
     };
     let decay = fall.map(|(_, decay)| decay);
+    let tail = knee.and_then(|k| read_tail(&timing, k, to, others, f0));
     let held_time = cast::usize_to_f64(held_end - onset) * HOP.get();
     // A note with no knee is a pluck that decays until it ends: its
     // sustain is its end level and is always observable (#70).
@@ -264,7 +270,30 @@ pub fn read_note(
             .flatten()
             .map(Decibels::clamped),
         overlap,
+        tail,
     }))
+}
+
+/// The tail fit of a note after its knee at `k`, up to its end at `to` or the
+/// next note that overlaps it.
+fn read_tail(
+    timing: &LevelTrack,
+    k: f64,
+    to: Seconds,
+    others: &[&Note],
+    f0: Hz,
+) -> Option<TailFit> {
+    let stop = others
+        .iter()
+        .map(|n| n.onset().get())
+        .filter(|&t| t > k)
+        .fold(to.get(), f64::min);
+    // The level window reaches half its length ahead, into a next note.
+    let stop = stop - 0.5 * rms_window(f0, RMS_PERIODS).get();
+    let (a, b) = (timing.index(k), timing.index(stop));
+    let level = median(&timing.db()[a.saturating_sub(LEVEL_FRAMES)..a]).unwrap_or(0.0);
+    let db: Vec<f64> = timing.db()[a.min(b)..b].iter().map(|v| v - level).collect();
+    fit_tail(&db)
 }
 
 /// The span of a note's tracks: from [`TRACK_LEAD`] before its onset to its
