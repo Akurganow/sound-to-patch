@@ -612,9 +612,10 @@ fn a_line_with_a_reverb_fills_the_tail_of_its_report() {
     fs::write(&mid, bytes).unwrap();
     let (_, report) = analyze_bass(&wav, &mid, &dir.path().join("a"));
     let values = &report["envelope"]["values"];
-    assert!(values["release_s"]["median"].is_number(), "{values:#}");
-    assert!(values["tail_rt60_s"]["median"].is_number(), "{values:#}");
-    assert!(values["tail_weight"]["median"].is_number(), "{values:#}");
+    let median = |key: &str| values[key]["median"].as_f64().unwrap();
+    assert!((0.035..=0.06).contains(&median("release_s")), "{values:#}");
+    assert!((0.7..=1.3).contains(&median("tail_rt60_s")), "{values:#}");
+    assert!((0.05..=0.5).contains(&median("tail_weight")), "{values:#}");
     assert_eq!(values["release_confidence"], json!("medium"));
     let votes = values["tail_votes"].as_object().unwrap();
     assert!(votes.values().any(Value::is_boolean), "{votes:?}");

@@ -2148,6 +2148,88 @@ fn a_short_release_under_a_light_reverb_reads_both() {
 }
 
 #[test]
+fn a_note_held_under_the_level_window_reads_its_release() {
+    // Held 22 ms: 50 ms before the knee would reach far before the onset, for a
+    // residual of up to 97 dB.
+    let adsr = Adsr {
+        attack_s: 0.003,
+        hold_s: 0.0,
+        decay_s: 0.002,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 0.6 * f64::from(i);
+    let notes: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i) + 0.022, 220.0, 0.0))
+        .collect();
+    let list: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i + 1) - 0.002, 220.0))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(6));
+    let layer = layer(&x, &note_list(&list), BPM);
+    let release = layer.release.value().expect("a release").median().get();
+    assert!((release / 0.05 - 1.0).abs() <= 0.25, "{release}");
+}
+
+#[test]
+fn a_gap_inside_the_release_window_casts_no_gap_vote() {
+    // The next note starts 10 ms past the release, so the 20 ms before it still
+    // reads the release.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 0.66 * f64::from(i);
+    let notes: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i) + 0.6, 220.0, 0.0))
+        .collect();
+    let list: Vec<_> = (0..6_u32)
+        .map(|i| (on(i), on(i + 1) - 0.002, 220.0))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(6) + 0.3);
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert_ne!(
+        layer.tail_votes.outlasts_gap,
+        Some(true),
+        "{:?}",
+        layer.tail_votes
+    );
+}
+
+#[test]
+fn a_note_struck_with_the_fitted_one_that_rings_on_casts_no_gap_vote() {
+    // A second note from the same onset rings through every gap: the gap reads it,
+    // not a tail.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 1.6 * f64::from(i);
+    let mut notes = Vec::new();
+    let mut list = Vec::new();
+    for i in 0..4_u32 {
+        notes.push((on(i), on(i) + 0.5, 220.0, 0.0));
+        notes.push((on(i), on(i) + 1.57, 330.0, -12.0));
+        list.push((on(i), on(i) + 0.6, 220.0));
+        list.push((on(i), on(i + 1) - 0.002, 330.0));
+    }
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let layer = layer(&x, &note_list(&list), BPM);
+    assert_ne!(
+        layer.tail_votes.outlasts_gap,
+        Some(true),
+        "{:?}",
+        layer.tail_votes
+    );
+}
+
+#[test]
 fn an_exponential_release_reads_as_the_notes_own_and_shows_no_rt60() {
     // The level falls 60 dB over 0.4 s from the note-off: no reverb in it.
     let rate = fs();

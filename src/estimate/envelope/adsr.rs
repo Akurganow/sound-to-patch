@@ -244,7 +244,7 @@ pub fn read_note(
     };
     let decay = fall.map(|(_, decay)| decay);
     let tail = knee
-        .and_then(|k| read_tail(&timing, k, to, others, f0))
+        .and_then(|k| read_tail(&timing, onset, k, to, others, f0))
         .map(|fit| TailFit {
             rt60_floor: rt60_floor(overlap, &partials),
             ..fit
@@ -297,6 +297,7 @@ fn rt60_floor(overlap: bool, partials: &[(Hz, Hz)]) -> Seconds {
 /// next note that overlaps it.
 fn read_tail(
     timing: &LevelTrack,
+    onset: usize,
     k: f64,
     to: Seconds,
     others: &[&Note],
@@ -310,7 +311,8 @@ fn read_tail(
     // The level window reaches half its length ahead, into a next note.
     let stop = stop - 0.5 * rms_window(f0, RMS_PERIODS).get();
     let (a, b) = (timing.index(k), timing.index(stop));
-    let level = median(&timing.db()[a.saturating_sub(LEVEL_FRAMES)..a]).unwrap_or(0.0);
+    let from = a.saturating_sub(LEVEL_FRAMES).max(onset.min(a));
+    let level = median(&timing.db()[from..a]).unwrap_or(0.0);
     let db: Vec<f64> = timing.db()[a.min(b)..b].iter().map(|v| v - level).collect();
     fit_tail(&db)
 }

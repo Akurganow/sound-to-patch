@@ -10,8 +10,8 @@ use crate::estimate::pitch::fit::nelder_mead;
 use crate::notes::Note;
 use crate::units::{Decibels, Seconds};
 
-/// A tail RT60 counts only when the frames fitted span this share of it: a
-/// fall of 15 dB.
+/// A tail RT60 counts only when the frames above the floor span this share of
+/// it: a fall of 15 dB.
 const RT60_SPAN_SHARE: f64 = 0.25;
 /// The fit reads the tail down to this far under the sustain level.
 pub const TAIL_FLOOR: Decibels = Decibels::from_const(-55.0);
@@ -85,7 +85,8 @@ fn model_db(t: f64, release: f64, weight: f64, rt60: f64) -> f64 {
 pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
     let floor = TAIL_FLOOR.get();
     let last = db.iter().rposition(|v| *v > floor)?;
-    if db.iter().filter(|v| **v > floor).count() < TAIL_FRAMES_MIN {
+    let above = db.iter().filter(|v| **v > floor).count();
+    if above < TAIL_FRAMES_MIN {
         return None;
     }
     // Past the release's first frames a tail moves slowly, so a sparser read
@@ -133,7 +134,7 @@ pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
         release: Seconds::clamped(release),
         weight,
         rt60: Seconds::clamped(rt60),
-        rt60_observed: cast::usize_to_f64(last) * HOP.get() >= RT60_SPAN_SHARE * rt60,
+        rt60_observed: cast::usize_to_f64(above) * HOP.get() >= RT60_SPAN_SHARE * rt60,
         residual: Decibels::clamped((value / frames).sqrt()),
         rt60_floor: Seconds::clamped(0.0),
     })
@@ -255,13 +256,13 @@ pub(super) fn read_votes(
         // Only a gap with no other note in it shows a tail.
         let silent_gap = |next: f64| {
             !notes.iter().any(|n| {
-                n.onset() != note.onset
+                (n.onset() != note.onset || n.pitch() != note.pitch)
                     && n.onset().get() < next
                     && n.offset().get() > next - GAP_SPAN.get()
             })
         };
         if let Some(next) = next
-            .filter(|n| *n - knee > fit.release.get())
+            .filter(|n| *n - knee > fit.release.get() + GAP_SPAN.get())
             .filter(|n| silent_gap(*n))
         {
             let before = index(next - GAP_SPAN.get())..index(next);
@@ -383,6 +384,11 @@ mod tests {
         let short: Vec<f64> = curve(0.05, 0.3, 3.0)[..500].to_vec();
         assert!(!fit_tail(&short).unwrap().rt60_observed);
         assert!(fit_tail(&curve(0.05, 0.3, 3.0)).unwrap().rt60_observed);
+        // One late frame above the floor adds no span.
+        let mut spike = vec![-5.0; 300];
+        spike.resize(1500, -60.0);
+        spike[1499] = -5.0;
+        assert!(!fit_tail(&spike).unwrap().rt60_observed);
     }
 
     #[test]
