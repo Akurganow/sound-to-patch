@@ -121,7 +121,7 @@ pub const TAIL_CONVENTION: &str = "after the note-off knee, relative to the medi
 tail_rt60_s), fitted in dB by least squares to -55 dB under that level, from 4 x 3 starts, up to \
 the note's end or the next note that overlaps it, on the one-period RMS, or on the amp proxy's \
 band for a note that overlaps another; each is a statistic over the pooled notes with a fit, \
-tail_rt60_s over those read over a fall of 15 dB of it, and null under a median tail_weight of 0.05; release_s is null, with \
+tail_rt60_s over those of a tail_weight of 0.05 or more read over a fall of 15 dB of it, and null under a median tail_weight of 0.05; release_s is null, with \
 release_confidence low, when the median tail_weight is over 0.5 or the median residual is over \
 3 dB; release_confidence is null when no pooled note has a fit; tail_votes hold null where \
 nothing could be read, and tail_is_reverb stays false until a space layer exists";
@@ -324,8 +324,7 @@ impl EnvelopeLayer {
         );
         let fits: Vec<TailFit> = pool.iter().filter_map(|n| n.tail).collect();
         let (release, release_confidence) = release_of(&fits)?;
-        let onsets: Vec<f64> = notes.iter().map(|n| n.onset().get()).collect();
-        let tail_votes = read_votes(input.mono, input.stereo, input.rate, &onsets, &pool);
+        let tail_votes = read_votes(input.mono, input.stereo, input.rate, notes, &pool);
         let confidence = if read.is_empty() {
             Confidence::no_estimate(vec![if notes.is_empty() {
                 Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?
@@ -559,7 +558,7 @@ fn tail_rt60_of(fits: &[TailFit]) -> Result<Estimate<Stats<Seconds>, Seconds>, C
         )?]),
         None => statistic(
             fits.iter()
-                .filter(|f| f.rt60_observed)
+                .filter(|f| f.weight >= TAIL_WEIGHT_MIN && f.rt60_observed)
                 .map(|f| f.rt60.get()),
             Seconds::clamped,
             None,
@@ -830,6 +829,18 @@ mod tests {
         let (release, level) = release_of(&[]).unwrap();
         assert!(release.value().is_none());
         assert_eq!(level, None);
+    }
+
+    #[test]
+    fn a_light_note_gives_no_rt60_to_the_pool() {
+        let fits = [
+            fit(0.05, 0.01, 9.0, 0.0),
+            fit(0.05, 0.06, 1.0, 0.0),
+            fit(0.05, 0.06, 2.0, 0.0),
+        ];
+        let rt60 = tail_rt60_of(&fits).unwrap();
+        let median = rt60.value().map(|s| s.median().get());
+        assert_eq!(median, Some(1.5));
     }
 
     #[test]

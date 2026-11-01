@@ -257,8 +257,8 @@ release, which is what fails to fit [fact]:
 - A `tail_weight` over 0.5 or a residual over 3 dB writes no `release_s`, and
   `release_confidence` reads low [fact, proposal for 3 dB]. Both still report the
   tail [fact].
-- `tail_rt60_s` reads over the notes whose frames span a 15 dB fall of it, and
-  is null under a median `tail_weight` of 0.05, because a dry note often leaves a
+- `tail_rt60_s` reads over the notes with a `tail_weight` of 0.05 or more whose
+  frames span a 15 dB fall of it, and is null under a median `tail_weight` of 0.05, because a dry note often leaves a
   little weight whose RT60 is noise [fact, proposal for both].
 - `release_confidence` is null when no pooled note has a fit [fact].
 
@@ -272,17 +272,17 @@ points at this size. On it:
 | :-- | :-- | :-- | :-- |
 | Dry, release up to 400 ms | 1157 | 1152 | 1108 |
 | Dry, release 800 ms | 215 | 0 | - |
-| Reverb, release up to 400 ms | 2227 | 1517 | 1417 |
+| Reverb, release up to 400 ms | 2227 | 1523 | 1425 |
 | Reverb, release 800 ms | 401 | 32 | 3 |
 
 - The median written release over its truth on dry stems is 0.98 to 1.12 by
   release, with the 1.12 at 20 ms [synthetic].
-- Over the true RT60, the median read is 1.18 at 0.3 s, 1.04 at 0.6 s, 0.98 at
+- Over the true RT60, the median read is 1.18 at 0.3 s, 1.03 at 0.6 s, 0.98 at
   1.5 s and 0.97 at 3 s, and 32 to 46 % lie within 10 % [synthetic]. A dry stem
   reports an RT60 in 55 of 1372 [synthetic].
 - `tail_weight` over 0.5 holds out 1.5 % of stems at a true 0.05 wet, 25 % at 0.4
   and 52 % at 0.8 [synthetic].
-- A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 78.4 % under
+- A knee lies within 15 ms of the note-off in 98.8 % on dry stems and 78.5 % under
   a reverb, against 57.8 % when the last corner won [synthetic].
 
 ### Votes that a tail is reverb
@@ -293,7 +293,7 @@ thresholds are proposals [fact].
 
 | Vote | True when | Reads true, dry / reverb |
 | :-- | :-- | :-- |
-| `outlasts_gap` | Before the next note, past the release, the level lies above -40 dB of the note body | none read / 43 % |
+| `outlasts_gap` | Before the next note, past the release, with no other note sounding, the level lies above -40 dB of the note body | none read / 43 % |
 | `side_grows` | Side over mid grows 3 dB or more from the body to the tail | none read / 87 % |
 | `flatness_rises` | Flatness rises 0.1 or more from the body to the tail | none read / 91 % |
 | `same_rate` | The RT60 of 3 or more notes spreads under a quarter of its median | 88 % of 25 / 87 % |
@@ -539,7 +539,7 @@ chord's beating moves the crossing [synthetic].
   half the held level over 200 ms: no dry 800 ms release reads [synthetic]. Under a
   reverb, 32 of 401 such stems wrote a release, 3 of them within 50 %, from a knee in
   the tail [synthetic].
-- A release of 20 ms at 41 Hz is shorter than the level window: of the 100 reverb
+- A release of 20 ms at 41 Hz is shorter than the level window: of the 98 reverb
   stems written more than 50 % off with a release up to 400 ms, 64 have a release of
   20 ms [synthetic].
 - The fit has no echo term, so a delay reads as release or tail [fact].
@@ -643,7 +643,7 @@ chord's beating moves the crossing [synthetic].
   strip at 3 % above the tempo against 63 with no search on free reads, 232
   against 8 at 3 % below, 138 against 0 at 3.5 % above and 10 against 0 at
   3.5 % below, and none at 4 to 5 %, on the 123,840 signals [synthetic].
-- The release time is not read yet [fact].
+- A heavy tail hides the release, so `release_s` is null over a median `tail_weight` of 0.5 [fact].
 
 ## Sources
 

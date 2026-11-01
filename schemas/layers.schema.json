@@ -278,11 +278,18 @@
                     "release_s": { "$ref": "#/$defs/unit_statistic" },
                     "tail_rt60_s": { "$ref": "#/$defs/unit_statistic" },
                     "tail_weight": { "$ref": "#/$defs/unit_statistic" },
-                    "release_confidence": { "enum": ["high", "medium", "low", null] },
+                    "release_confidence": { "enum": ["medium", "low", null] },
                     "tail_votes": {
                       "type": "object",
                       "required": ["outlasts_gap", "side_grows", "flatness_rises", "same_rate", "high_band_faster"],
-                      "additionalProperties": { "type": ["boolean", "null"] }
+                      "additionalProperties": false,
+                      "properties": {
+                        "outlasts_gap": { "type": ["boolean", "null"] },
+                        "side_grows": { "type": ["boolean", "null"] },
+                        "flatness_rises": { "type": ["boolean", "null"] },
+                        "same_rate": { "type": ["boolean", "null"] },
+                        "high_band_faster": { "type": ["boolean", "null"] }
+                      }
                     },
                     "tail_vote_count": { "type": "integer", "minimum": 0, "maximum": 5 },
                     "tail_is_reverb": { "type": "boolean" },

@@ -7,6 +7,7 @@ use crate::audio::{Band, SampleRate, stereo_screen};
 use crate::cast;
 use crate::dsp::{StftParams, Summary, describe};
 use crate::estimate::pitch::fit::nelder_mead;
+use crate::notes::Note;
 use crate::units::{Decibels, Seconds};
 
 /// A tail RT60 counts only when the frames fitted span this share of it: a
@@ -56,7 +57,7 @@ fn model_db(t: f64, release: f64, weight: f64, rt60: f64) -> f64 {
 pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
     let floor = TAIL_FLOOR.get();
     let last = db.iter().rposition(|v| *v > floor)?;
-    if last + 1 < TAIL_FRAMES_MIN {
+    if db.iter().filter(|v| **v > floor).count() < TAIL_FRAMES_MIN {
         return None;
     }
     // Past the release's first frames a tail moves slowly, so a sparser read
@@ -179,7 +180,7 @@ pub(super) fn read_votes(
     mono: &[f64],
     stereo: Option<(&[f64], &[f64])>,
     rate: SampleRate,
-    onsets: &[f64],
+    notes: &[Note],
     pool: &[&NoteEnvelope],
 ) -> TailVotes {
     let fs = rate.hz().get();
@@ -193,14 +194,25 @@ pub(super) fn read_votes(
         let (Some(knee), Some(fit)) = (note.knee.map(Seconds::get), note.tail) else {
             continue;
         };
-        let next = onsets.iter().copied().find(|t| *t > knee);
+        let next = notes.iter().map(|n| n.onset().get()).find(|t| *t > knee);
         let stop = next.map_or(note.end.get(), |n| n.min(note.end.get()));
         let body = index((knee - BODY_SPAN.get()).max(note.onset.get()))..index(knee);
         let tail = index(knee + fit.release.get())..index(stop);
         if fit.weight >= TAIL_WEIGHT_MIN && fit.rt60_observed {
             rates.push(fit.rt60.get());
         }
-        if let Some(next) = next.filter(|n| *n - knee > fit.release.get()) {
+        // Only a gap with no other note in it shows a tail.
+        let silent_gap = |next: f64| {
+            !notes.iter().any(|n| {
+                n.onset() != note.onset
+                    && n.onset().get() < next
+                    && n.offset().get() > next - GAP_SPAN.get()
+            })
+        };
+        if let Some(next) = next
+            .filter(|n| *n - knee > fit.release.get())
+            .filter(|n| silent_gap(*n))
+        {
             let before = index(next - GAP_SPAN.get())..index(next);
             if let (Some(gap), Some(level)) = (rms_db(&mono[before]), rms_db(&mono[body.clone()])) {
                 gaps.push(gap - level > GAP_LEVEL.get());
@@ -211,7 +223,7 @@ pub(super) fn read_votes(
         }
         if let Some((left, right)) = stereo {
             let sm = |r: std::ops::Range<usize>| {
-                stereo_screen(&left[r.clone()], &right[r], rate, None)
+                stereo_screen(left.get(r.clone())?, right.get(r)?, rate, None)
                     .ok()
                     .and_then(|s| s.band(Band::Full).sm_db)
                     .map(Decibels::get)
@@ -289,6 +301,9 @@ mod tests {
     #[test]
     fn a_tail_under_the_floor_or_too_short_has_no_fit() {
         assert_eq!(fit_tail(&[-60.0; 100]), None);
+        let mut one_frame = [-60.0; 100];
+        one_frame[50] = -1.0;
+        assert_eq!(fit_tail(&one_frame), None);
         assert_eq!(fit_tail(&[-1.0; 7]), None);
         assert!(fit_tail(&[-1.0; 8]).is_some());
     }

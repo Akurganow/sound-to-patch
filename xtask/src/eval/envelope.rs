@@ -725,7 +725,9 @@ struct Tally {
     pump_back: (usize, usize),
     lock: (usize, usize),
     release: (usize, usize),
+    release_read: (usize, usize),
     rt60: (usize, usize),
+    rt60_read: (usize, usize),
     /// Measured minus true depth, per shape, true depth and recovery.
     bias: std::collections::BTreeMap<(&'static str, i64, i64), Vec<f64>>,
 }
@@ -751,7 +753,9 @@ impl Tally {
             ("pump depth within 5 dB below the truth", self.pump_depth),
             ("pump recovery within 30 % of the truth", self.pump_back),
             ("lock as expected", self.lock),
+            ("tail parts that write a release", self.release_read),
             ("written release within 50 %", self.release),
+            ("reverb parts that read a tail RT60", self.rt60_read),
             ("tail RT60 within 25 % where read", self.rt60),
         ] {
             println!("{name:<48} {p:>5} / {n}");
@@ -850,6 +854,10 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
             }
         }
         Truth::Tail { release_s, rt60_s } => {
+            tick(&mut tally.release_read, layer.release.value().is_some());
+            if *rt60_s > 0.0 {
+                tick(&mut tally.rt60_read, layer.tail_rt60.value().is_some());
+            }
             if let Some(release) = layer.release.value() {
                 tick(
                     &mut tally.release,

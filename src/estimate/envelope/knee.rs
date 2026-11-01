@@ -115,12 +115,13 @@ pub fn find_knee(start: f64, amp: &[f64]) -> Option<f64> {
             let new_corner = last.is_none_or(|l| k > l + 1);
             let since = best.as_ref().map_or(0, |b| b.2);
             let from = (k - (k - since) / 2).min(lo).max(since);
-            let held = sums.fit(from, k).is_some_and(|line| {
-                let mean = sums.mean(from, k);
-                line.slope.abs() <= KNEE_STEEPEN * mean * HOP.get()
-                    && line.error / cast::usize_to_f64(k - from)
-                        <= (KNEE_HELD_RIPPLE * mean).powi(2)
-            });
+            let held = k - from >= KNEE_LEFT
+                && sums.fit(from, k).is_some_and(|line| {
+                    let mean = sums.mean(from, k);
+                    line.slope.abs() <= KNEE_STEEPEN * mean * HOP.get()
+                        && line.error / cast::usize_to_f64(k - from)
+                            <= (KNEE_HELD_RIPPLE * mean).powi(2)
+                });
             if new_corner && (best.is_none() || held) {
                 best = Some((gain, left, k));
                 current = true;
@@ -264,6 +265,20 @@ impl Sums {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_level_held_under_100_ms_does_not_move_a_knee() {
+        let amp: Vec<f64> = (0..900)
+            .map(|i| match i {
+                0..500 => 1.0,
+                500..580 => 0.7,
+                580..640 => 0.7 * (1.0 - (f64::from(i) - 580.0) / 60.0),
+                _ => 0.0,
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp).unwrap();
+        assert!(knee < 0.55, "{knee}");
+    }
 
     /// The linear amplitude of a dB curve, one value per hop.
     fn track(f: impl Fn(f64) -> f64, seconds: f64) -> Vec<f64> {

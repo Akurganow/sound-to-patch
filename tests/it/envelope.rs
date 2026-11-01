@@ -2141,6 +2141,7 @@ fn a_short_release_under_a_light_reverb_reads_both() {
 
 #[test]
 fn a_tail_that_weighs_over_half_writes_no_release() {
+    let mut crossed = 0;
     for (release_s, seed) in [
         (0.2, 7003),
         (0.8, 7004),
@@ -2152,10 +2153,12 @@ fn a_tail_that_weighs_over_half_writes_no_release() {
         let layer = layer(&x, &notes, BPM);
         let (release, _, weight) = tail_medians(&layer);
         if weight.is_some_and(|w| w > 0.5) {
+            crossed += 1;
             assert_eq!(release, None);
             assert_eq!(layer.release_confidence, Some(Level::Low));
         }
     }
+    assert!(crossed >= 1);
 }
 
 #[test]
@@ -2301,4 +2304,32 @@ fn the_flatness_vote_reads_a_tail_noisier_than_its_note() {
     let votes = layer(&x, &notes, BPM).tail_votes;
     assert_eq!(votes.flatness_rises, Some(true), "{votes:?}");
     assert_eq!(votes.outlasts_gap, Some(false), "{votes:?}");
+}
+
+#[test]
+fn another_note_in_a_gap_casts_no_gap_vote_and_a_short_channel_no_side_vote() {
+    let (x, notes) = tail_line_through(&noise_ir(0.0));
+    let read_with = |notes: &NoteList, stereo| {
+        EnvelopeLayer::of(&EnvelopeInput {
+            stereo,
+            mono: &x,
+            rate: rate(),
+            notes,
+            grid: grid(BPM),
+        })
+        .unwrap()
+        .tail_votes
+    };
+    assert_eq!(read_with(&notes, None).outlasts_gap, Some(true));
+    let mut list: Vec<(f64, f64, f64)> = notes
+        .notes()
+        .iter()
+        .map(|n| (n.onset().get(), n.offset().get(), Hz::from(n.pitch()).get()))
+        .collect();
+    let end = list.last().unwrap().1;
+    list.insert(0, (0.05, end, 55.0));
+    assert_eq!(read_with(&note_list(&list), None).outlasts_gap, None);
+    let short = vec![0.0; 100];
+    let votes = read_with(&notes, Some((&short, &short)));
+    assert_eq!(votes.side_grows, None);
 }
