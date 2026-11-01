@@ -109,11 +109,12 @@ side, and the two lines leave at most half the squared error of one; splits that
 form a corner, and the split with the largest gain in the last corner wins; the knee is where the \
 left line crosses a line over the first 10 ms after the split, or the split itself when that \
 crossing lies outside the two lines; null when no split counts, as for a pluck that decays at one \
-rate; note_off_offset_s is the note's end in the note list minus its \
+rate; note_off_offset_s is the note's end in the note list, or the stem's end when that comes \
+first, minus its \
 knee, over the pooled notes with a knee";
 /// The convention of the tail.
 pub const TAIL_CONVENTION: &str = "after the note-off knee, relative to the median level over the \
-50 ms before it, the level follows max(1 - t / release_s, 0) + tail_weight * 10^(-3 t / \
+50 ms before it, or since the note's onset when that is nearer, the level follows max(1 - t / release_s, 0) + tail_weight * 10^(-3 t / \
 tail_rt60_s), fitted in dB by least squares to -55 dB under that level, from 4 x 3 starts, up to \
 the note's end or the next note that overlaps it, on the one-period RMS, or on the amp proxy's \
 band for a note that overlaps another; each is a statistic over the pooled notes with a fit, \
@@ -874,6 +875,11 @@ mod tests {
     /// a side 30 dB under its mid, whose level past the knee falls by `tail_db` and
     /// whose side grows by `side_db`, up to the next note at 1.5 s.
     fn hand_votes(tail_db: f64, side_db: f64) -> TailVotes {
+        hand_votes_with(tail_db, side_db, &[])
+    }
+
+    /// [`hand_votes`] with more notes listed after the fitted one.
+    fn hand_votes_with(tail_db: f64, side_db: f64, more: &[(f64, f64)]) -> TailVotes {
         let rate = SampleRate::new(22_050).unwrap();
         let fs = rate.hz().get();
         let mut seed = 1u32;
@@ -901,6 +907,7 @@ mod tests {
         envelope.tail = Some(fit(0.05, 0.2, 1.0, 1.0));
         let notes: Vec<Note> = [(0.0, 1.5), (1.5, 1.6)]
             .iter()
+            .chain(more)
             .map(|&(on, off)| {
                 let pitch = crate::units::MidiPitch::new(57.0).unwrap();
                 Note::new(Seconds::clamped(on), Seconds::clamped(off), pitch).unwrap()
@@ -913,6 +920,12 @@ mod tests {
     fn the_gap_vote_reads_from_40_db_under_the_body() {
         assert_eq!(hand_votes(-30.0, 0.0).outlasts_gap, Some(true));
         assert_eq!(hand_votes(-50.0, 0.0).outlasts_gap, Some(false));
+    }
+
+    #[test]
+    fn a_longer_note_of_the_same_onset_and_pitch_casts_no_gap_vote() {
+        let votes = hand_votes_with(-30.0, 0.0, &[(0.0, 1.6)]);
+        assert_eq!(votes.outlasts_gap, None);
     }
 
     #[test]

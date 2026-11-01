@@ -216,7 +216,8 @@ on the linear amplitude of the amp proxy, from the first frame within
 - No split counts on a pluck that decays at one rate, and its knee is
   null [fact].
 
-`note_off_offset_s` is the note's end in the note list minus its knee,
+`note_off_offset_s` is the note's end in the note list, or the stem's end when that
+comes first, minus its knee,
 over the pooled notes with a knee [fact]. On the grid, all 1920 knees lie
 -2.0 to +0.01 ms from the true note-off [synthetic]. Read in dB, a 200 ms
 linear release placed the knee 168 ms late, because a linear fall in
@@ -224,7 +225,8 @@ amplitude bends in dB [synthetic].
 
 ## Release and tail
 
-After the knee, relative to the median level over the 50 ms before it, the
+After the knee, relative to the median level over the 50 ms before it, or since the
+note's onset when that is nearer, the
 level follows a linear release plus a decaying tail [fact]:
 
 `env(t) = max(1 - t / release_s, 0) + tail_weight * 10^(-3 t / tail_rt60_s)`

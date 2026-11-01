@@ -248,7 +248,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `hold_s` | seconds | 0 or more | Statistic: the time at the peak before the decay, 0 under 10 ms. |
 | `decay_s` | seconds | 0 or more | Statistic: the fall from the peak to the sustain level, from the 10 and 90 % shares of the fall in dB. |
 | `sustain_db` | dB | 0 or less | Statistic: the level of the last 30 % of the held part, from the peak. |
-| `note_off_offset_s` | seconds | any | Statistic: the note's end in the note list minus its note-off knee, over the pooled notes with a knee. |
+| `note_off_offset_s` | seconds | any | Statistic: the note's end in the note list, or the stem's end when that comes first, minus its note-off knee, over the pooled notes with a knee. |
 | `release_s` | seconds | 0 or more | Statistic: the linear release of each pooled note with a tail fit; `null` when the median `tail_weight` is over 0.5 (reason `tail_weight`) or the median residual is over 3 dB (reason `tail_residual`). |
 | `tail_rt60_s` | seconds | 0 or more | Statistic: the RT60 of the tail, over the notes with a `tail_weight` of 0.05 or more whose frames span a 15 dB fall of it, leaving out notes that read as heavy and smooth or under what their band shows; `null` under a median `tail_weight` of 0.05. `null` with `tail_smooth` when the tail is heavy and smooth, as the note's own exponential release is, and with `tail_band` when it fades faster than the band of an overlapping note shows. |
 | `tail_weight` | ratio | 0 or more | Statistic: the tail's level at the note-off over the level before it. |

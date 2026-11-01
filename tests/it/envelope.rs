@@ -2142,9 +2142,10 @@ fn a_short_release_under_a_light_reverb_reads_both() {
 
 #[test]
 fn a_release_under_a_reverb_is_never_confident_when_far_off() {
+    let mut far_off = 0;
     for (release_s, rt60, wet, seed) in [
-        (0.05, 0.6, 0.15, 7101),
-        (0.05, 0.6, 0.15, 7102),
+        (0.05, 0.6, 0.05, 7100),
+        (0.05, 0.6, 0.15, 7100),
         (0.05, 1.5, 0.15, 7103),
         (0.2, 0.6, 0.05, 7104),
         (0.05, 0.3, 0.4, 7105),
@@ -2155,9 +2156,11 @@ fn a_release_under_a_reverb_is_never_confident_when_far_off() {
         if let (Some(release), _, _) = tail_medians(&layer)
             && (release / release_s - 1.0).abs() > 0.5
         {
+            far_off += 1;
             assert_eq!(layer.release_confidence, Some(Level::Low), "{seed}");
         }
     }
+    assert!(far_off >= 1);
 }
 
 #[test]
@@ -2204,9 +2207,8 @@ fn a_gap_inside_the_release_window_casts_no_gap_vote() {
         .collect();
     let x = adsr_notes(&notes, adsr, fs(), on(6) + 0.3);
     let layer = layer(&x, &note_list(&list), BPM);
-    assert_ne!(
-        layer.tail_votes.outlasts_gap,
-        Some(true),
+    assert_eq!(
+        layer.tail_votes.outlasts_gap, None,
         "{:?}",
         layer.tail_votes
     );
@@ -2234,9 +2236,8 @@ fn a_note_struck_with_the_fitted_one_that_rings_on_casts_no_gap_vote() {
     }
     let x = adsr_notes(&notes, adsr, fs(), on(4));
     let layer = layer(&x, &note_list(&list), BPM);
-    assert_ne!(
-        layer.tail_votes.outlasts_gap,
-        Some(true),
+    assert_eq!(
+        layer.tail_votes.outlasts_gap, None,
         "{:?}",
         layer.tail_votes
     );

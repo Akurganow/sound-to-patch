@@ -253,12 +253,14 @@ pub(super) fn read_votes(
         if fit.reads_rt60() {
             rates.push(fit.rt60.get());
         }
-        // Only a gap with no other note in it shows a tail.
+        // Only a gap with no other note in it shows a tail. The fitted note is the
+        // first of its onset and pitch, so a second one counts as another note.
+        let own = notes
+            .iter()
+            .position(|n| n.onset() == note.onset && n.pitch() == note.pitch);
         let silent_gap = |next: f64| {
-            !notes.iter().any(|n| {
-                (n.onset() != note.onset || n.pitch() != note.pitch)
-                    && n.onset().get() < next
-                    && n.offset().get() > next - GAP_SPAN.get()
+            !notes.iter().enumerate().any(|(i, n)| {
+                Some(i) != own && n.onset().get() < next && n.offset().get() > next - GAP_SPAN.get()
             })
         };
         if let Some(next) = next
