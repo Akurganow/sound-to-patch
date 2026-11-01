@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.28.0](https://github.com/Akurganow/sound-to-patch/compare/464bb181266617ab745abb10014dbb967b642fbf..v0.28.0) - 2026-11-01
+#### Features
+- (**analyze**) fit the release and tail after the note-off, and vote on reverb - ([804daf4](https://github.com/Akurganow/sound-to-patch/commit/804daf4b00ca243a89eebf3a0a08326a4b1a45e4)) - [@Akurganow](https://github.com/Akurganow)
+
+- - -
+
 ## [v0.27.0](https://github.com/Akurganow/sound-to-patch/compare/a930c52258b56f6fb9e5c9b2d5b205579d50e95a..v0.27.0) - 2026-10-31
 #### Features
 - (**analyze**) count voices and read how a mono line joins its notes (#309) - ([a930c52](https://github.com/Akurganow/sound-to-patch/commit/a930c52258b56f6fb9e5c9b2d5b205579d50e95a)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
