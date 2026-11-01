@@ -219,9 +219,11 @@ on the linear amplitude of the amp proxy, from the first frame within
   - The level after the corner rises by more than a twentieth of the mean
     before it. A note-off falls for good. The rise reads the first 20 ms as they
     are and the mean over 20 ms after them, since a noise floor wobbles over the
-    silence after a release [fact, proposal for 20 ms]. On a note that overlaps
-    another it leaves out the frames that the band's filter rings ahead of the next
-    attack, or half a level window on any other note [fact].
+    silence after a release [fact, proposal for 20 ms]. The rise and the read of the
+    fall below stop before a next note that overlaps, by the frames that the band's
+    filter rings ahead of its attack, and half a level window before the end of any
+    other note [fact]. A later corner past that point can still replace an earlier
+    one, since a note can be held past the next onset [fact].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a
@@ -302,6 +304,10 @@ release, which is what fails to fit [fact]:
   same chords through a reverb read an RT60 on 13 of 18 stems at a true 0.3 s and 36
   of 36 at 0.6 and 1.5 s [synthetic].
 - `release_confidence` is null when no pooled note has a fit [fact].
+
+The figures of this section and the sweeps under Limits were read before the rise and
+the read of the fall stopped at a next note that overlaps, except where they say
+otherwise [fact].
 
 The set: 4000 stems sampled over 41 to 440 Hz, releases of 20 to 800 ms, dry or
 with an RT60 of 0.3 to 3 s at 0.05 to 0.8 wet, three timbres, 1 to 6 notes of 0.3
@@ -609,6 +615,16 @@ chord's beating moves the crossing [synthetic].
   | Note end 10 ms past the next onset | 1583 | 1227 | 1231 | 2 | 6 |
   | Note end 20 ms past the next onset | 1583 | 1172 | 1225 | 1 | 54 |
   | Note end 40 ms past the next onset | 1583 | 1015 | 1151 | 1 | 137 |
+
+- With that stop, a note list that runs past the next onset reads fewer knees than
+  without it, and none worse than commit 057d63c, on 600 stems a row and 964 notes
+  [synthetic]:
+
+  | List end past the next onset | 057d63c | Without the stop | Worse | With the stop | Worse |
+  | :-- | :-- | :-- | :-- | :-- | :-- |
+  | 120 ms | 604 | 687 | 13 | 668 | 0 |
+  | 220 ms | 609 | 691 | 15 | 676 | 0 |
+  | 420 ms | 589 | 686 | 13 | 670 | 0 |
 
 - A medium release lies over 50 % off on 50 of the 875 reverb stems, 26 of them with
   a release of 20 ms, and on 23 of the 779 dry stems, all with a release of 20 ms, on

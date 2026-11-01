@@ -1392,6 +1392,33 @@ fn a_tremolo_lowers_a_release_it_hides_and_a_dry_line_keeps_its_level() {
 }
 
 #[test]
+fn a_note_held_past_a_shorter_note_keeps_its_note_off_over_an_earlier_decay() {
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.05,
+        decay_s: 0.1,
+        sustain_db: -12.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 2.0 * f64::from(i);
+    let mut notes = Vec::new();
+    let mut list = Vec::new();
+    for i in 0..4 {
+        notes.push((on(i), on(i) + 1.4, 110.0, 0.0));
+        notes.push((on(i) + 0.8, on(i) + 1.0, 330.0, 0.0));
+        list.push((on(i), on(i) + 1.5, 110.0));
+        list.push((on(i) + 0.8, on(i) + 1.05, 330.0));
+    }
+    let x = adsr_notes(&notes, adsr, fs(), on(4));
+    let read = layer(&x, &note_list(&list), BPM);
+    assert_eq!(read.notes.len(), 4);
+    for note in &read.notes {
+        let held = note.knee.unwrap().get() - note.onset.get();
+        assert!((held - 1.4).abs() <= 0.015, "{held}");
+    }
+}
+
+#[test]
 fn a_note_end_past_the_next_onset_keeps_the_note_off_over_an_earlier_decay() {
     // A decay corner at 0.385 s after the onset and a note-off at 0.485 s. The
     // list runs past the next attack, which a rise would count against the note-off.
@@ -1419,11 +1446,13 @@ fn a_note_end_past_the_next_onset_keeps_the_note_off_over_an_earlier_decay() {
             .map(|(n, i)| (on(n), on(n + 1) + past, pitch(i)))
             .collect();
         let read = layer(&x, &note_list(&list), BPM);
-        assert!(
-            read.notes
-                .iter()
-                .any(|n| (n.onset.get() - on(0)).abs() < 1e-9)
-        );
+        for i in [0, 1] {
+            assert!(
+                read.notes
+                    .iter()
+                    .any(|n| (n.onset.get() - on(i)).abs() < 1e-9)
+            );
+        }
         for note in &read.notes {
             let (onset, knee) = (note.onset.get(), note.knee.unwrap().get());
             assert!(

@@ -218,7 +218,8 @@ pub fn read_note(
         .map(|db| 10f64.powf(db / 20.0))
         .collect();
     let settle = settle_frames(overlap, f0, &partials);
-    let knee = find_knee(proxy.time(top), &amp, settle);
+    let clear = clear_frames(&proxy, top, amp.len(), others, to, settle);
+    let knee = find_knee(proxy.time(top), &amp, clear);
     let held_end = knee.map_or(knee_end, |k| proxy.index(k)).max(top + 1);
     let window = cast::floor_to_usize(SUSTAIN_SHARE * cast::usize_to_f64(held_end - top))
         .unwrap_or(0)
@@ -278,6 +279,27 @@ pub fn read_note(
         overlap,
         tail,
     }))
+}
+
+/// The frames from `top` that show this note alone: a next note that overlaps leaks
+/// into the band from its attack on, and the band rings `settle` frames ahead of it.
+fn clear_frames(
+    proxy: &LevelTrack,
+    top: usize,
+    frames: usize,
+    others: &[&Note],
+    to: Seconds,
+    settle: usize,
+) -> usize {
+    let next = others
+        .iter()
+        .map(|n| n.onset().get())
+        .filter(|&t| t > proxy.time(top))
+        .fold(to.get(), f64::min);
+    proxy
+        .index(next)
+        .min(top + frames)
+        .saturating_sub(settle + top)
 }
 
 /// The last frames of a track that can read what follows it: half the window of
