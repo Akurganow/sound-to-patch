@@ -250,7 +250,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `sustain_db` | dB | 0 or less | Statistic: the level of the last 30 % of the held part, from the peak. |
 | `note_off_offset_s` | seconds | any | Statistic: the note's end in the note list minus its note-off knee, over the pooled notes with a knee. |
 | `release_s` | seconds | 0 or more | Statistic: the linear release of each pooled note with a tail fit; `null` when the median `tail_weight` is over 0.5 (reason `tail_weight`) or the median residual is over 3 dB (reason `tail_residual`). |
-| `tail_rt60_s` | seconds | 0 or more | Statistic: the RT60 of the tail, over the notes with a `tail_weight` of 0.05 or more whose frames span a 15 dB fall of it; `null` under a median `tail_weight` of 0.05. |
+| `tail_rt60_s` | seconds | 0 or more | Statistic: the RT60 of the tail, over the notes with a `tail_weight` of 0.05 or more whose frames span a 15 dB fall of it; `null` under a median `tail_weight` of 0.05. `null` with `tail_smooth` when the tail is heavy and smooth, as the note's own exponential release is, and with `tail_band` when it fades faster than the band of an overlapping note shows. |
 | `tail_weight` | ratio | 0 or more | Statistic: the tail's level at the note-off over the level before it. |
 | `release_confidence` | | `medium`, `low` or `null` | `low` when no `release_s` is written, the level of `release_s` otherwise, `null` when no pooled note has a fit. |
 | `tail_votes` | | | Five signs that the tail is reverb, each `true`, `false` or `null` when nothing could be read: `outlasts_gap`, `side_grows`, `flatness_rises`, `same_rate`, `high_band_faster`. |

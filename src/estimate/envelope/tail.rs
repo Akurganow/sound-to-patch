@@ -29,6 +29,13 @@ const DENSE_FRAMES: usize = 200;
 const SPARSE_STEP: usize = 5;
 /// The simplex steps of one fit.
 const FIT_ITERATIONS: usize = 400;
+/// The releases a fit can read, in seconds. A level that never falls would
+/// otherwise run the fit to a release of 1e19 s and more.
+pub const TAIL_RELEASE_RANGE: (f64, f64) = (0.001, 10.0);
+/// The tail weights a fit can read.
+pub const TAIL_WEIGHT_RANGE: (f64, f64) = (1e-4, 10.0);
+/// The RT60s a fit can read, in seconds.
+pub const TAIL_RT60_RANGE: (f64, f64) = (0.01, 30.0);
 
 /// The tail model fitted to a note after its note-off.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -43,6 +50,27 @@ pub struct TailFit {
     pub rt60_observed: bool,
     /// The RMS of the fit in dB, over the frames fitted.
     pub residual: Decibels,
+    /// The shortest RT60 that the filter of the track can show.
+    pub rt60_floor: Seconds,
+}
+
+impl TailFit {
+    /// The tail is heavy but fits too smoothly for a reverb, whose level wobbles:
+    /// the note's own exponential release, with no linear part to find.
+    #[must_use]
+    pub fn is_smooth(&self) -> bool {
+        self.weight > TAIL_WEIGHT_MAX && self.residual.get() <= TAIL_SMOOTH.get()
+    }
+
+    /// The fit shows an RT60 of a tail: one heavy enough, read long enough, past
+    /// what the filter shows by itself, and not a release of the note's own.
+    #[must_use]
+    pub fn reads_rt60(&self) -> bool {
+        self.weight >= TAIL_WEIGHT_MIN
+            && self.rt60_observed
+            && self.rt60.get() >= self.rt60_floor.get()
+            && !self.is_smooth()
+    }
 }
 
 /// The model in dB, `t` seconds after the note-off, no lower than the floor.
@@ -76,8 +104,15 @@ pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
         })
         .collect();
     let frames: f64 = data.iter().map(|d| d.2).sum();
+    let bounded = |p: &[f64; 3]| {
+        (
+            p[0].exp().clamp(TAIL_RELEASE_RANGE.0, TAIL_RELEASE_RANGE.1),
+            p[1].exp().clamp(TAIL_WEIGHT_RANGE.0, TAIL_WEIGHT_RANGE.1),
+            p[2].exp().clamp(TAIL_RT60_RANGE.0, TAIL_RT60_RANGE.1),
+        )
+    };
     let cost = |p: &[f64; 3]| -> f64 {
-        let (release, weight, rt60) = (p[0].exp(), p[1].exp(), p[2].exp());
+        let (release, weight, rt60) = bounded(p);
         data.iter()
             .map(|&(t, v, w)| w * (v - model_db(t, release, weight, rt60)).powi(2))
             .sum()
@@ -93,12 +128,14 @@ pub fn fit_tail(db: &[f64]) -> Option<TailFit> {
         }
     }
     let (p, value) = best?;
+    let (release, weight, rt60) = bounded(&p);
     Some(TailFit {
-        release: Seconds::clamped(p[0].exp()),
-        weight: p[1].exp(),
-        rt60: Seconds::clamped(p[2].exp()),
-        rt60_observed: cast::usize_to_f64(last) * HOP.get() >= RT60_SPAN_SHARE * p[2].exp(),
+        release: Seconds::clamped(release),
+        weight,
+        rt60: Seconds::clamped(rt60),
+        rt60_observed: cast::usize_to_f64(last) * HOP.get() >= RT60_SPAN_SHARE * rt60,
         residual: Decibels::clamped((value / frames).sqrt()),
+        rt60_floor: Seconds::clamped(0.0),
     })
 }
 
@@ -111,6 +148,13 @@ pub const TAIL_WEIGHT_MAX: f64 = 0.5;
 /// Over this residual the release is not identifiable, and no release is
 /// written.
 pub const TAIL_RESIDUAL_MAX: Decibels = Decibels::from_const(3.0);
+/// A tail over [`TAIL_WEIGHT_MAX`] that fits within this RMS reads as the note's
+/// own exponential release: a reverb's level wobbles more.
+pub const TAIL_SMOOTH: Decibels = Decibels::from_const(1.1);
+/// The shortest RT60 a band can show is this many periods of its cutoff: a dry
+/// chord's release through a band reads 3 to 5 periods, whatever its length up
+/// to 50 ms.
+pub const TAIL_BAND_PERIODS: f64 = 6.0;
 /// The votes that a tail is reverb need this many in favour.
 pub const TAIL_VOTES_MIN: usize = 2;
 /// A tail outlasts a gap when its level before the next note lies above this
@@ -175,6 +219,14 @@ fn rms_db(x: &[f64]) -> Option<f64> {
     (energy > 0.0).then(|| 10.0 * (energy / cast::usize_to_f64(x.len())).log10())
 }
 
+/// The sample at `t` seconds in a signal of `len` samples. A time past the
+/// last index maps to `len`.
+fn sample_index(t: f64, fs: f64, len: usize) -> usize {
+    cast::round_to_usize(t.max(0.0) * fs)
+        .unwrap_or(len)
+        .min(len)
+}
+
 /// Reads the votes over the pooled notes that have a tail fit.
 pub(super) fn read_votes(
     mono: &[f64],
@@ -183,8 +235,7 @@ pub(super) fn read_votes(
     notes: &[Note],
     pool: &[&NoteEnvelope],
 ) -> TailVotes {
-    let fs = rate.hz().get();
-    let index = |t: f64| cast::round_to_usize(t * fs).unwrap_or(0).min(mono.len());
+    let index = |t: f64| sample_index(t, rate.hz().get(), mono.len());
     let mut gaps = Vec::new();
     let mut sides = Vec::new();
     let mut flats = Vec::new();
@@ -198,7 +249,7 @@ pub(super) fn read_votes(
         let stop = next.map_or(note.end.get(), |n| n.min(note.end.get()));
         let body = index((knee - BODY_SPAN.get()).max(note.onset.get()))..index(knee);
         let tail = index(knee + fit.release.get())..index(stop);
-        if fit.weight >= TAIL_WEIGHT_MIN && fit.rt60_observed {
+        if fit.reads_rt60() {
             rates.push(fit.rt60.get());
         }
         // Only a gap with no other note in it shows a tail.
@@ -296,6 +347,25 @@ mod tests {
             assert!((fit.rt60.get() / rt60 - 1.0).abs() < 0.03, "{fit:?}");
             assert!(fit.residual.get() < 0.1, "{fit:?}");
         }
+    }
+
+    #[test]
+    fn a_level_that_never_falls_stays_inside_the_ranges() {
+        let fit = fit_tail(&[0.0; 200]).unwrap();
+        let inside = |v: f64, (lo, hi): (f64, f64)| (lo..=hi).contains(&v);
+        assert!(inside(fit.release.get(), TAIL_RELEASE_RANGE), "{fit:?}");
+        assert!(inside(fit.weight, TAIL_WEIGHT_RANGE), "{fit:?}");
+        assert!(inside(fit.rt60.get(), TAIL_RT60_RANGE), "{fit:?}");
+        assert!(fit.residual.get() < 0.1, "{fit:?}");
+        let loud = fit_tail(&[40.0; 200]).unwrap();
+        assert!(inside(loud.weight, TAIL_WEIGHT_RANGE), "{loud:?}");
+    }
+
+    #[test]
+    fn a_time_past_the_last_index_maps_to_the_end() {
+        assert_eq!(sample_index(1e30, 44_100.0, 100), 100);
+        assert_eq!(sample_index(1.0, 50.0, 100), 50);
+        assert_eq!(sample_index(-1.0, 50.0, 100), 0);
     }
 
     #[test]

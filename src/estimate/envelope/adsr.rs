@@ -10,7 +10,7 @@ use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 use super::knee::find_knee;
 use super::median;
 use super::pump::Pump;
-use super::tail::{TailFit, fit_tail};
+use super::tail::{TAIL_BAND_PERIODS, TailFit, fit_tail};
 use super::track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
 };
@@ -243,7 +243,12 @@ pub fn read_note(
         0.0
     };
     let decay = fall.map(|(_, decay)| decay);
-    let tail = knee.and_then(|k| read_tail(&timing, k, to, others, f0));
+    let tail = knee
+        .and_then(|k| read_tail(&timing, k, to, others, f0))
+        .map(|fit| TailFit {
+            rt60_floor: rt60_floor(overlap, &partials),
+            ..fit
+        });
     let held_time = cast::usize_to_f64(held_end - onset) * HOP.get();
     // A note with no knee is a pluck that decays until it ends: its
     // sustain is its end level and is always observable (#70).
@@ -272,6 +277,20 @@ pub fn read_note(
         overlap,
         tail,
     }))
+}
+
+/// The shortest RT60 the note's track shows: only a note that overlaps another
+/// reads its tail through a band, and the narrowest band rings longest.
+fn rt60_floor(overlap: bool, partials: &[(Hz, Hz)]) -> Seconds {
+    let narrowest = partials
+        .iter()
+        .map(|p| p.1.get())
+        .fold(f64::INFINITY, f64::min);
+    Seconds::clamped(if overlap {
+        TAIL_BAND_PERIODS / narrowest
+    } else {
+        0.0
+    })
 }
 
 /// The tail fit of a note after its knee at `k`, up to its end at `to` or the

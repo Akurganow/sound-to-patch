@@ -186,6 +186,11 @@ reason_codes! {
     TailWeight,
     /// The tail model fits too poorly for a release to be identified.
     TailResidual,
+    /// A heavy tail fits too smoothly for a reverb: it reads as the note's own
+    /// exponential release, not as a space.
+    TailSmooth,
+    /// The tail fades faster than the note's band filter can show.
+    TailBand,
     /// The interquartile range of a value over the notes whose median is 0,
     /// so the range has no ratio to the median. The value reads low.
     ZeroMedian,

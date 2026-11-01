@@ -19,8 +19,8 @@ pub use adsr::{
     PROXY_HARMONICS, RAMP_FACTOR, SILENCE_DB, SUSTAIN_SHARE, TRACK_LEAD, amp_proxy, read_note,
 };
 pub use knee::{
-    KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_HELD_RIPPLE, KNEE_LEFT, KNEE_RIGHT, KNEE_SIDE_MIN,
-    KNEE_STEEPEN, find_knee,
+    KNEE_BEND, KNEE_BEND_LAG, KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_RISE,
+    KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
     DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FOLD_ERROR_GAIN, FOLD_ERROR_SHARE, FREE_RATE_MIN,
@@ -30,8 +30,9 @@ pub use pump::{
 };
 use tail::read_votes;
 pub use tail::{
-    FLATNESS_RISE, GAP_LEVEL, HIGH_BAND_FALL, SAME_RATE_SPREAD, SIDE_GROWTH, TAIL_FLOOR,
-    TAIL_RESIDUAL_MAX, TAIL_VOTES_MIN, TAIL_WEIGHT_MAX, TAIL_WEIGHT_MIN, TailFit, TailVotes,
+    FLATNESS_RISE, GAP_LEVEL, HIGH_BAND_FALL, SAME_RATE_SPREAD, SIDE_GROWTH, TAIL_BAND_PERIODS,
+    TAIL_FLOOR, TAIL_RELEASE_RANGE, TAIL_RESIDUAL_MAX, TAIL_RT60_RANGE, TAIL_SMOOTH,
+    TAIL_VOTES_MIN, TAIL_WEIGHT_MAX, TAIL_WEIGHT_MIN, TAIL_WEIGHT_RANGE, TailFit, TailVotes,
     fit_tail,
 };
 pub use track::{
@@ -106,14 +107,14 @@ a line over up to 100 ms before it and one over up to 200 ms after it, stopping 
 falls under 2 % of the mean before it, fit against one line over both; a split counts when the \
 right line is steeper by half the mean before it per second, falls by half that mean over its \
 side, and the two lines leave at most half the squared error of one; splits that count in a row \
-form a corner, and the split with the largest gain in the last corner wins; the knee is where the \
-left line crosses a line over the first 10 ms after the split, or the split itself when that \
-crossing lies outside the two lines; a later corner replaces an earlier one only when the level \
-before it, over half the time since the earlier one and at least 100 ms, moves by at most half its \
-mean per second and swings by at most a tenth of its mean; when the level stays \
-at 85 % or more of the mean before the split for over 10 ms more, the knee is where a line over its \
-fall from there to half that mean crosses that mean; null when no split counts, as for a pluck that decays at one \
-rate; note_off_offset_s is the note's end in the note list minus its \
+form a corner, and the split with the largest gain wins it; a later corner replaces an earlier one \
+when the median size of the second difference of the level in dB between them, 10 ms each way, is \
+at most 0.4 dB and the level after it rises by at most a twentieth of the mean before it; the knee \
+is where the left line crosses a line over the first 10 ms after the split, or the split itself \
+when that crossing lies outside the two lines; when the level stays at 85 % or more of the left \
+line's end for over 10 ms more, the knee is where a line over its fall from there to half that \
+level crosses that level; null when no split counts, as for a pluck that decays at one rate; \
+note_off_offset_s is the note's end in the note list minus its \
 knee, over the pooled notes with a knee";
 /// The convention of the tail.
 pub const TAIL_CONVENTION: &str = "after the note-off knee, relative to the median level over the \
@@ -121,7 +122,9 @@ pub const TAIL_CONVENTION: &str = "after the note-off knee, relative to the medi
 tail_rt60_s), fitted in dB by least squares to -55 dB under that level, from 4 x 3 starts, up to \
 the note's end or the next note that overlaps it, on the one-period RMS, or on the amp proxy's \
 band for a note that overlaps another; each is a statistic over the pooled notes with a fit, \
-tail_rt60_s over those of a tail_weight of 0.05 or more read over a fall of 15 dB of it, and null under a median tail_weight of 0.05; release_s is null, with \
+tail_rt60_s over those of a tail_weight of 0.05 or more read over a fall of 15 dB of it, and null \
+under a median tail_weight of 0.05, over a median tail_weight of 0.5 at a median residual of at \
+most 1.1 dB, or under 6 periods of the narrowest band's cutoff on a note that overlaps another; release_s is null, with \
 release_confidence low, when the median tail_weight is over 0.5 or the median residual is over \
 3 dB; release_confidence is null when no pooled note has a fit; tail_votes hold null where \
 nothing could be read, and tail_is_reverb stays false until a space layer exists";
@@ -547,19 +550,33 @@ fn pool_median(
     median(&values).map(Decibels::clamped)
 }
 
-/// The RT60 over the fits that read long enough to show one; no estimate when
-/// the median tail is too light to have one.
+/// The RT60 over the fits that show one; no estimate when the median tail is too
+/// light to have one, fits like the note's own release, or fades faster than its
+/// band can show.
 fn tail_rt60_of(fits: &[TailFit]) -> Result<Estimate<Stats<Seconds>, Seconds>, ConfidenceError> {
-    let weights: Vec<f64> = fits.iter().map(|f| f.weight).collect();
-    match median(&weights).filter(|w| *w < TAIL_WEIGHT_MIN) {
-        Some(weight) => Estimate::none(vec![Reason::new(
-            ReasonCode::TailWeight,
-            Signal::Number(weight),
-        )?]),
+    let of = |value: fn(&TailFit) -> f64| median(&fits.iter().map(value).collect::<Vec<f64>>());
+    let weight = of(|f| f.weight);
+    let residual = of(|f| f.residual.get());
+    let hidden = if let Some(weight) = weight.filter(|w| *w < TAIL_WEIGHT_MIN) {
+        Some((ReasonCode::TailWeight, weight))
+    } else if let Some(residual) =
+        residual.filter(|r| *r <= TAIL_SMOOTH.get() && weight.is_some_and(|w| w > TAIL_WEIGHT_MAX))
+    {
+        Some((ReasonCode::TailSmooth, residual))
+    } else {
+        let showing: Vec<f64> = fits
+            .iter()
+            .filter(|f| f.weight >= TAIL_WEIGHT_MIN && f.rt60_observed)
+            .map(|f| f.rt60.get() - f.rt60_floor.get())
+            .collect();
+        median(&showing)
+            .filter(|margin| *margin < 0.0)
+            .map(|margin| (ReasonCode::TailBand, margin))
+    };
+    match hidden {
+        Some((code, value)) => Estimate::none(vec![Reason::new(code, Signal::Number(value))?]),
         None => statistic(
-            fits.iter()
-                .filter(|f| f.weight >= TAIL_WEIGHT_MIN && f.rt60_observed)
-                .map(|f| f.rt60.get()),
+            fits.iter().filter(|f| f.reads_rt60()).map(|f| f.rt60.get()),
             Seconds::clamped,
             None,
         ),
@@ -810,6 +827,7 @@ mod tests {
             rt60: Seconds::clamped(rt60),
             rt60_observed: true,
             residual: Decibels::clamped(residual),
+            rt60_floor: Seconds::clamped(0.0),
         }
     }
 
@@ -841,6 +859,27 @@ mod tests {
         let rt60 = tail_rt60_of(&fits).unwrap();
         let median = rt60.value().map(|s| s.median().get());
         assert_eq!(median, Some(1.5));
+    }
+
+    #[test]
+    fn a_heavy_smooth_tail_reads_as_the_notes_own_release() {
+        let read = |weight, residual| tail_rt60_of(&[fit(0.05, weight, 1.0, residual); 3]).unwrap();
+        assert!(read(1.0, 1.1).value().is_none());
+        assert!(read(1.0, 1.11).value().is_some());
+        assert!(read(0.5, 0.5).value().is_some());
+    }
+
+    #[test]
+    fn a_tail_under_what_its_band_shows_has_no_rt60() {
+        let banded = |rt60| TailFit {
+            rt60_floor: Seconds::clamped(0.3),
+            ..fit(0.05, 0.2, rt60, 2.0)
+        };
+        assert!(tail_rt60_of(&[banded(0.29); 3]).unwrap().value().is_none());
+        assert!(tail_rt60_of(&[banded(0.3); 3]).unwrap().value().is_some());
+        // One note past the floor does not read for a pool under it.
+        let mixed = [banded(0.2), banded(0.25), banded(0.9)];
+        assert!(tail_rt60_of(&mixed).unwrap().value().is_none());
     }
 
     #[test]

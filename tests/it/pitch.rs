@@ -29,7 +29,7 @@ use sound_to_patch::units::{Bpm, Decibels, Hz, MidiPitch, Seconds};
 
 use crate::report::{shape, validator};
 use crate::support::cast::round_to_usize;
-use crate::support::envelope::with_reverb;
+use crate::support::envelope::{Adsr, adsr_notes, with_reverb};
 use crate::support::golden::{Golden, Tolerance, assert_close, float, floats};
 use crate::support::pitch::{BassLine, Glide, Hits, PitchDrop, RcGlide, Trill, Vibrato};
 use crate::support::rng::gaussian;
@@ -566,6 +566,66 @@ fn both_groups_of_a_bass_line_with_a_reverb_keep_their_shape() {
         }))
         .unwrap()
     );
+}
+
+#[test]
+fn a_line_with_a_reverb_fills_the_tail_of_its_report() {
+    let dir = tempfile::tempdir().unwrap();
+    let (wav, mid) = bass_files(dir.path());
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.01,
+        sustain_db: 0.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + 1.8 * f64::from(i);
+    let pitches = [110.0, 130.81, 146.83, 164.81, 196.0, 123.47];
+    let notes: Vec<_> = (0..6_u32)
+        .zip(pitches)
+        .map(|(i, f)| (on(i), on(i) + 0.6, f, 0.0))
+        .collect();
+    let rate = f64::from(RATE);
+    let wet = with_reverb(
+        &adsr_notes(&notes, adsr, rate, on(6)),
+        rate,
+        1.0,
+        0.15,
+        7041,
+    );
+    write_wav16(&wav, RATE, &[wet]);
+    let list = NoteList::new(
+        (0..6_u32)
+            .zip(pitches)
+            .map(|(i, f)| {
+                let pitch = MidiPitch::new(69.0 + 12.0 * (f / 440.0).log2()).unwrap();
+                Note::new(s(on(i)), s(on(i + 1) - 0.002), pitch).unwrap()
+            })
+            .collect(),
+    );
+    let bytes = write_midi(
+        &list,
+        Bpm::new(120.0).unwrap(),
+        Velocities::Constant(DEFAULT_VELOCITY),
+    )
+    .unwrap();
+    fs::write(&mid, bytes).unwrap();
+    let (_, report) = analyze_bass(&wav, &mid, &dir.path().join("a"));
+    let values = &report["envelope"]["values"];
+    assert!(values["release_s"]["median"].is_number(), "{values:#}");
+    assert!(values["tail_rt60_s"]["median"].is_number(), "{values:#}");
+    assert!(values["tail_weight"]["median"].is_number(), "{values:#}");
+    assert_eq!(values["release_confidence"], json!("medium"));
+    let votes = values["tail_votes"].as_object().unwrap();
+    assert!(votes.values().any(Value::is_boolean), "{votes:?}");
+    let in_favour = votes.values().filter(|v| **v == json!(true)).count();
+    assert_eq!(values["tail_vote_count"], json!(in_favour));
+    let errors: Vec<String> = validator()
+        .iter_errors(&report)
+        .map(|e| e.to_string())
+        .collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    insta::assert_snapshot!(serde_json::to_string_pretty(&shape(&report["envelope"])).unwrap());
 }
 
 #[test]

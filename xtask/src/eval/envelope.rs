@@ -44,6 +44,8 @@ enum Truth {
         offs: Vec<f64>,
         db_linear: bool,
     },
+    /// A line whose knees should read the note-offs, with its tally row.
+    Knees { offs: Vec<f64>, row: KneeRow },
     /// Plucks that decay at one rate: no knee.
     Pluck,
     /// A line with a linear release, and a noise reverb when `rt60_s` is above 0.
@@ -59,6 +61,13 @@ enum Truth {
     },
     /// A level motion that is no pump, and the lock it should read.
     Lock { lock: PumpLock },
+}
+
+/// The tally rows of [`Truth::Knees`].
+#[derive(Clone, Copy)]
+enum KneeRow {
+    ShortSustain,
+    Tremolo,
 }
 
 /// An ADSR: a linear attack, a hold, a decay to the sustain level and a
@@ -280,6 +289,94 @@ fn envelope_parts() -> Vec<Part> {
                         });
                     }
                 }
+            }
+        }
+    }
+    parts
+}
+
+/// Four notes with a sustain shorter than their decay, each listed up to the next.
+fn short_sustain_parts() -> Vec<Part> {
+    let mut parts = Vec::new();
+    for decay in [0.2, 0.4] {
+        for gap in [0.02, 0.05, 0.1] {
+            for sustain_db in [-6.0, -12.0, -24.0] {
+                for release in [0.05, 0.2] {
+                    let adsr = Adsr {
+                        attack: 0.005,
+                        hold: 0.1,
+                        decay,
+                        sustain_db,
+                        release,
+                    };
+                    let length = 0.105 + decay + gap;
+                    let step = length + release + 0.4;
+                    let on = |i: usize| 0.1 + step * index(i);
+                    let notes: Vec<(f64, f64, f64, f64)> = (0..4)
+                        .map(|i| (on(i), on(i) + length, 220.0, 0.0))
+                        .collect();
+                    let list: Vec<(f64, f64, f64)> =
+                        (0..4).map(|i| (on(i), on(i + 1) - 0.002, 220.0)).collect();
+                    parts.push(Part {
+                        name: format!(
+                            "short D{:.0} G{:.0} S{sustain_db} R{:.0}",
+                            decay * 1e3,
+                            gap * 1e3,
+                            release * 1e3
+                        ),
+                        audio: adsr_notes(&notes, adsr, true, on(4)),
+                        notes: note_list(&list),
+                        bpm: 120.0,
+                        truth: Truth::Knees {
+                            offs: notes.iter().map(|n| n.1).collect(),
+                            row: KneeRow::ShortSustain,
+                        },
+                    });
+                }
+            }
+        }
+    }
+    parts
+}
+
+/// Four dry notes under a tremolo in dB and a release of 200 ms or more.
+fn tremolo_parts() -> Vec<Part> {
+    let rate = f64::from(RATE);
+    let mut parts = Vec::new();
+    for hz in [2.0, 4.0, 8.0, 12.0] {
+        for swing_db in [0.5, 1.0] {
+            for release in [0.2, 0.4] {
+                let adsr = Adsr {
+                    attack: 0.005,
+                    hold: 0.0,
+                    decay: 0.01,
+                    sustain_db: 0.0,
+                    release,
+                };
+                let step = 1.2 + release + 0.4;
+                let on = |i: usize| 0.1 + step * index(i);
+                let notes: Vec<(f64, f64, f64, f64)> =
+                    (0..4).map(|i| (on(i), on(i) + 1.2, 220.0, 0.0)).collect();
+                let list: Vec<(f64, f64, f64)> =
+                    (0..4).map(|i| (on(i), on(i + 1) - 0.002, 220.0)).collect();
+                let audio = adsr_notes(&notes, adsr, true, on(4))
+                    .iter()
+                    .enumerate()
+                    .map(|(n, v)| {
+                        let t = index(n) / rate;
+                        v * 10f64.powf(swing_db * (TAU * hz * t).sin() / 20.0)
+                    })
+                    .collect();
+                parts.push(Part {
+                    name: format!("tremolo {hz} Hz {swing_db} dB R{:.0}", release * 1e3),
+                    audio,
+                    notes: note_list(&list),
+                    bpm: 120.0,
+                    truth: Truth::Knees {
+                        offs: notes.iter().map(|n| n.1).collect(),
+                        row: KneeRow::Tremolo,
+                    },
+                });
             }
         }
     }
@@ -670,6 +767,8 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
     let parts: Vec<Part> = [
         attack_parts(),
         envelope_parts(),
+        short_sustain_parts(),
+        tremolo_parts(),
         pluck_parts(),
         tail_parts(),
         spread_parts(),
@@ -719,6 +818,8 @@ struct Tally {
     decay: (usize, usize),
     sustain: (usize, usize),
     knee: (usize, usize),
+    knee_short: (usize, usize),
+    knee_tremolo: (usize, usize),
     pluck: (usize, usize),
     spread: (usize, usize),
     pump_depth: (usize, usize),
@@ -748,6 +849,11 @@ impl Tally {
             ("pooled decay within 20 %", self.decay),
             ("pooled sustain within 2 dB", self.sustain),
             ("knee within 15 ms of the note-off", self.knee),
+            ("same, sustain shorter than the decay", self.knee_short),
+            (
+                "same, dry tremolo with a release from 200 ms",
+                self.knee_tremolo,
+            ),
             ("pluck has no knee", self.pluck),
             ("level spread within 1 dB", self.spread),
             ("pump depth within 5 dB below the truth", self.pump_depth),
@@ -847,6 +953,19 @@ fn score(part: &Part, layer: &EnvelopeLayer, pump: Option<&Pump>, tally: &mut Ta
             }
             record["truth"] = json!({"decay_s": adsr.decay, "sustain_db": adsr.sustain_db,
                 "hold_s": adsr.hold, "release_s": adsr.release, "offs": offs, "db_linear": db_linear});
+        }
+        Truth::Knees { offs, row } => {
+            let pair = match row {
+                KneeRow::ShortSustain => &mut tally.knee_short,
+                KneeRow::Tremolo => &mut tally.knee_tremolo,
+            };
+            for (note, off) in layer.notes.iter().zip(offs) {
+                tick(
+                    pair,
+                    note.knee.is_some_and(|k| (k.get() - off).abs() <= 0.015),
+                );
+            }
+            record["truth"] = json!({"offs": offs});
         }
         Truth::Pluck => {
             for note in &layer.notes {

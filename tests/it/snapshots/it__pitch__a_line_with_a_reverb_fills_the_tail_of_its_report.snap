@@ -1,0 +1,264 @@
+---
+source: tests/it/pitch.rs
+expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap()"
+---
+{
+  "values": {
+    "attack_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          },
+          {
+            "code": "upper_bound_share",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "hold_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "decay_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "low",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "sustain_db": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "low",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "note_off_offset_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "release_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "tail_rt60_s": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "tail_weight": {
+      "median": "<number>",
+      "iqr": "<number>",
+      "confidence": {
+        "level": "medium",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          },
+          {
+            "code": "relative_spread",
+            "value": "<number>"
+          }
+        ],
+        "spread": "<number>",
+        "estimate": true
+      }
+    },
+    "release_confidence": "medium",
+    "tail_votes": {
+      "outlasts_gap": null,
+      "side_grows": null,
+      "flatness_rises": true,
+      "same_rate": true,
+      "high_band_faster": false
+    },
+    "tail_vote_count": "<integer>",
+    "tail_is_reverb": false,
+    "level_spread_db": {
+      "value": "<number>",
+      "confidence": {
+        "level": "low",
+        "reasons": [
+          {
+            "code": "too_few_notes",
+            "value": "<integer>"
+          }
+        ],
+        "estimate": true
+      }
+    },
+    "ripple_db": "<number>",
+    "fit_residual_db": "<number>",
+    "n_notes_used": "<integer>",
+    "overlap_fraction": "<number>",
+    "pump_depth_db": null,
+    "pump_recovery_s": null,
+    "pump_tau_ms": null,
+    "pump_locked_to": null,
+    "pump_beats": "<integer>",
+    "pump_bpm": null,
+    "notes": [
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": true,
+        "knee_s": "<number>",
+        "pooled": true
+      },
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": true,
+        "knee_s": "<number>",
+        "pooled": true
+      },
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": true,
+        "knee_s": "<number>",
+        "pooled": true
+      },
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": false,
+        "knee_s": "<number>",
+        "pooled": true
+      },
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": false,
+        "knee_s": "<number>",
+        "pooled": true
+      },
+      {
+        "onset_s": "<number>",
+        "peak_db": "<number>",
+        "attack_s": "<number>",
+        "attack_upper_bound": true,
+        "knee_s": "<number>",
+        "pooled": true
+      }
+    ]
+  },
+  "confidence": {
+    "level": "medium",
+    "reasons": [
+      {
+        "code": "too_few_notes",
+        "value": "<integer>"
+      }
+    ],
+    "estimate": true
+  },
+  "flags": {
+    "no_notes": false,
+    "attack_is_upper_bound": true,
+    "pump_stripped": false
+  },
+  "needs_render": false,
+  "suggested_edits": []
+}
