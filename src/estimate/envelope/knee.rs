@@ -267,24 +267,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_level_held_under_100_ms_does_not_move_a_knee() {
-        let amp: Vec<f64> = (0..900)
-            .map(|i| match i {
-                0..500 => 1.0,
-                500..580 => 0.7,
-                580..640 => 0.7 * (1.0 - (f64::from(i) - 580.0) / 60.0),
-                _ => 0.0,
+    fn a_level_held_under_100_ms_does_not_replace_a_corner() {
+        // A short ramp to half, held 70 ms: the corner at the ramp stands. A rule
+        // with no 100 ms reads 0.491 here.
+        let amp: Vec<f64> = (0..1000_i32)
+            .map(|i| {
+                let x = f64::from(i);
+                match i {
+                    0..500 => 1.0,
+                    500..505 => 1.0 - 0.5 * (x - 500.0) / 5.0,
+                    505..575 => 0.5,
+                    575..655 => 0.5 * (1.0 - (x - 575.0) / 80.0),
+                    _ => 0.0,
+                }
             })
             .collect();
         let knee = find_knee(0.0, &amp).unwrap();
-        assert!(knee < 0.55, "{knee}");
-    }
-
-    /// The linear amplitude of a dB curve, one value per hop.
-    fn track(f: impl Fn(f64) -> f64, seconds: f64) -> Vec<f64> {
-        (0..cast::round_to_usize(seconds / HOP.get()).unwrap())
-            .map(|i| 10f64.powf(f(cast::usize_to_f64(i) * HOP.get()) / 20.0))
-            .collect()
+        assert!((knee - 0.496).abs() < 0.002, "{knee}");
     }
 
     #[test]
