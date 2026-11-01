@@ -22,8 +22,9 @@ Facts learned while working on this repository.
 
 ## Plan before work
 
-Plan every step before its first action, and show the plan to the user before
-starting. A small step gets a few lines with the same points.
+Plan every step for yourself before its first action, inside the decomposition
+the tracker already holds. The plan needs no approval. A small step gets a few
+lines with the same points.
 
 1. Read the issue, its epic, dependencies, comments and code.
 2. Check whether the thing already exists.
