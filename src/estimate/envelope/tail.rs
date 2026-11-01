@@ -384,6 +384,12 @@ mod tests {
         let short: Vec<f64> = curve(0.05, 0.3, 3.0)[..500].to_vec();
         assert!(!fit_tail(&short).unwrap().rt60_observed);
         assert!(fit_tail(&curve(0.05, 0.3, 3.0)).unwrap().rt60_observed);
+        // 0.9 s reads a quarter of 3 s, and not a half.
+        assert!(
+            fit_tail(&curve(0.05, 0.3, 3.0)[..900])
+                .unwrap()
+                .rt60_observed
+        );
         // One late frame above the floor adds no span.
         let mut spike = vec![-5.0; 300];
         spike.resize(1500, -60.0);

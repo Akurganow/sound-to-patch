@@ -589,7 +589,7 @@ fn a_line_with_a_reverb_fills_the_tail_of_its_report() {
     let wet = with_reverb(
         &adsr_notes(&notes, adsr, rate, on(6)),
         rate,
-        1.0,
+        0.5,
         0.15,
         7041,
     );
@@ -614,9 +614,9 @@ fn a_line_with_a_reverb_fills_the_tail_of_its_report() {
     let values = &report["envelope"]["values"];
     let median = |key: &str| values[key]["median"].as_f64().unwrap();
     assert!((0.035..=0.06).contains(&median("release_s")), "{values:#}");
-    assert!((0.7..=1.3).contains(&median("tail_rt60_s")), "{values:#}");
+    assert!((0.35..=0.65).contains(&median("tail_rt60_s")), "{values:#}");
     assert!((0.05..=0.5).contains(&median("tail_weight")), "{values:#}");
-    assert_eq!(values["release_confidence"], json!("medium"));
+    assert_eq!(values["release_confidence"], json!("low"));
     let votes = values["tail_votes"].as_object().unwrap();
     assert!(votes.values().any(Value::is_boolean), "{votes:?}");
     let in_favour = votes.values().filter(|v| **v == json!(true)).count();
