@@ -4,7 +4,7 @@
 //! before every render and the order of the outcomes.
 
 use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use sound_to_patch::notes::Velocity;
@@ -180,10 +180,12 @@ fn a_wrong_synth_fails_at_once_and_keeps_the_renderer() {
     assert_eq!(session.starts(), [1]);
 }
 
-/// A fake that panics on one render, and counts the live instances.
+/// A fake that panics on its render with index `panic_at` unless `fired`
+/// is set, sets `fired`, and counts the live instances.
 struct Panicking {
     inner: FakeRenderer,
     panic_at: Option<u64>,
+    fired: Arc<AtomicBool>,
     live: Arc<AtomicUsize>,
 }
 
@@ -200,7 +202,7 @@ impl Renderer for Panicking {
 
     fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
         assert!(
-            self.panic_at != Some(self.inner.renders()),
+            self.panic_at != Some(self.inner.renders()) || self.fired.swap(true, Ordering::Relaxed),
             "the fake plug-in fell over"
         );
         self.inner.render(job)
@@ -215,10 +217,12 @@ impl Renderer for Panicking {
     }
 }
 
-/// A session whose first renderer panics on its render with index `at`,
-/// and the most renderers that lived at once.
+/// A session where the first renderer to reach its render with index `at`
+/// panics there, and the most renderers that lived at once. Only one
+/// renderer panics, whichever worker draws the jobs.
 fn panicking_session(count: usize, at: u64) -> (RenderSession, Arc<AtomicUsize>) {
     let started = AtomicU64::new(0);
+    let fired = Arc::new(AtomicBool::new(false));
     let live = Arc::new(AtomicUsize::new(0));
     let most = Arc::new(AtomicUsize::new(0));
     let peak = Arc::clone(&most);
@@ -228,7 +232,8 @@ fn panicking_session(count: usize, at: u64) -> (RenderSession, Arc<AtomicUsize>)
         peak.fetch_max(now, Ordering::Relaxed);
         Ok(Box::new(Panicking {
             inner: FakeRenderer::new(Synth::Vital, start),
-            panic_at: (start == 0).then_some(at),
+            panic_at: Some(at),
+            fired: Arc::clone(&fired),
             live: Arc::clone(&live),
         }) as BoxedRenderer)
     });
@@ -237,14 +242,18 @@ fn panicking_session(count: usize, at: u64) -> (RenderSession, Arc<AtomicUsize>)
 
 #[test]
 fn a_panic_costs_one_try_and_every_other_job_renders() {
-    for count in [1_u64, 2] {
-        let (session, _) = panicking_session(usize::try_from(count).unwrap(), 3);
+    for count in [1, 2] {
+        let (session, _) = panicking_session(count, 3);
         let outcomes = session.render_all(&numbered(11));
         assert!(
             outcomes.iter().all(|outcome| outcome.rendered().is_some()),
             "{count} workers: {outcomes:?}"
         );
-        assert_eq!(session.starts().iter().sum::<u64>(), count + 1);
+        // A worker that draws no job starts no renderer, so the test counts
+        // the starts after the first one of each worker.
+        let starts = session.starts();
+        let restarts: u64 = starts.iter().map(|n| n.saturating_sub(1)).sum();
+        assert_eq!(restarts, 1, "{count} workers: {starts:?}");
     }
 }
 
@@ -255,6 +264,7 @@ fn a_panic_on_both_tries_names_the_job() {
         Ok(Box::new(Panicking {
             inner: FakeRenderer::new(Synth::Vital, 0),
             panic_at: Some(0),
+            fired: Arc::new(AtomicBool::new(false)),
             live: Arc::new(AtomicUsize::new(1)),
         }) as BoxedRenderer)
     });
