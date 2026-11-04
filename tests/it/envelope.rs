@@ -1464,6 +1464,34 @@ fn a_note_end_past_the_next_onset_keeps_the_note_off_over_an_earlier_decay() {
 }
 
 #[test]
+fn a_note_off_long_before_a_list_end_past_the_next_onset_stays_the_knee() {
+    // Each note ends 450 ms before the next starts, and its list runs 40 ms into the
+    // next note, whose own note-off would read as a later corner.
+    let adsr = Adsr {
+        attack_s: 0.01,
+        hold_s: 0.0,
+        decay_s: 0.1,
+        sustain_db: -6.0,
+        release_s: 0.05,
+    };
+    let on = |i: u32| 0.1 + f64::from(i);
+    let pitch = |i: u32| 110.0 * 2f64.powf(f64::from([0, 3, 7, 5, 0][i as usize]) / 12.0);
+    let notes: Vec<_> = (0..5_u32)
+        .map(|i| (on(i), on(i) + 0.5, pitch(i), 0.0))
+        .collect();
+    let list: Vec<_> = (0..5_u32)
+        .map(|i| (on(i), on(i + 1) + 0.04, pitch(i)))
+        .collect();
+    let x = adsr_notes(&notes, adsr, fs(), on(5) + 0.1);
+    let read = layer(&x, &note_list(&list), BPM);
+    assert!(read.notes.len() >= 4, "{}", read.notes.len());
+    for note in &read.notes {
+        let (onset, knee) = (note.onset.get(), note.knee.unwrap().get());
+        assert!((knee - onset - 0.5).abs() <= 0.015, "{onset} {knee}");
+    }
+}
+
+#[test]
 fn a_quiet_second_voice_stays_out_of_the_pool() {
     // Eight A2 notes decay over 300 ms to -6 dB; under each an E3 18 dB
     // quieter decays over 50 ms to -20 dB. Pooled, the E3 notes would put

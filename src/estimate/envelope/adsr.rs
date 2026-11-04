@@ -644,6 +644,17 @@ mod tests {
     }
 
     #[test]
+    fn the_settle_is_half_a_level_window_alone_and_two_band_rises_in_an_overlap() {
+        let partials = [
+            (Hz::clamped(100.0), Hz::clamped(40.0)),
+            (Hz::clamped(200.0), Hz::clamped(20.0)),
+        ];
+        // Half of one 20 ms period at 50 Hz, and 2 rises of 0.49 / 20 Hz.
+        assert_eq!(settle_frames(false, Hz::clamped(50.0), &partials), 10);
+        assert_eq!(settle_frames(true, Hz::clamped(50.0), &partials), 49);
+    }
+
+    #[test]
     fn the_hold_bend_reads_300_frames_before_the_knee_25_each_way() {
         // A triangle 50 frames long reads 4 times its median size over the last
         // 300 frames, and a flat level reads 0 dB before them.
