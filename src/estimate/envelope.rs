@@ -113,9 +113,9 @@ form a corner, and the split with the largest gain wins it; a later corner repla
 when the median size of the second difference of the level in dB between them, 10 ms each way, is \
 at most 0.4 dB and the level after it rises by at most a twentieth of the mean before it, read as \
 is over its first 20 ms and as the mean over every 20 ms span, up to what follows the note; a later \
-corner past what follows the note replaces none when the level there has fallen under 2 % of the \
-earlier corner's mean before it and both the mean and the left line's end before the later corner \
-lie at or above that level; the knee \
+corner past what follows the note replaces none when the mean over the last 10 ms before that point \
+lies under 2 % of the earlier corner's mean before it, the mean before the later corner lies at \
+least 1.25 times that level and the left line's end lies above it; the knee \
 is where the left line crosses a line over the first 10 ms after the split, or the split itself \
 when that crossing lies outside the two lines; when the level stays at 85 % or more of the left \
 line's end for over 10 ms more, the knee is where a line over its fall from there to half that \
