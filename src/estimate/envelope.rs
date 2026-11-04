@@ -21,8 +21,8 @@ pub use adsr::{
     PROXY_HARMONICS, RAMP_FACTOR, SILENCE_DB, SUSTAIN_SHARE, TRACK_LEAD, amp_proxy, read_note,
 };
 pub use knee::{
-    KNEE_BEND, KNEE_BEND_LAG, KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT, KNEE_RISE,
-    KNEE_RISE_FRAMES, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
+    KNEE_BACK, KNEE_BEND, KNEE_BEND_LAG, KNEE_FALL, KNEE_FLOOR, KNEE_GAIN, KNEE_LEFT, KNEE_RIGHT,
+    KNEE_RISE, KNEE_RISE_FRAMES, KNEE_SIDE_MIN, KNEE_STEEPEN, find_knee,
 };
 pub use pump::{
     DUCK_TAIL_BINS, DUCK_TAIL_WINDOWS, FALL_MAX, FOLD_ERROR_GAIN, FOLD_ERROR_SHARE, FREE_RATE_MIN,
@@ -114,7 +114,8 @@ when the median size of the second difference of the level in dB between them, 1
 at most 0.4 dB and the level after it rises by at most a twentieth of the mean before it, read as \
 is over its first 20 ms and as the mean over every 20 ms span, up to what follows the note; a later \
 corner past what follows the note replaces none when the level there has fallen under 2 % of the \
-earlier corner's mean before it; the knee \
+earlier corner's mean before it and both the mean and the left line's end before the later corner \
+lie at or above that level; the knee \
 is where the left line crosses a line over the first 10 ms after the split, or the split itself \
 when that crossing lies outside the two lines; when the level stays at 85 % or more of the left \
 line's end for over 10 ms more, the knee is where a line over its fall from there to half that \
