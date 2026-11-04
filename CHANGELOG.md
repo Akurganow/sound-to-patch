@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.28.1](https://github.com/Akurganow/sound-to-patch/compare/e3c0fe725f199c5cd7a2d50360b6a9a87e161e80..v0.28.1) - 2026-11-04
+#### Bug Fixes
+- (**analyze**) keep the note-off knee from the next note's corner after a long gap (#315) - ([91cf23e](https://github.com/Akurganow/sound-to-patch/commit/91cf23e8b7ba29819f8eea8e6639628a2123d521)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.28.0](https://github.com/Akurganow/sound-to-patch/compare/464bb181266617ab745abb10014dbb967b642fbf..v0.28.0) - 2026-11-01
 #### Features
 - (**analyze**) fit the release and tail after the note-off, and vote on reverb - ([804daf4](https://github.com/Akurganow/sound-to-patch/commit/804daf4b00ca243a89eebf3a0a08326a4b1a45e4)) - [@Akurganow](https://github.com/Akurganow)
