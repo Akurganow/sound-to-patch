@@ -69,7 +69,9 @@ const KNEE_DB_FLOOR: f64 = 1e-4;
 /// `amp` holds the linear amplitude, one value per [`HOP`] from `start`. Only its
 /// first `clear` frames show this note alone, so the rise and the read of the fall
 /// stop there. A later corner past them can still replace an earlier one, since a
-/// note can be held past the onset of the next.
+/// note can be held past the onset of the next, unless the level has fallen under
+/// [`KNEE_FLOOR`] of the earlier corner's level by their last frame: that note has
+/// ended, and the later corner belongs to the next note.
 /// Every split leaves at least [`KNEE_SIDE_MIN`] frames on each side. A
 /// split counts when the right line is steeper by [`KNEE_STEEPEN`] times
 /// the left side's mean per second, falls by [`KNEE_FALL`] times that
@@ -158,7 +160,13 @@ pub fn find_knee(start: f64, amp: &[f64], clear: usize) -> Option<f64> {
         .map(|v| 20.0 * v.max(KNEE_DB_FLOOR).log10())
         .collect();
     let mut best = first;
+    let alone = clear.min(n);
     for corner in later {
+        // Past the clear frames a corner reads no rise, and the bend over a silent
+        // gap reads near 0, so only the level the note left there tells them apart.
+        if alone > 0 && corner.k >= alone && amp[alone - 1] < KNEE_FLOOR * best.level {
+            continue;
+        }
         if bend(&db, best.k, corner.first, KNEE_BEND_LAG) <= KNEE_BEND.get()
             && rise(&amp[corner.k..clear.min(n).max(corner.k)]) <= KNEE_RISE * corner.level
         {
@@ -407,6 +415,64 @@ mod tests {
         let at = |clear| find_knee(0.0, &amp, clear).unwrap();
         assert!((at(790) - 0.5).abs() < 0.002, "{}", at(790));
         assert!((at(800) - 0.2).abs() < 0.002, "{}", at(800));
+    }
+
+    /// A note-off at 300 ms into `gap` for 250 ms, then a next note from 600 ms with
+    /// its own note-off at 800 ms.
+    fn gap_then_next(gap: f64) -> Vec<f64> {
+        (0..900_u32)
+            .map(|i| match i {
+                0..300 | 610..800 => 1.0,
+                300..350 => gap + (1.0 - gap) * (1.0 - f64::from(i - 300) / 50.0),
+                350..600 => gap,
+                600..610 => f64::from(i - 600) / 10.0,
+                800..850 => 1.0 - f64::from(i - 800) / 50.0,
+                _ => 0.0,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_note_that_ends_before_the_next_onset_keeps_its_note_off() {
+        // The next note's corner lies past the clear frames, so it reads no rise, and
+        // the bend over the silent gap reads 0.
+        let knee = find_knee(0.0, &gap_then_next(0.0), 600).unwrap();
+        assert!((knee - 0.3).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
+    fn a_later_corner_past_the_clear_frames_needs_a_level_of_a_fiftieth_at_their_end() {
+        let at = |gap: f64| find_knee(0.0, &gap_then_next(gap), 600).unwrap();
+        assert!((at(0.019) - 0.3).abs() < 0.002, "{}", at(0.019));
+        assert!((at(0.021) - 0.8).abs() < 0.002, "{}", at(0.021));
+    }
+
+    #[test]
+    fn the_rise_means_span_20_frames() {
+        // A square wobble after the release, high first. Over 20 frames its means
+        // climb by its full height; with 21 frames by 19/21 of a period of 40, and with
+        // 20 frames by 18/20 of a period of 38.
+        let read = |period: u32, height: f64| {
+            let after = move |i: u32| {
+                if (i - 550) % period < period / 2 {
+                    height
+                } else {
+                    0.0
+                }
+            };
+            find_knee(0.0, &two_corners(|_| 0.25, after), usize::MAX).unwrap()
+        };
+        // The rise limit is 0.05 of the shelf at 0.25.
+        assert!(
+            (read(40, 0.0135) - 0.2).abs() < 0.002,
+            "{}",
+            read(40, 0.0135)
+        );
+        assert!(
+            (read(38, 0.013) - 0.49).abs() < 0.002,
+            "{}",
+            read(38, 0.013)
+        );
     }
 
     /// A decay at 200 ms into a shelf, and a release at 500 ms into silence.

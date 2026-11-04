@@ -224,8 +224,12 @@ on the linear amplitude of the amp proxy, from the first frame within
     filter rings ahead of its attack, and half a level window before the end of a
     note that overlaps no other [fact]. A later corner past the stop reads no rise, so
     it replaces an earlier one whenever the bend allows it [fact]. That keeps the
-    note-off of a note held over a shorter one, and takes the next note's corner after
-    a long gap, see #312 [synthetic].
+    note-off of a note held over a shorter one [synthetic].
+  - A later corner past the stop replaces nothing when the level at the stop's last
+    frame lies under a fiftieth of the earlier corner's level, -34 dB, the floor of the
+    release side [fact]. The note has ended before the next onset, so the corner is
+    the next note's. Without this test, a long gap after a note-off took the next
+    note's corner, since the bend over silence reads near 0 dB (#312) [synthetic].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a
@@ -600,23 +604,27 @@ chord's beating moves the crossing [synthetic].
   0.4 dB. When an earlier decay forms a corner, the note-off of such a sustain can lose
   to it [fact].
 - The bend and rise rule loses some notes that commit 057d63c read within 15 ms, on a
-  one-off sweep of 1000 generated stems a set, and gains more [synthetic]:
+  one-off sweep of 1000 generated stems a set, and gains more [synthetic]. Commit
+  2d63f2e holds that rule with its stop, and the last column adds the test of the level
+  at the stop. Worse and better count the notes of the last column against 057d63c:
 
-  | Set | Notes | 057d63c | This rule | Worse | Better |
-  | :-- | :-- | :-- | :-- | :-- | :-- |
-  | Plain dry | 2986 | 2453 | 2453 | 0 | 0 |
-  | Short sustain | 2698 | 2017 | 2064 | 0 | 47 |
-  | Tremolo | 2991 | 732 | 777 | 107 | 152 |
-  | Legato | 3011 | 2962 | 2967 | 0 | 5 |
-  | Reverb | 3042 | 1220 | 1662 | 25 | 467 |
-  | Chord | 1176 | 820 | 841 | 6 | 27 |
-  | Noise at -35 dBFS | 2898 | 2010 | 2065 | 82 | 137 |
-  | Noise at -40 dBFS | 2898 | 2200 | 2215 | 33 | 48 |
-  | Noise at -50 dBFS | 2898 | 2286 | 2315 | 0 | 29 |
-  | Noise at -60 dBFS | 2898 | 2306 | 2327 | 0 | 21 |
-  | Note end 10 ms past the next onset | 1583 | 1227 | 1230 | 2 | 5 |
-  | Note end 20 ms past the next onset | 1583 | 1172 | 1225 | 1 | 54 |
-  | Note end 40 ms past the next onset | 1583 | 1015 | 1148 | 0 | 133 |
+  | Set | Notes | 057d63c | 2d63f2e | This rule | Worse | Better |
+  | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+  | Plain dry | 2986 | 2453 | 2453 | 2453 | 0 | 0 |
+  | Short sustain | 2698 | 2017 | 2064 | 2064 | 0 | 47 |
+  | Tremolo | 2991 | 732 | 777 | 777 | 107 | 152 |
+  | Legato | 3011 | 2962 | 2967 | 2967 | 0 | 5 |
+  | Reverb | 3042 | 1220 | 1662 | 1662 | 25 | 467 |
+  | Chord | 1176 | 820 | 841 | 899 | 6 | 85 |
+  | Noise at -35 dBFS | 2898 | 2010 | 2065 | 2065 | 82 | 137 |
+  | Noise at -40 dBFS | 2898 | 2200 | 2215 | 2215 | 33 | 48 |
+  | Noise at -50 dBFS | 2898 | 2286 | 2315 | 2315 | 0 | 29 |
+  | Noise at -60 dBFS | 2898 | 2306 | 2327 | 2327 | 0 | 21 |
+  | Legato, note end 10 ms past the next onset | 1583 | 1194 | 1201 | 1232 | 0 | 38 |
+  | Legato, note end 20 ms past the next onset | 1583 | 1220 | 1224 | 1232 | 1 | 13 |
+  | Legato, note end 40 ms past the next onset | 1583 | 607 | 662 | 1196 | 0 | 589 |
+
+  No note of any set reads worse than at commit 2d63f2e [synthetic].
 
 - With that stop, a note list that runs past the next onset reads fewer knees than
   without it, on 600 stems a row and 964 notes [synthetic]:
@@ -632,16 +640,26 @@ chord's beating moves the crossing [synthetic].
 
   | Recipe | Notes | Worse | Better |
   | :-- | :-- | :-- | :-- |
-  | Mono bass line at 175 BPM, 14 notes a signal, under a 5 dB pump left unstripped, see #313 | 3038 | 44 | 997 |
-  | The same line, medium notes, see #313 | 3530 | 31 | 2133 |
+  | Mono bass line at 175 BPM, 14 notes a signal, under a 5 dB pump left unstripped, see #313 | 3570 | 10 | 2799 |
+  | The same line, medium notes, see #313 | 3529 | 31 | 2422 |
   | A tremolo under a reverb | 1500 | 42 | 270 |
   | A next note 15 dB louder | 1419 | 3 | - |
 
-- A long gap after a note-off can read late, see #312 [synthetic]. On a mono bass line at
-  175 BPM with a gate of 55 to 90 % and list ends 20 to 200 ms past the next onset,
-  54 % of the notes of 1.37 to 2.74 s read over 15 ms late, against 81 % at commit
-  057d63c. Dry notes with a list end 40 ms past the next onset read 781 of 1431 right,
-  against 707 at that commit.
+- On that bass line, with a gate of 55 to 90 % and list ends 20 to 200 ms past the next
+  onset, over 500 signals, knees over 15 ms late [synthetic]:
+
+  | Notes | 057d63c | 2d63f2e | This rule |
+  | :-- | :-- | :-- | :-- |
+  | 1.37 to 2.74 s, under the pump | 81.4 % | 53.9 % | 4.5 % |
+  | 0.34 to 1.37 s, under the pump | 61.4 % | 11.6 % | 3.5 % |
+  | 1.37 to 2.74 s, dry | 80.9 % | 53.5 % | 2.4 % |
+  | 0.34 to 1.37 s, dry | 60.8 % | 11.3 % | 2.6 % |
+
+  Dry, no note reads worse than at commit 2d63f2e. Under the pump, 25 long and 27
+  medium notes that commit 2d63f2e read right read early instead [synthetic]. The pump
+  read counts beats over the held parts that the first read's knees bound. At the true
+  note-offs those parts are shorter, so the 5 dB pump strips on fewer signals, see
+  #313 [fact].
 - A medium release lies over 50 % off on 50 of the 875 reverb stems, 26 of them with
   a release of 20 ms, and on 23 of the 779 dry stems, all with a release of 20 ms, on
   the 4000 stems [synthetic]. Lowering every reverb release with a true vote or a
