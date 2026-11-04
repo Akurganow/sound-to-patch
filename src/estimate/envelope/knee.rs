@@ -58,7 +58,7 @@ pub const KNEE_RISE_FRAMES: usize = 20;
 /// A later corner past the frames that show a note alone belongs to the next note
 /// when the level there, the mean over their last [`KNEE_SIDE_MIN`], has fallen under
 /// [`KNEE_FLOOR`] of the earlier corner's level and has come back: the mean over the
-/// [`KNEE_LEFT`] frames before the corner lies at least this many times above it, and
+/// [`KNEE_LEFT`] frames before the corner is at least 1.25 times the stop level, and
 /// the left line's end lies above it too.
 ///
 /// A held sustain reads near 1: a ripple of 1 % or a slow rise must not decide it. A
@@ -476,16 +476,16 @@ mod tests {
         assert!((at(0.013) - 0.3).abs() < 0.002, "{}", at(0.013));
     }
 
-    /// A hold to 100 ms that decays by 40 dB to a sustain at 0.01 by 200 ms, then
-    /// `sustain(i)` from there to a 50 ms fall at `off`.
-    fn low_sustain(off: u32, sustain: impl Fn(f64) -> f64) -> Vec<f64> {
+    /// A hold to 100 ms that decays to `level` by 200 ms, then `sustain(i)` from there
+    /// to a 50 ms fall at `off`.
+    fn low_sustain(off: u32, level: f64, sustain: impl Fn(f64) -> f64) -> Vec<f64> {
         (0..off + 200)
             .map(|i| {
                 let x = f64::from(i);
                 if i < 100 {
                     1.0
                 } else if i < 200 {
-                    0.01_f64.powf((x - 100.0) / 100.0)
+                    level.powf((x - 100.0) / 100.0)
                 } else if i < off {
                     sustain(x)
                 } else {
@@ -507,7 +507,7 @@ mod tests {
                     let swing = if x < until { depth } else { 0.0 };
                     0.01 * (1.0 + swing * (std::f64::consts::TAU * x / period + phase).sin())
                 };
-                let knee = find_knee(0.0, &low_sustain(700, ripple), 500).unwrap();
+                let knee = find_knee(0.0, &low_sustain(700, 0.01, ripple), 500).unwrap();
                 assert!((knee - 0.7).abs() <= 0.015, "{depth} {p} {knee}");
             }
         }
@@ -517,18 +517,7 @@ mod tests {
     fn a_slowly_rising_sustain_under_the_floor_keeps_its_note_off_past_the_clear_frames() {
         for level in [0.005, 0.008, 0.01, 0.013, 0.016, 0.019] {
             let rising = move |x: f64| level + 1e-6 * (x - 200.0);
-            let amp: Vec<f64> = low_sustain(500, rising)
-                .iter()
-                .zip(0..)
-                .map(|(&v, i)| {
-                    if (100..200).contains(&i) {
-                        level.powf((f64::from(i) - 100.0) / 100.0)
-                    } else {
-                        v
-                    }
-                })
-                .collect();
-            let knee = find_knee(0.0, &amp, 430).unwrap();
+            let knee = find_knee(0.0, &low_sustain(500, level, rising), 430).unwrap();
             assert!((knee - 0.5).abs() < 0.005, "{level} {knee}");
         }
     }
@@ -574,6 +563,47 @@ mod tests {
             .collect();
         let knee = find_knee(0.0, &amp, 427).unwrap();
         assert!((knee - 0.44).abs() < 0.003, "{knee}");
+    }
+
+    #[test]
+    fn a_corner_at_the_last_clear_frame_counts_as_past_them() {
+        // A release into silence at 300 ms, and a lone fall from 0.2 that starts at the
+        // stop itself.
+        let amp: Vec<f64> = (0..600_u32)
+            .map(|i| match i {
+                0..300 => 1.0,
+                300..350 => 1.0 - f64::from(i - 300) / 50.0,
+                450..500 => 0.2 * (1.0 - f64::from(i - 450) / 50.0),
+                _ => 0.0,
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp, 450).unwrap();
+        assert!((knee - 0.3).abs() < 0.002, "{knee}");
+    }
+
+    #[test]
+    fn the_stop_level_is_the_mean_over_the_last_10_clear_frames() {
+        // A gap at 0.002 with 0.014 over frames 590 to 595, before a next note at
+        // 0.0095 from 600, held over 200 frames before its note-off: over 10 frames the
+        // stop reads 0.008, so the next note lies under a quarter above it; over 5 or 20
+        // frames it reads 0.002 or 0.005.
+        let amp: Vec<f64> = (0..1000_u32)
+            .map(|i| {
+                let x = f64::from(i);
+                match i {
+                    0..300 => 1.0,
+                    300..350 => 0.002 + 0.998 * (1.0 - (x - 300.0) / 50.0),
+                    590..595 => 0.014,
+                    350..600 => 0.002,
+                    600..610 => 0.002 + 0.0075 * (x - 600.0) / 10.0,
+                    610..900 => 0.0095,
+                    900..950 => 0.0095 * (1.0 - (x - 900.0) / 50.0),
+                    _ => 0.0,
+                }
+            })
+            .collect();
+        let knee = find_knee(0.0, &amp, 600).unwrap();
+        assert!((knee - 0.9).abs() < 0.002, "{knee}");
     }
 
     #[test]

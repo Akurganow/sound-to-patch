@@ -687,6 +687,22 @@ chord's beating moves the crossing [synthetic].
   strips on 42 and 7 fewer of the 500 signals, and on 21 and 4 more [synthetic]. The
   pump read counts beats over the held parts that the first read's knees bound, so a
   knee that moves changes the parts it counts, see #313 [fact].
+- A sustain under -34 dB of the earlier corner's level, with its note-off past the
+  stop, loses that note-off to the decay corner when its level comes back without a
+  next note: the knee reads 0.46 to 0.8 s early, where commit 2d63f2e reads it
+  [synthetic, from generated probes]. This happens in two shapes:
+  - A rise of about 1.3 times, 2.3 dB, or more over the last 100 to 400 ms before the
+    note-off. The rise that loses it is 2.0 times over 60 frames, 1.5 over 100, 1.4
+    over 200 and 1.3 over 400.
+  - A swell like a tremolo of ±15 % or more at 2.5 Hz or slower. At ±25 % over 400
+    frames, 12 to 20 of 96 cells lose it with the stop 150 to 200 frames before the
+    note-off; at ±15 % over 400 frames, 24 of 96 with the stop 200 frames before.
+- A next note at 1.4 to 1.7 times the level of a silent gap still takes its own corner,
+  as commit 057d63c and 2d63f2e do [synthetic]. On a gap at 0.01 with the stop at its
+  end, it forms a corner where its level flattens, which sees its release within 200 ms
+  and whose 100 ms mean reads about 1.17 times the gap. That corner replaces the
+  note-off, and the next note's own corner then replaces it in turn. At 1.3 and at 1.8
+  or more the note-off holds.
 - A medium release lies over 50 % off on 50 of the 875 reverb stems, 26 of them with
   a release of 20 ms, and on 23 of the 779 dry stems, all with a release of 20 ms, on
   the 4000 stems [synthetic]. Lowering every reverb release with a true vote or a
