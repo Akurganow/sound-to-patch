@@ -2128,3 +2128,81 @@ fn a_vibrato_before_a_drop_inside_its_span_reads() {
         "{vibrato:?}"
     );
 }
+
+/// The mapper's groups hold the values `layers.json` writes for them.
+#[test]
+fn the_mapper_groups_copy_the_report_values() {
+    use sound_to_patch::preset::mapper::PitchEnvelopeGroups;
+    use sound_to_patch::preset::mapper::pitch_envelope::Reading;
+
+    let level = |confidence: &Value| -> Option<Level> {
+        serde_json::from_value(confidence["level"].clone()).ok()
+    };
+    let close = |a: f64, b: &Value| (a - b.as_f64().unwrap()).abs() < 1e-9;
+    let dir = tempfile::tempdir().unwrap();
+    let (wav, mid) = bass_files(dir.path());
+    let (analysis, report) = analyze_bass(&wav, &mid, &dir.path().join("a"));
+    let groups =
+        PitchEnvelopeGroups::from_layers(&analysis.pitch, &analysis.voices, &analysis.envelope);
+
+    let pitch = groups.pitch.as_ref().unwrap();
+    assert_eq!(Some(pitch.level), level(&report["pitch"]["confidence"]));
+    let glides = report["pitch"]["values"]["glides"].as_array().unwrap();
+    assert_eq!(pitch.glides.len(), glides.len());
+    assert_ne!(glides.len(), 0);
+    for (ours, theirs) in pitch.glides.iter().zip(glides) {
+        assert!(close(ours.time.get(), &theirs["time_s"]));
+        assert_eq!(json!(ours.from_silence), theirs["from_silence"]);
+        assert_eq!(Some(ours.level), level(&theirs["confidence"]));
+    }
+    let drops = report["pitch"]["values"]["drops"].as_array().unwrap();
+    assert_eq!(pitch.drops.len(), drops.len());
+    for (ours, theirs) in pitch.drops.iter().zip(drops) {
+        assert!(close(ours.df.get(), &theirs["df_st"]));
+        assert!(close(ours.tau.get(), &theirs["tau_s"]));
+    }
+
+    let voices = groups.voices.as_ref().unwrap();
+    let values = &report["voices"]["values"];
+    assert_eq!(json!(voices.mono), values["mono"]);
+    assert_eq!(json!(voices.max_polyphony), values["max_polyphony"]);
+    assert_eq!(
+        voices.joins.len(),
+        values["joins"].as_array().unwrap().len()
+    );
+
+    let envelope = groups.envelope.as_ref().unwrap();
+    let values = &report["envelope"]["values"];
+    let stat = |ours: Option<Reading<Seconds>>, name: &str| match ours {
+        Some(reading) => {
+            assert!(
+                close(reading.value.get(), &values[name]["median"]),
+                "{name}"
+            );
+            assert_eq!(
+                Some(reading.level),
+                level(&values[name]["confidence"]),
+                "{name}"
+            );
+        }
+        None => assert!(values[name]["median"].is_null(), "{name}"),
+    };
+    stat(envelope.attack, "attack_s");
+    stat(envelope.hold, "hold_s");
+    stat(envelope.decay, "decay_s");
+    stat(envelope.release, "release_s");
+    let sustain = envelope.sustain.unwrap();
+    assert!(close(sustain.value.get(), &values["sustain_db"]["median"]));
+    assert_eq!(
+        json!(envelope.attack_is_upper_bound),
+        report["envelope"]["flags"]["attack_is_upper_bound"]
+    );
+    assert_eq!(
+        json!(envelope.release_confidence),
+        values["release_confidence"]
+    );
+    assert_eq!(
+        json!(envelope.level_spread),
+        values["level_spread_db"]["value"]
+    );
+}

@@ -569,7 +569,10 @@ fn spec_of<'a>(registry: &'a dyn ParamRegistry, key: &str) -> Result<&'a ParamSp
     Ok(spec)
 }
 
-fn resolve_record(record: &Record, registry: &dyn ParamRegistry) -> Result<Resolved, Problem> {
+pub(crate) fn resolve_record(
+    record: &Record,
+    registry: &dyn ParamRegistry,
+) -> Result<Resolved, Problem> {
     match record {
         Record::Param { param, value } => {
             let spec = spec_of(registry, param)?;
@@ -737,7 +740,7 @@ fn choice_stored(spec: &ParamSpec, label: &str) -> Result<f64, Problem> {
 
 /// Whether the stored value of a control is a note number or a semitone
 /// count, so that a semitone amount is a stored offset.
-fn stored_in_semitones(spec: &ParamSpec) -> bool {
+pub(crate) fn stored_in_semitones(spec: &ParamSpec) -> bool {
     match spec.law.as_ref().map(|law| (&law.law, law.unit)) {
         Some((Law::Exp2 { rate, .. }, UnitKind::Hz)) => (rate * 12.0 - 1.0).abs() < 1e-12,
         Some((Law::Affine { scale, offset }, UnitKind::Semitones)) => {

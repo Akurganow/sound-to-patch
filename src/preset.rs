@@ -12,7 +12,8 @@
 //!   registry.
 //! - [`apply`]: applies checked edits to a model.
 //! - [`mapper`]: the [`SynthMapper`](mapper::SynthMapper) trait that turns
-//!   layer values into edits.
+//!   layer values into edits, and the synth-neutral plan of the pitch and
+//!   envelope groups.
 //! - [`catalogue`]: the layer and pattern of each control in the agent
 //!   reference.
 //!

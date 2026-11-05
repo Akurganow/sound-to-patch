@@ -126,8 +126,9 @@ pub static CAPABILITIES: SynthCapabilities = SynthCapabilities {
     middle_c: None,
 };
 
-/// The Vital mapper. The estimator epics fill its groups; until then each
-/// group maps to no edit.
+/// The Vital mapper. Each group maps to no edit until its Vital task writes
+/// the controls: pitch and envelope through
+/// [`pitch_envelope::map`](crate::preset::mapper::pitch_envelope::map).
 pub static MAPPER: VitalMapper = VitalMapper;
 
 /// Maps layer groups to Vital edits.
