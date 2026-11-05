@@ -82,5 +82,6 @@ expression: "serde_json::to_string_pretty(&shape(pitch)).unwrap()"
     "no_notes": false
   },
   "needs_render": false,
-  "suggested_edits": []
+  "suggested_edits": [],
+  "unrepresentable": []
 }

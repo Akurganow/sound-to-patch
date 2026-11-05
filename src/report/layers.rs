@@ -21,6 +21,9 @@ use crate::estimate::pitch::{
 };
 use crate::estimate::voices::{JOIN_CONVENTION, Join, VOICES_CONVENTION, VoicesLayer};
 use crate::notes::TranscriptionRecord;
+use crate::preset::edits::Edit;
+use crate::preset::mapper::pitch_envelope::group_of;
+use crate::preset::mapper::{Mapped, Unrepresentable};
 use crate::synth::Synth;
 use crate::units::{
     Bpm, Cents, Correlation, Decibels, Degrees, Hz, Normalized, Ratio, Seconds, Semitones,
@@ -40,7 +43,8 @@ when its RMS lies within 40 dB of the loudest frame";
 /// `source` is the stem's file name without its folder, `tempo` the
 /// given and refined tempo, `transcription` the record of the
 /// transcriber that gave the notes, or `None` when none ran, and
-/// `layers` the pitch and envelope layers.
+/// `layers` the pitch, envelope and voices layers with the mapper's output
+/// for them, which each group splits by its name.
 ///
 /// # Errors
 ///
@@ -53,7 +57,7 @@ pub fn layers_json(
     source: &str,
     tempo: &Tempo,
     transcription: Option<&TranscriptionRecord>,
-    (pitch, envelope, voices): (&PitchLayer, &EnvelopeLayer, &VoicesLayer),
+    ((pitch, envelope, voices), mapped): ((&PitchLayer, &EnvelopeLayer, &VoicesLayer), &Mapped),
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
         schema: SCHEMA,
@@ -61,9 +65,9 @@ pub fn layers_json(
         synth,
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
-        pitch: PitchGroup::new(pitch),
-        voices: VoicesGroup::new(voices),
-        envelope: EnvelopeGroup::new(envelope),
+        pitch: PitchGroup::new(pitch, Mapping::of(mapped, "pitch")),
+        voices: VoicesGroup::new(voices, Mapping::of(mapped, "voices")),
+        envelope: EnvelopeGroup::new(envelope, Mapping::of(mapped, "envelope")),
         conventions: Conventions::new(descriptors.frame_len),
     };
     let mut text = serde_json::to_string_pretty(&report)?;
@@ -86,15 +90,54 @@ struct Layers<'a> {
     conventions: Conventions,
 }
 
-/// The envelope layer as a layer group. The mapping step fills
-/// `suggested_edits`; until then the list is empty.
+/// The envelope layer as a layer group, with the mapper's edits for it.
 #[derive(Serialize)]
 struct EnvelopeGroup<'a> {
     values: Option<EnvelopeValues<'a>>,
     confidence: &'a Confidence<NoSpread>,
     flags: EnvelopeFlags,
     needs_render: bool,
-    suggested_edits: [(); 0],
+    #[serde(flatten)]
+    mapping: Mapping<'a>,
+}
+
+/// The mapper's output for one group: the edits whose reason names it and
+/// the misses whose field lies in it.
+#[derive(Serialize)]
+struct Mapping<'a> {
+    suggested_edits: Vec<&'a Edit>,
+    unrepresentable: Vec<Miss<'a>>,
+}
+
+/// An `unrepresentable` entry with its residual.
+#[derive(Serialize)]
+struct Miss<'a> {
+    #[serde(flatten)]
+    entry: &'a Unrepresentable,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    residual: Option<f64>,
+}
+
+impl<'a> Mapping<'a> {
+    fn of(mapped: &'a Mapped, group: &str) -> Self {
+        Self {
+            suggested_edits: mapped
+                .edits
+                .iter()
+                .filter(|edit| edit.edit.reason.as_deref() == Some(group))
+                .map(|edit| &edit.edit)
+                .collect(),
+            unrepresentable: mapped
+                .unrepresentable
+                .iter()
+                .filter(|entry| group_of(&entry.field) == Some(group))
+                .map(|entry| Miss {
+                    entry,
+                    residual: entry.residual(),
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -136,7 +179,7 @@ struct NoteRecord {
 }
 
 impl<'a> EnvelopeGroup<'a> {
-    fn new(layer: &'a EnvelopeLayer) -> Self {
+    fn new(layer: &'a EnvelopeLayer, mapping: Mapping<'a>) -> Self {
         let pump = layer.pump.as_ref();
         Self {
             values: layer.confidence.is_estimate().then(|| EnvelopeValues {
@@ -173,7 +216,7 @@ impl<'a> EnvelopeGroup<'a> {
             confidence: &layer.confidence,
             flags: layer.flags,
             needs_render: false,
-            suggested_edits: [],
+            mapping,
         }
     }
 }
@@ -191,15 +234,15 @@ impl NoteRecord {
     }
 }
 
-/// The voices layer as a layer group. The mapping step fills
-/// `suggested_edits` in a later release; until then the list is empty.
+/// The voices layer as a layer group, with the mapper's edits for it.
 #[derive(Serialize)]
 struct VoicesGroup<'a> {
     values: Option<VoicesValues<'a>>,
     confidence: &'a Confidence<NoSpread>,
     flags: VoicesFlags,
     needs_render: bool,
-    suggested_edits: [(); 0],
+    #[serde(flatten)]
+    mapping: Mapping<'a>,
 }
 
 /// The voices layer reads no flags yet.
@@ -207,7 +250,7 @@ struct VoicesGroup<'a> {
 struct VoicesFlags {}
 
 impl<'a> VoicesGroup<'a> {
-    fn new(layer: &'a VoicesLayer) -> Self {
+    fn new(layer: &'a VoicesLayer, mapping: Mapping<'a>) -> Self {
         Self {
             values: layer.confidence.is_estimate().then(|| VoicesValues {
                 mono: layer.mono,
@@ -218,7 +261,7 @@ impl<'a> VoicesGroup<'a> {
             confidence: &layer.confidence,
             flags: VoicesFlags {},
             needs_render: false,
-            suggested_edits: [],
+            mapping,
         }
     }
 }
@@ -254,19 +297,19 @@ impl<'a> JoinRecord<'a> {
     }
 }
 
-/// The pitch layer as a layer group. The mapping step fills
-/// `suggested_edits` in a later release; until then the list is empty.
+/// The pitch layer as a layer group, with the mapper's edits for it.
 #[derive(Serialize)]
 struct PitchGroup<'a> {
     values: Option<PitchValues<'a>>,
     confidence: &'a Confidence<NoSpread>,
     flags: PitchFlags,
     needs_render: bool,
-    suggested_edits: [(); 0],
+    #[serde(flatten)]
+    mapping: Mapping<'a>,
 }
 
 impl<'a> PitchGroup<'a> {
-    fn new(layer: &'a PitchLayer) -> Self {
+    fn new(layer: &'a PitchLayer, mapping: Mapping<'a>) -> Self {
         Self {
             values: layer.confidence.is_estimate().then(|| PitchValues {
                 glides: layer.glides.iter().map(GlideRecord::of).collect(),
@@ -276,7 +319,7 @@ impl<'a> PitchGroup<'a> {
             confidence: &layer.confidence,
             flags: layer.flags,
             needs_render: false,
-            suggested_edits: [],
+            mapping,
         }
     }
 }

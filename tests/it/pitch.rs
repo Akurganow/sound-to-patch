@@ -2206,3 +2206,144 @@ fn the_mapper_groups_copy_the_report_values() {
         values["level_spread_db"]["value"]
     );
 }
+
+/// A mapper that writes one edit of each kind and one miss, whatever the
+/// groups hold.
+struct OneOfEach;
+
+impl sound_to_patch::preset::mapper::SynthMapper for OneOfEach {
+    fn synth(&self) -> Synth {
+        Synth::Vital
+    }
+
+    fn pitch_envelope(
+        &self,
+        _input: &sound_to_patch::preset::mapper::PitchEnvelopeGroups,
+        ctx: &sound_to_patch::preset::mapper::MapContext<'_>,
+    ) -> sound_to_patch::preset::mapper::Mapped {
+        use sound_to_patch::preset::edits::PolarityText;
+        use sound_to_patch::preset::mapper::{fit_param, fit_route, fit_stored};
+        use sound_to_patch::preset::registry::Physical;
+        use sound_to_patch::units::Semitones;
+
+        let mut mapped = fit_param(
+            ctx.registry,
+            "glides.time_s",
+            "portamento_time",
+            Physical::Seconds(Seconds::new(0.12).unwrap()),
+            "pitch",
+            Level::High,
+        );
+        mapped.extend(fit_route(
+            ctx.registry,
+            "drops.df_st",
+            ("env_2", "osc_1_transpose"),
+            Semitones::new(100.0).unwrap(),
+            Some(PolarityText::Unipolar),
+            "pitch",
+            Level::Medium,
+        ));
+        mapped.extend(fit_stored(
+            ctx.registry,
+            "max_polyphony",
+            "polyphony",
+            3.0,
+            "voices",
+            Level::High,
+        ));
+        mapped
+    }
+
+    fn timbre(
+        &self,
+        _input: &sound_to_patch::preset::mapper::TimbreGroups,
+        _ctx: &sound_to_patch::preset::mapper::MapContext<'_>,
+    ) -> sound_to_patch::preset::mapper::Mapped {
+        sound_to_patch::preset::mapper::Mapped::default()
+    }
+
+    fn motion_fx(
+        &self,
+        _input: &sound_to_patch::preset::mapper::MotionFxGroups,
+        _ctx: &sound_to_patch::preset::mapper::MapContext<'_>,
+    ) -> sound_to_patch::preset::mapper::Mapped {
+        sound_to_patch::preset::mapper::Mapped::default()
+    }
+}
+
+/// The mapper's output reaches each group of `layers.json`, passes the
+/// schema and reads back as an edit list.
+#[test]
+fn the_report_carries_the_mapper_edits_by_group() {
+    use sound_to_patch::preset::edits::{Path as EditPath, parse, resolve};
+    use sound_to_patch::preset::registry::registry_for;
+    use sound_to_patch::report::analyze_with;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (wav, mid) = bass_files(dir.path());
+    let request = AnalyzeRequest {
+        stem: &wav,
+        bpm: Bpm::new(120.0).unwrap(),
+        bpm_exact: true,
+        synth: Synth::Vital,
+        notes: Some(&mid),
+        profile: None,
+        out: Some(&dir.path().join("a")),
+        force: false,
+    };
+    let transcriber = Transcriber::new().unwrap().with_tracker(bass_track);
+    let analysis = analyze_with(&request, &transcriber, Some(&OneOfEach)).unwrap();
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(&analysis.layers).unwrap()).unwrap();
+    let errors: Vec<String> = validator()
+        .iter_errors(&report)
+        .map(|e| e.to_string())
+        .collect();
+    assert_eq!(errors, Vec::<String>::new());
+
+    let pitch = &report["pitch"]["suggested_edits"];
+    assert_eq!(pitch.as_array().unwrap().len(), 2);
+    assert_eq!(pitch[0]["param"], "portamento_time");
+    assert_eq!(pitch[0]["reason"], "pitch");
+    let glide: Seconds = pitch[0]["value"].as_str().unwrap().parse().unwrap();
+    assert!((glide.get() - 0.12).abs() < 1e-12);
+    assert_eq!(
+        pitch[1],
+        json!({"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "96 st", "polarity": "unipolar"}, "reason": "pitch"})
+    );
+    assert_eq!(
+        report["pitch"]["unrepresentable"],
+        json!([{
+            "field": "drops.df_st",
+            "wanted": {"value": 100.0, "unit": "st"},
+            "nearest": {"value": 96.0, "unit": "st"},
+            "reason": "above_range",
+            "residual": -4.0,
+        }])
+    );
+    assert_eq!(
+        report["voices"]["suggested_edits"],
+        json!([{"param": "polyphony", "value": 3.0, "reason": "voices"}])
+    );
+    assert_eq!(report["voices"]["unrepresentable"], json!([]));
+    assert_eq!(report["envelope"]["suggested_edits"], json!([]));
+
+    // The groups' edits read as an edit list on the report path.
+    let mut edits = report["pitch"]["suggested_edits"]
+        .as_array()
+        .unwrap()
+        .clone();
+    edits.extend(
+        report["voices"]["suggested_edits"]
+            .as_array()
+            .unwrap()
+            .clone(),
+    );
+    let list = json!({"synth": "vital", "edits": edits}).to_string();
+    let resolved = resolve(
+        &parse(&list, EditPath::Report).unwrap(),
+        registry_for(Synth::Vital).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(resolved.len(), 3);
+}

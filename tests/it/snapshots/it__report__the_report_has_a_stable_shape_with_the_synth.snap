@@ -284,7 +284,8 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
       "no_notes": false
     },
     "needs_render": false,
-    "suggested_edits": []
+    "suggested_edits": [],
+    "unrepresentable": []
   },
   "voices": {
     "values": {
@@ -305,7 +306,8 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
     },
     "flags": {},
     "needs_render": false,
-    "suggested_edits": []
+    "suggested_edits": [],
+    "unrepresentable": []
   },
   "envelope": {
     "values": {
@@ -494,7 +496,8 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
       "pump_stripped": false
     },
     "needs_render": false,
-    "suggested_edits": []
+    "suggested_edits": [],
+    "unrepresentable": []
   },
   "conventions": {
     "frame_size": "<integer>",

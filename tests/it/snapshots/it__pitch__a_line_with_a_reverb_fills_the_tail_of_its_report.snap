@@ -260,5 +260,6 @@ expression: "serde_json::to_string_pretty(&shape(&report[\"envelope\"])).unwrap(
     "pump_stripped": false
   },
   "needs_render": false,
-  "suggested_edits": []
+  "suggested_edits": [],
+  "unrepresentable": []
 }

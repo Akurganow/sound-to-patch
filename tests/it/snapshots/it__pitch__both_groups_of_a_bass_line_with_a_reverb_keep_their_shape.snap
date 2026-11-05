@@ -83,7 +83,8 @@ expression: "serde_json::to_string_pretty(&json!({\n    \"pitch\": shape(&report
       "no_notes": false
     },
     "needs_render": false,
-    "suggested_edits": []
+    "suggested_edits": [],
+    "unrepresentable": []
   },
   "envelope": {
     "values": {
@@ -295,6 +296,7 @@ expression: "serde_json::to_string_pretty(&json!({\n    \"pitch\": shape(&report
       "pump_stripped": false
     },
     "needs_render": false,
-    "suggested_edits": []
+    "suggested_edits": [],
+    "unrepresentable": []
   }
 }

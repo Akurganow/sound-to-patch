@@ -300,6 +300,40 @@ impl Want {
     }
 }
 
+/// One of each setting, for the field-to-group lookup.
+const EVERY_WANT: [Want; 12] = [
+    Want::Mono(false),
+    Want::Legato(false),
+    Want::Voices(1),
+    Want::GlideTime(Seconds::from_const(0.0)),
+    Want::GlideFromSilence,
+    Want::PitchDrop {
+        depth: Semitones::from_const(0.0),
+        tau: Seconds::from_const(0.0),
+    },
+    Want::VelocityToLevel {
+        spread: Decibels::from_const(0.0),
+    },
+    Want::Attack(Seconds::from_const(0.0)),
+    Want::Hold(Seconds::from_const(0.0)),
+    Want::Decay(Seconds::from_const(0.0)),
+    Want::Sustain(Decibels::from_const(0.0)),
+    Want::Release(Seconds::from_const(0.0)),
+];
+
+/// The layer group of a field that a setting or an `unwritten` entry names,
+/// such as `pitch` for `glides.time_s`; `None` for a field no setting reads.
+#[must_use]
+pub fn group_of(field: &str) -> Option<&'static str> {
+    if field == "glides.curve" {
+        return Some("pitch");
+    }
+    EVERY_WANT
+        .iter()
+        .find(|want| want.field() == field)
+        .map(Want::group)
+}
+
 /// A setting and the confidence its edits carry.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Wanted {
@@ -394,6 +428,9 @@ impl Plan {
 }
 
 /// Mono or poly, legato and the voice count. A poly stem writes legato off.
+/// Each needs a verdict of medium confidence or higher (owner decision on
+/// #73): a low verdict writes nothing, and `unwritten` lists the field so
+/// the explanation can say to set it by ear.
 fn plan_voices(voices: &VoicesValues, plan: &mut Plan) {
     let group = voices.level;
     if group == Level::Low {
@@ -1212,6 +1249,66 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn every_field_has_its_group() {
+        for want in EVERY_WANT {
+            assert_eq!(group_of(want.field()), Some(want.group()));
+        }
+        assert_eq!(group_of("glides.curve"), Some("pitch"));
+        assert_eq!(group_of("vibrato.rate_hz"), None);
+    }
+
+    /// Owner decision on #73: mono and legato need a voices verdict of
+    /// medium or higher; a low verdict writes nothing and lists the field.
+    #[test]
+    fn voicing_needs_a_medium_verdict() {
+        let voices = |level: Level, mono: bool, legato: Level| {
+            plan(&PitchEnvelopeGroups {
+                voices: Some(VoicesValues {
+                    level,
+                    mono,
+                    max_polyphony: if mono { 1 } else { 4 },
+                    joins: vec![JoinValue {
+                        legato: Some(true),
+                        level: legato,
+                    }],
+                }),
+                ..PitchEnvelopeGroups::default()
+            })
+        };
+        let wants = |plan: &Plan| plan.wants.iter().map(|w| w.want).collect::<Vec<_>>();
+        let low = voices(Level::Low, true, Level::High);
+        assert_eq!(wants(&low), Vec::new());
+        assert_eq!(
+            low.unwritten,
+            vec![Unwritten::new("mono", UnwrittenReason::LowConfidence)]
+        );
+        let low_poly = voices(Level::Low, false, Level::High);
+        assert_eq!(wants(&low_poly), Vec::new());
+        assert_eq!(
+            low_poly.unwritten,
+            vec![Unwritten::new(
+                "max_polyphony",
+                UnwrittenReason::LowConfidence
+            )]
+        );
+        assert_eq!(
+            wants(&voices(Level::Medium, true, Level::Medium)),
+            vec![Want::Mono(true), Want::Legato(true)]
+        );
+        // A medium line whose only legato verdict is low writes mono and
+        // leaves legato to the ear.
+        let unsure = voices(Level::Medium, true, Level::Low);
+        assert_eq!(wants(&unsure), vec![Want::Mono(true)]);
+        assert_eq!(
+            unsure.unwritten,
+            vec![Unwritten::new(
+                "joins.legato",
+                UnwrittenReason::LowConfidence
+            )]
+        );
     }
 
     #[test]

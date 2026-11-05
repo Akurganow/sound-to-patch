@@ -8,7 +8,9 @@ own laws. This page states the plan.
 
 The output holds the edits, an `unrepresentable` list for values the synth
 cannot reach, and an `unwritten` list for measured fields the plan leaves
-out on purpose. Each `unwritten` entry names the field by its path in the
+out on purpose. `analyze` writes the edits and the `unrepresentable` entries
+into each group of `layers.json` (see [Layer report](../reference/formats/layers.md));
+the `unwritten` list stays in the library. Each `unwritten` entry names the field by its path in the
 group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
 
 | Reason | Meaning |
@@ -21,14 +23,16 @@ group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
 
 ## Voicing
 
-- A `voices` group at low confidence writes nothing, and lists `mono` or
-  `max_polyphony`. A low count is no evidence of voicing (see
-  [Voices](voices.md)).
+- Mono, legato and the voice count need a voices verdict of medium
+  confidence or higher. A `voices` group at low confidence writes nothing,
+  and lists `mono` or `max_polyphony`; set them by ear. A low count is no
+  evidence of voicing (see [Voices](voices.md)).
 - A mono stem writes mono on and no voice count.
 - Legato is on when a join of medium or high confidence reads legato. It is
   off when every such join retriggers. A synth's legato acts only where notes
   overlap, so one legato join needs it on. Joins with no confident verdict
-  list `joins.legato`.
+  write nothing and list `joins.legato`, so legato keeps the template's
+  setting; set it by ear.
 - A poly stem writes mono off, legato off and a voice count of
   `max_polyphony`, times 1 unison voice and 1 oscillator. The unison step
   sets the final count once it knows those numbers.
