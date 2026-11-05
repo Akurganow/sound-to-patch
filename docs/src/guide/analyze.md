@@ -169,6 +169,15 @@ that set its end, its level and the transcriber's octave flag.
 - Steady lines still bend in 27 of 502 generated runs without pitch
   motion, 3,194 events, against 156 runs and 28,807 events without the
   persistence rule [synthetic].
+- A pad note whose level falls 20 dB only after its list end keeps the
+  knee, no-knee or minimum end. Against the gate note-offs of the
+  generated tally's 1,776 transcribed notes, a search past the list end
+  raised the error from 239 to 346 ms MAE, and gave 177 ends more than
+  1 s late [synthetic].
+- The transcriber's notes of a mono line can overlap, so the voices layer
+  reads the line as polyphonic and its notes get pad ends but no glide
+  joins or bends: 41 of 133 transcribed runs of generated 808 and bass
+  lines in one tally set [synthetic].
 
 ## Give the notes
 
