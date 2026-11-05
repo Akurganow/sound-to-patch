@@ -1,0 +1,113 @@
+{
+ "description": "Rate and extent of a 5.5 Hz vibrato on a 220 Hz saw, mono and on a 7-voice unison, read by librosa pYIN and an FFT peak.",
+ "generator": "xtask/golden/generate.py:vibrato_67_table",
+ "issue": 67,
+ "issue_figures": {
+  "reproduced": false,
+  "rows": [
+   {
+    "case": "mono_35",
+    "extent": true,
+    "issue_extent_ct": 24.0,
+    "issue_rate_hz": 5.51,
+    "rate": true,
+    "reproduced": true
+   },
+   {
+    "case": "unison_35",
+    "issue_rate_hz": 5.49,
+    "rate": false,
+    "reproduced": false
+   },
+   {
+    "case": "mono_60",
+    "issue_rate_hz": 5.53,
+    "rate": false,
+    "reproduced": false
+   }
+  ],
+  "why": "the issue gives the 24-cent extent and its share of 0.69 once, for the 35-cent truth, so it is checked on the mono 35-cent case only"
+ },
+ "name": "67-vibrato",
+ "recipe": {
+  "extent": "the sine amplitude at that bin, 2 |X| / sum(w), the #67 extent of half the peak-to-peak swing for a sine; half the peak-to-peak span of the detrended window is recorded too, for information",
+  "note": "the #67 method: frame 2048, hop 128 at 22,050 Hz, a 0.5 to 1 s window, an FFT peak in 3 to 12 Hz; the issue states no fmin, fmax, window shape or length, so the pYIN settings of 61-glide and the signal of this repository's vibrato tests are used",
+  "settings": {
+   "center": true,
+   "fmax_hz": 400.0,
+   "fmin_hz": 30.0,
+   "frame_length": 2048,
+   "hop_length": 128,
+   "pad_mode": "constant",
+   "resolution": 0.1,
+   "sample_rate": 22050
+  },
+  "signal": {
+   "cases": {
+    "mono_35": [
+     35.0,
+     1,
+     0.0
+    ],
+    "mono_60": [
+     60.0,
+     1,
+     0.0
+    ],
+    "unison_35": [
+     35.0,
+     7,
+     25.0
+    ]
+   },
+   "f0_hz": 220.0,
+   "lead_s": 0.2,
+   "length_s": 1.0,
+   "pitch": "f0 2^(extent sin(2 pi rate t) / 1200), t from the tone start",
+   "rate_hz": 5.5,
+   "voices": "the Vibrato of tests/it/support/pitch.rs: the saws and unison of 66-glide, lead_s of silence before and after the tone"
+  },
+  "spectrum": "linear detrend, symmetric Hann, FFT zero-padded to 32768 points (0.0053 Hz bins), largest magnitude between 3 and 12 Hz, no interpolation",
+  "tolerance": "rates within 0.01 Hz: the issue's rounding plus about two bins; extent within 5 %",
+  "window": "the track frames whose centres lie in the tone less 50 ms at each end, all voiced, in cents over f0"
+ },
+ "rounding": "the issue prints rates to 0.01 Hz and the extent in whole cents",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.01,
+  "rel": 0.05
+ },
+ "tolerance_note": "abs applies to the rates, rel to the extent",
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "mono_35": {
+   "extent_ct": 23.975018627196864,
+   "frames": 155,
+   "half_peak_to_peak_ct": 20.399084786181415,
+   "rate_hz": 5.504214763641357,
+   "share": 0.6850005322056246,
+   "true_extent_ct": 35.0
+  },
+  "mono_60": {
+   "extent_ct": 46.940074651146475,
+   "frames": 155,
+   "half_peak_to_peak_ct": 40.36635944700453,
+   "rate_hz": 5.4937005043029785,
+   "share": 0.782334577519108,
+   "true_extent_ct": 60.0
+  },
+  "unison_35": {
+   "extent_ct": 21.731609962511627,
+   "frames": 155,
+   "half_peak_to_peak_ct": 29.63045019496623,
+   "rate_hz": 5.472671985626221,
+   "share": 0.6209031417860464,
+   "true_extent_ct": 35.0
+  }
+ }
+}

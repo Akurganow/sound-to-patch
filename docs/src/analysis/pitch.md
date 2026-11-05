@@ -334,6 +334,16 @@ and 25 % on $\tau$ up to 50 ms, 40 % at 100 ms [fact]. White noise 30 dB
 below the tone's peak keeps $f_\text{end}$ within 1 Hz and the drop
 accepted [synthetic].
 
+The pYIN columns that #67 quotes are re-run in
+[`67-drop-pyin.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/67-drop-pyin.json):
+librosa 1.0.0 pYIN at frames 2048 and 4096, hop 128, on the same tones,
+and the same fit from 3 to 400 ms after the onset [synthetic]. Two of the
+eight rows reproduce within 0.1 Hz and 5 %, the 50 ms and the 100 ms rows
+at frame 2048 [synthetic]. The smear reproduces: the 20 ms drop reads
+$\tau$ 29.5 ms at frame 2048 and 76.0 ms at frame 4096, against 21.6 ms
+from the sub-band line [synthetic]. The Hilbert column is checked in
+`sub-band-line.json` and does not reproduce either [fact].
+
 Limits:
 
 - Drive and harmonics. `tanh(4 x)` puts the third harmonic, 124 Hz,
@@ -574,6 +584,21 @@ against the true rise:
 | 50 ms, $p$ 1 or 2.5 | 1 | none, too short | | | |
 | step | 1 | none, no flag | | | |
 
+The #66 table measured the 10 to 90 % span straight off a librosa pYIN
+track. [`66-glide.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/66-glide.json) re-runs it on these signals
+with librosa 1.0.0 at frame 2048, hop 128, fmin 30 Hz and fmax 400 Hz
+[synthetic]. Every true span and 5 of the 6 mono figures reproduce within
+one hop; the 50 ms fast-start glide shows no frame between the 10 and
+90 % levels, where the issue read 6 ms [synthetic]. Of the unison figures
+only two reproduce: the 50 ms fast start, lost, and the 400 ms fast
+start [synthetic]. On this unison librosa reads the linear glides like
+the mono ones, 116 and 319 ms against the issue's 134 and 331 ms, the
+50 ms linear glide at 29 ms against lost, and the 150 ms fast start at
+11.6 ms against 58 ms [synthetic]. #66 gives no unison phases, so those
+figures belong to their signal [fact]. This track fits the curve instead:
+it reads the rise of every 150 and 400 ms glide within 4.4 %, that 150 ms
+fast-start unison included, and no glide at 50 ms [synthetic].
+
 The acceptance bound is 5 % on the rise from 150 ms on, mono [fact]. The
 mono interval reads 6.9 semitones for 7: the track's 10-cent bins round
 the start 5 cents up and the end 5 cents down [synthetic]. The fast-start
@@ -726,6 +751,17 @@ Each share comes from one signal, so the table carries that signal's
 quantisation to the track's 10-cent bins: 7 Hz reads lower than 8 Hz
 [synthetic]. The share belongs to this track: another pYIN implementation
 at another frequency ceiling reads another share [fact].
+
+The #67 figures are re-run in [`67-vibrato.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/67-vibrato.json):
+librosa 1.0.0 pYIN at frame 2048, hop 128, fmin 30 Hz and fmax 400 Hz on
+the signals below, and the FFT peak of the detrended cents over the tone
+less 50 ms at each end [synthetic]. The ±35-cent mono saw reproduces the
+issue: 5.50 Hz and 23.98 cents, a share of 0.685 against 0.69
+[synthetic]. This track reads the same saw at a share of 0.939
+[synthetic]. The unison and ±60-cent rates read 5.47 and 5.49 Hz against
+the issue's 5.49 and 5.53 Hz, outside 0.01 Hz [synthetic]. The librosa
+share moves with depth and voices: 0.621 on the unison, 0.782 at
+±60 cents [synthetic].
 
 | Case | Read rate | Read extent |
 | :-- | :-- | :-- |

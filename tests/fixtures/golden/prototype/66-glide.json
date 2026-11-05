@@ -1,0 +1,177 @@
+{
+ "description": "10-90 % rise of 7-semitone saw glides from 110 Hz, linear and fast start, mono and on a 7-voice unison, read by librosa pYIN.",
+ "generator": "xtask/golden/generate.py:glide_66_table",
+ "issue": 66,
+ "issue_figures": {
+  "reproduced": false,
+  "rows": [
+   {
+    "full_ms": 50.0,
+    "issue_mono_ms": 29.0,
+    "issue_true_ms": 40.0,
+    "issue_unison_ms": "lost",
+    "mono": true,
+    "p": 1.0,
+    "reproduced": false,
+    "true": true,
+    "unison": false
+   },
+   {
+    "full_ms": 50.0,
+    "issue_mono_ms": 6.0,
+    "issue_true_ms": 28.0,
+    "issue_unison_ms": "lost",
+    "mono": false,
+    "p": 2.5,
+    "reproduced": false,
+    "true": true,
+    "unison": true
+   },
+   {
+    "full_ms": 150.0,
+    "issue_mono_ms": 116.0,
+    "issue_true_ms": 120.0,
+    "issue_unison_ms": 134.0,
+    "mono": true,
+    "p": 1.0,
+    "reproduced": false,
+    "true": true,
+    "unison": false
+   },
+   {
+    "full_ms": 150.0,
+    "issue_mono_ms": 81.0,
+    "issue_true_ms": 84.0,
+    "issue_unison_ms": 58.0,
+    "mono": true,
+    "p": 2.5,
+    "reproduced": false,
+    "true": true,
+    "unison": false
+   },
+   {
+    "full_ms": 400.0,
+    "issue_mono_ms": 319.0,
+    "issue_true_ms": 320.0,
+    "issue_unison_ms": 331.0,
+    "mono": true,
+    "p": 1.0,
+    "reproduced": false,
+    "true": true,
+    "unison": false
+   },
+   {
+    "full_ms": 400.0,
+    "issue_mono_ms": 221.0,
+    "issue_true_ms": 224.0,
+    "issue_unison_ms": 226.0,
+    "mono": true,
+    "p": 2.5,
+    "reproduced": true,
+    "true": true,
+    "unison": true
+   }
+  ]
+ },
+ "name": "66-glide",
+ "recipe": {
+  "glides": {
+   "curve": "s(x) = 1 - (1 - x)^p over the full time, x from 0 to 1; pitch in semitones over the start",
+   "full_ms": [
+    50.0,
+    150.0,
+    400.0
+   ],
+   "hold_s": 0.5,
+   "p": [
+    1.0,
+    2.5
+   ],
+   "rise": "time between the first voiced frames at or above 10 % and 90 % of the step, in semitones over the start pitch; lost when no voiced frame lies between those levels",
+   "semitones": 7.0,
+   "signal": "the Glide of tests/it/support/pitch.rs: band-limited saws, harmonic h at 1/h up to the Nyquist frequency of each voice's top pitch; phase is the running sum of f / rate; unison voices detuned evenly over +/- 25 cents with start phases uniform(17, 7); summed and scaled to a peak of 0.5",
+   "start_hz": 110.0,
+   "true_rise": "(x90 - x10) T with x_q = 1 - (1 - q)^(1 / p)",
+   "voices": {
+    "mono": [
+     1,
+     0.0
+    ],
+    "unison": [
+     7,
+     25.0
+    ]
+   }
+  },
+  "note": "the #66 method: frame 2048, hop 128 at 22,050 Hz; the issue states no fmin, fmax or hold, so those of 61-glide are used",
+  "settings": {
+   "center": true,
+   "fmax_hz": 400.0,
+   "fmin_hz": 30.0,
+   "frame_length": 2048,
+   "hop_length": 128,
+   "pad_mode": "constant",
+   "resolution": 0.1,
+   "sample_rate": 22050
+  },
+  "tolerance": "a rise is a whole number of hops (5.8 ms), so a recovered figure reproduces within one hop; a true figure within 0.5 ms, the issue's rounding; lost reproduces lost"
+ },
+ "rounding": "the issue prints whole milliseconds",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 5.804988662131519,
+  "rel": 0.0
+ },
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "rows": [
+   {
+    "full_ms": 50.0,
+    "mono_rise_ms": 23.219954648526077,
+    "p": 1.0,
+    "true_rise_ms": 40.0,
+    "unison_rise_ms": 29.024943310657598
+   },
+   {
+    "full_ms": 50.0,
+    "mono_rise_ms": null,
+    "p": 2.5,
+    "true_rise_ms": 28.031217248034274,
+    "unison_rise_ms": null
+   },
+   {
+    "full_ms": 150.0,
+    "mono_rise_ms": 116.09977324263039,
+    "p": 1.0,
+    "true_rise_ms": 120.0,
+    "unison_rise_ms": 116.09977324263039
+   },
+   {
+    "full_ms": 150.0,
+    "mono_rise_ms": 75.46485260770976,
+    "p": 2.5,
+    "true_rise_ms": 84.09365174410281,
+    "unison_rise_ms": 11.609977324263038
+   },
+   {
+    "full_ms": 400.0,
+    "mono_rise_ms": 319.27437641723355,
+    "p": 1.0,
+    "true_rise_ms": 320.0,
+    "unison_rise_ms": 319.27437641723355
+   },
+   {
+    "full_ms": 400.0,
+    "mono_rise_ms": 220.58956916099774,
+    "p": 2.5,
+    "true_rise_ms": 224.2497379842742,
+    "unison_rise_ms": 220.58956916099774
+   }
+  ]
+ }
+}
