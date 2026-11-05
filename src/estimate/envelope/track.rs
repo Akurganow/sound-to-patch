@@ -236,15 +236,6 @@ impl LevelTrack {
             .unwrap_or(0)
             .min(self.db.len())
     }
-
-    /// Returns how many values a track from the same start to time `t`
-    /// holds, its frames up to and including `t`, clamped to the track.
-    #[must_use]
-    pub fn frames_to(&self, t: f64) -> usize {
-        frame_times(self.start, Seconds::clamped(t))
-            .count()
-            .min(self.db.len())
-    }
 }
 
 /// The RMS window over `periods` periods of `f0`, or the fewest whole

@@ -83,8 +83,8 @@ Every rule below reads one voicing (owner decision, 2026-11-05):
 
 | Line | When | Rules |
 | :-- | :-- | :-- |
-| Mono | The [voices layer](../analysis/voices.md) reads at most one voice at a time, and no `--profile pad` | Glide joins, next-note cuts, one note per tick, bends; an unread note ends 50 ms before its list end; a level span stops at the next later onset |
-| Polyphonic | The voices layer reads two voices or more at once, or `--profile pad` | Pad ends, which may lie past the list end; an unread note ends at its list end; a level span runs past the next onset |
+| Mono | The [voices layer](../analysis/voices.md) reads at most one voice at a time, and no `--profile pad` | Glide joins, next-note cuts, one note per tick, bends; a level span stops at the next later onset |
+| Polyphonic | The voices layer reads two voices or more at once, or `--profile pad` | Pad ends; a level span runs past the next onset |
 
 Both lines end the other notes at their knees or 50 ms before their list
 ends. The voicing of the notes step, from its chord share, sets only the
@@ -94,18 +94,15 @@ chord share stays under 0.68 is still a polyphonic line here.
 - Each note ends at its note-off knee, so the release lives in the amp
   envelope and a render does not play it twice. A note without a knee,
   such as a pluck that decays at one rate, ends 50 ms before its end in the
-  list. A note the envelope layer could not read, marked `unread`, gets
-  the same cut on a mono line and ends at its end in the list on a
-  polyphonic line.
+  list; so does a note the envelope layer could not read, marked
+  `unread`.
 - A note of a polyphonic line ends where its level falls 20 dB below its
   plateau, marked `pad`: the plateau of its one harmonic, or of the full
-  band when no harmonic of it is free, as in an octave stack. Its peak lies
-  within its list span, but the search runs on past the list end, up to the
-  next onset on the note's key or the stem's end, so a pad tail that rings
-  on ends where it fades (owner decision, 2026-11-05). A note whose level
-  falls short of 20 dB by then ends by the other rules.
-- No note ends after its end in the list, except at a glide join or a pad
-  end. A knee,
+  band when no harmonic of it is free, as in an octave stack. The search
+  stops at the list end: the note-off is the gate, and the release past it
+  belongs to the preset's amp envelope (owner decision, 2026-11-05). A note
+  whose level falls short of 20 dB by then ends by the other rules.
+- No note ends after its end in the list, except at a glide join. A knee,
   no-knee or pad cut never makes a note shorter than the minimum the BPM
   rule of the decoder gives at the tempo, 58 to 128 ms. The decoder drops
   notes that short on mono lines, and on polyphonic and pad lines it drops

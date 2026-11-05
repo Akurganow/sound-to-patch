@@ -464,10 +464,9 @@ fn note_facts(
                 .notes
                 .iter()
                 .find(|n| n.onset == note.onset() && n.pitch == note.pitch());
-            let horizon = || pad_horizon(mono, rate, note, list);
             let pad_end = match read {
-                Some(read) if pad => pad_end(mono, rate, (note, horizon()), list, read)?,
-                None if pad => full_band_pad_end(mono, rate, note, horizon()),
+                Some(read) if pad => pad_end(mono, rate, note, list, read)?,
+                None if pad => full_band_pad_end(mono, rate, note),
                 _ => None,
             };
             Ok(NoteFacts {
@@ -480,34 +479,13 @@ fn note_facts(
         .collect()
 }
 
-/// How far a pad note's end may lie: the next onset on the note's key,
-/// or the stem's end, and never before the note's end in the list. A pad
-/// tail rings past the list end, and another note on the key restarts it.
-fn pad_horizon(mono: &[f64], rate: SampleRate, note: &Note, list: &[Note]) -> Seconds {
-    let key = |n: &Note| crate::cast::round_to_usize(n.pitch().get());
-    let stem_end = crate::cast::usize_to_f64(mono.len()) / rate.hz().get();
-    let next = list
-        .iter()
-        .filter(|o| key(o) == key(note) && o.onset() > note.onset())
-        .map(|o| o.onset().get())
-        .fold(stem_end, f64::min);
-    Seconds::clamped(next.max(note.offset().get()))
-}
-
-/// The note with its end moved to `to`, for a read past its list end.
-fn reach(note: &Note, to: Seconds) -> Option<Note> {
-    Note::new(note.onset(), to, note.pitch()).ok()
-}
-
 /// Where a pad note's amp proxy falls [`PAD_FALL`] below its plateau, the
-/// peak plus the sustain level, first after its knee or else its peak, and
-/// before `horizon`. The peak lies within the list span, and the proxy keeps
-/// the harmonic that the notes overlapping that span leave free. `None`
-/// without a sustain, a proxy or such a fall.
+/// peak plus the sustain level, first after its knee or else its peak;
+/// `None` without a sustain, a proxy or such a fall.
 fn pad_end(
     mono: &[f64],
     rate: SampleRate,
-    (note, horizon): (&Note, Seconds),
+    note: &Note,
     list: &[Note],
     read: &NoteEnvelope,
 ) -> Result<Option<Seconds>, AnalyzeError> {
@@ -518,19 +496,14 @@ fn pad_end(
         .iter()
         .filter(|o| *o != note && o.onset() < note.offset() && note.onset() < o.offset())
         .collect();
-    let Some(long) = reach(note, horizon) else {
-        return Ok(None);
-    };
-    let Some(proxy) = amp_proxy(mono, rate, &long, &others)
+    let Some(proxy) = amp_proxy(mono, rate, note, &others)
         .map_err(|error| AnalyzeError::Envelope(error.into()))?
     else {
         return Ok(None);
     };
     let db = proxy.db();
-    let listed = proxy.frames_to(note.offset().get());
     let Some((peak_at, peak)) = db
         .iter()
-        .take(listed)
         .copied()
         .enumerate()
         .reduce(|a, b| if b.1 > a.1 { b } else { a })
@@ -548,24 +521,21 @@ fn pad_end(
 }
 
 /// Where the full-band level of a pad note that the envelope layer could
-/// not read falls [`PAD_FALL`] below its plateau, first after its peak and
-/// before `horizon`. The peak lies within the list span, and the plateau
-/// is the median of the last [`SUSTAIN_SHARE`] of the held part, from the
-/// first frame within 1 dB of the peak to [`KNEE_END_GAP`] before the
-/// note's end, as the envelope layer reads a sustain; `None` without a
-/// held part or such a fall.
-fn full_band_pad_end(
-    mono: &[f64],
-    rate: SampleRate,
-    note: &Note,
-    horizon: Seconds,
-) -> Option<Seconds> {
-    let track = full_band_track(mono, rate, (note.onset(), horizon), Hz::from(note.pitch()));
+/// not read falls [`PAD_FALL`] below its plateau, first after its peak.
+/// The plateau is the median of the last [`SUSTAIN_SHARE`] of the held
+/// part, from the first frame within 1 dB of the peak to
+/// [`KNEE_END_GAP`] before the note's end, as the envelope layer reads a
+/// sustain; `None` without a held part or such a fall.
+fn full_band_pad_end(mono: &[f64], rate: SampleRate, note: &Note) -> Option<Seconds> {
+    let track = full_band_track(
+        mono,
+        rate,
+        (note.onset(), note.offset()),
+        Hz::from(note.pitch()),
+    );
     let db = track.db();
-    let listed = track.frames_to(note.offset().get());
     let (peak_at, peak) = db
         .iter()
-        .take(listed)
         .copied()
         .enumerate()
         .reduce(|a, b| if b.1 > a.1 { b } else { a })?;
@@ -1044,7 +1014,7 @@ mod tests {
     use crate::units::{Decibels, MidiPitch};
 
     /// A 220 Hz tone held at full level to 0.5 s that then falls 60 dB/s
-    /// reaches 20 dB under its plateau at 0.833 s.
+    /// reaches 20 dB under its plateau at 0.833 s, within its list span.
     #[test]
     fn a_pad_note_ends_where_its_level_falls_20_db_under_the_plateau() {
         let rate = SampleRate::new(22_050).unwrap();
@@ -1078,10 +1048,7 @@ mod tests {
             overlap: false,
             tail: None,
         };
-        let list = std::slice::from_ref(&note);
-        let horizon = pad_horizon(&mono, rate, &note, list);
-        assert_eq!(horizon, Seconds::clamped(1.5));
-        let end = pad_end(&mono, rate, (&note, horizon), list, &read)
+        let end = pad_end(&mono, rate, &note, std::slice::from_ref(&note), &read)
             .unwrap()
             .unwrap();
         assert!((end.get() - (0.5 + 20.0 / 60.0)).abs() < 0.01, "{end}");
@@ -1089,42 +1056,17 @@ mod tests {
             sustain: None,
             ..read
         };
-        let unread = pad_end(&mono, rate, (&note, horizon), list, &held).unwrap();
+        let unread = pad_end(&mono, rate, &note, std::slice::from_ref(&note), &held).unwrap();
         assert_eq!(unread, None);
-    }
-
-    /// The same tone listed only to 0.6 s rings on past its list end: its
-    /// pad end lies at 0.833 s, up to the stem's end, but not past the next
-    /// note on its key.
-    #[test]
-    fn a_pad_tail_is_found_past_the_list_end_up_to_the_next_note_on_its_key() {
-        let rate = SampleRate::new(22_050).unwrap();
-        let fs = 22_050.0;
-        let mono: Vec<f64> = (0..33_075)
-            .map(|n| {
-                let t = f64::from(n) / fs;
-                let gain = if t < 0.5 {
-                    1.0
-                } else {
-                    10f64.powf(-3.0 * (t - 0.5))
-                };
-                0.5 * gain * (std::f64::consts::TAU * 220.0 * t).sin()
-            })
-            .collect();
-        let pitch = MidiPitch::new(57.0).unwrap();
-        let s = Seconds::clamped;
-        let note = Note::new(s(0.0), s(0.6), pitch).unwrap();
-        let list = [note.clone()];
-        let horizon = pad_horizon(&mono, rate, &note, &list);
-        assert_eq!(horizon, s(1.5));
-        let end = full_band_pad_end(&mono, rate, &note, horizon).unwrap();
-        assert!((end.get() - (0.5 + 20.0 / 60.0)).abs() < 0.01, "{end}");
-        // A note on the key at 0.7 s, or one a semitone up that leaves it.
-        let next = Note::new(s(0.7), s(1.0), pitch).unwrap();
-        let other = Note::new(s(0.65), s(1.0), MidiPitch::new(58.0).unwrap()).unwrap();
-        let list = [note.clone(), other, next];
-        let horizon = pad_horizon(&mono, rate, &note, &list);
-        assert_eq!(horizon, s(0.7));
-        assert_eq!(full_band_pad_end(&mono, rate, &note, horizon), None);
+        // Listed only to 0.6 s, the tone falls 20 dB after its list end, so
+        // it has no pad end: the search stops there, and the release belongs
+        // to the preset's amp envelope.
+        let short = Note::new(note.onset(), Seconds::clamped(0.6), pitch).unwrap();
+        let read = NoteEnvelope {
+            end: short.offset(),
+            ..read
+        };
+        let end = pad_end(&mono, rate, &short, std::slice::from_ref(&short), &read).unwrap();
+        assert_eq!(end, None);
     }
 }
