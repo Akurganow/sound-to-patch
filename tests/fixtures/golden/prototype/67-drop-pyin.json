@@ -1,0 +1,266 @@
+{
+ "description": "The exponential drop fit on the librosa pYIN track of a generated 808 tone, frames 2048 and 4096, for the four rows of the #67 drop table.",
+ "generator": "xtask/golden/generate.py:drop_pyin_67_table",
+ "issue": 67,
+ "issue_figures": {
+  "reproduced": false,
+  "rows": [
+   {
+    "df": false,
+    "f_end": true,
+    "frame_length": 2048,
+    "issue_df_hz": 18.5,
+    "issue_f_end_hz": 41.4,
+    "issue_tau_ms": 39.1,
+    "reproduced": false,
+    "tau": false,
+    "true": [
+     41.2,
+     41.2,
+     0.02
+    ]
+   },
+   {
+    "df": true,
+    "f_end": true,
+    "frame_length": 2048,
+    "issue_df_hz": 32.5,
+    "issue_f_end_hz": 41.0,
+    "issue_tau_ms": 68.7,
+    "reproduced": true,
+    "tau": true,
+    "true": [
+     41.2,
+     41.2,
+     0.05
+    ]
+   },
+   {
+    "df": false,
+    "f_end": true,
+    "frame_length": 2048,
+    "issue_df_hz": 235.0,
+    "issue_f_end_hz": 55.3,
+    "issue_tau_ms": 29.9,
+    "reproduced": false,
+    "tau": true,
+    "true": [
+     55.0,
+     165.0,
+     0.03
+    ]
+   },
+   {
+    "df": true,
+    "f_end": true,
+    "frame_length": 2048,
+    "issue_df_hz": 12.9,
+    "issue_f_end_hz": 41.2,
+    "issue_tau_ms": 119.0,
+    "reproduced": true,
+    "tau": true,
+    "true": [
+     41.2,
+     13.8,
+     0.1
+    ]
+   },
+   {
+    "df": false,
+    "f_end": false,
+    "frame_length": 4096,
+    "issue_df_hz": 8.6,
+    "issue_f_end_hz": 41.1,
+    "issue_tau_ms": 72.3,
+    "reproduced": false,
+    "tau": false,
+    "true": [
+     41.2,
+     41.2,
+     0.02
+    ]
+   },
+   {
+    "df": true,
+    "f_end": false,
+    "frame_length": 4096,
+    "issue_df_hz": 23.7,
+    "issue_f_end_hz": 39.8,
+    "issue_tau_ms": 110.0,
+    "reproduced": false,
+    "tau": false,
+    "true": [
+     41.2,
+     41.2,
+     0.05
+    ]
+   },
+   {
+    "df": true,
+    "f_end": true,
+    "frame_length": 4096,
+    "issue_df_hz": 28.6,
+    "issue_f_end_hz": 54.9,
+    "issue_tau_ms": 65.3,
+    "reproduced": false,
+    "tau": false,
+    "true": [
+     55.0,
+     165.0,
+     0.03
+    ]
+   },
+   {
+    "df": true,
+    "f_end": false,
+    "frame_length": 4096,
+    "issue_df_hz": 11.9,
+    "issue_f_end_hz": 39.7,
+    "issue_tau_ms": 192.0,
+    "reproduced": false,
+    "tau": true,
+    "true": [
+     41.2,
+     13.8,
+     0.1
+    ]
+   }
+  ]
+ },
+ "name": "67-drop-pyin",
+ "recipe": {
+  "decay_s": 0.5,
+  "fit": "scipy.optimize.least_squares of f0 - (f_end + df exp(-t / tau)) over the voiced track frames whose centres lie 3 to 400 ms after the true onset, t from the onset; start at the last frame's f0, the first less the last, and 20 ms; tau bounded to 1 ms to 1 s",
+  "lead_s": 0.25,
+  "length_s": 1.25,
+  "note": "the #67 method: pYIN frame 2048 and 4096 at 22,050 Hz, the fit over the first 3 to 400 ms; the issue states no hop, fmin or fmax, so those of 61-glide are used",
+  "rows": [
+   [
+    41.2,
+    41.2,
+    0.02
+   ],
+   [
+    41.2,
+    41.2,
+    0.05
+   ],
+   [
+    55.0,
+    165.0,
+    0.03
+   ],
+   [
+    41.2,
+    13.8,
+    0.1
+   ]
+  ],
+  "settings": {
+   "center": true,
+   "fmax_hz": 400.0,
+   "fmin_hz": 30.0,
+   "frame_length": [
+    2048,
+    4096
+   ],
+   "hop_length": 128,
+   "pad_mode": "constant",
+   "resolution": 0.1,
+   "sample_rate": 22050
+  },
+  "signal": "the tones of sub-band-line: 0.8 sin(2 pi (f_end t + df tau (1 - exp(-t / tau)))) exp(-t / decay_s) from lead_s on, silence before, length_s in all",
+  "tolerance": "f_end within 0.1 Hz, df and tau within 5 %, the check of sub-band-line"
+ },
+ "rounding": "the issue prints three significant figures",
+ "tag": "[own, synthetic]",
+ "tolerance": {
+  "abs": 0.1,
+  "rel": 0.05
+ },
+ "tolerance_note": "abs applies to f_end, rel to df and tau",
+ "tools": {
+  "librosa": "1.0.0",
+  "numpy": "2.5.4",
+  "python": "3.14.7",
+  "scipy": "1.18.1"
+ },
+ "values": {
+  "2048": [
+   {
+    "df_hz": 28.68638152503441,
+    "f_end_hz": 41.46123556056872,
+    "frames": 64,
+    "nfev": 28,
+    "rms_hz": 0.38730944141906126,
+    "status": 3,
+    "tau_ms": 29.54674229119491
+   },
+   {
+    "df_hz": 32.53816878768211,
+    "f_end_hz": 40.91689634696893,
+    "frames": 68,
+    "nfev": 20,
+    "rms_hz": 0.9556013277616592,
+    "status": 2,
+    "tau_ms": 70.12148829443657
+   },
+   {
+    "df_hz": 214.59181791745516,
+    "f_end_hz": 55.271483452000886,
+    "frames": 53,
+    "nfev": 47,
+    "rms_hz": 0.14245497355611977,
+    "status": 3,
+    "tau_ms": 30.773387024875223
+   },
+   {
+    "df_hz": 12.99111200730649,
+    "f_end_hz": 41.125061054625604,
+    "frames": 68,
+    "nfev": 23,
+    "rms_hz": 0.25136729980682626,
+    "status": 4,
+    "tau_ms": 120.36801144681014
+   }
+  ],
+  "4096": [
+   {
+    "df_hz": 9.093081999117345,
+    "f_end_hz": 40.97710829674492,
+    "frames": 68,
+    "nfev": 17,
+    "rms_hz": 0.42123528810128025,
+    "status": 2,
+    "tau_ms": 75.98196467996617
+   },
+   {
+    "df_hz": 24.63727318295569,
+    "f_end_hz": 39.49304801368821,
+    "frames": 68,
+    "nfev": 17,
+    "rms_hz": 1.1052583771458984,
+    "status": 2,
+    "tau_ms": 116.125844194918
+   },
+   {
+    "df_hz": 29.443803735182158,
+    "f_end_hz": 54.8317715743238,
+    "frames": 68,
+    "nfev": 20,
+    "rms_hz": 0.9816313208010414,
+    "status": 3,
+    "tau_ms": 68.57834393156337
+   },
+   {
+    "df_hz": 12.204635576858976,
+    "f_end_hz": 39.4719868058463,
+    "frames": 68,
+    "nfev": 15,
+    "rms_hz": 0.4007841508716683,
+    "status": 2,
+    "tau_ms": 201.30237679494567
+   }
+  ]
+ }
+}

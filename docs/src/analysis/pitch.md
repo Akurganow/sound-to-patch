@@ -334,6 +334,21 @@ and 25 % on $\tau$ up to 50 ms, 40 % at 100 ms [fact]. White noise 30 dB
 below the tone's peak keeps $f_\text{end}$ within 1 Hz and the drop
 accepted [synthetic].
 
+The pYIN columns that #67 quotes are re-run in
+[`67-drop-pyin.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/67-drop-pyin.json):
+librosa 1.0.0 pYIN at frames 2048 and 4096, hop 128, on the same tones,
+and the same fit from 3 to 400 ms after the onset [synthetic]. Two of the
+eight rows reproduce within 0.1 Hz and 5 %, the 50 ms and the 100 ms rows
+at frame 2048 [synthetic]. At frame 2048 the 20 ms row reads $\Delta f$
+55 % high and $\tau$ 24 % short of the issue, and the 30 ms row
+$\Delta f$ 8.7 % low [synthetic]. At frame 4096 no row reproduces, but no
+field lies more than 5.7 % or 0.31 Hz off the issue [synthetic]. The
+smear shows in kind, not within the tolerance: the 20 ms drop reads
+$\tau$ 29.5 ms at frame 2048 and 76.0 ms at frame 4096, against the
+issue's 72.3 ms there and 21.6 ms from the sub-band line [synthetic]. The
+Hilbert column, checked in `sub-band-line.json`, reproduces 1 of its 4
+rows [fact].
+
 Limits:
 
 - Drive and harmonics. `tanh(4 x)` puts the third harmonic, 124 Hz,
@@ -574,6 +589,30 @@ against the true rise:
 | 50 ms, $p$ 1 or 2.5 | 1 | none, too short | | | |
 | step | 1 | none, no flag | | | |
 
+The #66 table measured the 10 to 90 % span straight off a librosa pYIN
+track.
+[`66-glide.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/66-glide.json)
+re-runs it on these signals with librosa 1.0.0 at frame 2048, hop 128,
+fmin 30 Hz and fmax 400 Hz [synthetic]. Every true span reproduces within
+0.5 ms, the issue's rounding [synthetic]. Five of the 6 mono figures
+reproduce within one hop, 5.80 ms; two of them pass only just, 5.78 and
+5.54 ms off [synthetic]. The 50 ms fast-start glide is lost: its first
+frame at or above 10 % already stands at 90 %, where the issue read 6 ms
+[synthetic]. Of the unison figures only two reproduce:
+the 50 ms fast start, lost, and the 400 ms fast start [synthetic]. On
+this unison librosa reads the linear glides like the mono ones, 116 and
+319 ms against the issue's 134 and 331 ms, the 50 ms linear glide at
+29 ms against lost, and the 150 ms fast start at 11.6 ms against 58 ms
+[synthetic]. The unison's start phases decide it: over 20 seeds the
+150 ms linear glide reads 104.5 to 133.5 ms, the 150 ms fast start 11.6 to
+98.7 ms and the 400 ms linear glide 307.7 to 336.7 ms, and the 50 ms
+glides are lost on 6 and 17 of the seeds [synthetic]. Every unison figure
+of the issue lies within one hop of some seed's reading [synthetic]. #66
+gives no unison phases, so its unison figures hold for its own signal
+only [fact]. This track fits the curve instead:
+it reads the rise of every 150 and 400 ms glide within 4.4 %, that 150 ms
+fast-start unison included, and no glide at 50 ms [synthetic].
+
 The acceptance bound is 5 % on the rise from 150 ms on, mono [fact]. The
 mono interval reads 6.9 semitones for 7: the track's 10-cent bins round
 the start 5 cents up and the end 5 cents down [synthetic]. The fast-start
@@ -726,6 +765,27 @@ Each share comes from one signal, so the table carries that signal's
 quantisation to the track's 10-cent bins: 7 Hz reads lower than 8 Hz
 [synthetic]. The share belongs to this track: another pYIN implementation
 at another frequency ceiling reads another share [fact].
+
+The #67 figures are re-run in
+[`67-vibrato.json`](https://github.com/Akurganow/sound-to-patch/blob/main/tests/fixtures/golden/prototype/67-vibrato.json):
+librosa 1.0.0 pYIN at frame 2048, hop 128, fmin 30 Hz and fmax 400 Hz on
+the signals below, and the FFT peak of the detrended cents over the tone
+less 50 ms at each end, 0.9 s [synthetic]. The table reads the extent as
+the amplitude of the sine at that peak [fact]. #67 defines the extent as
+half the peak-to-peak span, which equals that amplitude only for a clean
+sine [fact]. With the amplitude, the ±35-cent mono saw reproduces the
+issue: 5.50 Hz and 23.98 cents, a share of 0.685 against 0.69
+[synthetic]. Half its peak-to-peak span reads 20.40 cents, a share of
+0.58, which does not [synthetic]. This track reads the same saw at a
+share of 0.939 [synthetic]. The unison and ±60-cent rates read 5.47 and
+5.49 Hz against the issue's 5.49 and 5.53 Hz, 0.3 % and 0.7 % low
+[synthetic]. Over windows of 0.5 to 1 s they read 5.43 to 5.48 Hz and
+5.46 to 5.49 Hz, so neither figure lies in its range [synthetic]. The
+librosa share moves with depth and voices: 0.621 on the unison, 0.782 at
+±60 cents [synthetic]. On the unison half the peak-to-peak span reads
+29.63 cents against an amplitude of 21.73 [synthetic].
+
+This track reads:
 
 | Case | Read rate | Read extent |
 | :-- | :-- | :-- |
