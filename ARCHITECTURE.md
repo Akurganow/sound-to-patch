@@ -50,8 +50,9 @@ never in the synth-neutral part.
   `interim`). A calibration set replaces laws with measured tables.
 - `SynthMapper` (`preset::mapper`): maps layers to edits and returns an
   `unrepresentable` list with the residual for what the synth cannot reach.
-  The trait and the fitting helper exist; the layer groups join with the
-  estimators.
+  The fitting helpers serve every adapter. `mapper::pitch_envelope` plans
+  the pitch, voices and envelope groups in physical units, and each
+  adapter writes that plan to its own keys and laws.
 - `preset_state` (`render::state`): builds the plug-in state of a preset
   for the VST3 host. Vital's is the preset JSON with the recipe's
   oversampling and a tuning, followed by a NUL. A preset without a tuning
@@ -124,8 +125,9 @@ joins `READY` when its adapter lands.
 - `preset`: preset files. `format`, `registry` and `template` hold the
   synth-neutral traits and the `inspect` command. `edits` parses an edit
   list and resolves it against a registry, `apply` writes resolved edits
-  into a model, `mapper` holds the mapper trait, and `catalogue` places
-  each control in a layer of the agent reference. `vital` is the Vital
+  into a model, `mapper` holds the mapper trait and the synth-neutral
+  plan of the pitch and envelope groups, and `catalogue` places each
+  control in a layer of the agent reference. `vital` is the Vital
   adapter: the JSON codec, the registry built from `registry.json`, the
   built-in template, the writers of routes, wavetables and LFO shapes, the
   capabilities, the laws that span controls and the layer map of its

@@ -288,9 +288,45 @@ fn the_layer_group_shape_takes_edit_records_as_suggested_edits() {
         "confidence": confidence,
         "flags": {"needs_review": false},
         "needs_render": true,
-        "suggested_edits": [{"param": "filter_1_cutoff", "value": "410 Hz", "reason": "the cutoff"}],
+        "suggested_edits": [
+            {"param": "filter_1_cutoff", "value": "410 Hz", "reason": "timbre"},
+            {"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "7 st", "polarity": "unipolar"}, "reason": "pitch", "uncalibrated": true, "confidence": "low"},
+            {"param": "polyphony", "value": 3.0, "reason": "voices", "uncalibrated": false, "confidence": "high"},
+            {"param": "legato", "value": true, "reason": "voices"},
+        ],
+        "unrepresentable": [
+            {"field": "glides.time_s", "wanted": {"value": 20.0, "unit": "s"}, "nearest": {"value": 16.0, "unit": "s"}, "reason": "above_range", "residual": -4.0},
+            {"field": "glides.from_silence", "wanted": "true", "reason": "not_in_synth"},
+        ],
     });
     assert!(group.is_valid(&valid));
+    for (path, bad) in [
+        ("/suggested_edits/0", json!({"param": "x", "value": "1 s"})),
+        (
+            "/suggested_edits/0",
+            json!({"param": "x", "value": "1 s", "reason": "r", "extra": 1}),
+        ),
+        (
+            "/suggested_edits/0",
+            json!({"menu": "x", "choice": "y", "reason": "r"}),
+        ),
+        ("/suggested_edits/1/route/polarity", json!("both")),
+        ("/suggested_edits/1/uncalibrated", json!("yes")),
+        ("/suggested_edits/2/confidence", json!("huge")),
+        ("/unrepresentable/0/reason", json!("too_high")),
+        ("/unrepresentable/0/wanted", json!(20.0)),
+        (
+            "/unrepresentable/1",
+            json!({"field": "f", "wanted": "a", "reason": "not_in_synth", "extra": 1}),
+        ),
+    ] {
+        let mut wrong = valid.clone();
+        *wrong.pointer_mut(path).unwrap() = bad;
+        assert!(!group.is_valid(&wrong), "{path} accepted");
+    }
+    let mut no_misses = valid.clone();
+    no_misses.as_object_mut().unwrap().remove("unrepresentable");
+    assert!(!group.is_valid(&no_misses));
     let mut bare_number = valid.clone();
     bare_number["suggested_edits"] = json!([410]);
     assert!(!group.is_valid(&bare_number));

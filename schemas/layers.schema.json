@@ -219,10 +219,76 @@
       },
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
-    "layer_group": {
-      "description": "The shape of every layer group at the top level. values is null when the evidence is too thin, and the confidence then says why. suggested_edits is a list of records in the edit-list format, each a param or a route with unit strings, so a route keeps its source, amount and polarity; the mapping step fills it, and until then it is empty.",
+    "suggested_edit": {
+      "description": "One record of the edit-list format: a param with its value as a unit string, a bare number or a switch, or a route with its depth as a percent of the destination's range or in semitones. reason is the name of the layer group. uncalibrated is true when the law behind the value is interim, and confidence is the level of the measurement behind it; an edit list reads and drops both.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["param", "value", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "param": { "type": "string", "minLength": 1 },
+            "value": { "type": ["string", "number", "boolean"] },
+            "reason": { "type": "string", "minLength": 1 },
+            "uncalibrated": { "type": "boolean" },
+            "confidence": { "enum": ["low", "medium", "high"] }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["route", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "route": {
+              "type": "object",
+              "required": ["source", "dest", "amount", "polarity"],
+              "additionalProperties": false,
+              "properties": {
+                "source": { "type": "string", "minLength": 1 },
+                "dest": { "type": "string", "minLength": 1 },
+                "amount": { "type": "string", "minLength": 1 },
+                "polarity": { "enum": [null, "unipolar", "bipolar"] }
+              }
+            },
+            "reason": { "type": "string", "minLength": 1 },
+            "uncalibrated": { "type": "boolean" },
+            "confidence": { "enum": ["low", "medium", "high"] }
+          }
+        }
+      ]
+    },
+    "amount": {
+      "description": "A number and its unit suffix (count for a whole number, empty for a stored value without a unit), or a choice name.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["value", "unit"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": "number" },
+            "unit": { "type": "string" }
+          }
+        },
+        { "type": "string" }
+      ]
+    },
+    "unrepresentable": {
+      "description": "A value the synth cannot reach exactly. field is the path of the value in the group's values, with a dot into a list's records. nearest is the nearest value the synth reaches, absent when it has none. residual is nearest minus wanted, present when both are numbers in one unit.",
       "type": "object",
-      "required": ["values", "confidence", "flags", "needs_render", "suggested_edits"],
+      "required": ["field", "wanted", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "field": { "type": "string", "minLength": 1 },
+        "wanted": { "$ref": "#/$defs/amount" },
+        "nearest": { "$ref": "#/$defs/amount" },
+        "reason": { "enum": ["above_range", "below_range", "no_such_choice", "not_in_synth", "slot_limit"] },
+        "residual": { "type": "number" }
+      }
+    },
+    "layer_group": {
+      "description": "The shape of every layer group at the top level. values is null when the evidence is too thin, and the confidence then says why. suggested_edits is a list of records in the edit-list format, each a param or a route with unit strings, so a route keeps its source, amount and polarity, and each with the group name as its reason. unrepresentable lists the values of the group that the synth cannot reach, with the nearest value it can. The mapper of the report's synth fills both; a synth whose mapper writes no edit for the group leaves both empty.",
+      "type": "object",
+      "required": ["values", "confidence", "flags", "needs_render", "suggested_edits", "unrepresentable"],
       "additionalProperties": false,
       "properties": {
         "values": {
@@ -238,11 +304,11 @@
         "needs_render": { "type": "boolean" },
         "suggested_edits": {
           "type": "array",
-          "items": {
-            "description": "One record of the edit-list format.",
-            "type": "object",
-            "minProperties": 1
-          }
+          "items": { "$ref": "#/$defs/suggested_edit" }
+        },
+        "unrepresentable": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/unrepresentable" }
         }
       },
       "if": { "$ref": "#/$defs/no_estimate" },

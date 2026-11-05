@@ -16,6 +16,7 @@
 - [Pitch layer](analysis/pitch.md)
 - [Envelope layer](analysis/envelope.md)
 - [Voices layer](analysis/voices.md)
+- [Suggested edits](analysis/suggested-edits.md)
 - [Common methods](analysis/methods.md)
 
 # Reference

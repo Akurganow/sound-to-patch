@@ -197,6 +197,12 @@ struct ParamData {
     value: ParamValue,
     #[serde(default)]
     reason: Option<String>,
+    /// A layer report's per-edit fields, read and dropped: the applier
+    /// takes the provenance from the registry.
+    #[serde(default, rename = "uncalibrated")]
+    _uncalibrated: Option<bool>,
+    #[serde(default, rename = "confidence")]
+    _confidence: Option<crate::confidence::Level>,
 }
 
 #[derive(Deserialize)]
@@ -205,6 +211,12 @@ struct RouteData {
     route: RouteRecord,
     #[serde(default)]
     reason: Option<String>,
+    /// A layer report's per-edit fields, read and dropped: the applier
+    /// takes the provenance from the registry.
+    #[serde(default, rename = "uncalibrated")]
+    _uncalibrated: Option<bool>,
+    #[serde(default, rename = "confidence")]
+    _confidence: Option<crate::confidence::Level>,
 }
 
 #[derive(Deserialize)]
@@ -569,7 +581,10 @@ fn spec_of<'a>(registry: &'a dyn ParamRegistry, key: &str) -> Result<&'a ParamSp
     Ok(spec)
 }
 
-fn resolve_record(record: &Record, registry: &dyn ParamRegistry) -> Result<Resolved, Problem> {
+pub(crate) fn resolve_record(
+    record: &Record,
+    registry: &dyn ParamRegistry,
+) -> Result<Resolved, Problem> {
     match record {
         Record::Param { param, value } => {
             let spec = spec_of(registry, param)?;
@@ -737,7 +752,7 @@ fn choice_stored(spec: &ParamSpec, label: &str) -> Result<f64, Problem> {
 
 /// Whether the stored value of a control is a note number or a semitone
 /// count, so that a semitone amount is a stored offset.
-fn stored_in_semitones(spec: &ParamSpec) -> bool {
+pub(crate) fn stored_in_semitones(spec: &ParamSpec) -> bool {
     match spec.law.as_ref().map(|law| (&law.law, law.unit)) {
         Some((Law::Exp2 { rate, .. }, UnitKind::Hz)) => (rate * 12.0 - 1.0).abs() < 1e-12,
         Some((Law::Affine { scale, offset }, UnitKind::Semitones)) => {
@@ -797,6 +812,22 @@ mod tests {
 
     fn list(edits: &str) -> String {
         format!(r#"{{"synth":"vital","edits":[{edits}]}}"#)
+    }
+
+    #[test]
+    fn a_report_record_keeps_its_mapper_fields_out_of_the_edit() {
+        let report = list(
+            r#"{"param":"portamento_time","value":"0.12 s","reason":"pitch","uncalibrated":false,"confidence":"high"},
+               {"route":{"source":"env_2","dest":"osc_1_transpose","amount":"7 st","polarity":"unipolar"},"reason":"pitch","uncalibrated":true,"confidence":"low"}"#,
+        );
+        let parsed = parse(&report, Path::Report).unwrap();
+        let plain = list(
+            r#"{"param":"portamento_time","value":"0.12 s","reason":"pitch"},
+               {"route":{"source":"env_2","dest":"osc_1_transpose","amount":"7 st","polarity":"unipolar"},"reason":"pitch"}"#,
+        );
+        assert_eq!(parsed, parse(&plain, Path::Report).unwrap());
+        let wrong = list(r#"{"param":"portamento_time","value":"0.12 s","confidence":"huge"}"#);
+        assert!(parse(&wrong, Path::Report).is_err());
     }
 
     fn resolve_one(edit: &str) -> Result<Resolved, String> {

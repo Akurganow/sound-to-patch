@@ -3,8 +3,9 @@
 //!
 //! [`analyze`] decodes the stem, refines its tempo, reads the note list if
 //! one is given or else runs the notes step, reads the pitch layer, runs
-//! the stem estimators and the descriptors, and writes both files into the
-//! output folder.
+//! the stem estimators and the descriptors, maps the pitch, voices and
+//! envelope groups to the synth's suggested edits, and writes both files
+//! into the output folder.
 //! [`notes`] refines the tempo, transcribes the stem and writes its notes
 //! into the same folder. The schema of `layers.json` is committed as
 //! `schemas/layers.schema.json`.
@@ -25,7 +26,9 @@ use crate::notes::{
     QUIET_GATE, Transcriber, Transcription, Velocities, Voicing, midi_track_name, read_midi_near,
     transcribe_stem, voicing_of_notes, write_named_midi,
 };
-use crate::synth::Synth;
+use crate::preset::mapper::{MapContext, Mapped, PitchEnvelopeGroups, SynthMapper, mapper_for};
+use crate::preset::registry::registry_for;
+use crate::synth::{Synth, capabilities};
 use crate::units::{Bpm, Seconds};
 
 mod layers;
@@ -173,6 +176,21 @@ pub fn analyze(
     request: &AnalyzeRequest<'_>,
     transcriber: &Transcriber,
 ) -> Result<Analysis, AnalyzeError> {
+    analyze_with(request, transcriber, mapper_for(request.synth).ok())
+}
+
+/// [`analyze`] with a given mapper for the suggested edits, such as a test
+/// mapper. Without one, or for a synth without a registry, every
+/// `suggested_edits` and `unrepresentable` list is empty.
+///
+/// # Errors
+///
+/// As [`analyze`].
+pub fn analyze_with(
+    request: &AnalyzeRequest<'_>,
+    transcriber: &Transcriber,
+    mapper: Option<&dyn SynthMapper>,
+) -> Result<Analysis, AnalyzeError> {
     let dir = request.out_dir();
     let source = request.source();
     check_out_dir(&dir, &source, request.force, Guarded::Report)?;
@@ -231,15 +249,15 @@ pub fn analyze(
         stem.median_f0(),
         stem.hard_limited(),
     )?;
-    let record = transcription.as_ref().map(|t| &t.record);
+    let read = (&pitch, &envelope, &voices);
     let json = layers_json(
         &stem,
         &descriptors,
         request.synth,
         &source,
         &tempo,
-        record,
-        (&pitch, &envelope, &voices),
+        transcription.as_ref().map(|t| &t.record),
+        (read, &map_groups(mapper, request.synth, read)),
     )?;
     let png = Spectrogram::of(stem.mid(), stem.sample_rate()).to_png()?;
 
@@ -276,6 +294,25 @@ pub fn analyze(
         envelope,
         skipped,
     })
+}
+
+/// The mapper's edits for the pitch, voices and envelope groups.
+fn map_groups(
+    mapper: Option<&dyn SynthMapper>,
+    synth: Synth,
+    (pitch, envelope, voices): (&PitchLayer, &EnvelopeLayer, &VoicesLayer),
+) -> Mapped {
+    let (Some(mapper), Ok(registry), Ok(capabilities)) =
+        (mapper, registry_for(synth), capabilities(synth))
+    else {
+        return Mapped::default();
+    };
+    let ctx = MapContext {
+        registry,
+        capabilities,
+    };
+    let groups = PitchEnvelopeGroups::from_layers(pitch, voices, envelope);
+    mapper.pitch_envelope(&groups, &ctx)
 }
 
 /// The first two channels of a stem that has them.

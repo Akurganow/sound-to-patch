@@ -6,24 +6,29 @@
 //! [`fit_param`] is the one helper every mapper shares: it keeps keys in
 //! the registry, values in range and output order stable.
 //!
-//! The three input types are empty until the estimator epics add their
-//! group fields.
+//! [`fit_flag`], [`fit_stored`] and [`fit_route`] do the same for a switch,
+//! a control without a unit and a modulation route. [`pitch_envelope`]
+//! holds the synth-neutral flow of the pitch and envelope groups. The
+//! timbre and motion inputs are empty until their estimator epics add
+//! their group fields.
 
 use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
 use crate::confidence::Level;
-use crate::preset::edits::{Edit, ParamValue, Record};
+use crate::preset::edits::{
+    Edit, ParamValue, PolarityText, Record, RouteRecord, stored_in_semitones,
+};
 use crate::preset::registry::{
     ParamKind, ParamRegistry, ParamSpec, Physical, Provenance, UnitKind,
 };
 use crate::synth::{Synth, SynthCapabilities, SynthError};
+use crate::units::Semitones;
 
-/// The pitch and envelope groups of the layer report.
-#[derive(Clone, Debug, Default, PartialEq)]
-#[non_exhaustive]
-pub struct PitchEnvelopeGroups {}
+pub mod pitch_envelope;
+
+pub use pitch_envelope::PitchEnvelopeGroups;
 
 /// The timbre groups of the layer report.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -66,6 +71,17 @@ pub struct Mapped {
     pub edits: Vec<SuggestedEdit>,
     /// What the synth cannot reach, with the nearest value it can.
     pub unrepresentable: Vec<Unrepresentable>,
+    /// What the mapper leaves unwritten on purpose, with the reason.
+    pub unwritten: Vec<Unwritten>,
+}
+
+impl Mapped {
+    /// Appends the edits and lists of another output.
+    pub fn extend(&mut self, other: Self) {
+        self.edits.extend(other.edits);
+        self.unrepresentable.extend(other.unrepresentable);
+        self.unwritten.extend(other.unwritten);
+    }
 }
 
 /// One edit a mapper suggests.
@@ -154,6 +170,48 @@ impl Unrepresentable {
     }
 }
 
+/// Why a mapper leaves a measured field unwritten.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnwrittenReason {
+    /// The field has no estimate, or a low one.
+    LowConfidence,
+    /// The field is an upper bound, such as an attack faster than the track
+    /// can tell.
+    UpperBound,
+    /// The report cannot separate the value from what hides it, such as a
+    /// release under a heavy tail.
+    NotIdentifiable,
+    /// The curve stays at its default: no law maps the measured shape yet.
+    /// The explanation says "curve not set; tune by ear".
+    CurveNotSet,
+    /// The control exists, but no probe has shown what it does.
+    Unprobed,
+}
+
+/// A measured field that the mapper does not write.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Unwritten {
+    /// The path of the field in the group's `values`, with a dot into a
+    /// list's records, such as `attack_s` or `glides.curve`. A curve entry
+    /// names the stage whose curve stays at its default.
+    pub field: String,
+    /// Why.
+    pub reason: UnwrittenReason,
+}
+
+impl Unwritten {
+    /// An entry for a field.
+    #[must_use]
+    pub fn new(field: &str, reason: UnwrittenReason) -> Self {
+        Self {
+            field: field.to_owned(),
+            reason,
+        }
+    }
+}
+
 /// The suffix of a unit kind in the E1 grammar.
 fn suffix(unit: UnitKind) -> &'static str {
     match unit {
@@ -190,56 +248,45 @@ pub fn fit_param(
         value: wanted.get(),
         unit: suffix(unit).to_owned(),
     };
-    let missing = |nearest| Mapped {
-        edits: Vec::new(),
-        unrepresentable: vec![Unrepresentable {
-            field: field.to_owned(),
-            wanted: wanted_amount.clone(),
-            nearest,
-            reason: UnrepresentableReason::NotInSynth,
-        }],
-    };
+    let missing = || not_in_synth(field, wanted_amount.clone());
     let Some(spec) = registry
         .get(key)
         .filter(|spec| !spec.legacy && spec.unit() == Some(unit))
     else {
-        return missing(None);
+        return missing();
     };
     let Some(stored) = nearest_stored(spec, wanted.get()) else {
-        return missing(None);
+        return missing();
     };
     let Ok(physical) = spec.physical(stored) else {
-        return missing(None);
-    };
-    let mut mapped = Mapped {
-        edits: vec![SuggestedEdit {
-            edit: Edit {
-                record: Record::Param {
-                    param: spec.key.clone(),
-                    value: ParamValue::Text(physical.to_string()),
-                },
-                reason: Some(reason.to_owned()),
-            },
-            uncalibrated: spec.provenance == Provenance::Interim,
-            confidence,
-        }],
-        unrepresentable: Vec::new(),
+        return missing();
     };
     let exact = spec
         .stored(&wanted)
         .is_ok_and(|exact| exact.to_bits() == stored.to_bits());
+    // The law's round trip adds float noise, such as 0.11999999999999998 s
+    // for 0.12 s: an exact fit writes the wanted value, a miss the shortest
+    // text that stores the same value to the bit.
+    let text = if exact {
+        wanted
+    } else {
+        shortest(spec, physical, stored)
+    };
+    let mut mapped = one_edit(
+        Record::Param {
+            param: spec.key.clone(),
+            value: ParamValue::Text(text.to_string()),
+        },
+        reason,
+        spec.provenance == Provenance::Interim,
+        confidence,
+    );
     if !exact {
         // The physical range is the span between the values at both stored
         // bounds, so a falling law needs no special case.
         let ends = [spec.stored_min, spec.stored_max]
             .map(|bound| spec.physical(bound).map_or(physical.get(), Physical::get));
-        let reason = if wanted.get() > ends[0].max(ends[1]) {
-            UnrepresentableReason::AboveRange
-        } else if wanted.get() < ends[0].min(ends[1]) {
-            UnrepresentableReason::BelowRange
-        } else {
-            UnrepresentableReason::NoSuchChoice
-        };
+        let reason = miss_side(wanted.get(), ends[0].min(ends[1]), ends[0].max(ends[1]));
         mapped.unrepresentable.push(Unrepresentable {
             field: field.to_owned(),
             wanted: wanted_amount,
@@ -251,6 +298,207 @@ pub fn fit_param(
         });
     }
     mapped
+}
+
+/// The value at a stored value with the fewest significant digits that
+/// still store exactly that value, so a bound stays inside the range.
+fn shortest(spec: &ParamSpec, physical: Physical, stored: f64) -> Physical {
+    (0..17)
+        .filter_map(|digits| {
+            let value = format!("{:.digits$e}", physical.get())
+                .parse::<f64>()
+                .ok()?;
+            Physical::new(physical.kind(), value).ok()
+        })
+        .find(|short| {
+            spec.stored(short)
+                .is_ok_and(|back| back.to_bits() == stored.to_bits())
+        })
+        .unwrap_or(physical)
+}
+
+/// A switch set on or off.
+///
+/// A key outside the registry, a legacy key or a key that is not a switch
+/// gives no edit and a `not_in_synth` entry.
+#[must_use]
+pub fn fit_flag(
+    registry: &dyn ParamRegistry,
+    field: &str,
+    key: &str,
+    on: bool,
+    reason: &str,
+    confidence: Level,
+) -> Mapped {
+    match registry
+        .get(key)
+        .filter(|spec| !spec.legacy && spec.kind == ParamKind::Flag)
+    {
+        Some(spec) => one_edit(
+            Record::Param {
+                param: spec.key.clone(),
+                value: ParamValue::Flag(on),
+            },
+            reason,
+            spec.provenance == Provenance::Interim,
+            confidence,
+        ),
+        None => not_in_synth(field, Amount::Choice(on.to_string())),
+    }
+}
+
+/// The nearest edit of a control without a unit to a wanted stored value,
+/// such as a voice count or a level the adapter's own law computed.
+///
+/// Outside the range the value lands on the nearest bound, and a `Count`
+/// takes the nearest whole number; either way the miss is listed with the
+/// residual. A key outside the registry, a legacy key, a key with a unit or
+/// a switch or menu gives no edit and a `not_in_synth` entry.
+#[must_use]
+pub fn fit_stored(
+    registry: &dyn ParamRegistry,
+    field: &str,
+    key: &str,
+    wanted: f64,
+    reason: &str,
+    confidence: Level,
+) -> Mapped {
+    let spec = registry.get(key).filter(|spec| {
+        !spec.legacy
+            && spec.unit().is_none()
+            && matches!(spec.kind, ParamKind::Float | ParamKind::Count)
+    });
+    let unit = if spec.is_some_and(|spec| spec.kind == ParamKind::Count) {
+        "count"
+    } else {
+        ""
+    };
+    let amount = |value| Amount::Value {
+        value,
+        unit: unit.to_owned(),
+    };
+    let Some(spec) = spec else {
+        return not_in_synth(field, amount(wanted));
+    };
+    let clamped = wanted.clamp(spec.stored_min, spec.stored_max);
+    let stored = if spec.kind == ParamKind::Count {
+        clamped.round().clamp(spec.stored_min, spec.stored_max)
+    } else {
+        clamped
+    };
+    let mut mapped = one_edit(
+        Record::Param {
+            param: spec.key.clone(),
+            value: ParamValue::Number(stored),
+        },
+        reason,
+        spec.provenance == Provenance::Interim,
+        confidence,
+    );
+    if stored.to_bits() != wanted.to_bits() {
+        mapped.unrepresentable.push(Unrepresentable {
+            field: field.to_owned(),
+            wanted: amount(wanted),
+            nearest: Some(amount(stored)),
+            reason: miss_side(wanted, spec.stored_min, spec.stored_max),
+        });
+    }
+    mapped
+}
+
+/// A route of a depth in semitones into a destination stored in
+/// semitones, such as an envelope into oscillator pitch.
+///
+/// A depth beyond the destination's stored span lands on the span and the
+/// rest is listed. A route amount is an interim law until the calibration
+/// set measures it, so the edit is always `uncalibrated`. A destination
+/// outside the registry, a legacy one or one not stored in semitones gives
+/// no edit and a `not_in_synth` entry; a zero depth gives nothing.
+#[must_use]
+pub fn fit_route(
+    registry: &dyn ParamRegistry,
+    field: &str,
+    (source, dest): (&str, &str),
+    depth: Semitones,
+    polarity: Option<PolarityText>,
+    reason: &str,
+    confidence: Level,
+) -> Mapped {
+    let amount = |value| Amount::Value {
+        value,
+        unit: suffix(UnitKind::Semitones).to_owned(),
+    };
+    let wanted = depth.get();
+    let Some(spec) = registry
+        .get(dest)
+        .filter(|spec| !spec.legacy && stored_in_semitones(spec))
+    else {
+        return not_in_synth(field, amount(wanted));
+    };
+    if wanted == 0.0 {
+        return Mapped::default();
+    }
+    let span = spec.stored_max - spec.stored_min;
+    let nearest = wanted.clamp(-span, span);
+    let mut mapped = one_edit(
+        Record::Route(RouteRecord {
+            source: source.to_owned(),
+            dest: spec.key.clone(),
+            amount: Semitones::clamped(nearest).to_string(),
+            polarity,
+        }),
+        reason,
+        true,
+        confidence,
+    );
+    if nearest.to_bits() != wanted.to_bits() {
+        mapped.unrepresentable.push(Unrepresentable {
+            field: field.to_owned(),
+            wanted: amount(wanted),
+            nearest: Some(amount(nearest)),
+            reason: miss_side(wanted, -span, span),
+        });
+    }
+    mapped
+}
+
+/// An output of one edit.
+fn one_edit(record: Record, reason: &str, uncalibrated: bool, confidence: Level) -> Mapped {
+    Mapped {
+        edits: vec![SuggestedEdit {
+            edit: Edit {
+                record,
+                reason: Some(reason.to_owned()),
+            },
+            uncalibrated,
+            confidence,
+        }],
+        ..Mapped::default()
+    }
+}
+
+/// An output of no edit and one `not_in_synth` entry.
+fn not_in_synth(field: &str, wanted: Amount) -> Mapped {
+    Mapped {
+        unrepresentable: vec![Unrepresentable {
+            field: field.to_owned(),
+            wanted,
+            nearest: None,
+            reason: UnrepresentableReason::NotInSynth,
+        }],
+        ..Mapped::default()
+    }
+}
+
+/// The side of a range a wanted value misses on, or a step between.
+fn miss_side(wanted: f64, low: f64, high: f64) -> UnrepresentableReason {
+    if wanted > high {
+        UnrepresentableReason::AboveRange
+    } else if wanted < low {
+        UnrepresentableReason::BelowRange
+    } else {
+        UnrepresentableReason::NoSuchChoice
+    }
 }
 
 /// The stored value nearest to a wanted physical value: through the law
@@ -482,6 +730,134 @@ mod tests {
             Level::High,
         );
         assert!(mapped.edits[0].uncalibrated);
+    }
+
+    #[test]
+    fn a_fitted_time_prints_without_float_noise() {
+        let text = |key: &str, seconds: f64| {
+            let wanted = Physical::new(UnitKind::Seconds, seconds).unwrap();
+            let mapped = fit_param(vital(), "f", key, wanted, "x", Level::High);
+            match &mapped.edits[0].edit.record {
+                Record::Param {
+                    value: ParamValue::Text(text),
+                    ..
+                } => text.clone(),
+                other => panic!("{other:?}"),
+            }
+        };
+        assert_eq!(text("portamento_time", 0.12), "0.12 s");
+        assert_eq!(text("env_1_attack", 0.02), "0.02 s");
+        assert_eq!(text("env_1_decay", 0.2), "0.2 s");
+        // A clamped time prints the bound: 2^4 s.
+        assert_eq!(text("portamento_time", 20.0), "16 s");
+    }
+
+    #[test]
+    fn a_count_lands_on_a_whole_step_inside_the_range() {
+        let mapped = fit_stored(
+            vital(),
+            "max_polyphony",
+            "polyphony",
+            40.0,
+            "voices",
+            Level::High,
+        );
+        let miss = &mapped.unrepresentable[0];
+        assert_eq!(miss.reason, UnrepresentableReason::AboveRange);
+        assert_eq!(
+            miss.nearest,
+            Some(Amount::Value {
+                value: 32.0,
+                unit: "count".to_owned()
+            })
+        );
+        assert!(
+            matches!(resolved(&mapped)[0], Resolved::Param { stored, .. } if (stored - 32.0).abs() < 1e-12)
+        );
+        let between = fit_stored(vital(), "f", "polyphony", 3.4, "voices", Level::High);
+        assert_eq!(
+            between.unrepresentable[0].reason,
+            UnrepresentableReason::NoSuchChoice
+        );
+        assert!(
+            matches!(resolved(&between)[0], Resolved::Param { stored, .. } if (stored - 3.0).abs() < 1e-12)
+        );
+        let exact = fit_stored(vital(), "f", "polyphony", 3.0, "voices", Level::High);
+        assert_eq!(exact.unrepresentable, Vec::new());
+        for key in ["portamento_time", "legato", "no_such_key"] {
+            let mapped = fit_stored(vital(), "f", key, 1.0, "x", Level::High);
+            assert_eq!(mapped.edits, Vec::new(), "{key}");
+            assert_eq!(
+                mapped.unrepresentable[0].reason,
+                UnrepresentableReason::NotInSynth
+            );
+        }
+    }
+
+    #[test]
+    fn a_flag_needs_a_switch() {
+        let mapped = fit_flag(
+            vital(),
+            "joins.legato",
+            "legato",
+            true,
+            "voices",
+            Level::Medium,
+        );
+        assert!(
+            matches!(resolved(&mapped)[0], Resolved::Param { stored, .. } if (stored - 1.0).abs() < 1e-12)
+        );
+        assert_eq!(mapped.edits[0].confidence, Level::Medium);
+        let wrong = fit_flag(vital(), "f", "polyphony", true, "voices", Level::High);
+        assert_eq!(wrong.edits, Vec::new());
+        assert_eq!(
+            wrong.unrepresentable[0].reason,
+            UnrepresentableReason::NotInSynth
+        );
+    }
+
+    #[test]
+    fn a_route_in_semitones_clamps_at_the_span() {
+        let depth = |st: f64| Semitones::new(st).unwrap();
+        let route = |st: f64, dest: &str| {
+            fit_route(
+                vital(),
+                "drops.df_st",
+                ("env_2", dest),
+                depth(st),
+                Some(PolarityText::Unipolar),
+                "pitch",
+                Level::High,
+            )
+        };
+        let amount = |mapped: &Mapped| match resolved(mapped).remove(0) {
+            Resolved::Route { amount, .. } => amount,
+            other => panic!("{other:?}"),
+        };
+        let seven = route(7.0, "osc_1_transpose");
+        assert!(seven.edits[0].uncalibrated);
+        assert!((amount(&seven) - 7.0 / 96.0).abs() < 1e-9);
+        assert_eq!(seven.unrepresentable, Vec::new());
+        let deep = route(100.0, "osc_1_transpose");
+        assert!((amount(&deep) - 1.0).abs() < 1e-12);
+        assert_eq!(
+            deep.unrepresentable[0].reason,
+            UnrepresentableReason::AboveRange
+        );
+        assert!((deep.unrepresentable[0].residual().unwrap() + 4.0).abs() < 1e-9);
+        let rise = route(-100.0, "osc_1_transpose");
+        assert_eq!(
+            rise.unrepresentable[0].reason,
+            UnrepresentableReason::BelowRange
+        );
+        // A destination stored in cents takes a percent only.
+        let cents = route(1.0, "osc_1_tune");
+        assert_eq!(cents.edits, Vec::new());
+        assert_eq!(
+            cents.unrepresentable[0].reason,
+            UnrepresentableReason::NotInSynth
+        );
+        assert_eq!(route(0.0, "osc_1_transpose"), Mapped::default());
     }
 
     #[test]

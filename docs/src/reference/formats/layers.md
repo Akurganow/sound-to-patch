@@ -22,13 +22,28 @@ report against it.
 | `conventions` | The convention of every number in `stem` and of every record of the layer groups, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
 The top level takes no other field. Each layer adds one group with
-`values`, `confidence`, `flags`, `needs_render` and `suggested_edits`, and
-extends the schema in the same change. A group with too little evidence
-writes `values: null` and says why in its confidence. `values` holds plain
-numbers with the unit in the field name. `suggested_edits` is a list of
-records in the edit-list format, each a `param` or a `route` with unit
-strings, so a route keeps its source, amount and polarity; the mapping
-step fills it in a later release, and until then the list is empty.
+`values`, `confidence`, `flags`, `needs_render`, `suggested_edits` and
+`unrepresentable`, and extends the schema in the same change. A group with
+too little evidence writes `values: null` and says why in its confidence.
+`values` holds plain numbers with the unit in the field name.
+
+`suggested_edits` is a list of records in the edit-list format, each a
+`param` or a `route` with unit strings, so a route keeps its source, amount
+and polarity. Each record's `reason` is the group's name. The mapper of the
+report's synth fills the list; see [Suggested edits](../../analysis/suggested-edits.md).
+
+`unrepresentable` lists the values of the group that the synth cannot reach:
+
+| Field | Value |
+| :-- | :-- |
+| `field` | The path of the value in the group's `values`, with a dot into a list's records, such as `glides.time_s`. |
+| `wanted` | The measured value, `{"value": 20.0, "unit": "s"}`, or a choice name. The unit is `count` for a whole number and empty for a stored value without a unit. |
+| `nearest` | The nearest value the synth reaches, in the same form. Absent when it has none. |
+| `reason` | `above_range`, `below_range`, `no_such_choice`, `not_in_synth` or `slot_limit`. |
+| `residual` | `nearest` minus `wanted`, when both are numbers in one unit. |
+
+A synth whose mapper writes no edit for a group leaves both lists empty.
+Vital writes none for the pitch, voices and envelope groups yet.
 
 The pitch group breaks reports of `layers/1` from releases up to 0.23:
 `suggested_edits` changed from an object of numbers to a list of records,
@@ -48,6 +63,10 @@ The tail breaks reports of `layers/1` from releases up to 0.27: `values` of
 The voices group breaks reports of `layers/1` from releases up to 0.26:
 `voices` is a new required top-level key, and `conventions` requires the
 keys `voices` and `joins`.
+
+The mapping lists break reports of `layers/1` from releases up to 0.28.x:
+every group requires `unrepresentable`, and a `suggested_edits` record must
+be a `param` or a `route` with a `reason`.
 
 ## The transcription group
 
