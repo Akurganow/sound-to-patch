@@ -1,7 +1,7 @@
 bin.name = "sound-to-patch"
 args = ["analyze", "--help"]
 stdout = """
-Analyse a stem and write layers.json and spectrogram.png.
+Analyse a stem and write layers.json, spectrogram.png and notes.mid.
 
 The tempo is refined from the stem near --bpm, and the stem is transcribed unless --notes gives its notes. Each step prints what it found.
 

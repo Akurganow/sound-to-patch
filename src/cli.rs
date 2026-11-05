@@ -42,7 +42,7 @@ pub struct Cli {
 /// The commands, one variant per line.
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Analyse a stem and write layers.json and spectrogram.png.
+    /// Analyse a stem and write layers.json, spectrogram.png and notes.mid.
     ///
     /// The tempo is refined from the stem near --bpm, and the stem is
     /// transcribed unless --notes gives its notes. Each step prints what it
@@ -120,7 +120,8 @@ impl Command {
                         .into_iter()
                         .chain(
                             [&analysis.layers, &analysis.spectrogram]
-                                .iter()
+                                .into_iter()
+                                .chain(&analysis.notes)
                                 .map(|path| format!("wrote {}", path.display())),
                         )
                         .map(line)

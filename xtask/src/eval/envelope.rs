@@ -17,6 +17,7 @@ use sound_to_patch::audio::{BeatGrid, SampleRate};
 use sound_to_patch::estimate::envelope::{
     EnvelopeInput, EnvelopeLayer, Pump, PumpLock, RMS_PERIODS, lock_name, rms_window,
 };
+use sound_to_patch::estimate::voices::{VoicesInput, VoicesLayer};
 use sound_to_patch::notes::{Note, NoteList};
 use sound_to_patch::units::{Bpm, Hz, MidiPitch, Seconds};
 
@@ -786,13 +787,23 @@ pub(crate) fn run(only: Option<&str>, json: Option<&Path>) -> crate::Result<()> 
     let mut tally = Tally::default();
     let mut out = String::new();
     for part in &parts {
-        let layer = EnvelopeLayer::of(&EnvelopeInput {
+        let input = EnvelopeInput {
             stereo: None,
             mono: &part.audio,
             rate,
             notes: &part.notes,
             grid: grid(part.bpm),
+        };
+        let mut layer = EnvelopeLayer::of(&input)?;
+        // As `analyze` reads them: the full-band levels take the voicing of
+        // the voices layer, which reads the envelope first.
+        let voices = VoicesLayer::of(&VoicesInput {
+            mono: &part.audio,
+            rate,
+            notes: &part.notes,
+            envelope: &layer,
         })?;
+        layer.read_levels(&input, voices.mono)?;
         let record = score(part, &layer, layer.pump.as_ref(), &mut tally);
         writeln!(out, "{}", line(&record))?;
         records.push(record);

@@ -12,6 +12,7 @@ use sound_to_patch::confidence::{Level, ReasonCode};
 use sound_to_patch::estimate::envelope::{
     EnvelopeInput, EnvelopeLayer, LevelTrack, PUMP_RMS_PERIODS, Pump, PumpLock, amp_proxy, fit_tail,
 };
+use sound_to_patch::estimate::voices::{VoicesInput, VoicesLayer};
 use sound_to_patch::notes::NoteList;
 use sound_to_patch::units::{Bpm, Hz, Seconds};
 
@@ -42,15 +43,30 @@ fn beat() -> f64 {
     60.0 / BPM
 }
 
+/// The envelope layer as `analyze` reads it: the full-band levels follow
+/// the voicing of the voices layer, which reads the envelope first.
 fn layer(x: &[f64], notes: &NoteList, bpm: f64) -> EnvelopeLayer {
-    EnvelopeLayer::of(&EnvelopeInput {
+    layer_and_voices(x, notes, bpm).0
+}
+
+fn layer_and_voices(x: &[f64], notes: &NoteList, bpm: f64) -> (EnvelopeLayer, VoicesLayer) {
+    let input = EnvelopeInput {
         stereo: None,
         mono: x,
         rate: rate(),
         notes,
         grid: grid(bpm),
+    };
+    let mut envelope = EnvelopeLayer::of(&input).unwrap();
+    let voices = VoicesLayer::of(&VoicesInput {
+        mono: x,
+        rate: rate(),
+        notes,
+        envelope: &envelope,
     })
-    .unwrap()
+    .unwrap();
+    envelope.read_levels(&input, voices.mono).unwrap();
+    (envelope, voices)
 }
 
 /// The pump of a stem whose notes hold from their onsets to their ends.
@@ -2761,5 +2777,135 @@ fn a_stripped_bass_line_keeps_its_note_offs_before_the_gaps() {
         let errors = stripped_knee_errors(probe_seed(signal), depth_db, past);
         assert!(errors.len() >= 8, "{signal} {errors:?}");
         assert!(errors.iter().all(|e| e.abs() < 0.15), "{signal} {errors:?}");
+    }
+}
+
+/// Equal tones of a chord read one full-band level, so the spread stays
+/// under the velocity gate of 3 dB, whether they start together or
+/// staggered by 12.5 ms: a chord tone's span runs past the next onset.
+#[test]
+fn the_tones_of_a_chord_read_one_level_however_their_onsets_stagger() {
+    let tones = [130.81, 164.81, 196.0];
+    for stagger in [0.0, 0.0125] {
+        let mut x = vec![0.0; samples(9.0, fs())];
+        let mut notes = Vec::new();
+        for c in 0..8 {
+            let t0 = 0.2 + f64::from(c);
+            for (j, &f) in tones.iter().enumerate() {
+                let on = t0 + stagger * f64::from(u8::try_from(j).unwrap());
+                notes.push((on, t0 + 0.9, f));
+                for (i, y) in x
+                    .iter_mut()
+                    .enumerate()
+                    .take(samples(t0 + 0.9, fs()))
+                    .skip(samples(on, fs()))
+                {
+                    let t = f64::from(u32::try_from(i).unwrap()) / fs() - on;
+                    let env = if t < 0.7 {
+                        1.0
+                    } else {
+                        (-20.0 * (t - 0.7)).exp()
+                    };
+                    *y += 0.15 * (t / 0.005).min(1.0) * env * (TAU * f * t).sin();
+                }
+            }
+        }
+        let read = layer(&x, &note_list(&notes), 120.0);
+        let spread = read.level_spread.value().unwrap().get();
+        assert!(spread <= 3.0, "stagger {stagger} s: {spread} dB");
+    }
+}
+
+/// Adds a sine of `f` from `on` to `off` at amplitude 0.15, with a 5 ms
+/// attack and a fall of 20 per second over its last 0.2 s, and returns
+/// its list entry.
+fn held_sine(x: &mut [f64], (on, off): (f64, f64), f: f64) -> (f64, f64, f64) {
+    for (i, y) in x
+        .iter_mut()
+        .enumerate()
+        .take(samples(off, fs()))
+        .skip(samples(on, fs()))
+    {
+        let t = f64::from(u32::try_from(i).unwrap()) / fs() - on;
+        let held = off - on - 0.2;
+        let env = if t < held {
+            1.0
+        } else {
+            (-20.0 * (t - held)).exp()
+        };
+        *y += 0.15 * (t / 0.005).min(1.0) * env * (TAU * f * t).sin();
+    }
+    (on, off, f)
+}
+
+/// A list of chords and single notes is no mono line by the voices layer,
+/// however low its chord share, so the tones of a chord read one level,
+/// staggered or not: 8 chords of C3, E3 and G3 staggered by 12.5 ms and 24
+/// single notes give a chord share of 0.5. The tones of an octave stack of
+/// C2, C3 and C4 read the mix with windows of 15, 7.6 and 3.8 ms, so the
+/// lower read up to about 3 dB less; a stagger of 12 ms moves none of them.
+#[test]
+fn the_tones_of_a_chord_read_one_level_in_a_line_of_chords_and_single_notes() {
+    let mut x = vec![0.0; samples(30.0, fs())];
+    let mut notes = Vec::new();
+    for c in 0..8 {
+        let t0 = 0.2 + f64::from(c);
+        for (j, f) in [130.81, 164.81, 196.0].into_iter().enumerate() {
+            let on = t0 + 0.0125 * f64::from(u8::try_from(j).unwrap());
+            notes.push(held_sine(&mut x, (on, t0 + 0.9), f));
+        }
+    }
+    for k in 0..24 {
+        let on = 9.0 + 0.8 * f64::from(k);
+        let f = 261.63 * 2f64.powf(f64::from(k % 5) / 12.0);
+        notes.push(held_sine(&mut x, (on, on + 0.6), f));
+    }
+    let list = note_list(&notes);
+    let (read, voices) = layer_and_voices(&x, &list, 120.0);
+    assert!(!voices.mono);
+    let level = |on: f64, f: f64| {
+        let i = list
+            .notes()
+            .iter()
+            .position(|n| {
+                (n.onset().get() - on).abs() < 1e-9 && (Hz::from(n.pitch()).get() - f).abs() < 1.0
+            })
+            .unwrap();
+        read.levels[i].unwrap().get()
+    };
+    for c in 0..8 {
+        let t0 = 0.2 + f64::from(c);
+        let tones = [
+            level(t0, 130.81),
+            level(t0 + 0.0125, 164.81),
+            level(t0 + 0.025, 196.0),
+        ];
+        let gap = tones.iter().copied().fold(f64::NEG_INFINITY, f64::max)
+            - tones.iter().copied().fold(f64::INFINITY, f64::min);
+        // The windows of 7.6, 6.1 and 5.1 ms leave 0.60 dB between them.
+        assert!(gap < 0.7, "chord {c}: {tones:?}");
+    }
+    // In the octave stack each tone reads the mix with its own window, so
+    // the lower tones read lower peaks; staggering them moves none.
+    let stack = |stagger: f64| {
+        let mut x = vec![0.0; samples(9.0, fs())];
+        let mut notes = Vec::new();
+        for c in 0..8 {
+            let t0 = 0.2 + f64::from(c);
+            for (j, f) in [65.41, 130.81, 261.63].into_iter().enumerate() {
+                let on = t0 + stagger * f64::from(u8::try_from(j).unwrap());
+                notes.push(held_sine(&mut x, (on, t0 + 0.9), f));
+            }
+        }
+        let (read, voices) = layer_and_voices(&x, &note_list(&notes), 120.0);
+        assert!(!voices.mono);
+        read.levels
+            .iter()
+            .map(|l| l.unwrap().get())
+            .collect::<Vec<f64>>()
+    };
+    let (together, staggered) = (stack(0.0), stack(0.012));
+    for (i, (a, b)) in together.iter().zip(&staggered).enumerate() {
+        assert!((a - b).abs() < 1.0, "tone {i}: {a} together, {b} staggered");
     }
 }

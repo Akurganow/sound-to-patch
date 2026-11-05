@@ -5,7 +5,8 @@
   "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _ms, _db, _dbfs, _deg, _st, _ct) where the value has one; a field without a suffix is a count, a ratio, a share, a power, a flag or a tempo. The conventions group names the convention of every number in the stem group and of every record in the layer groups.",
   "type": "object",
   "required": [
-    "schema", "source", "synth", "stem", "transcription", "pitch", "voices", "envelope", "conventions"
+    "schema", "source", "synth", "stem", "transcription", "notes", "pitch", "voices", "envelope",
+    "conventions"
   ],
   "additionalProperties": false,
   "properties": {
@@ -18,6 +19,7 @@
     "synth": { "enum": ["vital", "serum2"] },
     "stem": { "$ref": "#/$defs/stem" },
     "transcription": { "$ref": "#/$defs/transcription" },
+    "notes": { "$ref": "#/$defs/notes" },
     "pitch": { "$ref": "#/$defs/pitch" },
     "voices": { "$ref": "#/$defs/voices" },
     "envelope": { "$ref": "#/$defs/envelope" },
@@ -211,7 +213,8 @@
         "sample_rate_hz", "band_edge_hz", "hard_limited", "peak_dbfs", "rms_dbfs", "crest_db",
         "centroid_hz", "centroid_over_f0", "spread_hz", "rolloff85_hz", "rolloff95_hz",
         "flatness", "band_share", "stereo", "confidence", "pitch", "voices", "joins", "glides", "drops",
-        "sub_band_line", "vibrato", "envelope", "note_off", "tail", "level_spread_db", "pump"
+        "sub_band_line", "vibrato", "envelope", "note_off", "tail", "level_spread_db", "pump",
+        "notes"
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
@@ -390,6 +393,49 @@
           }
         }
       ]
+    },
+    "notes": {
+      "description": "The final note list that notes.mid holds: the cleaned note list rewritten with the pitch, voices and envelope layers. null without notes.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["file", "ticks_per_beat", "velocity", "bend_events", "dropped", "list"],
+          "additionalProperties": false,
+          "properties": {
+            "file": { "const": "notes.mid" },
+            "ticks_per_beat": { "const": 480 },
+            "velocity": { "enum": ["level", "constant"] },
+            "bend_events": { "type": "integer", "minimum": 0 },
+            "dropped": { "type": "integer", "minimum": 0 },
+            "list": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "$ref": "#/$defs/final_note" }
+            }
+          }
+        }
+      ]
+    },
+    "final_note": {
+      "description": "One note of notes.mid: its written times, its times in the note list, its key and velocity, the rule that set its end, its full-band level and the transcriber's octave flag.",
+      "type": "object",
+      "required": [
+        "onset_s", "end_s", "list_onset_s", "list_end_s", "key", "velocity", "end_rule", "level_db",
+        "octave_uncertain"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "onset_s": { "type": "number", "minimum": 0 },
+        "end_s": { "type": "number", "exclusiveMinimum": 0 },
+        "list_onset_s": { "type": "number", "minimum": 0 },
+        "list_end_s": { "type": "number", "exclusiveMinimum": 0 },
+        "key": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "velocity": { "type": "integer", "minimum": 1, "maximum": 127 },
+        "end_rule": { "enum": ["knee", "no_knee", "pad", "minimum", "next_note", "glide", "unread"] },
+        "level_db": { "type": ["number", "null"] },
+        "octave_uncertain": { "type": ["boolean", "null"] }
+      }
     },
     "note_envelope": {
       "description": "One read note: its onset, the peak of its amp proxy, its attack, its note-off knee, and whether the pool holds it.",

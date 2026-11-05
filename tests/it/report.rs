@@ -8,17 +8,18 @@ use std::sync::atomic::Ordering;
 use midly::num::{u4, u7, u15, u24, u28};
 use midly::{Format, Header, MetaMessage, MidiMessage, Smf, Timing, TrackEvent, TrackEventKind};
 use serde_json::{Value, json};
-use sound_to_patch::audio::{SampleRate, Tempo};
+use sound_to_patch::audio::{self, BeatGrid, SampleRate, Tempo};
+use sound_to_patch::estimate::envelope::{EnvelopeInput, EnvelopeLayer};
 use sound_to_patch::notes::{
     DEFAULT_VELOCITY, PitchTrack, Profile, Transcriber, Velocities, min_note_frames,
     write_named_midi,
 };
 use sound_to_patch::report::spectrogram::{PLOT_HEIGHT, PLOT_WIDTH, Spectrogram};
 use sound_to_patch::report::{
-    AnalyzeRequest, LAYERS_FILE, NotesRequest, SPECTROGRAM_FILE, analyze, notes,
+    AnalyzeRequest, LAYERS_FILE, NOTES_FILE, NotesRequest, SPECTROGRAM_FILE, analyze, notes,
 };
 use sound_to_patch::synth::Synth;
-use sound_to_patch::units::Bpm;
+use sound_to_patch::units::{Bpm, Seconds};
 
 use crate::support::signals::{sine, write_wav16};
 
@@ -377,13 +378,40 @@ fn the_default_folder_is_named_after_the_stem() {
         analysis.spectrogram,
         dir.path().join("bass").join(SPECTROGRAM_FILE)
     );
+    assert_eq!(
+        analysis.notes,
+        Some(dir.path().join("bass").join(NOTES_FILE))
+    );
     assert!(analysis.layers.is_file() && analysis.skipped.is_empty());
     // The temporary siblings are renamed away.
     let names: Vec<String> = fs::read_dir(dir.path().join("bass"))
         .unwrap()
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
-    assert_eq!(names.len(), 2, "{names:?}");
+    assert_eq!(names.len(), 3, "{names:?}");
+}
+
+/// A run whose note list is empty removes the `notes.mid` of an earlier
+/// run of the same stem, so the folder holds no notes the report lacks.
+#[test]
+fn a_run_without_notes_removes_the_old_notes_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = stem(dir.path());
+    let out = dir.path().join("out");
+    let first = analyze(
+        &request(&path, Some(&given(dir.path())), &out),
+        &transcriber(),
+    )
+    .unwrap();
+    assert!(first.notes.as_ref().is_some_and(|p| p.is_file()));
+    // The same stem, now silent: the notes step finds no note.
+    crate::support::signals::write_wav16(&path, 22_050, &[vec![0.0; 22_050]]);
+    let second = analyze(&request(&path, None, &out), &transcriber()).unwrap();
+    assert_eq!(second.notes, None);
+    assert!(!out.join(NOTES_FILE).exists());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
+    assert_eq!(report["notes"], Value::Null);
 }
 
 #[test]
@@ -609,11 +637,59 @@ fn the_notes_step_runs_the_model_once_and_fills_the_transcription_group() {
     assert!(report["stem"]["centroid_over_f0"]["median"].is_number());
     assert_eq!(report["stem"]["bpm_given"], 120.0);
     assert_eq!(report["stem"]["bpm_refined"]["value"], Value::Null);
+    // Each final note carries the octave flag of its note in the list.
+    let list = report["notes"]["list"].as_array().unwrap();
+    assert_eq!(list.len(), truth.len());
+    for (written, note) in list.iter().zip(transcription.notes.notes()) {
+        assert_eq!(written["list_onset_s"], note.onset().get());
+        assert_eq!(written["octave_uncertain"], json!(note.octave_uncertain()));
+    }
     let errors: Vec<String> = validator()
         .iter_errors(&report)
         .map(|e| e.to_string())
         .collect();
     assert!(errors.is_empty(), "{errors:?}");
+}
+
+/// `--profile pad` makes a one-voice stem a polyphonic line when the notes
+/// step runs, and the final notes and the full-band levels read that one
+/// voicing. Given notes take no profile, so the line stays mono.
+#[test]
+fn the_pad_profile_makes_a_one_voice_stem_polyphonic_for_every_rule() {
+    let dir = tempfile::tempdir().unwrap();
+    let (path, _) = crate::cli::saw_notes(dir.path());
+    let decoded = audio::decode(&path).unwrap().into_audio();
+    let samples = decoded.mono();
+    for (profile, mono) in [(None, true), (Some(Profile::Pad), false)] {
+        let out = dir.path().join(format!("out-{mono}"));
+        let request = AnalyzeRequest {
+            profile,
+            ..request(&path, None, &out)
+        };
+        let analysis = analyze(&request, &transcriber()).unwrap();
+        assert!(analysis.voices.mono);
+        assert_eq!(analysis.final_notes.as_ref().unwrap().mono, mono);
+        let input = EnvelopeInput {
+            mono: &samples,
+            rate: decoded.sample_rate(),
+            notes: &analysis.transcription.as_ref().unwrap().notes,
+            grid: BeatGrid::new(analysis.tempo.used(), Seconds::clamped(0.0)),
+            stereo: None,
+        };
+        let mut envelope = EnvelopeLayer::of(&input).unwrap();
+        envelope.read_levels(&input, mono).unwrap();
+        assert_eq!(envelope.levels, analysis.envelope.levels);
+    }
+    let stem = stem(dir.path());
+    let notes = given(dir.path());
+    let out = dir.path().join("given");
+    let request = AnalyzeRequest {
+        profile: Some(Profile::Pad),
+        ..request(&stem, Some(&notes), &out)
+    };
+    let analysis = analyze(&request, &transcriber()).unwrap();
+    assert!(analysis.voices.mono);
+    assert!(analysis.final_notes.unwrap().mono);
 }
 
 /// A note file written at the refined tempo reads under the given one.
@@ -692,6 +768,52 @@ fn notes_request<'a>(stem: &'a Path, out: &'a Path, bpm: f64, exact: bool) -> No
         out: Some(out),
         force: false,
     }
+}
+
+/// A `layers.json` next to `notes.mid` describes that file. `notes` after
+/// `analyze` would replace the final notes with the first list, so it
+/// stops and leaves both files; with `--force` it writes the first list
+/// and removes the report that no longer describes it.
+#[test]
+fn notes_does_not_replace_the_final_notes_a_report_describes() {
+    use sound_to_patch::report::AnalyzeError;
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 120.0, 9);
+    let out = dir.path().join("out");
+    let analysis = analyze(
+        &AnalyzeRequest {
+            bpm_exact: true,
+            ..request(&stem, None, &out)
+        },
+        &untracked(transcriber()),
+    )
+    .unwrap();
+    let written = (
+        fs::read(&analysis.layers).unwrap(),
+        fs::read(analysis.notes.as_ref().unwrap()).unwrap(),
+    );
+    let request = notes_request(&stem, &out, 120.0, true);
+    let error = notes(&request, &untracked(transcriber())).unwrap_err();
+    assert!(
+        matches!(error, AnalyzeError::NotesDescribed { .. }),
+        "{error}"
+    );
+    assert!(error.to_string().contains("--force"), "{error}");
+    let kept = (
+        fs::read(out.join(LAYERS_FILE)).unwrap(),
+        fs::read(out.join(NOTES_FILE)).unwrap(),
+    );
+    assert_eq!(kept, written);
+    let forced = NotesRequest {
+        force: true,
+        ..request
+    };
+    let report = notes(&forced, &untracked(transcriber())).unwrap();
+    assert!(!out.join(LAYERS_FILE).exists());
+    assert_ne!(fs::read(&report.path).unwrap(), written.1);
+    assert!(out.join(SPECTROGRAM_FILE).exists());
+    // With no report that describes it, `notes` replaces its own file.
+    notes(&request, &untracked(transcriber())).unwrap();
 }
 
 /// `notes` decodes and writes at the refined tempo. 117 BPM keeps notes of

@@ -102,7 +102,9 @@ joins `READY` when its adapter lands.
   and the octave check. The cleanup moves octave copies onto their notes,
   merges them, joins split notes and drops notes in near-silent passages
   with the quiet-note guard. `transcribe_stem` runs those steps in order
-  for one stem. The MIDI writer stores a list as a format 0 file. It also holds the
+  for one stem. The MIDI writer stores a list as a format 0 file, and
+  `finish` rewrites a list with the layer report into the final notes:
+  knee note-offs, glide overlaps, merged drops and level velocities. It also holds the
   MIDI reader behind `analyze --notes` and the harmonic masks built from
   the list.
 - `music`: the music dictionary for notes. It embeds the topic files of
@@ -148,8 +150,8 @@ joins `READY` when its adapter lands.
   `wire`, the notes and the note events live in `core`.
   The record's committed schema is `schemas/render-record.schema.json`.
 - `report`: the outputs of a stem in its output folder: the `analyze`
-  pipeline with `layers.json` and the spectrogram, and the `notes` command
-  with `notes.mid`. `layers` writes `layers.json`, whose committed schema
+  pipeline with `layers.json`, the spectrogram and the final `notes.mid`,
+  and the `notes` command with the first `notes.mid`. `layers` writes `layers.json`, whose committed schema
   is `schemas/layers.schema.json`, and `spectrogram` draws the two-panel
   spectrogram PNG.
 - `synth`: the `Synth` enum, the shared `--synth` argument and

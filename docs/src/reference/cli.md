@@ -13,7 +13,7 @@ Turn an audio stem or a written sound description into a starting point in Vital
 Usage: sound-to-patch <COMMAND>
 
 Commands:
-  analyze  Analyse a stem and write layers.json and spectrogram.png
+  analyze  Analyse a stem and write layers.json, spectrogram.png and notes.mid
   notes    Transcribe a stem and write notes.mid
   preset   Read, inspect and write synth presets
   render   Render a preset and a MIDI file to a WAV file through the synth
@@ -29,7 +29,7 @@ Options:
 
 ```console
 $ sound-to-patch analyze --help
-Analyse a stem and write layers.json and spectrogram.png.
+Analyse a stem and write layers.json, spectrogram.png and notes.mid.
 
 The tempo is refined from the stem near --bpm, and the stem is transcribed unless --notes gives its notes. Each step prints what it found.
 
@@ -78,19 +78,24 @@ Options:
 ```
 
 `analyze` decodes the stem at its native rate, runs the stem estimators
-and writes two files into the output folder, which it creates:
+and writes three files into the output folder, which it creates:
 
 - `layers.json`: the report. The [layer report page](formats/layers.md)
   lists every field.
 - `spectrogram.png`: a 1500 by 512 pixel image of the busiest 10 s, in two
   panels. The [pipeline page](../analysis/pipeline.md#the-report) gives its
   layout.
+- `notes.mid`: the final note list, the notes rewritten with the layers,
+  as the [analyze guide](../guide/analyze.md#the-final-notesmid) explains.
+  It replaces the first file of [`notes`](#notes). A stem without notes
+  writes none.
 
-Both files are replaced on the next run of the same stem; nothing else in
+The files are replaced on the next run of the same stem; nothing else in
 the folder changes. The same stem and flags give the same bytes. Each file
-is written to a temporary sibling and renamed into place, `layers.json`
-last, so an interrupted run never leaves a cut-short file, and a
-`layers.json` that exists belongs to the spectrogram next to it. The
+is written to a temporary sibling and renamed into place, `notes.mid`
+first and `layers.json` last, so an interrupted run never leaves a
+cut-short file, and a `layers.json` that exists belongs to the files next
+to it. The
 command prints one `wrote <path>` line per file to standard output, and a
 warning line for each corrupt packet that became silence to standard
 error.
@@ -98,7 +103,9 @@ error.
 `layers.json` records the stem's file name in `source`. When the folder
 already holds the report of another stem, such as `bass.aiff` next to
 `bass.wav` sharing `bass/`, the command stops and names both; `--out`
-picks another folder, and `--force` replaces the report. An output folder
+picks another folder, and `--force` replaces the report. A `notes.mid` of
+another stem, by its track name, stops the command the same way, as in
+[`notes`](#notes). An output folder
 path that is a file, such as the default folder of a stem without an
 extension, stops the command with a request for `--out`.
 
@@ -114,7 +121,6 @@ it: `stems/bass.wav` writes `stems/bass/`.
   [`notes`](#notes) once, and the next lines of standard output are its
   steps; `--profile` overrides the detected settings as there. The
   `transcription` group of the report records the model and the settings.
-  `analyze` writes no MIDI file.
 - With `--notes`, the MIDI file gives the note list and the model never
   runs; `--profile` is then a usage error, and `transcription` is `null`.
   The note times follow the file's tempo map, and every tempo in the file
@@ -126,7 +132,7 @@ it: `stems/bass.wav` writes `stems/bass/`.
 
 | Exit code | Meaning |
 | :-- | :-- |
-| 0 | Both files were written. |
+| 0 | The files were written. |
 | 1 | The stem or the note file cannot be read or is invalid, the notes step fails, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
 | 2 | A usage error, such as a missing `--bpm`, a tempo outside 4 to 1000, or `--profile` with `--notes`. |
 
@@ -165,7 +171,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Write next to a report of another stem in the output folder
+          Write next to a report of another stem, or replace the final notes and remove the report that describes them
 
   -h, --help
           Print help (see a summary with '-h')
@@ -193,14 +199,19 @@ gives each step.
   name as the track name, the printed tempo and 4/4 at tick 0, and
   every note on channel 1 at velocity 100.
   It is written to a temporary sibling and renamed into place. Only
-  `notes.mid` is replaced; nothing else in the folder changes.
+  `notes.mid` is replaced; nothing else in the folder changes, except the
+  report that `--force` removes, below.
 - The folder: as for `analyze`, `stems/bass.wav` writes into `stems/bass/`
   without `--out`. When the folder holds a `notes.mid` whose track name is
   another stem, or none, the command stops before it decodes and names
   both; `--force` replaces that file. When it holds a `layers.json` of
   another stem, it stops the same way; `--force` writes `notes.mid` next
-  to that report and leaves it. `--out` picks another folder in both
-  cases.
+  to that report and leaves it. When it holds a `layers.json` with a
+  `notes` group, the report of `analyze` that describes the final
+  `notes.mid`, it stops whatever the stem, because the first list would
+  replace the file the report describes; `--force` replaces `notes.mid`
+  and removes that report, so no report describes a file that is gone.
+  `--out` picks another folder in every case.
 
 | Exit code | Meaning |
 | :-- | :-- |

@@ -7,7 +7,7 @@ Turn an audio stem or a written sound description into a starting point in Vital
 Usage: sound-to-patch <COMMAND>
 
 Commands:
-  analyze  Analyse a stem and write layers.json and spectrogram.png
+  analyze  Analyse a stem and write layers.json, spectrogram.png and notes.mid
   notes    Transcribe a stem and write notes.mid
   preset   Read, inspect and write synth presets
   render   Render a preset and a MIDI file to a WAV file through the synth

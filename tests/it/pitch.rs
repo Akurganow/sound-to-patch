@@ -2344,3 +2344,39 @@ fn the_report_carries_the_mapper_edits_by_group() {
     .unwrap();
     assert_eq!(resolved.len(), 3);
 }
+
+/// The final `notes.mid` of the generated bass line: the drop note at its
+/// settled pitch, the glide as two overlapping notes from the glide's
+/// start, and every other note ended by its rule. Two runs give the same
+/// bytes.
+#[test]
+fn the_final_notes_of_a_bass_line_hold_its_glide_and_drop() {
+    let dir = tempfile::tempdir().unwrap();
+    let (wav, mid) = bass_files(dir.path());
+    let (analysis, report) = analyze_bass(&wav, &mid, &dir.path().join("a"));
+    let notes = &report["notes"];
+    let list = notes["list"].as_array().unwrap();
+    let field = |i: usize, key: &str| list[i][key].clone();
+    assert_eq!(list.len(), 3, "{notes:#}");
+    // The drop settles on E1, 41.2 Hz.
+    assert_eq!(field(0, "key"), 28, "{notes:#}");
+    // The later note starts at the glide's start in the report.
+    let start = report["pitch"]["values"]["glides"][0]["start_s"]
+        .as_f64()
+        .unwrap();
+    assert_eq!(field(1, "end_rule"), "glide", "{notes:#}");
+    let tick = 60.0 / (120.0 * 480.0);
+    let later = field(2, "onset_s").as_f64().unwrap();
+    assert!((later - start).abs() <= tick + 1e-9, "{notes:#}");
+    let overlap = field(1, "end_s").as_f64().unwrap() - later;
+    assert!(overlap >= 0.005 - 1e-9, "{notes:#}");
+    for i in [0, 2] {
+        assert!(
+            field(i, "end_s").as_f64().unwrap() <= field(i, "list_end_s").as_f64().unwrap() + tick,
+            "{notes:#}"
+        );
+    }
+    let written = fs::read(analysis.notes.as_ref().unwrap()).unwrap();
+    let (again, _) = analyze_bass(&wav, &mid, &dir.path().join("b"));
+    assert_eq!(fs::read(again.notes.unwrap()).unwrap(), written);
+}

@@ -1,11 +1,12 @@
-//! The outputs of a stem: `layers.json` and `spectrogram.png` from
-//! `analyze`, and `notes.mid` from `notes`.
+//! The outputs of a stem: `layers.json`, `spectrogram.png` and the final
+//! `notes.mid` from `analyze`, and the first `notes.mid` from `notes`.
 //!
 //! [`analyze`] decodes the stem, refines its tempo, reads the note list if
 //! one is given or else runs the notes step, reads the pitch layer, runs
 //! the stem estimators and the descriptors, maps the pitch, voices and
-//! envelope groups to the synth's suggested edits, and writes both files
-//! into the output folder.
+//! envelope groups to the synth's suggested edits, rewrites the note list
+//! with the layers into the final notes, and writes the three files into
+//! the output folder.
 //! [`notes`] refines the tempo, transcribes the stem and writes its notes
 //! into the same folder. The schema of `layers.json` is committed as
 //! `schemas/layers.schema.json`.
@@ -17,19 +18,25 @@ use std::path::{Path, PathBuf};
 
 use crate::audio::{self, Audio, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
 use crate::confidence::ConfidenceError;
-use crate::dsp::{StftParams, describe};
-use crate::estimate::envelope::{EnvelopeError, EnvelopeInput, EnvelopeLayer};
+use crate::confidence::Level;
+use crate::dsp::{StftParams, Summary, describe};
+use crate::estimate::envelope::{
+    EnvelopeError, EnvelopeInput, EnvelopeLayer, KNEE_END_GAP, NoteEnvelope, SUSTAIN_SHARE,
+    amp_proxy, full_band_level, full_band_track,
+};
 use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
 use crate::estimate::voices::{VoicesError, VoicesInput, VoicesLayer};
 use crate::notes::{
-    DEFAULT_VELOCITY, MidiError, MidiWriteError, NoteList, NotesError, PitchTrack, Profile,
-    QUIET_GATE, Transcriber, Transcription, Velocities, Voicing, midi_track_name, read_midi_near,
+    DEFAULT_VELOCITY, DropSpan, FinalNotes, FinishInput, GlideSpan, MidiError, MidiWriteError,
+    Note, NoteFacts, NoteList, NotesError, PAD_FALL, PitchTrack, Profile, QUIET_GATE, Transcriber,
+    Transcription, Velocities, VibratoSpan, Voicing, finish, midi_track_name, read_midi_near,
     transcribe_stem, voicing_of_notes, write_named_midi,
 };
+use crate::preset::mapper::pitch_envelope::velocity_reaches_level;
 use crate::preset::mapper::{MapContext, Mapped, PitchEnvelopeGroups, SynthMapper, mapper_for};
 use crate::preset::registry::registry_for;
 use crate::synth::{Synth, capabilities};
-use crate::units::{Bpm, Seconds};
+use crate::units::{Bpm, Hz, Seconds};
 
 mod layers;
 pub mod spectrogram;
@@ -107,6 +114,10 @@ pub struct Analysis {
     pub layers: PathBuf,
     /// The path of `spectrogram.png`.
     pub spectrogram: PathBuf,
+    /// The path of the final `notes.mid`; `None` without notes.
+    pub notes: Option<PathBuf>,
+    /// The final note list that `notes.mid` holds; `None` without notes.
+    pub final_notes: Option<FinalNotes>,
     /// The given, refined and used tempo.
     pub tempo: Tempo,
     /// The notes step, `None` when `--notes` gave the notes.
@@ -152,26 +163,28 @@ fn given_track(
         .map_err(|error| AnalyzeError::Transcription(NotesError::Track(error)))
 }
 
-/// Analyses a stem and writes `layers.json` and `spectrogram.png` into the
-/// output folder, creating it.
+/// Analyses a stem and writes `layers.json`, `spectrogram.png` and, when
+/// the stem has notes, the final `notes.mid` into the output folder,
+/// creating it.
 ///
 /// The tempo is refined from the stem unless the request says `bpm_exact`.
 /// Without a note list the stem runs through [`transcribe_stem`] once,
 /// with `transcriber`; with one, the model never runs, but the f0 track
 /// of `transcriber` still reads the stem for the pitch layer.
 ///
-/// Both files are replaced; nothing else in the folder changes. Each file
-/// is written to a temporary sibling and renamed into place, and
-/// `layers.json` comes last: an old report is removed before the new
-/// spectrogram lands, so a `layers.json` that exists always belongs to the
-/// spectrogram next to it, and neither is ever cut short.
+/// The files are replaced; nothing else in the folder changes. Each file
+/// is written to a temporary sibling and renamed into place, `notes.mid`
+/// first and `layers.json` last: an old report is removed before the new
+/// files land, so a `layers.json` that exists always belongs to the files
+/// next to it, and none is ever cut short. The final `notes.mid` replaces
+/// the first one of `notes`.
 ///
 /// # Errors
 ///
 /// Returns an [`AnalyzeError`] when the output folder is a file or holds
-/// the report of another stem (without `force`), when the note list or the
-/// stem cannot be read, when the notes step fails, or when an output file
-/// cannot be written.
+/// the report or the notes of another stem (without `force`), when the
+/// note list or the stem cannot be read, when the notes step fails, or
+/// when an output file cannot be written.
 pub fn analyze(
     request: &AnalyzeRequest<'_>,
     transcriber: &Transcriber,
@@ -194,6 +207,7 @@ pub fn analyze_with(
     let dir = request.out_dir();
     let source = request.source();
     check_out_dir(&dir, &source, request.force, Guarded::Report)?;
+    check_notes_file(&dir, &source, request.force)?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
@@ -225,7 +239,10 @@ pub fn analyze_with(
     let empty = NoteList::default();
     let note_list = notes.as_ref().unwrap_or(&empty);
     let grid = BeatGrid::new(tempo.used(), Seconds::clamped(0.0));
-    let (pitch, envelope, voices) = read_layers(
+    let voicing = transcription
+        .as_ref()
+        .map_or_else(|| voicing_of_notes(note_list), |t| t.voicing);
+    let (pitch, envelope, voices, mono_line) = read_layers(
         &mono,
         &stem_audio,
         note_list,
@@ -233,10 +250,21 @@ pub fn analyze_with(
             .as_ref()
             .or(transcription.as_ref().map(|t| &t.track))
             .unwrap_or(&PitchTrack::default()),
-        transcription
-            .as_ref()
-            .map_or_else(|| voicing_of_notes(note_list), |t| t.voicing),
+        // The profile counts only where the notes step ran: given notes
+        // take no profile.
+        (
+            voicing,
+            transcription.as_ref().and_then(|t| t.profile) == Some(Profile::Pad),
+        ),
         grid,
+    )?;
+    let final_notes = final_notes(
+        &mono,
+        stem_audio.sample_rate(),
+        note_list,
+        (&pitch, &envelope),
+        mono_line,
+        tempo.used(),
     )?;
     // The stem and descriptor steps read the channels, not the mono mix.
     drop(mono);
@@ -256,37 +284,21 @@ pub fn analyze_with(
         request.synth,
         &source,
         &tempo,
-        transcription.as_ref().map(|t| &t.record),
+        (
+            transcription.as_ref().map(|t| &t.record),
+            final_notes.as_ref(),
+        ),
         (read, &map_groups(mapper, request.synth, read)),
     )?;
     let png = Spectrogram::of(stem.mid(), stem.sample_rate()).to_png()?;
 
-    std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
-        path: dir.clone(),
-        source,
-    })?;
-    let layers = dir.join(LAYERS_FILE);
-    let spectrogram = dir.join(SPECTROGRAM_FILE);
-    let layers_tmp = stage(&dir, LAYERS_FILE, json.as_bytes())?;
-    let spectrogram_tmp = stage(&dir, SPECTROGRAM_FILE, &png)?;
-    match std::fs::remove_file(&layers) {
-        Err(error) if error.kind() != io::ErrorKind::NotFound => {
-            return Err(AnalyzeError::Write {
-                path: layers,
-                source: error,
-            });
-        }
-        _ => {}
-    }
-    for (from, to) in [(&spectrogram_tmp, &spectrogram), (&layers_tmp, &layers)] {
-        std::fs::rename(from, to).map_err(|source| AnalyzeError::Write {
-            path: to.clone(),
-            source,
-        })?;
-    }
+    let midi = final_notes.as_ref().map(|list| (list, source.as_str()));
+    let (layers, spectrogram, notes_file) = write_outputs(&dir, &json, &png, midi)?;
     Ok(Analysis {
         layers,
         spectrogram,
+        notes: notes_file,
+        final_notes,
         tempo,
         transcription,
         pitch,
@@ -294,6 +306,64 @@ pub fn analyze_with(
         envelope,
         skipped,
     })
+}
+
+/// Writes the files of `analyze` into `dir`, creating it: each to a
+/// temporary sibling, then renamed into place, `notes.mid` first and
+/// `layers.json` last, after the old report is removed, and the old
+/// `notes.mid` with it when there are no notes. Returns the paths
+/// of `layers.json`, `spectrogram.png` and `notes.mid` when written. The
+/// notes, when given, are encoded with the stem's name as the track name.
+fn write_outputs(
+    dir: &Path,
+    json: &str,
+    png: &[u8],
+    notes: Option<(&FinalNotes, &str)>,
+) -> Result<(PathBuf, PathBuf, Option<PathBuf>), AnalyzeError> {
+    let midi = notes
+        .map(|(list, name)| list.to_midi(Some(name)))
+        .transpose()
+        .map_err(AnalyzeError::Midi)?;
+    let midi = midi.as_deref();
+    std::fs::create_dir_all(dir).map_err(|source| AnalyzeError::Write {
+        path: dir.to_path_buf(),
+        source,
+    })?;
+    let layers = dir.join(LAYERS_FILE);
+    let spectrogram = dir.join(SPECTROGRAM_FILE);
+    let notes = midi.map(|_| dir.join(NOTES_FILE));
+    let layers_tmp = stage(dir, LAYERS_FILE, json.as_bytes())?;
+    let spectrogram_tmp = stage(dir, SPECTROGRAM_FILE, png)?;
+    let notes_tmp = midi
+        .map(|bytes| stage(dir, NOTES_FILE, bytes))
+        .transpose()?;
+    // The guard has passed, so a `notes.mid` here is this stem's or one that
+    // `--force` replaces. A run without notes leaves none that the report
+    // does not describe.
+    let stale = dir.join(NOTES_FILE);
+    for old in std::iter::once(&layers).chain(notes.is_none().then_some(&stale)) {
+        match std::fs::remove_file(old) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => {
+                return Err(AnalyzeError::Write {
+                    path: old.clone(),
+                    source: error,
+                });
+            }
+            _ => {}
+        }
+    }
+    let renames = notes_tmp
+        .as_ref()
+        .zip(notes.as_ref())
+        .into_iter()
+        .chain([(&spectrogram_tmp, &spectrogram), (&layers_tmp, &layers)]);
+    for (from, to) in renames {
+        std::fs::rename(from, to).map_err(|source| AnalyzeError::Write {
+            path: to.clone(),
+            source,
+        })?;
+    }
+    Ok((layers, spectrogram, notes))
 }
 
 /// The mapper's edits for the pitch, voices and envelope groups.
@@ -315,6 +385,180 @@ fn map_groups(
     mapper.pitch_envelope(&groups, &ctx)
 }
 
+/// The final note list: the list rewritten with the layers; `None` for an
+/// empty list. Only the records the mapper writes into the preset, those
+/// above low confidence in a group above low confidence, leave the notes
+/// as routes.
+fn final_notes(
+    mono: &[f64],
+    rate: SampleRate,
+    notes: &NoteList,
+    (pitch, envelope): (&PitchLayer, &EnvelopeLayer),
+    mono_line: bool,
+    bpm: Bpm,
+) -> Result<Option<FinalNotes>, AnalyzeError> {
+    if notes.is_empty() {
+        return Ok(None);
+    }
+    let facts = note_facts(mono, rate, notes, envelope, !mono_line)?;
+    let group = pitch.confidence.level();
+    let confident = |confidence: &crate::confidence::Confidence<_>| {
+        group
+            .min(confidence.level())
+            .is_some_and(|level| level > Level::Low)
+    };
+    let glides: Vec<GlideSpan> = pitch
+        .glides
+        .iter()
+        .filter(|g| confident(&g.confidence))
+        .map(|g| GlideSpan {
+            start: g.value.start,
+            interval: g.value.interval,
+            time: g.value.time,
+        })
+        .collect();
+    let drops: Vec<DropSpan> = pitch
+        .drops
+        .iter()
+        .filter(|d| confident(&d.confidence))
+        .map(|d| DropSpan {
+            onset: d.value.onset,
+            f_end: d.value.f_end,
+            df_hz: d.value.df_hz,
+            settled: d.value.settled(),
+        })
+        .collect();
+    let vibrato: Vec<VibratoSpan> = pitch
+        .vibrato
+        .iter()
+        .filter(|v| confident(&v.confidence))
+        .map(|v| VibratoSpan {
+            start: v.value.start,
+            end: v.value.end,
+            pitch: v.value.pitch,
+        })
+        .collect();
+    let level = |from, to, f0| full_band_level(mono, rate, (from, to), f0);
+    Ok(Some(finish(&FinishInput {
+        notes,
+        facts: &facts,
+        bpm,
+        mono: mono_line,
+        level_velocity: velocity_reaches_level(envelope.level_spread.value().copied()),
+        glides: &glides,
+        drops: &drops,
+        vibrato: &vibrato,
+        level: &level,
+    })))
+}
+
+/// The knee, the pad end and the full-band level of each note of the
+/// list. The envelope layer owns the full-band level.
+fn note_facts(
+    mono: &[f64],
+    rate: SampleRate,
+    notes: &NoteList,
+    envelope: &EnvelopeLayer,
+    pad: bool,
+) -> Result<Vec<NoteFacts>, AnalyzeError> {
+    let list = notes.notes();
+    list.iter()
+        .enumerate()
+        .map(|(i, note)| {
+            let read = envelope
+                .notes
+                .iter()
+                .find(|n| n.onset == note.onset() && n.pitch == note.pitch());
+            let pad_end = match read {
+                Some(read) if pad => pad_end(mono, rate, note, list, read)?,
+                None if pad => full_band_pad_end(mono, rate, note),
+                _ => None,
+            };
+            Ok(NoteFacts {
+                knee: read.and_then(|n| n.knee),
+                pad_end,
+                level: envelope.levels.get(i).copied().flatten(),
+                read: read.is_some(),
+            })
+        })
+        .collect()
+}
+
+/// Where a pad note's amp proxy falls [`PAD_FALL`] below its plateau, the
+/// peak plus the sustain level, first after its knee or else its peak;
+/// `None` without a sustain, a proxy or such a fall.
+fn pad_end(
+    mono: &[f64],
+    rate: SampleRate,
+    note: &Note,
+    list: &[Note],
+    read: &NoteEnvelope,
+) -> Result<Option<Seconds>, AnalyzeError> {
+    let Some(sustain) = read.sustain else {
+        return Ok(None);
+    };
+    let others: Vec<&Note> = list
+        .iter()
+        .filter(|o| *o != note && o.onset() < note.offset() && note.onset() < o.offset())
+        .collect();
+    let Some(proxy) = amp_proxy(mono, rate, note, &others)
+        .map_err(|error| AnalyzeError::Envelope(error.into()))?
+    else {
+        return Ok(None);
+    };
+    let db = proxy.db();
+    let Some((peak_at, peak)) = db
+        .iter()
+        .copied()
+        .enumerate()
+        .reduce(|a, b| if b.1 > a.1 { b } else { a })
+    else {
+        return Ok(None);
+    };
+    let floor = peak + sustain.get() - PAD_FALL.get();
+    let from = read.knee.map_or(peak_at, |knee| proxy.index(knee.get()));
+    Ok(db
+        .iter()
+        .enumerate()
+        .skip(from)
+        .find(|&(_, &level)| level <= floor)
+        .map(|(i, _)| Seconds::clamped(proxy.time(i))))
+}
+
+/// Where the full-band level of a pad note that the envelope layer could
+/// not read falls [`PAD_FALL`] below its plateau, first after its peak.
+/// The plateau is the median of the last [`SUSTAIN_SHARE`] of the held
+/// part, from the first frame within 1 dB of the peak to
+/// [`KNEE_END_GAP`] before the note's end, as the envelope layer reads a
+/// sustain; `None` without a held part or such a fall.
+fn full_band_pad_end(mono: &[f64], rate: SampleRate, note: &Note) -> Option<Seconds> {
+    let track = full_band_track(
+        mono,
+        rate,
+        (note.onset(), note.offset()),
+        Hz::from(note.pitch()),
+    );
+    let db = track.db();
+    let (peak_at, peak) = db
+        .iter()
+        .copied()
+        .enumerate()
+        .reduce(|a, b| if b.1 > a.1 { b } else { a })?;
+    let held_from = db.iter().position(|&level| level >= peak - 1.0)?;
+    let held_to = track.index(note.offset().get() - KNEE_END_GAP.get());
+    let held = db.get(held_from..held_to).filter(|part| !part.is_empty())?;
+    let window = crate::cast::floor_to_usize(SUSTAIN_SHARE * crate::cast::usize_to_f64(held.len()))
+        .unwrap_or(0)
+        .clamp(1, held.len());
+    let plateau = Summary::of(&held[held.len() - window..])?.median();
+    let floor = plateau - PAD_FALL.get();
+    db.iter()
+        .enumerate()
+        .skip(peak_at)
+        .find(|&(_, &level)| level <= floor)
+        .map(|(i, _)| Seconds::clamped(track.time(i)))
+}
+
 /// The first two channels of a stem that has them.
 fn two_channels(channels: &[Vec<f64>]) -> Option<(&[f64], &[f64])> {
     match channels {
@@ -323,15 +567,20 @@ fn two_channels(channels: &[Vec<f64>]) -> Option<(&[f64], &[f64])> {
     }
 }
 
-/// Reads the pitch and envelope layers of the mono mix.
+/// Reads the pitch, envelope and voices layers of the mono mix, and the
+/// one voicing of the final notes: a mono line holds at most one voice at
+/// a time by the voices layer, or the layer counts none, and `--profile
+/// pad` makes any line polyphonic when the notes step ran. The envelope's full-band levels read that voicing, so
+/// they wait for the voices layer. `voicing` is the notes step's, which
+/// the pitch layer reads.
 fn read_layers(
     mono: &[f64],
     audio: &Audio,
     notes: &NoteList,
     track: &PitchTrack,
-    voicing: Voicing,
+    (voicing, pad_profile): (Voicing, bool),
     grid: BeatGrid,
-) -> Result<(PitchLayer, EnvelopeLayer, VoicesLayer), AnalyzeError> {
+) -> Result<(PitchLayer, EnvelopeLayer, VoicesLayer, bool), AnalyzeError> {
     let rate = audio.sample_rate();
     let pitch = PitchLayer::of(&PitchInput {
         mono,
@@ -341,14 +590,14 @@ fn read_layers(
         voicing,
     })
     .map_err(AnalyzeError::Pitch)?;
-    let envelope = EnvelopeLayer::of(&EnvelopeInput {
+    let input = EnvelopeInput {
         mono,
         rate,
         notes,
         grid,
         stereo: two_channels(audio.channels()),
-    })
-    .map_err(AnalyzeError::Envelope)?;
+    };
+    let mut envelope = EnvelopeLayer::of(&input).map_err(AnalyzeError::Envelope)?;
     let voices = VoicesLayer::of(&VoicesInput {
         mono,
         rate,
@@ -356,7 +605,14 @@ fn read_layers(
         envelope: &envelope,
     })
     .map_err(AnalyzeError::Voices)?;
-    Ok((pitch, envelope, voices))
+    // A layer that counted no voices leaves the line mono: the mono rules
+    // only join and cut notes, while the pad rule reads what the count
+    // could not.
+    let mono_line = (voices.mono || !voices.confidence.is_estimate()) && !pad_profile;
+    envelope
+        .read_levels(&input, mono_line)
+        .map_err(AnalyzeError::Envelope)?;
+    Ok((pitch, envelope, voices, mono_line))
 }
 
 /// The tempo of a stem: `bpm` as given when `exact`, else refined from
@@ -472,13 +728,16 @@ fn transcription_summary(t: &Transcription) -> Vec<String> {
 /// The tempo is refined from the stem unless the request says
 /// `bpm_exact`. The stem runs through [`transcribe_stem`] at that tempo
 /// with the detected settings, or those of the profile, and the file
-/// carries that tempo. The file is written to a temporary sibling
-/// and renamed into place, and nothing else in the folder changes.
+/// carries that tempo. The file is written to a temporary sibling and
+/// renamed into place. Nothing else in the folder changes, except that
+/// `force` removes a `layers.json` that describes the final notes, so no
+/// report describes a file that is gone.
 ///
 /// # Errors
 ///
-/// Returns an [`AnalyzeError`] when the output folder is a file or holds
-/// the report of another stem (without `force`), when the stem cannot be
+/// Returns an [`AnalyzeError`] when the output folder is a file, holds a
+/// `layers.json` that describes the final notes or the report of another
+/// stem (without `force`), when the stem cannot be
 /// decoded or transcribed, when it gives no note, or when the file cannot
 /// be written.
 pub fn notes(
@@ -487,6 +746,14 @@ pub fn notes(
 ) -> Result<NotesReport, AnalyzeError> {
     let dir = out_dir(request.stem, request.out);
     let source = source_of(request.stem);
+    // A report that describes the final notes would describe a file this
+    // command replaces, so it stops the run, whatever its stem; `--force`
+    // removes it with the old file.
+    let report = dir.join(LAYERS_FILE);
+    let describes = describes_notes(&report);
+    if describes && !request.force {
+        return Err(AnalyzeError::NotesDescribed { path: report });
+    }
     check_out_dir(&dir, &source, request.force, Guarded::ReportBeside)?;
     check_notes_file(&dir, &source, request.force)?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
@@ -523,6 +790,20 @@ pub fn notes(
     })?;
     let path = dir.join(NOTES_FILE);
     let staged = stage(&dir, NOTES_FILE, &bytes)?;
+    if describes {
+        // Before the rename: a failed rename then leaves the old file with
+        // no report that misdescribes it.
+        match std::fs::remove_file(&report) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => {
+                let _ = std::fs::remove_file(&staged);
+                return Err(AnalyzeError::Write {
+                    path: report,
+                    source: error,
+                });
+            }
+            _ => {}
+        }
+    }
     if let Err(source) = std::fs::rename(&staged, &path) {
         // The staged copy is ours alone; a failed removal changes nothing
         // the error does not already report.
@@ -535,6 +816,15 @@ pub fn notes(
         transcription,
         skipped,
     })
+}
+
+/// Whether a `layers.json` describes the final notes, the `notes.mid` that
+/// `analyze` writes next to it.
+fn describes_notes(report: &Path) -> bool {
+    std::fs::read_to_string(report)
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .is_some_and(|report| report.get("notes").is_some_and(|notes| !notes.is_null()))
 }
 
 /// Fails when the output folder is a file, or holds a `layers.json` whose
@@ -643,6 +933,12 @@ pub enum AnalyzeError {
         /// What the file is, and what `--force` does to it.
         guarded: Guarded,
     },
+    /// The output folder holds a `layers.json` that describes the final
+    /// notes, which `notes` would replace with the first list.
+    NotesDescribed {
+        /// The existing `layers.json`.
+        path: PathBuf,
+    },
     /// The model run, a decode or the f0 track failed.
     Transcription(NotesError),
     /// The pitch layer failed.
@@ -700,6 +996,11 @@ impl fmt::Display for AnalyzeError {
                     path.display()
                 )
             }
+            Self::NotesDescribed { path } => write!(
+                f,
+                "{} describes the final notes.mid that `analyze` wrote, and `notes` would replace that file with the first note list. Pass --out <dir> for the first list, or --force to replace notes.mid and remove the report",
+                path.display()
+            ),
             Self::Transcription(error) => write!(f, "{error}"),
             Self::Pitch(error) => write!(f, "{error}"),
             Self::Envelope(error) => write!(f, "{error}"),
@@ -736,6 +1037,7 @@ impl Error for AnalyzeError {
             Self::Write { source, .. } => Some(source),
             Self::OutIsFile { .. }
             | Self::OtherSource { .. }
+            | Self::NotesDescribed { .. }
             | Self::NoNotes { .. }
             | Self::Internal(_) => None,
         }
@@ -757,5 +1059,68 @@ impl From<serde_json::Error> for AnalyzeError {
 impl From<png::EncodingError> for AnalyzeError {
     fn from(error: png::EncodingError) -> Self {
         Self::Internal(error.to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::units::{Decibels, MidiPitch};
+
+    /// A 220 Hz tone held at full level to 0.5 s that then falls 60 dB/s
+    /// reaches 20 dB under its plateau at 0.833 s, within its list span.
+    #[test]
+    fn a_pad_note_ends_where_its_level_falls_20_db_under_the_plateau() {
+        let rate = SampleRate::new(22_050).unwrap();
+        let fs = 22_050.0;
+        let mono: Vec<f64> = (0..33_075)
+            .map(|n| {
+                let t = f64::from(n) / fs;
+                let gain = if t < 0.5 {
+                    1.0
+                } else {
+                    10f64.powf(-3.0 * (t - 0.5))
+                };
+                0.5 * gain * (std::f64::consts::TAU * 220.0 * t).sin()
+            })
+            .collect();
+        let pitch = MidiPitch::new(57.0).unwrap();
+        let note = Note::new(Seconds::clamped(0.0), Seconds::clamped(1.5), pitch).unwrap();
+        let read = NoteEnvelope {
+            onset: note.onset(),
+            end: note.offset(),
+            pitch,
+            peak_db: Decibels::clamped(0.0),
+            attack: None,
+            attack_upper_bound: false,
+            hold: Seconds::clamped(0.5),
+            decay: None,
+            sustain: Some(Decibels::clamped(0.0)),
+            knee: Some(Seconds::clamped(0.5)),
+            ripple: None,
+            residual: None,
+            overlap: false,
+            tail: None,
+        };
+        let end = pad_end(&mono, rate, &note, std::slice::from_ref(&note), &read)
+            .unwrap()
+            .unwrap();
+        assert!((end.get() - (0.5 + 20.0 / 60.0)).abs() < 0.01, "{end}");
+        let held = NoteEnvelope {
+            sustain: None,
+            ..read
+        };
+        let unread = pad_end(&mono, rate, &note, std::slice::from_ref(&note), &held).unwrap();
+        assert_eq!(unread, None);
+        // Listed only to 0.6 s, the tone falls 20 dB after its list end, so
+        // it has no pad end: the search stops there, and the release belongs
+        // to the preset's amp envelope.
+        let short = Note::new(note.onset(), Seconds::clamped(0.6), pitch).unwrap();
+        let read = NoteEnvelope {
+            end: short.offset(),
+            ..read
+        };
+        let end = pad_end(&mono, rate, &short, std::slice::from_ref(&short), &read).unwrap();
+        assert_eq!(end, None);
     }
 }

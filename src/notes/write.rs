@@ -8,8 +8,10 @@ use std::cmp::Reverse;
 use std::error::Error;
 use std::fmt;
 
-use midly::num::{u4, u7, u15, u24, u28};
-use midly::{Format, Header, MetaMessage, MidiMessage, Timing, TrackEvent, TrackEventKind};
+use midly::num::{u4, u7, u14, u15, u24, u28};
+use midly::{
+    Format, Header, MetaMessage, MidiMessage, PitchBend, Timing, TrackEvent, TrackEventKind,
+};
 
 use super::{NoteList, Velocity};
 use crate::cast;
@@ -100,10 +102,7 @@ fn encode(
     velocities: Velocities,
     name: Option<&str>,
 ) -> Result<Vec<u8>, MidiWriteError> {
-    if notes.is_empty() {
-        return Err(MidiWriteError::NoNotes);
-    }
-    let ticks_per_second = bpm.get() / 60.0 * f64::from(TICKS_PER_BEAT);
+    let ticks_per_second = ticks_per_second(bpm);
     let tick = |seconds: Seconds| {
         cast::round_to_usize(seconds.get() * ticks_per_second)
             .and_then(|tick| u64::try_from(tick).ok())
@@ -125,21 +124,43 @@ fn encode(
         };
         spans.push((key, start, end, velocity));
     }
+    encode_spans(spans, &[], bpm, name)
+}
+
+/// A note span in ticks: key, start, end and velocity.
+pub(crate) type Span = (u7, u64, u64, Velocity);
+
+/// Encodes note spans and pitch-bend events, each a tick and a 14-bit
+/// value, as a format 0 file. Of two notes with one key and one start only
+/// the longer stays, and a note ends no later than the next one of its key.
+/// At one tick a note-off comes first, then a bend, then a note-on.
+pub(crate) fn encode_spans(
+    mut spans: Vec<Span>,
+    bends: &[(u64, u16)],
+    bpm: Bpm,
+    name: Option<&str>,
+) -> Result<Vec<u8>, MidiWriteError> {
+    if spans.is_empty() {
+        return Err(MidiWriteError::NoNotes);
+    }
+    let ticks_per_second = ticks_per_second(bpm);
     // Sorted by key, then start, longest first: the first of one key and
     // start stays, and a note ends no later than the next one of its key.
     spans.sort_by_key(|&(key, start, end, _)| (key, start, Reverse(end)));
     spans.dedup_by_key(|&mut (key, start, ..)| (key, start));
-    let mut events = Vec::with_capacity(2 * spans.len());
+    let mut events = Vec::with_capacity(2 * spans.len() + bends.len());
     for (i, &(key, start, end, velocity)) in spans.iter().enumerate() {
         let end = match spans.get(i + 1) {
             Some(&(next_key, next_start, ..)) if next_key == key => end.min(next_start),
             _ => end,
         };
-        events.push((start, true, key, velocity));
-        events.push((end, false, key, velocity));
+        events.push((start, Event::On, key, velocity.get()));
+        events.push((end, Event::Off, key, 0));
     }
-    // Note-offs sort before note-ons at one tick.
-    events.sort_by_key(|&(at, on, key, _)| (at, on, key));
+    for &(at, value) in bends {
+        events.push((at, Event::Bend(value), u7::new(0), 0));
+    }
+    events.sort_by_key(|&(at, event, key, _)| (at, event, key));
 
     let channel = u4::new(0);
     let mut track: Vec<TrackEvent<'_>> = name
@@ -151,17 +172,19 @@ fn encode(
         meta(MetaMessage::TimeSignature(4, 2, 24, 8)),
     ]);
     let mut now = 0_u64;
-    for (at, on, key, velocity) in events {
-        let message = if on {
-            MidiMessage::NoteOn {
+    for (at, event, key, velocity) in events {
+        let message = match event {
+            Event::On => MidiMessage::NoteOn {
                 key,
-                vel: u7::new(velocity.get()),
-            }
-        } else {
-            MidiMessage::NoteOff {
+                vel: u7::new(velocity),
+            },
+            Event::Off => MidiMessage::NoteOff {
                 key,
                 vel: u7::new(0),
-            }
+            },
+            Event::Bend(value) => MidiMessage::PitchBend {
+                bend: PitchBend(u14::new(value)),
+            },
         };
         track.push(TrackEvent {
             delta: u32::try_from(at - now).ok().and_then(u28::try_from).ok_or(
@@ -181,6 +204,19 @@ fn encode(
     midly::write_std(&header, std::iter::once(&track), &mut bytes)
         .map_err(|source| MidiWriteError::Encode(source.to_string()))?;
     Ok(bytes)
+}
+
+/// The kinds of event, in the order they take at one tick.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Event {
+    Off,
+    Bend(u16),
+    On,
+}
+
+/// The ticks in one second at a BPM.
+pub(crate) fn ticks_per_second(bpm: Bpm) -> f64 {
+    bpm.get() / 60.0 * f64::from(TICKS_PER_BEAT)
 }
 
 /// The tempo in whole microseconds per quarter note.

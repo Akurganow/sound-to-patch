@@ -43,7 +43,10 @@ The file goes into a folder named after the stem, next to it, the same
 folder `analyze` writes into. `--out` picks another folder. Only
 `notes.mid` is replaced; nothing else in the folder changes. The file
 names its stem in its track name, so a run of another stem into the same
-folder stops unless you pass `--out` or `--force`.
+folder stops unless you pass `--out` or `--force`. After `analyze`, the
+folder's `layers.json` describes the final `notes.mid`, so `notes` stops
+there too: `--out` writes the first list elsewhere, and `--force`
+replaces the final notes and removes the report that described them.
 
 Each line names one step:
 

@@ -20,10 +20,11 @@ use crate::estimate::pitch::{
     Rated, VIBRATO_CONVENTION, VibratoFit,
 };
 use crate::estimate::voices::{JOIN_CONVENTION, Join, VOICES_CONVENTION, VoicesLayer};
-use crate::notes::TranscriptionRecord;
+use crate::notes::{FinalNotes, TICKS_PER_BEAT, TranscriptionRecord};
 use crate::preset::edits::Edit;
 use crate::preset::mapper::pitch_envelope::group_of;
 use crate::preset::mapper::{Mapped, Unrepresentable};
+use crate::report::NOTES_FILE;
 use crate::synth::Synth;
 use crate::units::{
     Bpm, Cents, Correlation, Decibels, Degrees, Hz, Normalized, Ratio, Seconds, Semitones,
@@ -37,14 +38,56 @@ const STATISTICS_CONVENTION: &str = "median and interquartile range over active 
 quantiles by linear interpolation at q (n - 1) between the sorted values; a frame is active \
 when its RMS lies within 40 dB of the loudest frame";
 
+/// The convention of the final note list.
+const NOTES_CONVENTION: &str = "the notes of notes.mid, one track on channel 1 at the used \
+tempo, 480 ticks per quarter note; a time becomes round(seconds * bpm / 60 * 480) ticks, and \
+onset_s and end_s are the written ticks in seconds; list_onset_s and list_end_s are the note in \
+the cleaned note list, or the earliest onset and latest end of the notes a pitch drop merged; key \
+is the nearest key of the pitch, of f_end for a pitch drop and of the mean pitch for a note a \
+vibrato covers over half its length, when within a semitone; only glides, drops and vibratos above \
+low confidence in a pitch group above low confidence count; a drop merges the notes that start \
+from 30 ms before its onset until five time constants after it, each within 30 ms of the end of \
+the one before and on a key from f_end to the drop's start pitch; end_rule names what set the end: \
+knee is the note-off knee; no_knee is 50 ms before the list end for a note the envelope layer read \
+without a knee; unread is the same cut for a note the envelope layer skipped, with no pad end; a \
+line is mono when the voices layer reads at most one voice at a time or counts none, unless the \
+notes step ran with --profile pad; pad is, for a note of a polyphonic line, where its amp proxy falls 20 dB below its \
+peak plus its sustain level, first after its knee or its peak, or, for a note the envelope layer \
+skipped, where its full-band level falls 20 dB below the median of the last 30 % of its held part, \
+from the first frame within 1 dB of its peak to 25 ms before its list end, first after its peak, \
+both searched no later than the list end; minimum is the \
+decoder's minimum length at the tempo by the BPM rule, when a knee, no-knee or pad cut would go \
+below it, and a note the list gives shorter keeps its length; next_note is the next note-on of a \
+mono line, which the minimum does not hold back; glide is 5 ms after the next note-on, rounded up \
+to whole ticks, at a glide join of a mono line, whose later note starts at the glide's start or at \
+its own onset, whichever comes first; no end lies after the list end, except at a glide join; of \
+the notes of a mono line that start on one tick only one stays, and dropped counts the others: a \
+note without the octave flag before one with it, then the longer, then the lower key; level_db is \
+the note's full-band level, as level_spread_db defines it, the highest of the notes a drop merged, \
+or, when that span holds no frame, the same level from its start to its end before the joins and \
+cuts of a mono line, on a mono line no later than the next later onset; \
+velocity is level when level_spread_db exceeds 3 dB: \
+the loudest note gets 127 and a note d dB under it round(127 * 10^(-d / 40)), at least 1, and a note \
+without a level 100; else constant, 100 for every note; octave_uncertain is the transcriber's \
+octave flag, null when none ran; bend_events counts the pitch bends: on a mono line, a note whose \
+f0 contour leaves its key by 50 cents or more, of one sign, over adjacent counted frames that span \
+the tracker's reach of the note, a quarter frame plus one period, outside every counted glide, drop \
+and vibrato span, gets a bend at each counted contour frame, clamped to 2 semitones, at the frame's audio time, its \
+track time less the track's lag of a quarter frame less half a period; a frame counts only when \
+what it reads, from a quarter frame before it to one period after it, lies inside the note's list \
+onset and end, each one model frame of 11.6 ms inward, and outside every other note of the list; \
+the bend is centred again at the note's end or the next note-on, whichever comes \
+first; a host must set a bend range of 2 semitones";
+
 /// Renders the report of a stem as pretty-printed JSON with a final
 /// newline. The same stem always gives the same bytes.
 ///
 /// `source` is the stem's file name without its folder, `tempo` the
 /// given and refined tempo, `transcription` the record of the
 /// transcriber that gave the notes, or `None` when none ran, and
-/// `layers` the pitch, envelope and voices layers with the mapper's output
-/// for them, which each group splits by its name.
+/// `notes` the final note list that `notes.mid` holds, or `None` without
+/// notes, and `layers` the pitch, envelope and voices layers with the
+/// mapper's output for them, which each group splits by its name.
 ///
 /// # Errors
 ///
@@ -56,7 +99,7 @@ pub fn layers_json(
     synth: Synth,
     source: &str,
     tempo: &Tempo,
-    transcription: Option<&TranscriptionRecord>,
+    (transcription, notes): (Option<&TranscriptionRecord>, Option<&FinalNotes>),
     ((pitch, envelope, voices), mapped): ((&PitchLayer, &EnvelopeLayer, &VoicesLayer), &Mapped),
 ) -> Result<String, serde_json::Error> {
     let report = Layers {
@@ -65,6 +108,7 @@ pub fn layers_json(
         synth,
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
+        notes: notes.map(NotesGroup::new),
         pitch: PitchGroup::new(pitch, Mapping::of(mapped, "pitch")),
         voices: VoicesGroup::new(voices, Mapping::of(mapped, "voices")),
         envelope: EnvelopeGroup::new(envelope, Mapping::of(mapped, "envelope")),
@@ -84,10 +128,67 @@ struct Layers<'a> {
     stem: StemGroup<'a>,
     /// The transcriber's model and settings, `null` when none ran.
     transcription: Option<&'a TranscriptionRecord>,
+    /// The final note list of `notes.mid`, `null` without notes.
+    notes: Option<NotesGroup>,
     pitch: PitchGroup<'a>,
     voices: VoicesGroup<'a>,
     envelope: EnvelopeGroup<'a>,
     conventions: Conventions,
+}
+
+/// The final note list: the notes of `notes.mid` and how each was written.
+#[derive(Serialize)]
+struct NotesGroup {
+    file: &'static str,
+    ticks_per_beat: u16,
+    velocity: &'static str,
+    bend_events: usize,
+    dropped: usize,
+    list: Vec<FinalRecord>,
+}
+
+#[derive(Serialize)]
+struct FinalRecord {
+    onset_s: Seconds,
+    end_s: Seconds,
+    list_onset_s: Seconds,
+    list_end_s: Seconds,
+    key: u8,
+    velocity: u8,
+    end_rule: &'static str,
+    level_db: Option<Decibels>,
+    octave_uncertain: Option<bool>,
+}
+
+impl NotesGroup {
+    fn new(notes: &FinalNotes) -> Self {
+        Self {
+            file: NOTES_FILE,
+            ticks_per_beat: TICKS_PER_BEAT,
+            velocity: if notes.level_velocity {
+                "level"
+            } else {
+                "constant"
+            },
+            bend_events: notes.bends.len(),
+            dropped: notes.dropped,
+            list: notes
+                .notes
+                .iter()
+                .map(|n| FinalRecord {
+                    onset_s: notes.seconds(n.start),
+                    end_s: notes.seconds(n.end),
+                    list_onset_s: n.list_onset,
+                    list_end_s: n.list_end,
+                    key: n.key,
+                    velocity: n.velocity.get(),
+                    end_rule: n.end_rule.name(),
+                    level_db: n.level,
+                    octave_uncertain: n.octave_uncertain,
+                })
+                .collect(),
+        }
+    }
 }
 
 /// The envelope layer as a layer group, with the mapper's edits for it.
@@ -607,6 +708,7 @@ struct Conventions {
     tail: &'static str,
     level_spread_db: &'static str,
     pump: &'static str,
+    notes: &'static str,
 }
 
 impl Conventions {
@@ -654,6 +756,7 @@ audio time from the start of the stem",
             tail: TAIL_CONVENTION,
             level_spread_db: LEVEL_SPREAD_CONVENTION,
             pump: PUMP_CONVENTION,
+            notes: NOTES_CONVENTION,
         }
     }
 }
