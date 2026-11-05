@@ -186,6 +186,8 @@ that set its end, its level and the transcriber's octave flag.
   whose chord share stays under 0.68 it reads glides, drops and vibratos
   as on one line, while `notes.mid` treats the line as polyphonic and
   writes no glide join or bend.
+  [#327](https://github.com/Akurganow/sound-to-patch/issues/327) aligns
+  the two.
 
 ## Give the notes
 
