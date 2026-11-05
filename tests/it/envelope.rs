@@ -2763,3 +2763,39 @@ fn a_stripped_bass_line_keeps_its_note_offs_before_the_gaps() {
         assert!(errors.iter().all(|e| e.abs() < 0.15), "{signal} {errors:?}");
     }
 }
+
+/// Equal tones of a chord read one full-band level, so the spread stays
+/// under the velocity gate of 3 dB, whether they start together or
+/// staggered by 12.5 ms: a chord tone's span runs past the next onset.
+#[test]
+fn the_tones_of_a_chord_read_one_level_however_their_onsets_stagger() {
+    let tones = [130.81, 164.81, 196.0];
+    for stagger in [0.0, 0.0125] {
+        let mut x = vec![0.0; samples(9.0, fs())];
+        let mut notes = Vec::new();
+        for c in 0..8 {
+            let t0 = 0.2 + f64::from(c);
+            for (j, &f) in tones.iter().enumerate() {
+                let on = t0 + stagger * f64::from(u8::try_from(j).unwrap());
+                notes.push((on, t0 + 0.9, f));
+                for (i, y) in x
+                    .iter_mut()
+                    .enumerate()
+                    .take(samples(t0 + 0.9, fs()))
+                    .skip(samples(on, fs()))
+                {
+                    let t = f64::from(u32::try_from(i).unwrap()) / fs() - on;
+                    let env = if t < 0.7 {
+                        1.0
+                    } else {
+                        (-20.0 * (t - 0.7)).exp()
+                    };
+                    *y += 0.15 * (t / 0.005).min(1.0) * env * (TAU * f * t).sin();
+                }
+            }
+        }
+        let read = layer(&x, &note_list(&notes), 120.0);
+        let spread = read.level_spread.value().unwrap().get();
+        assert!(spread <= 3.0, "stagger {stagger} s: {spread} dB");
+    }
+}

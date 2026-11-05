@@ -48,7 +48,7 @@ use crate::confidence::{
     Confidence, ConfidenceError, Estimate, Level, NoSpread, Reason, ReasonCode, Signal,
 };
 use crate::dsp::{FilterError, Stats, Summary, quantile};
-use crate::notes::{NO_KNEE_CUT, Note, NoteList};
+use crate::notes::{NO_KNEE_CUT, Note, NoteList, Voicing, voicing_of_notes};
 use crate::units::{Decibels, Hz, MidiPitch, Ratio, Seconds};
 
 /// A value over the pool needs this many notes; with fewer it reads low.
@@ -142,8 +142,8 @@ pub const LEVEL_SPREAD_CONVENTION: &str = "the 90th minus the 10th percentile of
 level of the pooled notes, quantiles by linear interpolation; a note's full-band level is the peak \
 of the centred RMS of the mono mix in dB of full-scale power over one period of the fundamental, \
 or the fewest whole periods that span 2 ms, on a 1 ms hop from its onset to its note-off knee, or \
-to 50 ms before its end in the note list without one, and never past the next later onset in the \
-list; always low confidence, a rule no stem has tested; null under 3 pooled notes with a level";
+to 50 ms before its end in the note list without one, and on a monophonic list never past the \
+next later onset; always low confidence, a rule no stem has tested; null under 3 pooled notes with a level";
 /// The convention of the pump.
 pub const PUMP_CONVENTION: &str = "the full-band centred RMS in dB over two periods of the lowest \
 note on a 1 ms hop, cut into beats of the used tempo from 0 s; a beat counts when the held part of \
@@ -788,12 +788,15 @@ fn pooled_levels(notes: &[Note], levels: &[Option<Decibels>], pool: &[&NoteEnvel
 /// The full-band level of each note of the list, as
 /// [`LEVEL_SPREAD_CONVENTION`] defines it. The span ends where
 /// `notes.mid` ends a note before the rules of a mono line: at the knee,
-/// or 50 ms before the list end without one.
+/// or 50 ms before the list end without one. On a mono line it also ends
+/// at the next later onset; a chord's tones read their own spans, however
+/// their onsets stagger.
 fn full_band_levels(
     input: &EnvelopeInput<'_>,
     notes: &[Note],
     read: &[NoteEnvelope],
 ) -> Vec<Option<Decibels>> {
+    let mono = voicing_of_notes(&NoteList::new(notes.to_vec())) == Voicing::Monophonic;
     notes
         .iter()
         .map(|note| {
@@ -804,30 +807,64 @@ fn full_band_levels(
             let next = notes
                 .iter()
                 .map(Note::onset)
-                .find(|&onset| onset > note.onset())
+                .find(|&onset| mono && onset > note.onset())
                 .map_or(f64::INFINITY, Seconds::get);
             let end = knee
                 .map_or(note.offset().get() - NO_KNEE_CUT.get(), Seconds::get)
                 .min(note.offset().get())
                 .min(next);
-            if end <= note.onset().get() {
-                return None;
-            }
-            LevelTrack::rms(
+            full_band_level(
                 input.mono,
-                0,
                 input.rate,
                 (note.onset(), Seconds::clamped(end)),
                 Hz::from(note.pitch()),
-                RMS_PERIODS,
             )
-            .db()
-            .iter()
-            .copied()
-            .reduce(f64::max)
-            .map(Decibels::clamped)
         })
         .collect()
+}
+
+/// The full-band level over a span: the peak of [`full_band_track`];
+/// `None` for a span that holds no frame.
+#[must_use]
+pub fn full_band_level(
+    mono: &[f64],
+    rate: SampleRate,
+    span: (Seconds, Seconds),
+    f0: Hz,
+) -> Option<Decibels> {
+    if span.1 <= span.0 {
+        return None;
+    }
+    full_band_track(mono, rate, span, f0)
+        .db()
+        .iter()
+        .copied()
+        .reduce(f64::max)
+        .map(Decibels::clamped)
+}
+
+/// The full-band level track of a span.
+///
+/// It is the centred RMS of the mono mix in dB over one period of `f0`, or
+/// the fewest whole periods that span 2 ms, on a 1 ms hop from `from` to
+/// `to`. It reads only the samples of the span and half a window either side,
+/// so a note costs its own length, not the stem's.
+#[must_use]
+pub fn full_band_track(
+    mono: &[f64],
+    rate: SampleRate,
+    (from, to): (Seconds, Seconds),
+    f0: Hz,
+) -> LevelTrack {
+    let fs = rate.hz().get();
+    let margin = rms_window(f0, RMS_PERIODS).get() * fs + 2.0;
+    let lo = cast::floor_to_usize((from.get() * fs - margin).max(0.0))
+        .unwrap_or(0)
+        .min(mono.len());
+    let hi = cast::ceil_to_usize(to.get() * fs + margin)
+        .unwrap_or(mono.len())
+        .clamp(lo, mono.len());
+    LevelTrack::rms(&mono[lo..hi], lo, rate, (from, to), f0, RMS_PERIODS)
 }
 
 fn median(values: &[f64]) -> Option<f64> {
@@ -1320,6 +1357,36 @@ mod tests {
             reasons
                 .iter()
                 .all(|r| r.code() != ReasonCode::RelativeSpread)
+        );
+    }
+
+    #[test]
+    fn the_full_band_track_reads_only_its_span_and_matches_the_whole_stem() {
+        let rate = SampleRate::new(22_050).unwrap();
+        // A deterministic noise-like signal with a level that moves.
+        let mono: Vec<f64> = (0..44_100_u32)
+            .map(|n| {
+                let x = f64::from(n);
+                (x * 0.731).sin() * (x * 0.000_37).cos() + 0.3 * (x * 2.17).sin()
+            })
+            .collect();
+        for (from, to, f0) in [(0.0, 0.3, 55.0), (0.5, 1.2, 220.0), (1.7, 2.0, 880.0)] {
+            let span = (Seconds::clamped(from), Seconds::clamped(to));
+            let whole = LevelTrack::rms(&mono, 0, rate, span, Hz::clamped(f0), RMS_PERIODS);
+            let part = full_band_track(&mono, rate, span, Hz::clamped(f0));
+            assert_eq!(whole.db().len(), part.db().len());
+            for (a, b) in whole.db().iter().zip(part.db()) {
+                assert!((a - b).abs() < 1e-9, "{from} s: {a} against {b}");
+            }
+        }
+        assert_eq!(
+            full_band_level(
+                &mono,
+                rate,
+                (Seconds::clamped(1.0), Seconds::clamped(1.0)),
+                Hz::clamped(110.0)
+            ),
+            None
         );
     }
 

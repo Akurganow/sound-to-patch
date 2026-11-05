@@ -24,16 +24,16 @@ use crate::preset::mapper::{MapContext, Mapped, Unwritten, UnwrittenReason, sort
 use crate::preset::registry::ParamRegistry;
 use crate::units::{Decibels, Seconds, Semitones};
 
-/// The spread of the pooled peak levels above which velocity gets a path to
-/// the level.
+/// The spread of the full-band levels of the pooled notes above which
+/// velocity gets a path to the level.
 pub const VELOCITY_SPREAD: Decibels = Decibels::from_const(3.0);
 
 /// Whether velocity gets a path to the level: the level spread has a value,
 /// read over at least three pooled notes, and exceeds [`VELOCITY_SPREAD`].
 ///
-/// The writer of the final `notes.mid` is to read this rule too (#72): a
-/// velocity per note from its peak level when it holds, one constant
-/// velocity otherwise. The spread itself is always low confidence, so the
+/// The writer of the final `notes.mid` reads this rule too: a velocity per
+/// note from its full-band level when it holds, one constant velocity
+/// otherwise. The spread itself is always low confidence, so the
 /// rule does not gate on its level.
 ///
 /// ```
@@ -250,7 +250,8 @@ pub enum Want {
     },
     /// A path from velocity to the level, with the spread it should cover.
     VelocityToLevel {
-        /// The 90th minus the 10th percentile of the pooled peak levels.
+        /// The 90th minus the 10th percentile of the full-band levels of
+        /// the pooled notes.
         spread: Decibels,
     },
     /// The amplitude attack, 0 to 100 %.

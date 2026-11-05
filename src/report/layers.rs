@@ -48,19 +48,31 @@ vibrato covers over half its length, when within a semitone; only glides, drops 
 low confidence in a pitch group above low confidence count; a drop merges the notes that start \
 from 30 ms before its onset until five time constants after it, each within 30 ms of the end of \
 the one before and on a key from f_end to the drop's start pitch; end_rule names what set the end: \
-knee is the note-off knee, no_knee is 50 ms before the list end when no knee shows, pad is where \
-the amp proxy of a note of a polyphonic line falls 20 dB below its peak plus its sustain level, \
-first after its knee or its peak, minimum is the decoder's minimum length at the tempo when a cut \
-would go below it, next_note is the next note-on of a mono line, and glide is 5 ms after the next \
-note-on, rounded up to whole ticks, at a glide join of a mono line, whose later note starts at the \
-glide's start; no end lies after the list end, except at a glide join; level_db is the note's full-band \
-level, as level_spread_db defines it, the highest of the notes a drop merged; velocity is level \
-when level_spread_db exceeds 3 dB: the loudest note gets 127 and a note d dB under it \
-round(127 * 10^(-d / 40)), at least 1; else constant, 100 for every note; octave_uncertain is \
-the transcriber's octave flag, null when none ran; bend_events counts the pitch bends: on a mono \
-line, a note whose f0 contour leaves its key by 50 cents or more outside every counted glide, drop \
-and vibrato span gets a bend at each contour point outside them, clamped to 2 semitones, and a \
-centred bend at its end; a host must set a bend range of 2 semitones";
+knee is the note-off knee; no_knee is 50 ms before the list end for a note the envelope layer read \
+without a knee; unread is the same cut for a note the envelope layer skipped, with no pad end; pad \
+is, for a note of a polyphonic line, where its amp proxy falls 20 dB below its peak plus its \
+sustain level, first after its knee or its peak, or, for a note the envelope layer skipped, where \
+its full-band level falls 20 dB below the median of the last 30 % of its held part, from the first \
+frame within 1 dB of its peak to 25 ms before its list end, first after its peak; minimum is the \
+decoder's minimum length at the tempo by the BPM rule, when a knee, no-knee or pad cut would go \
+below it, and a note the list gives shorter keeps its length; next_note is the next note-on of a \
+mono line, which the minimum does not hold back; glide is 5 ms after the next note-on, rounded up \
+to whole ticks, at a glide join of a mono line, whose later note starts at the glide's start or at \
+its own onset, whichever comes first; no end lies after the list end, except at a glide join; of \
+the notes of a mono line that start on one tick only the one with the highest level_db stays, the \
+longer on a tie, and dropped counts the others; level_db is the note's full-band level, as \
+level_spread_db defines it, the highest of the notes a drop merged, or, when that span holds no \
+frame, the same level over the written span; velocity is level when level_spread_db exceeds 3 dB: \
+the loudest note gets 127 and a note d dB under it round(127 * 10^(-d / 40)), at least 1, and a note \
+without a level 100; else constant, 100 for every note; octave_uncertain is the transcriber's \
+octave flag, null when none ran; bend_events counts the pitch bends: on a mono line, a note whose \
+f0 contour leaves its key by 50 cents or more outside every counted glide, drop and vibrato span \
+gets a bend at each such contour frame, clamped to 2 semitones, at the frame's audio time, its \
+track time less the track's lag of a quarter frame less half a period; a frame counts only when \
+what it reads, from a quarter frame before it to one period after it, lies inside the note's list \
+onset and end, each one model frame of 11.6 ms inward, and outside every other note of the list; \
+the bend is centred again at the note's end or the next note-on, whichever comes \
+first; a host must set a bend range of 2 semitones";
 
 /// Renders the report of a stem as pretty-printed JSON with a final
 /// newline. The same stem always gives the same bytes.
@@ -126,6 +138,7 @@ struct NotesGroup {
     ticks_per_beat: u16,
     velocity: &'static str,
     bend_events: usize,
+    dropped: usize,
     list: Vec<FinalRecord>,
 }
 
@@ -153,6 +166,7 @@ impl NotesGroup {
                 "constant"
             },
             bend_events: notes.bends.len(),
+            dropped: notes.dropped,
             list: notes
                 .notes
                 .iter()

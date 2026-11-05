@@ -19,9 +19,10 @@ use std::path::{Path, PathBuf};
 use crate::audio::{self, Audio, BeatGrid, DecodeError, SampleRate, SkippedPacket, Stem, Tempo};
 use crate::confidence::ConfidenceError;
 use crate::confidence::Level;
-use crate::dsp::{StftParams, describe};
+use crate::dsp::{StftParams, Summary, describe};
 use crate::estimate::envelope::{
-    EnvelopeError, EnvelopeInput, EnvelopeLayer, NoteEnvelope, amp_proxy,
+    EnvelopeError, EnvelopeInput, EnvelopeLayer, KNEE_END_GAP, NoteEnvelope, SUSTAIN_SHARE,
+    amp_proxy, full_band_level, full_band_track,
 };
 use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
 use crate::estimate::voices::{VoicesError, VoicesInput, VoicesLayer};
@@ -35,7 +36,7 @@ use crate::preset::mapper::pitch_envelope::velocity_reaches_level;
 use crate::preset::mapper::{MapContext, Mapped, PitchEnvelopeGroups, SynthMapper, mapper_for};
 use crate::preset::registry::registry_for;
 use crate::synth::{Synth, capabilities};
-use crate::units::{Bpm, Seconds};
+use crate::units::{Bpm, Hz, MidiPitch, Seconds};
 
 mod layers;
 pub mod spectrogram;
@@ -304,7 +305,8 @@ pub fn analyze_with(
 
 /// Writes the files of `analyze` into `dir`, creating it: each to a
 /// temporary sibling, then renamed into place, `notes.mid` first and
-/// `layers.json` last, after the old report is removed. Returns the paths
+/// `layers.json` last, after the old report is removed, and the old
+/// `notes.mid` with it when there are no notes. Returns the paths
 /// of `layers.json`, `spectrogram.png` and `notes.mid` when written. The
 /// notes, when given, are encoded with the stem's name as the track name.
 fn write_outputs(
@@ -330,14 +332,19 @@ fn write_outputs(
     let notes_tmp = midi
         .map(|bytes| stage(dir, NOTES_FILE, bytes))
         .transpose()?;
-    match std::fs::remove_file(&layers) {
-        Err(error) if error.kind() != io::ErrorKind::NotFound => {
-            return Err(AnalyzeError::Write {
-                path: layers,
-                source: error,
-            });
+    // The guard has passed: a `notes.mid` here belongs to this stem, and a
+    // run without notes leaves none that the report does not describe.
+    let stale = dir.join(NOTES_FILE);
+    for old in std::iter::once(&layers).chain(notes.is_none().then_some(&stale)) {
+        match std::fs::remove_file(old) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => {
+                return Err(AnalyzeError::Write {
+                    path: old.clone(),
+                    source: error,
+                });
+            }
+            _ => {}
         }
-        _ => {}
     }
     let renames = notes_tmp
         .as_ref()
@@ -426,7 +433,7 @@ fn final_notes(
             pitch: v.value.pitch,
         })
         .collect();
-    Ok(Some(finish(&FinishInput {
+    let mut list = finish(&FinishInput {
         notes,
         facts: &facts,
         bpm,
@@ -436,7 +443,18 @@ fn final_notes(
         glides: &glides,
         drops: &drops,
         vibrato: &vibrato,
-    })))
+    });
+    // A note whose span for the layer's level is empty reads its written
+    // span instead.
+    list.fill_levels(|note, from, to| {
+        full_band_level(
+            mono,
+            rate,
+            (from, to),
+            Hz::from(MidiPitch::clamped(f64::from(note.key))),
+        )
+    });
+    Ok(Some(list))
 }
 
 /// The knee, the pad end and the full-band level of each note of the
@@ -458,12 +476,14 @@ fn note_facts(
                 .find(|n| n.onset == note.onset() && n.pitch == note.pitch());
             let pad_end = match read {
                 Some(read) if pad => pad_end(mono, rate, note, list, read)?,
+                None if pad => full_band_pad_end(mono, rate, note),
                 _ => None,
             };
             Ok(NoteFacts {
                 knee: read.and_then(|n| n.knee),
                 pad_end,
                 level: envelope.levels.get(i).copied().flatten(),
+                read: read.is_some(),
             })
         })
         .collect()
@@ -508,6 +528,40 @@ fn pad_end(
         .skip(from)
         .find(|&(_, &level)| level <= floor)
         .map(|(i, _)| Seconds::clamped(proxy.time(i))))
+}
+
+/// Where the full-band level of a pad note that the envelope layer could
+/// not read falls [`PAD_FALL`] below its plateau, first after its peak.
+/// The plateau is the median of the last [`SUSTAIN_SHARE`] of the held
+/// part, from the first frame within 1 dB of the peak to
+/// [`KNEE_END_GAP`] before the note's end, as the envelope layer reads a
+/// sustain; `None` without a held part or such a fall.
+fn full_band_pad_end(mono: &[f64], rate: SampleRate, note: &Note) -> Option<Seconds> {
+    let track = full_band_track(
+        mono,
+        rate,
+        (note.onset(), note.offset()),
+        Hz::from(note.pitch()),
+    );
+    let db = track.db();
+    let (peak_at, peak) = db
+        .iter()
+        .copied()
+        .enumerate()
+        .reduce(|a, b| if b.1 > a.1 { b } else { a })?;
+    let held_from = db.iter().position(|&level| level >= peak - 1.0)?;
+    let held_to = track.index(note.offset().get() - KNEE_END_GAP.get());
+    let held = db.get(held_from..held_to).filter(|part| !part.is_empty())?;
+    let window = crate::cast::floor_to_usize(SUSTAIN_SHARE * crate::cast::usize_to_f64(held.len()))
+        .unwrap_or(0)
+        .clamp(1, held.len());
+    let plateau = Summary::of(&held[held.len() - window..])?.median();
+    let floor = plateau - PAD_FALL.get();
+    db.iter()
+        .enumerate()
+        .skip(peak_at)
+        .find(|&(_, &level)| level <= floor)
+        .map(|(i, _)| Seconds::clamped(track.time(i)))
 }
 
 /// The first two channels of a stem that has them.

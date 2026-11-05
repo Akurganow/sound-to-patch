@@ -390,6 +390,29 @@ fn the_default_folder_is_named_after_the_stem() {
     assert_eq!(names.len(), 3, "{names:?}");
 }
 
+/// A run whose note list is empty removes the `notes.mid` of an earlier
+/// run of the same stem, so the folder holds no notes the report lacks.
+#[test]
+fn a_run_without_notes_removes_the_old_notes_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = stem(dir.path());
+    let out = dir.path().join("out");
+    let first = analyze(
+        &request(&path, Some(&given(dir.path())), &out),
+        &transcriber(),
+    )
+    .unwrap();
+    assert!(first.notes.as_ref().is_some_and(|p| p.is_file()));
+    // The same stem, now silent: the notes step finds no note.
+    crate::support::signals::write_wav16(&path, 22_050, &[vec![0.0; 22_050]]);
+    let second = analyze(&request(&path, None, &out), &transcriber()).unwrap();
+    assert_eq!(second.notes, None);
+    assert!(!out.join(NOTES_FILE).exists());
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
+    assert_eq!(report["notes"], Value::Null);
+}
+
 #[test]
 fn an_output_folder_that_is_a_file_fails_with_a_fix() {
     let dir = tempfile::tempdir().unwrap();

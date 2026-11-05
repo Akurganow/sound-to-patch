@@ -82,12 +82,23 @@ only notes:
 - Each note ends at its note-off knee, so the release lives in the amp
   envelope and a render does not play it twice. A note without a knee,
   such as a pluck that decays at one rate, ends 50 ms before its end in the
-  list. A note of a polyphonic line ends where its level falls 20 dB
-  below its plateau. No cut makes a note shorter than the decoder's
-  minimum at the tempo, and no note ends after its end in the list.
+  list; so does a note the envelope layer could not read, marked
+  `unread`. A note of a polyphonic line ends where its level falls 20 dB
+  below its plateau: the plateau of its one harmonic, or of the full band
+  when no harmonic of it is free, as in an octave stack.
+- No note ends after its end in the list, except at a glide join. A knee,
+  no-knee or pad cut never makes a note shorter than the minimum the BPM
+  rule of the decoder gives at the tempo, 58 to 128 ms. The decoder drops
+  notes that short on mono lines, and on polyphonic and pad lines it drops
+  notes of 128 ms or less, whatever the tempo; the cleanup and a given
+  `--notes` file can still hold shorter ones. A note the list gives
+  shorter keeps its length. In a mono line a note ends where
+  the next starts, even when that is shorter than the minimum.
 - A glide becomes two overlapping notes on its two pitches. The later note
-  starts at the glide's start, and the earlier one ends 5 ms later, rounded
-  up to whole ticks. In a mono line no other notes overlap.
+  starts at the glide's start, or at its own onset when the glide starts
+  after it, and the earlier one ends 5 ms later, rounded up to whole
+  ticks. In a mono line no other notes overlap. Of two notes that start on
+  one tick, the louder stays, and the report counts the other.
 - A pitch drop becomes one note at its settled pitch, and a note under a
   vibrato takes the key of the vibrato's mean pitch. Only the glides,
   drops and vibratos the report trusts above low count.
@@ -96,10 +107,14 @@ only notes:
   under it `127 * 10^(-d / 40)`, at least 1. Otherwise every note gets 100.
   The full-band level is the peak of the one-period RMS of the whole mix
   from the onset to the note-off knee, so two notes compare even when they
-  read different harmonics.
+  read different harmonics. On a chord it is the level of the mix, so equal
+  tones read one level, staggered or not, and tones of different levels do
+  not tell apart. A note with no frame to read gets 100.
 - Pitch motion that no route models becomes pitch bends: a note of a mono
   line whose pitch leaves its key by 50 cents or more outside every glide,
-  drop and vibrato. Bends are clamped to 2 semitones, so set the synth's
+  drop and vibrato. The pitch track reads a little of the note before at
+  each note change, and while two notes sound it follows only one of
+  them, so those frames count for no bend. Bends are clamped to 2 semitones, so set the synth's
   bend range to 2 semitones. [`render`](../reference/cli.md#render) reads
   no bend.
 

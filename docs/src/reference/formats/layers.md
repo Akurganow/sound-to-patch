@@ -97,6 +97,7 @@ rules.
 | `file` | `"notes.mid"`. |
 | `ticks_per_beat` | 480. |
 | `velocity` | `"level"` when `level_spread_db` exceeds 3 dB and each velocity follows the note's level, else `"constant"`, 100 for every note. |
+| `dropped` | The notes of a mono line left out because a louder one started on the same tick. |
 | `bend_events` | The pitch-bend events in the file. A note of a mono line whose f0 contour leaves its key by 50 cents or more outside every glide, drop and vibrato span gets bends, clamped to 2 semitones; every other note gets none. A host must set a bend range of 2 semitones; `render` reads no bend. |
 | `list` | One record per written note, by start, then key. |
 
@@ -110,8 +111,8 @@ A note record:
 | `list_end_s` | seconds | above 0 | The end in the note list; the latest end of the notes a pitch drop merged. |
 | `key` | MIDI note | 0 to 127 | The written key. |
 | `velocity` | | 1 to 127 | The written velocity. |
-| `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end), `pad`, `minimum` (the decoder's minimum length), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
-| `level_db` | dB | any | The note's full-band level, as `level_spread_db` defines it; the highest of the notes a pitch drop merged. Unlike `peak_db`, it compares notes on different harmonics. |
+| `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end, read without a knee), `unread` (the same cut for a note the envelope layer skipped), `pad`, `minimum` (the decoder's minimum length by the BPM rule), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
+| `level_db` | dB | any | The note's full-band level, as `level_spread_db` defines it; the highest of the notes a pitch drop merged; read over the written span when that span holds no frame. Unlike `peak_db`, it compares notes on different harmonics. `null` when neither span holds a frame. |
 | `octave_uncertain` | flag | | The transcriber's octave flag of the note; `null` when no transcriber ran. |
 
 ## Naming
@@ -309,7 +310,7 @@ group's own confidence is medium with 3 or more pooled notes, else low.
 | `tail_votes` | | | Five signs that the tail is reverb, each `true`, `false` or `null` when nothing could be read: `outlasts_gap`, `side_grows`, `flatness_rises`, `same_rate`, `high_band_faster`. |
 | `tail_vote_count` | count | 0 to 5 | The votes that are `true`. |
 | `tail_is_reverb` | | | `false` until a space layer exists. |
-| `level_spread_db` | dB | 0 or more | Value: the 90th minus the 10th percentile of the full-band levels of the pooled notes; always low. A note's full-band level is the peak of the centred RMS of the mono mix over one period of its fundamental, or the fewest whole periods that span 2 ms, on a 1 ms hop, from its onset to its note-off knee, or to 50 ms before its list end without one, never past the next later onset, in dB of full-scale power. |
+| `level_spread_db` | dB | 0 or more | Value: the 90th minus the 10th percentile of the full-band levels of the pooled notes; always low. A note's full-band level is the peak of the centred RMS of the mono mix over one period of its fundamental, or the fewest whole periods that span 2 ms, on a 1 ms hop, from its onset to its note-off knee, or to 50 ms before its list end without one, never past the next later onset on a mono line, in dB of full-scale power. |
 | `ripple_db` | dB | 0 or more | The median ripple of the sustain window after its line; `null` without a sustain. |
 | `fit_residual_db` | dB | 0 or more | The median RMS of the held parts against the hold, decay and sustain model. |
 | `n_notes_used` | count | 0 or more | The pooled notes. |
