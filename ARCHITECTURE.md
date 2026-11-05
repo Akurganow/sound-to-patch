@@ -183,9 +183,10 @@ joins `READY` when its adapter lands.
   registry data from a local checkout of the open source, generates
   the Vital test fixtures, writes the catalogue files of the agent
   reference from the registry and the written text of each layer, the
-  music and word files from their dictionaries, recomputes the listener agreement of the sound words
-  from the pinned listener data, runs the chord oracles of the music dictionary with the
-  golden tools, and checks the agent plugins.
+  music and word files from their dictionaries, recomputes the listener
+  agreement of the sound words from the pinned listener data, runs the
+  chord oracles of the music dictionary with the golden tools, and
+  checks the agent plugins.
 - `reference`: the agent reference, one folder of plain files: the router
   `README.md`, the generated catalogue files per synth and layer, the
   generated music and word files under `core/`, and example edit lists. Nothing

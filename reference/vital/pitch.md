@@ -8,16 +8,21 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 Each entry of the written part names its keys. The rows of those keys below hold the on-screen label, unit, range, default, tag, verified build and tuning note.
 
+Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Oscillator tuning and unison detune sit in other layers.
+
 ## Contents
 
+Written part:
+
 - [How pitch and glide work](#how-pitch-and-glide-work)
-- [Controls](#controls)
+- [Control entries](#control-entries)
+
+Rows:
+
 - [Other controls](#other-controls)
 - [Pitch](#pitch)
 - [Portamento](#portamento)
 - [Voice](#voice)
-
-Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Oscillator tuning and unison detune sit in other layers.
 
 ## How pitch and glide work
 
@@ -31,7 +36,7 @@ By default a note glides only when another key is still held. Portamento Force r
 
 Polyphony sets how many notes sound together, 1 to 32 (source: synth_constants.h, voice_handler.cpp). Priority, override and legato act when held notes reach that count.
 
-## Controls
+## Control entries
 
 ### Polyphony
 - Keys: `polyphony`

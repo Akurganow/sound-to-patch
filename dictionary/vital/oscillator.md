@@ -32,12 +32,12 @@ Amount runs 0 to 100%. A morph moves or removes harmonics of the frame before it
 - Inharmonic Stretch: the same move, but the shift grows with the harmonic number, so partials leave whole multiples. 50% changes nothing.
 - Smear: mixes each harmonic with a running amplitude carried up from the lower harmonics. 0% changes nothing.
 - Random Amplitudes: scales each harmonic by a fixed pseudo-random gain from a seeded table. Every note gets the same pattern.
-- Low Pass and High Pass: keep the harmonics below (Low Pass) or above (High Pass) a cutoff harmonic of 2^(10 x Amount).
-- Phase Disperse: shifts the phase of each harmonic by an amount that grows with the square of its distance from harmonic 12. 50% changes nothing.
+- Low Pass and High Pass: keep the harmonics below (Low Pass) or above (High Pass) a cutoff harmonic of 2^(10 x Amount) + 1.
+- Phase Disperse: shifts the phase of harmonic n in proportion to (n - 24)^2 minus 23^2, so harmonic 1 stays put and the shift grows away from harmonic 24. 50% changes nothing.
 - Shepard Tone: fades the odd harmonics out and gives each even harmonic the amplitude of the harmonic at half its number, an octave-up stretch. The read rate falls by up to an octave to match. Amount wraps at the top, so a rising sweep glides on.
 - Spectral Time Skew: each harmonic reads a different frame, and higher harmonics shift further as Amount rises.
 
-## Controls
+## Control entries
 
 ### Wave frame
 - Keys: `osc_N_wave_frame`
@@ -51,7 +51,7 @@ Amount runs 0 to 100%. A morph moves or removes harmonics of the frame before it
 
 ### Level and pan
 - Keys: `osc_N_level`, `osc_N_pan`
-- Effect: Level sets loudness; the engine squares the stored value to get gain (measured on the open engine). Pan is equal-power: centre gives gain 1 to both channels, a hard pan gives 1.41 (+3 dB) to one channel (source: futils.h).
+- Effect: Level sets loudness; the engine squares the stored value to get gain (measured on the open engine). The value box shows that gain, from 0 to 1, with no unit (source: synth_parameters.cpp). Pan is equal-power: centre gives gain 1 to both channels, a hard pan gives 1.41 (+3 dB) to one channel (source: futils.h).
 - Words: none in the word lists
 
 ### Pitch of the oscillator
@@ -66,22 +66,22 @@ Amount runs 0 to 100%. A morph moves or removes harmonics of the frame before it
 
 ### Phase
 - Keys: `osc_N_phase`, `osc_N_random_phase`
-- Effect: Phase offsets the point of the cycle each voice reads. Phase Randomization scatters the start point of each voice at every note; at 0% all notes start at the same point (source: synth_oscillator.cpp).
+- Effect: Phase offsets the point of the cycle each voice reads; the value box shows it in degrees, stored x 360 (source: synth_parameters.cpp). Phase Randomization scatters the start point of each voice at every note; at 0% all notes start at the same point (source: synth_oscillator.cpp).
 - Words: none in the word lists
 
 ### Phase distortion type
 - Keys: `osc_N_distortion_type`
-- Effect: Picks the warp of the read position. Each of the 13 types is described above under Phase distortion types.
+- Effect: Picks the warp of the read position. Each of the 13 types is described above under Phase distortion types (source: synth_oscillator.cpp).
 - Words: [fm](../core/words-lists.md#technique-words), [sync (oscillator sync)](../core/words-lists.md#technique-words)
 
 ### Distortion Amount, Phase and Spread
 - Keys: `osc_N_distortion_amount`, `osc_N_distortion_phase`, `osc_N_distortion_spread`
-- Effect: Amount sets the strength of the warp. Phase moves the point of the cycle where Sync, Formant, Quantize, Bend, Squeeze and Pulse act; None, FM and RM ignore it. Spread moves Amount from no shift at the first unison pair to the Spread percent at the last, from 3 voices up (source: synth_oscillator.cpp).
+- Effect: Amount sets the strength of the warp. Phase, shown in degrees as stored x 360, moves the point of the cycle where Sync, Formant, Quantize, Bend, Squeeze and Pulse act; None, FM and RM ignore it. Spread moves Amount from no shift at the first unison pair to the Spread percent at the last, from 3 voices up (source: synth_oscillator.cpp).
 - Words: none in the word lists
 
 ### Frequency morph type
 - Keys: `osc_N_spectral_morph_type`
-- Effect: Picks how the harmonics of the frame change. Each of the 12 types is described above under Frequency morph types.
+- Effect: Picks how the harmonics of the frame change. Each of the 12 types is described above under Frequency morph types (source: synth_oscillator.cpp, spectral_morph.h).
 - Words: none in the word lists
 
 ### Frequency morph Amount and Spread

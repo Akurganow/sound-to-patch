@@ -16,7 +16,7 @@ Envelope 1 is the amplitude envelope. Voice gain is (envelope 1 x lerp(1, veloci
 
 A voice ends when its gain is silent after the key lifts. Envelope 1 release therefore sets how long the tail lasts (source: voice_handler.cpp, synth_voice_handler.cpp).
 
-## Controls
+## Control entries
 
 ### Delay and hold
 - Keys: `env_N_delay`, `env_N_hold`

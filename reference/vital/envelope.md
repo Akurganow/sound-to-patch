@@ -8,14 +8,19 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 Each entry of the written part names its keys. The rows of those keys below hold the on-screen label, unit, range, default, tag, verified build and tuning note.
 
+Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Routing an envelope to a target belongs to the modulation layer.
+
 ## Contents
 
+Written part:
+
 - [How envelopes work](#how-envelopes-work)
-- [Controls](#controls)
+- [Control entries](#control-entries)
+
+Rows:
+
 - [Envelope N](#envelope-n)
 - [Other controls](#other-controls)
-
-Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Routing an envelope to a target belongs to the modulation layer.
 
 ## How envelopes work
 
@@ -33,7 +38,7 @@ Envelope 1 is the amplitude envelope. Voice gain is (envelope 1 x lerp(1, veloci
 
 A voice ends when its gain is silent after the key lifts. Envelope 1 release therefore sets how long the tail lasts (source: voice_handler.cpp, synth_voice_handler.cpp).
 
-## Controls
+## Control entries
 
 ### Delay and hold
 - Keys: `env_N_delay`, `env_N_hold`

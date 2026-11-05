@@ -260,6 +260,11 @@ fn lists_page(words: &Words) -> String {
     )
 }
 
+/// The technique words as the word list writes them, such as `filter (cutoff)`.
+pub(crate) fn technique_words() -> crate::Result<Vec<String>> {
+    Ok(dictionary()?.technique.iter().map(ranked_word).collect())
+}
+
 fn ranked_word(row: &sound_to_patch::words::Ranked) -> String {
     if row.aliases.is_empty() {
         row.word.clone()

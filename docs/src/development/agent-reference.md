@@ -104,10 +104,14 @@ merges it, so edit it there.
   the open source snapshot, a law measured in the app or on the open
   engine, or `no source`.
 - `Words` links the technique words that name the control, or reads
-  `none in the word lists`.
-- The command fails and names the entry when a field, a pattern or a
-  layer is wrong. Every layer file with a written part opens with a
-  contents list.
+  `none in the word lists`. The word maps of the descriptive words add
+  their Vital controls here, so they revise those lines.
+- The command fails and names the entry when a field is missing, an
+  effect has no source, a link names no technique word, or a pattern
+  belongs to another layer, to no entry or to two entries.
+- The text above the first `##` section, such as the build the facts
+  were checked on, opens the file. A contents list follows, with the
+  written sections first and the row sections apart.
 
 ## The music dictionary
 

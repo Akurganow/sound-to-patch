@@ -12,7 +12,7 @@ By default a note glides only when another key is still held. Portamento Force r
 
 Polyphony sets how many notes sound together, 1 to 32 (source: synth_constants.h, voice_handler.cpp). Priority, override and legato act when held notes reach that count.
 
-## Controls
+## Control entries
 
 ### Polyphony
 - Keys: `polyphony`

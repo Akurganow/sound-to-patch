@@ -17,7 +17,7 @@ The 4 random LFOs output values from 0 to 1 in four styles: Perlin, Sample and H
 
 Each voice runs its own copy of every LFO. The rate comes from one of five sync modes (source: synth_lfo.cpp, operators.cpp).
 
-## Controls
+## Control entries
 
 ### LFO rate
 - Keys: `lfo_N_frequency`

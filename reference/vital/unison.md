@@ -8,21 +8,26 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 Each entry of the written part names its keys. The rows of those keys below hold the on-screen label, unit, range, default, tag, verified build and tuning note.
 
+Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Distortion Spread and Frequency Morph Spread sit in the oscillator file, with the other warp controls.
+
 ## Contents
+
+Written part:
 
 - [How unison works](#how-unison-works)
 - [Stack style ratios](#stack-style-ratios)
-- [Controls](#controls)
+- [Control entries](#control-entries)
+
+Rows:
+
 - [Oscillator N](#oscillator-n)
 - [Stereo](#stereo)
-
-Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured. Distortion Spread and Frequency Morph Spread sit in the oscillator file, with the other warp controls.
 
 ## How unison works
 
 Unison stacks 1 to 16 copies of the oscillator, each slightly out of tune. The result is a thicker, wider sound. The stored voice count is rounded and limited to 1 to 16 (source: synth_oscillator.cpp).
 Voices come in pairs. Each pair raises its left-channel voice and lowers its right-channel voice by the same cents, or the reverse. The order alternates from pair to pair (source: synth_oscillator.cpp).
-An odd count has a centre voice, which plays the same phase in both channels. With Phase Randomization above 0%, every other voice starts at its own random phase (source: synth_oscillator.cpp).
+An odd count has a centre voice, which plays the same phase in both channels. At each note every voice starts at a random phase, scaled by Phase Randomization; the centre voice of an odd count copies its right channel to its left (source: synth_oscillator.cpp).
 The outer pair sits at an offset of Detune Range x Unison Detune squared, in cents (measured on the open engine). The on-screen percent is the stored value squared (measured on 1.0.7).
 The defaults give 2 x 20 = 40 cents. The maximum is 48 x 100 = 4800 cents.
 Pair i of n voices sits at position t = (2i + bump) / max(1, n - 1) of the outer offset. Bump is 1 for an even count and 0 for an odd one. Detune Power bends t (source: synth_oscillator.cpp, futils.h).
@@ -37,7 +42,7 @@ A stack style multiplies the pitch of each pair, innermost pair first. The detun
 - Major Chord: x1, x1.260, x1.498 and x2, repeating. Minor Chord: x1, x1.189, x1.498 and x2, repeating.
 - Harmonics: x1 up to x8, one step per pair. Odd Harmonics: x1, x3, x5 up to x15.
 
-## Controls
+## Control entries
 
 ### Voices
 - Keys: `osc_N_unison_voices`

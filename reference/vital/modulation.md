@@ -8,18 +8,23 @@ Tags: `from facts` is read from a source we may use; `measured` is confirmed in 
 
 Each entry of the written part names its keys. The rows of those keys below hold the on-screen label, unit, range, default, tag, verified build and tuning note.
 
+Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured.
+A source is a signal that moves a control by itself: an LFO, a random LFO, an envelope, a macro or a performance input.
+
 ## Contents
 
+Written part:
+
 - [How modulation works](#how-modulation-works)
-- [Controls](#controls)
+- [Control entries](#control-entries)
+
+Rows:
+
 - [LFO N](#lfo-n)
 - [Macro](#macro)
 - [Mod Wheel](#mod-wheel)
 - [Modulation N](#modulation-n)
 - [Random LFO N](#random-lfo-n)
-
-Facts checked on the open source of build 1.0.6 (commit 636ca0e) unless an entry says measured.
-A source is a signal that moves a control by itself: an LFO, a random LFO, an envelope, a macro or a performance input.
 
 ## How modulation works
 
@@ -37,7 +42,7 @@ The 4 random LFOs output values from 0 to 1 in four styles: Perlin, Sample and H
 
 Each voice runs its own copy of every LFO. The rate comes from one of five sync modes (source: synth_lfo.cpp, operators.cpp).
 
-## Controls
+## Control entries
 
 ### LFO rate
 - Keys: `lfo_N_frequency`
