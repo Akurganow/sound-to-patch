@@ -50,8 +50,10 @@ const BEND_CENTRE: u16 = 8192;
 pub struct NoteFacts {
     /// The note-off knee; `None` when no knee shows.
     pub knee: Option<Seconds>,
-    /// Where a pad note's level falls [`PAD_FALL`] below its plateau;
-    /// `None` when the level does not, or the note is no pad.
+    /// Where the level of a note of a polyphonic line falls [`PAD_FALL`]
+    /// below its plateau, which may lie past its end in the list; `None`
+    /// when the level does not fall that far before the next note on its
+    /// key or the stem's end, or the line is mono.
     pub pad_end: Option<Seconds>,
     /// The full-band level of the note.
     pub level: Option<Decibels>,
@@ -109,10 +111,10 @@ pub struct FinishInput<'a> {
     pub facts: &'a [NoteFacts],
     /// The tempo of the file.
     pub bpm: Bpm,
-    /// One voice at a time: notes overlap only at glide joins.
+    /// One voice at a time: notes overlap only at glide joins. Otherwise
+    /// the line is polyphonic, and a note ends at its pad end where it has
+    /// one.
     pub mono: bool,
-    /// The line is a pad: a note ends at its pad end where it has one.
-    pub pad: bool,
     /// Velocity has a path to the level, so it follows each note's level.
     pub level_velocity: bool,
     /// The glides, in time order.
@@ -142,8 +144,8 @@ pub enum EndRule {
     /// A glide join: [`GLIDE_OVERLAP`] after the next note-on.
     Glide,
     /// No rule read the note: the envelope layer skipped it and it has no
-    /// pad end. It ends [`NO_KNEE_CUT`] before its end in the list, as
-    /// without a knee.
+    /// pad end. On a polyphonic line it ends at its end in the list; on a
+    /// mono line [`NO_KNEE_CUT`] before it, as without a knee.
     Unread,
 }
 
@@ -247,10 +249,12 @@ struct Work<'a> {
 ///    `f_end`.
 /// 2. A note that a vibrato covers for more than half its length takes the
 ///    key of the vibrato's mean pitch, when that lies within a semitone.
-/// 3. Each note ends at its pad end on a pad, else at its knee, else
-///    [`NO_KNEE_CUT`] before its end in the list, never after that end. A
-///    cut never makes a note shorter than [`min_note_length`]; a note the
-///    list gives shorter keeps its length.
+/// 3. On a polyphonic line a note ends at its pad end, which may lie past
+///    its end in the list. Otherwise it ends at its knee, else
+///    [`NO_KNEE_CUT`] before its end in the list, never after that end; an
+///    unread note of a polyphonic line ends at that end. A cut never makes
+///    a note shorter than [`min_note_length`]; a note the list gives
+///    shorter keeps its length.
 /// 4. Times become ticks with `round(seconds * BPM / 60 * 480)`, and each
 ///    note lasts at least one tick. A note without a level reads it over
 ///    this written span.
@@ -303,15 +307,19 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
     let mut notes: Vec<(FinalNote, Option<&Contour>)> = work
         .iter()
         .map(|w| {
-            let (mut end, mut rule) = match (input.pad, w.facts.pad_end, w.facts.knee) {
-                (true, Some(pad), _) => (pad.get(), EndRule::Pad),
-                (_, _, Some(knee)) => (knee.get(), EndRule::Knee),
+            let (mut end, mut rule) = match (input.mono, w.facts.pad_end, w.facts.knee) {
+                (false, Some(pad), _) => (pad.get(), EndRule::Pad),
+                (_, _, Some(knee)) => (knee.get().min(w.list_end), EndRule::Knee),
                 _ if w.facts.read => (w.list_end - NO_KNEE_CUT.get(), EndRule::NoKnee),
+                // Nothing read the note, so no tail of its own is known.
+                (false, ..) => (w.list_end, EndRule::Unread),
                 _ => (w.list_end - NO_KNEE_CUT.get(), EndRule::Unread),
             };
-            end = end.min(w.list_end);
-            if end < w.onset + minimum {
-                end = (w.onset + minimum).min(w.list_end);
+            // The minimum lengthens a cut note up to its list end, and
+            // shortens none.
+            let floor = (w.onset + minimum).min(w.list_end);
+            if end < floor {
+                end = floor;
                 rule = EndRule::Minimum;
             }
             let start = tick(w.onset);
@@ -772,7 +780,6 @@ mod tests {
             facts,
             bpm: bpm(tempo),
             mono: true,
-            pad: false,
             level_velocity: false,
             glides: &[],
             drops: &[],
@@ -931,11 +938,33 @@ mod tests {
         ];
         let finished = finish(&FinishInput {
             mono: false,
-            pad: true,
             ..input(&notes, &facts, 120.0)
         });
         let ends: Vec<_> = finished.notes.iter().map(|n| (n.end, n.end_rule)).collect();
         assert_eq!(ends, [(1440, EndRule::Pad), (960, EndRule::Knee)]);
+        // A pad tail rings past the list end, and an unread note of a
+        // polyphonic line ends at its list end.
+        let facts = [
+            NoteFacts {
+                pad_end: Some(s(2.6)),
+                ..knee(1.0)
+            },
+            NoteFacts::default(),
+        ];
+        let finished = finish(&FinishInput {
+            mono: false,
+            ..input(&notes, &facts, 120.0)
+        });
+        let ends: Vec<_> = finished.notes.iter().map(|n| (n.end, n.end_rule)).collect();
+        assert_eq!(ends, [(2496, EndRule::Pad), (1920, EndRule::Unread)]);
+        // On a mono line the pad end counts for nothing, and an unread note
+        // ends 50 ms before its list end.
+        let one = NoteList::new(vec![note(0.0, 2.0, 60.0)]);
+        let finished = finish(&input(&one, &facts[1..], 120.0));
+        assert_eq!(
+            (finished.notes[0].end, finished.notes[0].end_rule),
+            (1872, EndRule::Unread)
+        );
     }
 
     /// The track's frame step.
@@ -1530,13 +1559,12 @@ mod tests {
                     0.03f64..1.5,
                     30u8..90,
                     prop::option::of(0.0f64..1.2),
-                    prop::option::of(0.0f64..1.2),
+                    prop::option::of(0.0f64..2.5),
                     prop::bool::weighted(0.7),
                 ),
                 1..12,
             ),
             tempo in 4.0f64..1000.0,
-            pad in proptest::bool::ANY,
         ) {
             let notes = NoteList::new(
                 raw.iter()
@@ -1562,7 +1590,6 @@ mod tests {
                 .collect();
             let finished = finish(&FinishInput {
                 mono: false,
-                pad,
                 ..input(&notes, &facts, tempo)
             });
             let tps = ticks_per_second(bpm(tempo));
@@ -1580,8 +1607,18 @@ mod tests {
                 let f = facts[i];
                 prop_assert!(n.end > n.start);
                 prop_assert_eq!(n.velocity, DEFAULT_VELOCITY);
-                prop_assert!(n.end <= tick_of(listed.offset().get(), tps).max(n.start + 1));
-                let expected = if pad && f.pad_end.is_some() {
+                let at_list_end = tick_of(listed.offset().get(), tps).max(n.start + 1);
+                if n.end_rule == EndRule::Pad {
+                    // A pad end may lie past the list end.
+                    let pad_end = tick_of(f.pad_end.unwrap().get(), tps).max(n.start + 1);
+                    prop_assert_eq!(n.end, pad_end);
+                } else {
+                    prop_assert!(n.end <= at_list_end);
+                }
+                if n.end_rule == EndRule::Unread {
+                    prop_assert_eq!(n.end, at_list_end);
+                }
+                let expected = if f.pad_end.is_some() {
                     EndRule::Pad
                 } else if f.knee.is_some() {
                     EndRule::Knee
@@ -1592,12 +1629,14 @@ mod tests {
                 };
                 prop_assert!([expected, EndRule::Minimum].contains(&n.end_rule), "{:?}", n.end_rule);
                 let length = listed.offset().get() - listed.onset().get();
-                if length < minimum {
+                if length < minimum && n.end_rule != EndRule::Pad {
                     // A note the list gives shorter keeps its length.
-                    prop_assert_eq!(n.end, tick_of(listed.offset().get(), tps).max(n.start + 1));
+                    prop_assert_eq!(n.end, at_list_end);
                 } else {
+                    // A pad end past the list end can leave a short listed
+                    // note under the minimum, never under its listed length.
                     let written = finished.seconds(n.end).get() - finished.seconds(n.start).get();
-                    prop_assert!(written >= minimum - 1.0 / tps - 1e-9);
+                    prop_assert!(written >= minimum.min(length) - 1.0 / tps - 1e-9);
                 }
             }
         }

@@ -48,7 +48,7 @@ use crate::confidence::{
     Confidence, ConfidenceError, Estimate, Level, NoSpread, Reason, ReasonCode, Signal,
 };
 use crate::dsp::{FilterError, Stats, Summary, quantile};
-use crate::notes::{NO_KNEE_CUT, Note, NoteList, Voicing, voicing_of_notes};
+use crate::notes::{NO_KNEE_CUT, Note, NoteList};
 use crate::units::{Decibels, Hz, MidiPitch, Ratio, Seconds};
 
 /// A value over the pool needs this many notes; with fewer it reads low.
@@ -142,8 +142,8 @@ pub const LEVEL_SPREAD_CONVENTION: &str = "the 90th minus the 10th percentile of
 level of the pooled notes, quantiles by linear interpolation; a note's full-band level is the peak \
 of the centred RMS of the mono mix in dB of full-scale power over one period of the fundamental, \
 or the fewest whole periods that span 2 ms, on a 1 ms hop from its onset to its note-off knee, or \
-to 50 ms before its end in the note list without one, and on a monophonic list never past the \
-next later onset; always low confidence, a rule no stem has tested; null under 3 pooled notes with a level";
+to 50 ms before its end in the note list without one, and on a mono line, one whose voices layer \
+reads at most one voice at a time, never past the next later onset; always low confidence, a rule no stem has tested; null under 3 pooled notes with a level";
 /// The convention of the pump.
 pub const PUMP_CONVENTION: &str = "the full-band centred RMS in dB over two periods of the lowest \
 note on a 1 ms hop, cut into beats of the used tempo from 0 s; a beat counts when the held part of \
@@ -249,11 +249,13 @@ pub struct EnvelopeLayer {
     /// The votes that the tail is reverb.
     pub tail_votes: TailVotes,
     /// The 90th minus the 10th percentile of the full-band levels of the
-    /// pooled notes.
+    /// pooled notes. [`read_levels`](Self::read_levels) sets it; before,
+    /// it holds no estimate.
     pub level_spread: Estimate<Decibels, NoSpread>,
     /// The full-band level of each note of the list, in list order; `None`
     /// when its span holds no frame. Unlike `peak_db`, it compares notes
-    /// that read different harmonics.
+    /// that read different harmonics. [`read_levels`](Self::read_levels)
+    /// sets it; before, it is empty.
     pub levels: Vec<Option<Decibels>>,
     /// The median ripple over the pool.
     pub ripple: Option<Decibels>,
@@ -345,7 +347,6 @@ impl EnvelopeLayer {
         let fits: Vec<TailFit> = pool.iter().filter_map(|n| n.tail).collect();
         let (release, release_confidence) = release_of(&fits)?;
         let tail_votes = read_votes(input.mono, input.stereo, input.rate, notes, &pool);
-        let levels = full_band_levels(input, notes, &read);
         let confidence = if read.is_empty() {
             Confidence::no_estimate(vec![if notes.is_empty() {
                 Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?
@@ -397,8 +398,8 @@ impl EnvelopeLayer {
             tail_weight: statistic(fits.iter().map(|f| f.weight), Ratio::clamped, None)?,
             release_confidence,
             tail_votes,
-            level_spread: level_spread(&pooled_levels(notes, &levels, &pool))?,
-            levels,
+            level_spread: level_spread(&[])?,
+            levels: Vec::new(),
             ripple: pool_median(&pool, |n| n.ripple),
             residual: pool_median(&pool, |n| n.residual),
             pump,
@@ -410,6 +411,34 @@ impl EnvelopeLayer {
             notes: read,
             silent,
         })
+    }
+
+    /// Reads the full-band level of each note and their spread over the
+    /// pool, as [`LEVEL_SPREAD_CONVENTION`] defines them. The levels wait
+    /// for the voices layer, which reads this layer first: `mono_line` is
+    /// the one voicing the final notes use, and on a mono line a level's
+    /// span ends at the next later onset.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`EnvelopeError`] when the spread's confidence cannot be
+    /// built.
+    pub fn read_levels(
+        &mut self,
+        input: &EnvelopeInput<'_>,
+        mono_line: bool,
+    ) -> Result<(), EnvelopeError> {
+        let notes = input.notes.notes();
+        self.levels = full_band_levels(input, notes, &self.notes, mono_line);
+        let pool: Vec<&NoteEnvelope> = self
+            .notes
+            .iter()
+            .zip(&self.pooled)
+            .filter(|&(_, &p)| p)
+            .map(|(n, _)| n)
+            .collect();
+        self.level_spread = level_spread(&pooled_levels(notes, &self.levels, &pool))?;
+        Ok(())
     }
 
     /// Returns the lines that tell what the layer found.
@@ -795,8 +824,8 @@ fn full_band_levels(
     input: &EnvelopeInput<'_>,
     notes: &[Note],
     read: &[NoteEnvelope],
+    mono: bool,
 ) -> Vec<Option<Decibels>> {
-    let mono = voicing_of_notes(&NoteList::new(notes.to_vec())) == Voicing::Monophonic;
     notes
         .iter()
         .map(|note| {

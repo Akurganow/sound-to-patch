@@ -49,16 +49,21 @@ low confidence in a pitch group above low confidence count; a drop merges the no
 from 30 ms before its onset until five time constants after it, each within 30 ms of the end of \
 the one before and on a key from f_end to the drop's start pitch; end_rule names what set the end: \
 knee is the note-off knee; no_knee is 50 ms before the list end for a note the envelope layer read \
-without a knee; unread is the same cut for a note the envelope layer skipped, with no pad end; pad \
-is, for a note of a polyphonic line, where its amp proxy falls 20 dB below its peak plus its \
-sustain level, first after its knee or its peak, or, for a note the envelope layer skipped, where \
-its full-band level falls 20 dB below the median of the last 30 % of its held part, from the first \
-frame within 1 dB of its peak to 25 ms before its list end, first after its peak; minimum is the \
+without a knee; unread is a note the envelope layer skipped, with no pad end: its list end on a \
+polyphonic line, the no_knee cut on a mono line; a line is mono when the voices layer reads at most \
+one voice at a time, and --profile pad makes every line polyphonic; pad is, for a note of a \
+polyphonic line, where its amp proxy falls 20 dB below its peak plus its sustain level, first after \
+its knee or its peak, or, for a note the envelope layer skipped, where its full-band level falls \
+20 dB below the median of the last 30 % of its held part, from the first frame within 1 dB of its \
+peak to 25 ms before its list end, first after its peak; the peak lies within the list span, and \
+the search runs past the list end up to the next onset on the note's key or the stem's end; \
+minimum is the \
 decoder's minimum length at the tempo by the BPM rule, when a knee, no-knee or pad cut would go \
 below it, and a note the list gives shorter keeps its length; next_note is the next note-on of a \
 mono line, which the minimum does not hold back; glide is 5 ms after the next note-on, rounded up \
 to whole ticks, at a glide join of a mono line, whose later note starts at the glide's start or at \
-its own onset, whichever comes first; no end lies after the list end, except at a glide join; of \
+its own onset, whichever comes first; no end lies after the list end, except at a glide join or a \
+pad end; of \
 the notes of a mono line that start on one tick only one stays, and dropped counts the others: a \
 note without the octave flag before one with it, then the louder, then the longer, where both \
 levels are the full-band level over each written note read with the window of the lowest note's \

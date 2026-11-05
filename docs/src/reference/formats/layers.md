@@ -111,7 +111,7 @@ A note record:
 | `list_end_s` | seconds | above 0 | The end in the note list; the latest end of the notes a pitch drop merged. |
 | `key` | MIDI note | 0 to 127 | The written key. |
 | `velocity` | | 1 to 127 | The written velocity. |
-| `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end, read without a knee), `unread` (the same cut for a note the envelope layer skipped), `pad`, `minimum` (the decoder's minimum length by the BPM rule), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
+| `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end, read without a knee), `unread` (a note the envelope layer skipped: its list end on a polyphonic line, the `no_knee` cut on a mono line), `pad` (20 dB under the plateau on a polyphonic line, which may lie past the list end), `minimum` (the decoder's minimum length by the BPM rule), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
 | `level_db` | dB | any | The note's full-band level, as `level_spread_db` defines it; the highest of the notes a pitch drop merged; read from the note's start to its end before the joins and cuts of a mono line when that span holds no frame. Unlike `peak_db`, it compares notes on different harmonics. `null` when neither span holds a frame. |
 | `octave_uncertain` | flag | | The transcriber's octave flag of the note; `null` when no transcriber ran. |
 
