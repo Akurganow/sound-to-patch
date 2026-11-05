@@ -2644,11 +2644,12 @@ fn pick(u: f64, of: &[f64]) -> f64 {
         .map_or(of[of.len() - 1], |(v, _)| *v)
 }
 
-/// A mono bass line at 175 BPM under a 5 dB duck that falls at each beat and
+/// A mono bass line at 175 BPM under a duck of `depth_db` that falls at each beat and
 /// recovers linearly over 220 ms: 14 notes of 8, 12 or 16 eighths, each held over
-/// 55 to 90 % of its span with a release of 30 to 120 ms, and listed to 20 to 200 ms
-/// past the next onset. Returns the mix, the list and each note's held end.
-fn ducked_bass_line(seed: u64) -> (Vec<f64>, NoteList, Vec<f64>) {
+/// 55 to 90 % of its span with a release of 30 to 120 ms, and listed `past` the next
+/// onset, or 20 to 200 ms past it. Returns the mix, the list and each note's held end.
+/// The seed of the bass probe's signal `i` is [`probe_seed`] of `i`.
+fn ducked_bass_line(seed: u64, depth_db: f64, past: Option<f64>) -> (Vec<f64>, NoteList, Vec<f64>) {
     let mut draws = uniform(seed, 400).into_iter();
     let mut u = move |lo: f64, hi: f64| lo + (hi - lo) * draws.next().unwrap();
     let (eighth, beat) = (30.0 / 175.0, 60.0 / 175.0);
@@ -2711,15 +2712,16 @@ fn ducked_bass_line(seed: u64) -> (Vec<f64>, NoteList, Vec<f64>) {
     }
     for (j, v) in mix.iter_mut().enumerate() {
         let phase = (f64::from(u32::try_from(j).unwrap()) / fs()).rem_euclid(beat);
-        *v *= 10_f64.powf(-5.0 * (1.0 - phase / 0.22).max(0.0) / 20.0);
+        *v *= 10_f64.powf(-depth_db * (1.0 - phase / 0.22).max(0.0) / 20.0);
     }
     let list: Vec<(f64, f64, f64)> = held
         .iter()
         .enumerate()
         .map(|(k, &(on, off, release, f0))| {
-            let end = held
-                .get(k + 1)
-                .map_or(off + release + 0.04, |next| next.0 + u(0.02, 0.2));
+            let end = held.get(k + 1).map_or(off + release + 0.04, |next| {
+                let span = u(0.02, 0.2);
+                next.0 + past.unwrap_or(span)
+            });
             (on, end, f0)
         })
         .collect();
@@ -2727,24 +2729,37 @@ fn ducked_bass_line(seed: u64) -> (Vec<f64>, NoteList, Vec<f64>) {
     (mix, note_list(&list), offs)
 }
 
-#[test]
-fn a_stripped_bass_line_keeps_its_note_offs_before_the_gaps() {
-    // #323: stripped, the duck's dip lifts the last frames before a next note, where
-    // that note's band already rings ahead of its attack. Read on the stripped level,
-    // the gap after note 11 lay over a fiftieth of its hold, and its knee took the
-    // next note's corner 0.59 s late. Seed of the bass probe's signal 3.
-    let (x, list, offs) =
-        ducked_bass_line(4_u64.wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03);
+/// The seed of signal `i` of the bass probe of #316.
+fn probe_seed(i: u64) -> u64 {
+    (i + 1).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03
+}
+
+/// The knee errors of a stripped read of [`ducked_bass_line`], in seconds.
+fn stripped_knee_errors(seed: u64, depth_db: f64, past: Option<f64>) -> Vec<f64> {
+    let (x, list, offs) = ducked_bass_line(seed, depth_db, past);
     let read = layer(&x, &list, 175.0);
     assert!(read.flags.pump_stripped, "{:?}", read.pump);
-    let errors: Vec<f64> = read
-        .notes
+    read.notes
         .iter()
         .filter_map(|e| {
             let k = list.notes().iter().position(|n| n.onset() == e.onset)?;
             e.knee.map(|knee| knee.get() - offs[k])
         })
-        .collect();
-    assert!(errors.len() >= 10, "{errors:?}");
-    assert!(errors.iter().all(|e| e.abs() < 0.15), "{errors:?}");
+        .collect()
+}
+
+#[test]
+fn a_stripped_bass_line_keeps_its_note_offs_before_the_gaps() {
+    // #323: stripped, the duck's dip lifts the last frames before a next note, where
+    // that note's band already rings ahead of its attack. Read on the stripped level,
+    // the gap after note 11 of the probe's signal 3 lay over a fiftieth of its hold, and
+    // its knee took the next note's corner 0.59 s late. Under a 12 dB duck with lists
+    // 5 ms past the next onset, note 6 of signal 34 read 0.46 s late when the test read
+    // only the level before the strip: there the ring in the dip came back by 1.19 times
+    // the stop, against 1.40 on the stripped level.
+    for (signal, depth_db, past) in [(3, 5.0, None), (34, 12.0, Some(0.005))] {
+        let errors = stripped_knee_errors(probe_seed(signal), depth_db, past);
+        assert!(errors.len() >= 8, "{signal} {errors:?}");
+        assert!(errors.iter().all(|e| e.abs() < 0.15), "{signal} {errors:?}");
+    }
 }

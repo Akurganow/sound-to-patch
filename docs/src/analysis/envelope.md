@@ -244,25 +244,38 @@ on the linear amplitude of the amp proxy, from the first frame within
     mostly 1 to 3 times the stop level on the bass line below. A quarter keeps 8.9 % of
     the long notes late under the pump there, against 7.1 % at a tenth and 13.0 % at a
     half.
-  - Under a pump that strips, the test reads the note's level as it was before the
-    strip [fact]. The strip lifts the frames in a beat's dip by up to the pump's depth,
-    and the last 10 ms before the stop can lie in a dip while the next note's band
-    already rings ahead of its attack. Read on the stripped level, the stop then lay
-    over a fiftieth of the hold, or the next note's corner lay under a quarter above
-    the stop, and the knee took the next note's corner (#323) [synthetic]. On the long
-    notes of the bass line below, the strip put 156 knees over 15 ms further off than
-    the same signals read unstripped, by a median of 0.56 s [synthetic]. Read before
-    the strip, notes on stripped signals of that line read [synthetic]:
+  - Under a pump that strips, the test also reads the note's level as it was before
+    the strip, and the later corner replaces nothing when either level shows the note
+    ended and the level come back [fact]. The strip lifts the frames in a beat's dip by
+    up to the pump's depth, and the last 10 ms before the stop can lie in a dip while
+    the next note's band already rings ahead of its attack. Read on the stripped level
+    alone, the stop then lay over a fiftieth of the hold, or the next note's corner lay
+    under a quarter above the stop, and the knee took the next note's corner (#323)
+    [synthetic]. On the long notes of the bass line below, the strip put 156 knees over
+    15 ms further off than the same signals read unstripped, by a median of 0.56 s
+    [synthetic]. Read on the level before the strip alone, the ring in the dip can come
+    back by under a quarter there while the stripped level comes back by more: under a
+    12 dB pump with list ends 5 ms past the next onset, 2 of 2137 notes then read about
+    0.5 s late [synthetic].
+  - Notes on the signals that strip, against the same signals generated dry, mean
+    error and notes over 150 ms off [synthetic]:
 
-    | Notes on stripped signals | Test on the stripped level | Test before the strip | Dry line |
-    | :-- | :-- | :-- | :-- |
-    | 1.37 to 2.74 s, mean error | 66.2 ms | 33.9 ms | 40.8 ms |
-    | 1.37 to 2.74 s, over 150 ms off | 249 of 2757 | 117 of 2757 | 188 of 3570 |
-    | 0.34 to 1.37 s, mean error | 14.6 ms | 10.5 ms | 11.1 ms |
-    | 0.34 to 1.37 s, over 150 ms off | 54 of 2822 | 29 of 2822 | 47 of 3536 |
+    | Pump, notes, list end past the next onset | Notes | Dry | Test on the stripped level | This rule |
+    | :-- | :-- | :-- | :-- | :-- |
+    | 5 dB, 1.37 to 2.74 s, 20 to 200 ms | 2757 | 40.8 ms, 148 | 66.2 ms, 249 | 33.9 ms, 117 |
+    | 5 dB, 0.34 to 1.37 s, 20 to 200 ms | 2818 | 10.9 ms, 35 | 14.5 ms, 53 | 10.4 ms, 28 |
+    | 5 dB, 1.37 to 2.74 s, 5 ms | 2748 | 17.9 ms, 56 | 24.3 ms, 83 | 20.1 ms, 63 |
+    | 5 dB, 0.34 to 1.37 s, 5 ms | 2854 | 5.8 ms, 11 | 8.0 ms, 17 | 7.3 ms, 13 |
+    | 8 dB, 1.37 to 2.74 s, 5 ms | 2065 | 19.8 ms, 47 | 29.4 ms, 74 | 22.7 ms, 53 |
+    | 12 dB, 1.37 to 2.74 s, 5 ms | 1913 | 17.9 ms, 39 | 37.9 ms, 86 | 23.9 ms, 45 |
+    | 24 dB, 1.37 to 2.74 s, 20 to 200 ms | 1885 | 41.3 ms, 101 | 314.3 ms, 853 | 96.5 ms, 253 |
 
-    No note of those signals or of the dry line reads over 15 ms worse, and the strips
-    do not change [synthetic].
+    Only the 5 dB pump with list ends 20 to 200 ms past the next onset reads no worse
+    than dry. With list ends at the next onset, no note changes. No note reads over
+    15 ms worse than the test on the stripped level, except one at 24 dB, which reads
+    0.43 s early against 0.40 s late: there the stripped track holds no corner at the
+    note-off, and both knees take another corner [synthetic]. The strips do not change
+    [synthetic].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a

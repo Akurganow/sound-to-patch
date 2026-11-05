@@ -425,7 +425,7 @@ pub fn amp_proxy(
 /// The knee of the amp proxy over the frames from `top` to `end`, of which the first
 /// `clear` show the note alone. `mix` is the proxy before the pump's strip: the strip
 /// lifts the frames in a beat's dip, where the band can already ring ahead of a next
-/// note, so the test of whether the note has ended reads the mix.
+/// note, so the test of whether the note has ended reads the mix as well.
 fn note_off(
     proxy: &LevelTrack,
     mix: Option<&LevelTrack>,

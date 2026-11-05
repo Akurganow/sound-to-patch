@@ -115,12 +115,12 @@ pub fn find_knee(start: f64, amp: &[f64], clear: usize) -> Option<f64> {
     find_knee_against(start, amp, amp, clear)
 }
 
-/// [`find_knee`] whose test of a later corner past the clear frames reads `level`,
-/// a track of the same frames: the stop level, the earlier corner's level and the
-/// later corner's level and left line. A note read with the pump stripped passes the
-/// unstripped track here. The strip lifts the frames in a beat's dip, and the last
-/// clear frames before a next note can lie there while its band already rings ahead
-/// of its attack.
+/// [`find_knee`] whose later corner past the clear frames also replaces nothing when
+/// `level`, a track of the same frames, shows the note ended and the level come back.
+/// A note read with the pump stripped passes the unstripped track here. The strip
+/// lifts the frames in a beat's dip, and the last clear frames before a next note can
+/// lie there while its band already rings ahead of its attack; the unstripped track
+/// reads that ring in the dip, so either track alone can miss the next note.
 pub(super) fn find_knee_against(
     start: f64,
     amp: &[f64],
@@ -192,11 +192,13 @@ pub(super) fn find_knee_against(
     let mut best = first;
     let alone = clear.min(n);
     let mix = Sums::of(level);
-    let stop = mix.mean(alone.saturating_sub(KNEE_SIDE_MIN), alone);
     for corner in later {
         // Past the clear frames a corner reads no rise, and the bend over a silent
         // gap reads near 0, so only the level the note left there tells them apart.
-        if alone > 0 && corner.k >= alone && mix.came_back(stop, best.k, corner.k) {
+        if alone > 0
+            && corner.k >= alone
+            && (sums.came_back(alone, best.k, corner.k) || mix.came_back(alone, best.k, corner.k))
+        {
             continue;
         }
         if bend(&db, best.k, corner.first, KNEE_BEND_LAG) <= KNEE_BEND.get()
@@ -336,11 +338,12 @@ impl Sums {
         sums
     }
 
-    /// The mean over frames `lo..hi`; 0 for none.
     /// Whether the level has fallen under [`KNEE_FLOOR`] of the held level before
-    /// `from` by the `stop` level, and has come back before `k` by [`KNEE_BACK`]: the
-    /// mean over the [`KNEE_LEFT`] frames before `k`, and the end of their line.
-    fn came_back(&self, stop: f64, from: usize, k: usize) -> bool {
+    /// `from` by the stop level, the mean over the last [`KNEE_SIDE_MIN`] of the
+    /// `alone` frames, and has come back before `k` by [`KNEE_BACK`]: the mean over
+    /// the [`KNEE_LEFT`] frames before `k`, and the end of their line.
+    fn came_back(&self, alone: usize, from: usize, k: usize) -> bool {
+        let stop = self.mean(alone.saturating_sub(KNEE_SIDE_MIN), alone);
         let held = |k: usize| self.mean(k.saturating_sub(KNEE_LEFT), k);
         stop < KNEE_FLOOR * held(from)
             && held(k) >= KNEE_BACK * stop
@@ -349,6 +352,7 @@ impl Sums {
                 .is_some_and(|left| left.at(k) >= stop)
     }
 
+    /// The mean over frames `lo..hi`; 0 for none.
     fn mean(&self, lo: usize, hi: usize) -> f64 {
         if hi > lo {
             (self.y[hi] - self.y[lo]) / cast::usize_to_f64(hi - lo)
