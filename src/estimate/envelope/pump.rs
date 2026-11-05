@@ -286,8 +286,15 @@ impl Pump {
         let depth = dip(&curve);
         let low = PUMP_BINS + dip_bin(&curve);
         let falls: Vec<f64> = beats.iter().map(|b| fall_into(b, low)).collect();
-        let free_line = free_line(track, longest, grid);
-        let free = free_line.is_some_and(|cents| cents >= FREE_RESIDUAL.get());
+        let line = free_line(track, longest, grid);
+        let free_line = line.map(|(cents, _)| cents);
+        let span = starts[starts.len() - 1] + period - starts[0];
+        let free = line
+            .filter(|&(cents, _)| cents >= FREE_RESIDUAL.get())
+            .map(|(_, rate)| {
+                let harmonic = (rate * period).round().max(1.0) / period;
+                (rate - harmonic).abs() * span
+            });
         let lock = lock(&beats, &onset_beats, &odd, &falls, &wide, depth, free);
         let falls = if lock == PumpLock::Beat {
             let end = track.time(track.db().len()) - grid.offset().get();
@@ -632,12 +639,17 @@ fn dips(curve: &[f64], depth: f64) -> usize {
 /// - `Note`: the beats with a note onset inside dip by [`PUMP_MIN`] or
 ///   more, in their median curve, and the other beats by under half of
 ///   it. Each group needs two beats.
-/// - `Free`: `free` finds a tremolo. It comes before the beat: a 5.3 Hz
-///   tremolo over 17 beats at 128 BPM left a 3.6 dB dip in the median
-///   curve that passed the beat test. A duck's strongest line lies on the
-///   beat rate, so it reads free only when that rate lies
-///   [`FREE_RESIDUAL`] or more from every division of the grid; `find` then
-///   tries the period search.
+/// - `Free`: `free` finds a tremolo, and holds the cycles its line drifts
+///   against the nearest harmonic of the beat over the counted beats. It
+///   comes before the beat: a 5.3 Hz tremolo over 17 beats at 128 BPM left a
+///   3.6 dB dip in the median curve that passed the beat test. A duck's
+///   strongest line lies on the beat rate, so it reads free only when that
+///   rate lies [`FREE_RESIDUAL`] or more from every division of the grid;
+///   `find` then tries the period search. A line that drifts a full cycle or
+///   more could not leave the beats folded on one curve, so a beat test that
+///   passes then wins: a level step in the longest run, such as a held part
+///   that runs past its note-off into silence, moves the line of a duck on
+///   the tempo by 50 to 220 cents.
 /// - `Beat`: the curve dips by [`PUMP_MIN`] or more, once per beat, and
 ///   falls into its dip within [`FALL_MAX`] bins, and at least
 ///   [`PHASE_SHARE`] of the beats fall by [`PHASE_DEPTH`] of its depth
@@ -654,7 +666,7 @@ fn lock(
     falls: &[f64],
     wide: &[f64],
     depth: f64,
-    free: bool,
+    free: Option<f64>,
 ) -> PumpLock {
     let curve = &wide[PUMP_BINS..];
     let median_of = |flags: &[bool], value: bool| -> Option<Vec<f64>> {
@@ -673,27 +685,24 @@ fn lock(
     {
         return PumpLock::Note;
     }
-    if free {
-        return PumpLock::Free;
-    }
     let low = PUMP_BINS + dip_bin(curve);
     let half_falls = |parity: bool| {
         median_of(odd, parity).is_some_and(|half| {
             fall_to(&half, low) <= FALL_MAX && half[low] <= -PHASE_DEPTH * depth
         })
     };
-    if depth >= PUMP_MIN.get()
+    let near = falls.iter().filter(|&&f| f >= PHASE_DEPTH * depth).count();
+    let beat = depth >= PUMP_MIN.get()
         && fall_to(wide, low) <= FALL_MAX
         && dips(curve, depth) == 1
         && half_falls(false)
         && half_falls(true)
-    {
-        let near = falls.iter().filter(|&&f| f >= PHASE_DEPTH * depth).count();
-        if cast::usize_to_f64(near) >= PHASE_SHARE * cast::usize_to_f64(falls.len()) {
-            return PumpLock::Beat;
-        }
+        && cast::usize_to_f64(near) >= PHASE_SHARE * cast::usize_to_f64(falls.len());
+    match free {
+        Some(drift) if !(beat && drift >= 1.0) => PumpLock::Free,
+        _ if beat => PumpLock::Beat,
+        _ => PumpLock::None,
     }
-    PumpLock::None
 }
 
 /// Whether a fold error beats another by [`FOLD_ERROR_SHARE`] and
@@ -729,8 +738,9 @@ fn fold_error(track: &LevelTrack, starts: &[f64], period: f64, curve: &[f64]) ->
 
 /// The cents from the nearest division to the strongest line of the
 /// modulation spectrum between [`FREE_RATE_MIN`] and 20 Hz, over a span of
-/// the level. `None` when that line swings by under [`FREE_SWING`].
-fn free_line(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> Option<f64> {
+/// the level, and the line's rate in Hz. `None` when that line swings by under
+/// [`FREE_SWING`].
+fn free_line(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> Option<(f64, f64)> {
     let (lo, hi) = (track.index(start), track.index(end));
     let block = cast::round_to_usize(1.0 / (TRACK_RATE_HZ.get() * HOP.get())).unwrap_or(5);
     // Each block averages in dB, as the curve does, so its mean is the
@@ -749,7 +759,7 @@ fn free_line(track: &LevelTrack, (start, end): (f64, f64), grid: BeatGrid) -> Op
         spectrum.magnitude_at(rate.get()) * 4.0 / (track.span().get() * TRACK_RATE_HZ.get());
     // The amplitude is in natural-log units; 20 / ln 10 turns it into dB.
     let swing = amplitude * 20.0 / std::f64::consts::LN_10;
-    (swing >= FREE_SWING.get()).then(|| snap(rate, grid.bpm()).residual.get().abs())
+    (swing >= FREE_SWING.get()).then(|| (snap(rate, grid.bpm()).residual.get().abs(), rate.get()))
 }
 
 #[cfg(test)]
@@ -851,13 +861,13 @@ mod tests {
         // 4 of 8 beats fall 4 dB into the dip, half the curve's depth.
         let mut falls = [4.0, 4.0, 4.0, 4.0, 3.9, 1.0, 1.0, 0.0];
         assert_eq!(
-            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, false),
+            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, None),
             PumpLock::Beat
         );
         // 3 of 8: under half.
         falls[3] = 3.9;
         assert_eq!(
-            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, false),
+            lock(&beats, &[false; 8], &ALTERNATE, &falls, &curve, 8.0, None),
             PumpLock::None
         );
     }
@@ -880,7 +890,7 @@ mod tests {
                 &[6.0; 8],
                 &rising,
                 6.0,
-                false,
+                None,
             ),
             PumpLock::None
         );
@@ -895,10 +905,85 @@ mod tests {
                 &[6.0; 8],
                 &ducked,
                 6.0,
-                false,
+                None,
             ),
             PumpLock::Beat
         );
+    }
+
+    #[test]
+    fn a_free_line_loses_to_a_beat_lock_once_it_drifts_a_cycle() {
+        let ramp: Vec<f64> = (0..PUMP_BINS)
+            .map(|k| -6.0 * (1.0 - cast::usize_to_f64(k) / 63.0))
+            .collect();
+        let ducked = [vec![0.0; PUMP_BINS], ramp.clone()].concat();
+        let beats = vec![ducked.clone(); 8];
+        let read = |free| {
+            lock(
+                &beats,
+                &[false; 8],
+                &ALTERNATE,
+                &[6.0; 8],
+                &ducked,
+                6.0,
+                free,
+            )
+        };
+        assert_eq!(read(Some(0.99)), PumpLock::Free);
+        assert_eq!(read(Some(1.0)), PumpLock::Beat);
+        // A curve that fails the beat test stays free however far it drifts.
+        let rising = [ramp.iter().map(|v| v - 6.0).collect(), ramp].concat();
+        let beats = vec![rising.clone(); 8];
+        assert_eq!(
+            lock(
+                &beats,
+                &[false; 8],
+                &ALTERNATE,
+                &[6.0; 8],
+                &rising,
+                6.0,
+                Some(5.0)
+            ),
+            PumpLock::Free
+        );
+    }
+
+    #[test]
+    fn a_held_part_that_runs_into_silence_leaves_a_duck_locked_to_the_beat() {
+        // A 5 dB duck over 220 ms of each beat at 175 BPM, under a note that
+        // stops 40 % into the last of the 9 beats its held part covers, and a
+        // shorter note 4 s later. The step to silence moves the beat's line 132
+        // cents off, and over the 15 counted beats, 9.26 s, it would drift 2.0
+        // cycles against the beat.
+        let bpm = Bpm::new(175.0).unwrap();
+        let period = 60.0 / bpm.get();
+        let end = 10.0 * period + 0.01;
+        let off = end - 0.01 - 0.6 * period;
+        let (second, last) = (end + 4.0, end + 4.0 + 7.0 * period);
+        let db = (0..10_000)
+            .map(|i| {
+                let t = cast::usize_to_f64(i) * HOP.get();
+                if t < off || (second..last).contains(&t) {
+                    -15.0 - 5.0 * (1.0 - t.rem_euclid(period) / 0.22).max(0.0)
+                } else {
+                    -200.0
+                }
+            })
+            .collect();
+        let track = LevelTrack::new(Seconds::clamped(0.0), db);
+        let note = |on: f64, off: f64| {
+            crate::notes::Note::new(
+                Seconds::clamped(on),
+                Seconds::clamped(off),
+                crate::units::MidiPitch::new(33.0).unwrap(),
+            )
+            .unwrap()
+        };
+        let notes = NoteList::new(vec![note(0.0, end), note(second, last)]);
+        let grid = BeatGrid::new(bpm, Seconds::clamped(0.0));
+        let pump = Pump::find(&track, grid, &notes, &[(0.0, end), (second, last)]).unwrap();
+        assert_eq!(pump.lock, PumpLock::Beat, "{pump:?}");
+        assert!(pump.strips(), "{pump:?}");
     }
 
     #[test]
@@ -918,7 +1003,7 @@ mod tests {
         let curve = median_curve(&beats);
         assert!((dip(&curve[PUMP_BINS..]) - 8.0).abs() < 1e-12);
         assert_eq!(
-            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, false),
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, None),
             PumpLock::None
         );
         // The odd beats dip, but under half the curve's depth at its dip.
@@ -926,12 +1011,12 @@ mod tests {
             .map(|i| wide(10, if i % 2 == 0 { 8.0 } else { 3.9 }))
             .collect();
         assert_eq!(
-            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, false),
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, None),
             PumpLock::None
         );
         let beats = vec![wide(10, 8.0); 9];
         assert_eq!(
-            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, false),
+            lock(&beats, &[false; 9], &odd, &[8.0; 9], &curve, 8.0, None),
             PumpLock::Beat
         );
     }
@@ -972,7 +1057,7 @@ mod tests {
                 &[0.0; 4],
                 &curve,
                 4.0,
-                false,
+                None,
             )
         };
         assert_eq!(with(1.0), PumpLock::Note);
