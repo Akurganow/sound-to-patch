@@ -83,13 +83,16 @@ Every rule below reads one voicing (owner decision, 2026-11-05):
 
 | Line | When | Rules |
 | :-- | :-- | :-- |
-| Mono | The [voices layer](../analysis/voices.md) reads at most one voice at a time, and no `--profile pad` | Glide joins, next-note cuts, one note per tick, bends; a level span stops at the next later onset |
-| Polyphonic | The voices layer reads two voices or more at once, or `--profile pad` | Pad ends; a level span runs past the next onset |
+| Mono | The [voices layer](../analysis/voices.md) reads at most one voice at a time, or counts none, and the notes step ran without `--profile pad` | Glide joins, next-note cuts, one note per tick, bends; a level span stops at the next later onset |
+| Polyphonic | The voices layer reads two voices or more at once, or the notes step ran with `--profile pad` | Pad ends; a level span runs past the next onset |
 
 Both lines end the other notes at their knees or 50 ms before their list
 ends. The voicing of the notes step, from its chord share, sets only the
 notes step's settings and the pitch layer. So a stem of chords whose
-chord share stays under 0.68 is still a polyphonic line here.
+chord share stays under 0.68 is still a polyphonic line here. Given
+notes take no profile, so `--notes` leaves the voicing to the voices
+layer. A layer that counts no voices leaves the line mono, because the
+mono rules only join and cut notes.
 
 - Each note ends at its note-off knee, so the release lives in the amp
   envelope and a render does not play it twice. A note without a knee,
@@ -116,10 +119,8 @@ chord share stays under 0.68 is still a polyphonic line here.
   ticks. In a mono line no other notes overlap. Of notes that start on
   one tick, one stays and the report counts the others: a note the
   transcriber does not flag as an octave guess before one it flags, then
-  the louder, then the longer. Both levels are read over the written
-  notes with the window of the lower note's period, because a shorter
-  window reads a peak up to about 3 dB higher and would favour the
-  higher note.
+  the longer, then the lower key. Their levels cannot rank them: both
+  read the same mix from the same start.
 - A pitch drop becomes one note at its settled pitch, and a note under a
   vibrato takes the key of the vibrato's mean pitch. Only the glides,
   drops and vibratos the report trusts above low count.
@@ -128,12 +129,14 @@ chord share stays under 0.68 is still a polyphonic line here.
   under it `127 * 10^(-d / 40)`, at least 1. Otherwise every note gets 100.
   The full-band level is the peak of the one-period RMS of the whole mix
   from the onset to the note-off knee, so two notes compare even when they
-  read different harmonics. On a chord it is the level of the mix, so the
-  tones of a chord read the same levels whether their onsets meet or
-  stagger, and tones of different levels do not tell apart. Each tone
-  reads the mix with its own one-period window, so in an octave stack the
-  lower tones read up to about 3 dB less. A note with no frame to read
-  gets 100.
+  read different harmonics. On a chord it is the level of the mix, and
+  tones of different levels do not tell apart. Each tone reads the mix
+  with its own one-period window: the tones of a C3, E3 and G3 chord read
+  within 0.65 dB of each other, and in an octave stack the lower
+  tones read up to about 3 dB less. A stagger of the onsets moves no
+  tone's level by 1 dB [synthetic]. A note with no frame to read reads its
+  written span, which on a mono line stops at the next later onset; with
+  no frame there either it gets 100.
 - Pitch motion that no route models becomes pitch bends: a note of a mono
   line whose pitch stays 50 cents or more off its key, on one side, for at
   least the pitch track's reach (a quarter of its frame plus one period,
@@ -178,6 +181,11 @@ that set its end, its level and the transcriber's octave flag.
   reads the line as polyphonic and its notes get pad ends but no glide
   joins or bends: 41 of 133 transcribed runs of generated 808 and bass
   lines in one tally set [synthetic].
+- The [pitch layer](../analysis/pitch.md) still reads the notes step's
+  voicing, from its chord share, not the voices layer. On a stem of chords
+  whose chord share stays under 0.68 it reads glides, drops and vibratos
+  as on one line, while `notes.mid` treats the line as polyphonic and
+  writes no glide join or bend.
 
 ## Give the notes
 

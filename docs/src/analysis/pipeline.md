@@ -1,7 +1,8 @@
 # Analysis pipeline
 
-`sound-to-patch analyze` turns a stem into `layers.json` and
-`spectrogram.png`, and `sound-to-patch notes` turns it into `notes.mid`.
+`sound-to-patch analyze` turns a stem into `layers.json`,
+`spectrogram.png` and the final `notes.mid`, and `sound-to-patch notes`
+turns it into the first note list, a `notes.mid` of its own.
 This page follows the stem through each stage, with the formula, the
 convention and the limits of each. The
 [common methods page](methods.md) holds the rules that every stage
@@ -982,16 +983,20 @@ frames [fact].
 ## The report
 
 - `layers.json` holds the `schema` and `synth` fields, the `stem` group,
-  the `transcription` group, the `pitch` group and the `conventions`
-  group; the
+  the `transcription`, `pitch`, `voices`, `envelope` and `notes` groups and
+  the `conventions` group; the
   [layer report page](../reference/formats/layers.md) lists them [fact].
 - Output is deterministic: two runs on the same input write the same bytes
   [fact]. `layers.json` names its stem in `source`, and a run of another
   stem into the same folder stops unless forced [fact].
-- Each file is written to a temporary sibling and renamed into place, and
-  `layers.json` comes last, after the old one is removed. A `layers.json`
-  that exists therefore always belongs to the spectrogram next to it, and
-  neither file is ever cut short [fact].
+- Each file is written to a temporary sibling and renamed into place:
+  `notes.mid` first, then `spectrogram.png`, and `layers.json` last, after
+  the old one is removed. A run without notes removes the old
+  `notes.mid`. A `layers.json` that exists therefore always belongs to the
+  spectrogram and the `notes.mid` next to it, and no file is ever cut
+  short [fact]. `notes` keeps that true: it stops before it replaces a
+  `notes.mid` that a `layers.json` describes, and `--force` removes that
+  report [fact].
 - `spectrogram.png` is 1500 by 512 pixels, below the size at which a
   hosted image reader downscales [fact]. The image gives coarse shape; the
   numbers live in the JSON [fact].

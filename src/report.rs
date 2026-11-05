@@ -250,7 +250,12 @@ pub fn analyze_with(
             .as_ref()
             .or(transcription.as_ref().map(|t| &t.track))
             .unwrap_or(&PitchTrack::default()),
-        (voicing, request.profile == Some(Profile::Pad)),
+        // The profile counts only where the notes step ran: given notes
+        // take no profile.
+        (
+            voicing,
+            transcription.as_ref().and_then(|t| t.profile) == Some(Profile::Pad),
+        ),
         grid,
     )?;
     let final_notes = final_notes(
@@ -564,8 +569,8 @@ fn two_channels(channels: &[Vec<f64>]) -> Option<(&[f64], &[f64])> {
 
 /// Reads the pitch, envelope and voices layers of the mono mix, and the
 /// one voicing of the final notes: a mono line holds at most one voice at
-/// a time by the voices layer, and `--profile pad` makes any line
-/// polyphonic. The envelope's full-band levels read that voicing, so
+/// a time by the voices layer, or the layer counts none, and `--profile
+/// pad` makes any line polyphonic when the notes step ran. The envelope's full-band levels read that voicing, so
 /// they wait for the voices layer. `voicing` is the notes step's, which
 /// the pitch layer reads.
 fn read_layers(
@@ -600,7 +605,10 @@ fn read_layers(
         envelope: &envelope,
     })
     .map_err(AnalyzeError::Voices)?;
-    let mono_line = voices.mono && !pad_profile;
+    // A layer that counted no voices leaves the line mono: the mono rules
+    // only join and cut notes, while the pad rule reads what the count
+    // could not.
+    let mono_line = (voices.mono || !voices.confidence.is_estimate()) && !pad_profile;
     envelope
         .read_levels(&input, mono_line)
         .map_err(AnalyzeError::Envelope)?;
@@ -720,13 +728,16 @@ fn transcription_summary(t: &Transcription) -> Vec<String> {
 /// The tempo is refined from the stem unless the request says
 /// `bpm_exact`. The stem runs through [`transcribe_stem`] at that tempo
 /// with the detected settings, or those of the profile, and the file
-/// carries that tempo. The file is written to a temporary sibling
-/// and renamed into place, and nothing else in the folder changes.
+/// carries that tempo. The file is written to a temporary sibling and
+/// renamed into place. Nothing else in the folder changes, except that
+/// `force` removes a `layers.json` that describes the final notes, so no
+/// report describes a file that is gone.
 ///
 /// # Errors
 ///
-/// Returns an [`AnalyzeError`] when the output folder is a file or holds
-/// the report of another stem (without `force`), when the stem cannot be
+/// Returns an [`AnalyzeError`] when the output folder is a file, holds a
+/// `layers.json` that describes the final notes or the report of another
+/// stem (without `force`), when the stem cannot be
 /// decoded or transcribed, when it gives no note, or when the file cannot
 /// be written.
 pub fn notes(
@@ -735,6 +746,14 @@ pub fn notes(
 ) -> Result<NotesReport, AnalyzeError> {
     let dir = out_dir(request.stem, request.out);
     let source = source_of(request.stem);
+    // A report that describes the final notes would describe a file this
+    // command replaces, so it stops the run, whatever its stem; `--force`
+    // removes it with the old file.
+    let report = dir.join(LAYERS_FILE);
+    let describes = describes_notes(&report);
+    if describes && !request.force {
+        return Err(AnalyzeError::NotesDescribed { path: report });
+    }
     check_out_dir(&dir, &source, request.force, Guarded::ReportBeside)?;
     check_notes_file(&dir, &source, request.force)?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
@@ -771,6 +790,20 @@ pub fn notes(
     })?;
     let path = dir.join(NOTES_FILE);
     let staged = stage(&dir, NOTES_FILE, &bytes)?;
+    if describes {
+        // Before the rename: a failed rename then leaves the old file with
+        // no report that misdescribes it.
+        match std::fs::remove_file(&report) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => {
+                let _ = std::fs::remove_file(&staged);
+                return Err(AnalyzeError::Write {
+                    path: report,
+                    source: error,
+                });
+            }
+            _ => {}
+        }
+    }
     if let Err(source) = std::fs::rename(&staged, &path) {
         // The staged copy is ours alone; a failed removal changes nothing
         // the error does not already report.
@@ -783,6 +816,15 @@ pub fn notes(
         transcription,
         skipped,
     })
+}
+
+/// Whether a `layers.json` describes the final notes, the `notes.mid` that
+/// `analyze` writes next to it.
+fn describes_notes(report: &Path) -> bool {
+    std::fs::read_to_string(report)
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .is_some_and(|report| report.get("notes").is_some_and(|notes| !notes.is_null()))
 }
 
 /// Fails when the output folder is a file, or holds a `layers.json` whose
@@ -891,6 +933,12 @@ pub enum AnalyzeError {
         /// What the file is, and what `--force` does to it.
         guarded: Guarded,
     },
+    /// The output folder holds a `layers.json` that describes the final
+    /// notes, which `notes` would replace with the first list.
+    NotesDescribed {
+        /// The existing `layers.json`.
+        path: PathBuf,
+    },
     /// The model run, a decode or the f0 track failed.
     Transcription(NotesError),
     /// The pitch layer failed.
@@ -948,6 +996,11 @@ impl fmt::Display for AnalyzeError {
                     path.display()
                 )
             }
+            Self::NotesDescribed { path } => write!(
+                f,
+                "{} describes the final notes.mid that `analyze` wrote, and `notes` would replace that file with the first note list. Pass --out <dir> for the first list, or --force to replace notes.mid and remove the report",
+                path.display()
+            ),
             Self::Transcription(error) => write!(f, "{error}"),
             Self::Pitch(error) => write!(f, "{error}"),
             Self::Envelope(error) => write!(f, "{error}"),
@@ -984,6 +1037,7 @@ impl Error for AnalyzeError {
             Self::Write { source, .. } => Some(source),
             Self::OutIsFile { .. }
             | Self::OtherSource { .. }
+            | Self::NotesDescribed { .. }
             | Self::NoNotes { .. }
             | Self::Internal(_) => None,
         }

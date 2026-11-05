@@ -50,8 +50,8 @@ from 30 ms before its onset until five time constants after it, each within 30 m
 the one before and on a key from f_end to the drop's start pitch; end_rule names what set the end: \
 knee is the note-off knee; no_knee is 50 ms before the list end for a note the envelope layer read \
 without a knee; unread is the same cut for a note the envelope layer skipped, with no pad end; a \
-line is mono when the voices layer reads at most one voice at a time, and --profile pad makes every \
-line polyphonic; pad is, for a note of a polyphonic line, where its amp proxy falls 20 dB below its \
+line is mono when the voices layer reads at most one voice at a time or counts none, unless the \
+notes step ran with --profile pad; pad is, for a note of a polyphonic line, where its amp proxy falls 20 dB below its \
 peak plus its sustain level, first after its knee or its peak, or, for a note the envelope layer \
 skipped, where its full-band level falls 20 dB below the median of the last 30 % of its held part, \
 from the first frame within 1 dB of its peak to 25 ms before its list end, first after its peak, \
@@ -62,11 +62,10 @@ mono line, which the minimum does not hold back; glide is 5 ms after the next no
 to whole ticks, at a glide join of a mono line, whose later note starts at the glide's start or at \
 its own onset, whichever comes first; no end lies after the list end, except at a glide join; of \
 the notes of a mono line that start on one tick only one stays, and dropped counts the others: a \
-note without the octave flag before one with it, then the louder, then the longer, where both \
-levels are the full-band level over each written note read with the window of the lowest note's \
-period; level_db is the note's full-band level, as \
-level_spread_db defines it, the highest of the notes a drop merged, or, when that span holds no \
-frame, the same level from its start to its end before the joins and cuts of a mono line; \
+note without the octave flag before one with it, then the longer, then the lower key; level_db is \
+the note's full-band level, as level_spread_db defines it, the highest of the notes a drop merged, \
+or, when that span holds no frame, the same level from its start to its end before the joins and \
+cuts of a mono line, on a mono line no later than the next later onset; \
 velocity is level when level_spread_db exceeds 3 dB: \
 the loudest note gets 127 and a note d dB under it round(127 * 10^(-d / 40)), at least 1, and a note \
 without a level 100; else constant, 100 for every note; octave_uncertain is the transcriber's \

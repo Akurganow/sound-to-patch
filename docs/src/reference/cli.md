@@ -171,7 +171,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Write next to a report of another stem in the output folder
+          Write next to a report of another stem, or replace the final notes and remove the report that describes them
 
   -h, --help
           Print help (see a summary with '-h')
@@ -199,14 +199,19 @@ gives each step.
   name as the track name, the printed tempo and 4/4 at tick 0, and
   every note on channel 1 at velocity 100.
   It is written to a temporary sibling and renamed into place. Only
-  `notes.mid` is replaced; nothing else in the folder changes.
+  `notes.mid` is replaced; nothing else in the folder changes, except the
+  report that `--force` removes, below.
 - The folder: as for `analyze`, `stems/bass.wav` writes into `stems/bass/`
   without `--out`. When the folder holds a `notes.mid` whose track name is
   another stem, or none, the command stops before it decodes and names
   both; `--force` replaces that file. When it holds a `layers.json` of
   another stem, it stops the same way; `--force` writes `notes.mid` next
-  to that report and leaves it. `--out` picks another folder in both
-  cases.
+  to that report and leaves it. When it holds a `layers.json` with a
+  `notes` group, the report of `analyze` that describes the final
+  `notes.mid`, it stops whatever the stem, because the first list would
+  replace the file the report describes; `--force` replaces `notes.mid`
+  and removes that report, so no report describes a file that is gone.
+  `--out` picks another folder in every case.
 
 | Exit code | Meaning |
 | :-- | :-- |

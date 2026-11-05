@@ -124,7 +124,7 @@ pub struct FinishInput<'a> {
     /// The vibratos.
     pub vibrato: &'a [VibratoSpan],
     /// The full-band level of the stem. It fills a level that the facts
-    /// lack and compares the notes of a mono line that start on one tick.
+    /// lack.
     pub level: LevelReader<'a>,
 }
 
@@ -199,6 +199,8 @@ pub struct FinalNotes {
     pub bpm: Bpm,
     /// Velocity follows each note's level.
     pub level_velocity: bool,
+    /// The line was mono, so the mono-line rules ran.
+    pub mono: bool,
     /// The notes of a mono line dropped because another started on the
     /// same tick.
     pub dropped: usize,
@@ -256,12 +258,11 @@ struct Work<'a> {
 ///    keeps its length.
 /// 4. Times become ticks with `round(seconds * BPM / 60 * 480)`, and each
 ///    note lasts at least one tick. A note without a level reads it over
-///    this written span.
+///    this written span, which on a mono line stops at the next later
+///    onset.
 /// 5. In a mono line, of the notes that start on one tick only one stays:
 ///    a note without the transcriber's octave flag before one with it, then
-///    the louder, then the longer. The loudness of each is its level over
-///    its written span, read with the window of the lowest note's period,
-///    so the window favours none of them.
+///    the longer, then the lower key.
 /// 6. In a mono line, a glide joins the pair of neighbours whose interval
 ///    lies within a semitone of its own and whose later onset lies within
 ///    [`GLIDE_SLACK`] of its motion, the nearest to its start. The later
@@ -335,16 +336,24 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
             (note, w.contour)
         })
         .collect();
-    for (note, _) in &mut notes {
+    notes.sort_by_key(|(n, _)| (n.start, n.key));
+    for i in 0..notes.len() {
+        let note = notes[i].0;
         if note.level.is_none() {
-            note.level = (input.level)(
+            // On a mono line the span stops at the next later onset, as the
+            // layer's own span does, so a short note reads none of the next.
+            let next = notes[i..]
+                .iter()
+                .map(|(n, _)| n.start)
+                .find(|&start| input.mono && start > note.start)
+                .unwrap_or(u64::MAX);
+            notes[i].0.level = (input.level)(
                 seconds_of(note.start, tps),
-                seconds_of(note.end, tps),
+                seconds_of(note.end.min(next), tps),
                 Hz::from(MidiPitch::clamped(f64::from(note.key))),
             );
         }
     }
-    notes.sort_by_key(|(n, _)| (n.start, n.key));
     let dropped = if input.mono {
         join_mono(&mut notes, input, tps)
     } else {
@@ -364,6 +373,7 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
         bends,
         bpm: input.bpm,
         level_velocity: input.level_velocity,
+        mono: input.mono,
         dropped: dropped.len(),
     }
 }
@@ -472,7 +482,7 @@ fn join_mono(
     input: &FinishInput<'_>,
     tps: f64,
 ) -> Vec<(f64, f64)> {
-    let dropped = keep_one_per_tick(notes, input.level, tps);
+    let dropped = keep_one_per_tick(notes);
     let glides = input.glides;
     let overlap = cast::ceil_to_usize(GLIDE_OVERLAP.get() * tps)
         .and_then(|t| u64::try_from(t).ok())
@@ -525,41 +535,23 @@ fn join_mono(
     dropped
 }
 
-/// Of the notes sorted by start that start on one tick, keeps a note
-/// without the octave flag before one with it, then the louder, then the
-/// longer, then the lower key. Each level reads the note's written span
-/// with the window of the lowest key's period: a shorter window reads a
-/// peak up to about 3 dB higher, which would favour the higher note, often
-/// an octave ghost. Returns the list spans of the notes that went.
-fn keep_one_per_tick(
-    notes: &mut Vec<(FinalNote, Option<&Contour>)>,
-    level: LevelReader<'_>,
-    tps: f64,
-) -> Vec<(f64, f64)> {
+/// Of the notes sorted by start, then key, that start on one tick, keeps a
+/// note without the octave flag before one with it, then the longer, then
+/// the lower key. Levels cannot rank them: twins read the same mix from the
+/// same start, so their levels differ only where the longer peaks later.
+/// Returns the list spans of the notes that went.
+fn keep_one_per_tick(notes: &mut Vec<(FinalNote, Option<&Contour>)>) -> Vec<(f64, f64)> {
     let mut kept: Vec<(FinalNote, Option<&Contour>)> = Vec::with_capacity(notes.len());
     let mut dropped = Vec::new();
     for group in notes.chunk_by(|(a, _), (b, _)| a.start == b.start) {
-        if let [only] = group {
-            kept.push(*only);
-            continue;
-        }
-        // Sorted by key, so the first is the lowest.
-        let f0 = Hz::from(MidiPitch::clamped(f64::from(group[0].0.key)));
-        let rank = |n: &FinalNote| {
-            let loud = level(seconds_of(n.start, tps), seconds_of(n.end, tps), f0)
-                .map_or(f64::NEG_INFINITY, Decibels::get);
-            (n.octave_uncertain == Some(true), loud, n.end - n.start)
-        };
-        let ranked: Vec<_> = group.iter().map(|(n, _)| rank(n)).collect();
-        // The first of the best, so a full tie keeps the lower key.
+        let rank = |n: &FinalNote| (n.octave_uncertain != Some(true), n.end - n.start);
+        // The first of the best, so a tie keeps the lower key.
         let best = (1..group.len()).fold(0, |best, i| {
-            let (flag, loud, length) = ranked[i];
-            let (best_flag, best_loud, best_length) = ranked[best];
-            let better = (!flag && best_flag)
-                || (flag == best_flag
-                    && (loud > best_loud
-                        || (loud.total_cmp(&best_loud).is_eq() && length > best_length)));
-            if better { i } else { best }
+            if rank(&group[i].0) > rank(&group[best].0) {
+                i
+            } else {
+                best
+            }
         });
         for (i, item) in group.iter().enumerate() {
             if i == best {
@@ -1132,40 +1124,22 @@ mod tests {
         assert_eq!(spans, [(480, 965), (960, 1016)]);
     }
 
-    /// A level reader that checks the window of key 40 and gives `long` to
-    /// a span past 1.4 s and `short` to one before.
-    fn twin_levels(long: f64, short: f64) -> impl Fn(Seconds, Seconds, Hz) -> Option<Decibels> {
-        move |_, to, f0| {
-            let low = Hz::from(MidiPitch::new(40.0).unwrap());
-            assert!((f0.get() - low.get()).abs() < 1e-9, "{f0:?}");
-            Decibels::new(if to.get() > 1.4 { long } else { short }).ok()
-        }
-    }
-
     #[test]
-    fn of_two_notes_on_one_tick_a_mono_line_keeps_the_louder() {
+    fn of_two_notes_on_one_tick_a_mono_line_keeps_the_longer() {
         let notes = NoteList::new(vec![note(1.0, 1.5, 40.0), note(1.0, 1.4, 52.0)]);
-        // The facts' levels, read with each note's own window, do not rank.
+        // Levels do not rank twins: the louder of the facts still goes.
         let loud = |db| NoteFacts {
             level: Some(Decibels::new(db).unwrap()),
             ..kneeless()
         };
-        let facts = [loud(-6.0), loud(-3.0)];
-        let louder = twin_levels(-20.0, -6.0);
-        let finished = finish(&FinishInput {
-            level: &louder,
-            ..input(&notes, &facts, 120.0)
-        });
+        let facts = [loud(-20.0), loud(-6.0)];
+        let finished = finish(&input(&notes, &facts, 120.0));
         assert_eq!(finished.dropped, 1);
         assert_eq!(finished.notes.len(), 1);
-        assert_eq!(finished.notes[0].key, 52);
-        // Equal levels keep the longer note.
-        let equal = twin_levels(-6.0, -6.0);
-        let finished = finish(&FinishInput {
-            level: &equal,
-            ..input(&notes, &facts, 120.0)
-        });
         assert_eq!(finished.notes[0].key, 40);
+        // Equal lengths keep the lower key.
+        let notes = NoteList::new(vec![note(1.0, 1.5, 52.0), note(1.0, 1.5, 40.0)]);
+        assert_eq!(finish(&input(&notes, &facts, 120.0)).notes[0].key, 40);
     }
 
     #[test]
@@ -1174,18 +1148,53 @@ mod tests {
             note(1.0, 1.5, 40.0).with_octave_uncertain(true),
             note(1.0, 1.4, 52.0).with_octave_uncertain(false),
         ]);
-        let level = NoteFacts {
-            level: Decibels::new(-6.0).ok(),
-            ..kneeless()
-        };
-        let facts = [level, level];
-        let louder = twin_levels(0.0, -40.0);
-        let finished = finish(&FinishInput {
-            level: &louder,
-            ..input(&notes, &facts, 120.0)
-        });
+        let facts = [kneeless(), kneeless()];
+        let finished = finish(&input(&notes, &facts, 120.0));
         assert_eq!(finished.notes.len(), 1);
         assert_eq!(finished.notes[0].key, 52);
+    }
+
+    #[test]
+    fn a_missing_level_of_a_mono_line_reads_no_further_than_the_next_onset() {
+        // A short quiet note without a level, 5 ms before a loud one: its
+        // written span runs to the minimum, past the next onset, but its
+        // level stops at that onset.
+        let notes = NoteList::new(vec![note(2.0, 2.04, 50.0), note(2.005, 2.8, 52.0)]);
+        let facts = [
+            kneeless(),
+            NoteFacts {
+                level: Decibels::new(-6.0).ok(),
+                ..kneeless()
+            },
+        ];
+        let next = tick_of(2.005, ticks_per_second(bpm(120.0)));
+        let reader = |from: Seconds, to: Seconds, _| {
+            assert_eq!(from, s(2.0));
+            assert!(
+                to <= seconds_of(next, ticks_per_second(bpm(120.0))),
+                "{to:?}"
+            );
+            Decibels::new(-24.0).ok()
+        };
+        let finished = finish(&FinishInput {
+            level: &reader,
+            level_velocity: true,
+            ..input(&notes, &facts, 120.0)
+        });
+        // 127 * 10^(-18 / 40) = 45.0.
+        let velocities: Vec<_> = finished.notes.iter().map(|n| n.velocity.get()).collect();
+        assert_eq!(velocities, [45, 127]);
+        // On a polyphonic line the span is the written one.
+        let reader = |_, to: Seconds, _| {
+            assert!(to > s(2.03), "{to:?}");
+            Decibels::new(-24.0).ok()
+        };
+        let finished = finish(&FinishInput {
+            level: &reader,
+            mono: false,
+            ..input(&notes, &facts, 120.0)
+        });
+        assert_eq!(finished.notes.len(), 2);
     }
 
     #[test]

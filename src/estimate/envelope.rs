@@ -833,11 +833,15 @@ fn full_band_levels(
                 .iter()
                 .find(|n| n.onset == note.onset() && n.pitch == note.pitch())
                 .and_then(|n| n.knee);
-            let next = notes
-                .iter()
-                .map(Note::onset)
-                .find(|&onset| mono && onset > note.onset())
-                .map_or(f64::INFINITY, Seconds::get);
+            let next = if mono {
+                notes
+                    .iter()
+                    .map(Note::onset)
+                    .find(|&onset| onset > note.onset())
+                    .map_or(f64::INFINITY, Seconds::get)
+            } else {
+                f64::INFINITY
+            };
             let end = knee
                 .map_or(note.offset().get() - NO_KNEE_CUT.get(), Seconds::get)
                 .min(note.offset().get())

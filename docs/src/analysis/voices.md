@@ -6,7 +6,10 @@ of `layers.json`. It reads any line, chords too, so its fields sit in a group
 of their own and the `pitch` group stays null on chords [fact].
 
 `Voicing`, the chord gate of the transcriber and the pitch layer, does not read
-this count [fact].
+this count [fact]. The final notes do: a line with at most one voice at a time,
+or with no count, is a mono line for every rule of `notes.mid` and for the
+span of the full-band level, unless `--profile pad` ran the notes step
+(owner decision, 2026-11-05) [fact].
 
 ## The count
 

@@ -2882,7 +2882,8 @@ fn the_tones_of_a_chord_read_one_level_in_a_line_of_chords_and_single_notes() {
         ];
         let gap = tones.iter().copied().fold(f64::NEG_INFINITY, f64::max)
             - tones.iter().copied().fold(f64::INFINITY, f64::min);
-        assert!(gap < 1.0, "chord {c}: {tones:?}");
+        // The windows of 7.6, 6.1 and 5.1 ms leave 0.60 dB between them.
+        assert!(gap < 0.7, "chord {c}: {tones:?}");
     }
     // In the octave stack each tone reads the mix with its own window, so
     // the lower tones read lower peaks; staggering them moves none.

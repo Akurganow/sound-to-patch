@@ -97,7 +97,7 @@ rules.
 | `file` | `"notes.mid"`. |
 | `ticks_per_beat` | 480. |
 | `velocity` | `"level"` when `level_spread_db` exceeds 3 dB and each velocity follows the note's level, else `"constant"`, 100 for every note. |
-| `dropped` | The notes of a mono line left out because another started on the same tick. Of such notes one stays: a note without the octave flag before one with it, then the louder, then the longer. |
+| `dropped` | The notes of a mono line left out because another started on the same tick. Of such notes one stays: a note without the octave flag before one with it, then the longer, then the lower key. |
 | `bend_events` | The pitch-bend events in the file. A note of a mono line whose f0 contour stays 50 cents or more off its key, on one side, for at least the tracker's reach of the note (a quarter frame plus one period), outside every glide, drop and vibrato span, gets bends, clamped to 2 semitones; every other note gets none. A host must set a bend range of 2 semitones; `render` reads no bend. |
 | `list` | One record per written note, by start, then key. |
 
@@ -112,7 +112,7 @@ A note record:
 | `key` | MIDI note | 0 to 127 | The written key. |
 | `velocity` | | 1 to 127 | The written velocity. |
 | `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end, read without a knee), `unread` (the same cut for a note the envelope layer skipped), `pad` (20 dB under the plateau on a polyphonic line, no later than the list end), `minimum` (the decoder's minimum length by the BPM rule), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
-| `level_db` | dB | any | The note's full-band level, as `level_spread_db` defines it; the highest of the notes a pitch drop merged; read from the note's start to its end before the joins and cuts of a mono line when that span holds no frame. Unlike `peak_db`, it compares notes on different harmonics. `null` when neither span holds a frame. |
+| `level_db` | dB | any | The note's full-band level, as `level_spread_db` defines it; the highest of the notes a pitch drop merged; read from the note's start to its end before the joins and cuts of a mono line, on a mono line no later than the next later onset, when that span holds no frame. Unlike `peak_db`, it compares notes on different harmonics. `null` when neither span holds a frame. |
 | `octave_uncertain` | flag | | The transcriber's octave flag of the note; `null` when no transcriber ran. |
 
 ## Naming

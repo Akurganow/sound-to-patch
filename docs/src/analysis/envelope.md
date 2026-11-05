@@ -433,7 +433,10 @@ exists yet [fact].
   note's full-band level is the peak of the centred RMS of the mono mix
   over one period of its fundamental, on a 1 ms hop, from its onset to
   its note-off knee, or to 50 ms before its end in the list without one,
-  never past the next later onset on a mono line [fact]. The amp proxy's `peak_db` reads
+  never past the next later onset on a mono line [fact]. A mono line is one
+  whose [voices layer](voices.md) reads at most one voice at a time, or
+  counts none, when `--profile pad` did not run the notes step; so the
+  layer reads the levels after the voices layer [fact]. The amp proxy's `peak_db` reads
   one harmonic per note, so two notes on different harmonics do not
   compare; the full band does (owner decision, 2026-11-05) [fact]. Notes 0, 3, 6 and 12 dB apart read 0.1, 3.0, 6.0 and 12.0 dB
   [synthetic]. On the generated chords of equal notes, the amp proxy read
