@@ -34,9 +34,9 @@
 //!   render job and record, the renderer trait, a fake renderer for tests,
 //!   the plug-in state of a preset and the renderer that drives the plug-in
 //!   host process.
-//! - [`report`]: the outputs of a stem: `layers.json` and the spectrogram
-//!   image with the `analyze` pipeline that writes them, and `notes.mid`
-//!   with the `notes` command.
+//! - [`report`]: the outputs of a stem: `layers.json`, the spectrogram
+//!   image and the final `notes.mid` with the `analyze` pipeline that
+//!   writes them, and the first `notes.mid` with the `notes` command.
 //! - [`synth`]: the target synth, the shared `--synth` argument and what
 //!   each synth offers in structure.
 //! - [`units`]: unit newtypes, checked once when built, with their

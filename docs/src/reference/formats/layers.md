@@ -16,12 +16,13 @@ report against it.
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
+| `notes` | The final note list of `notes.mid`, the group below. `null` without notes. |
 | `pitch` | The pitch layer group below: glides, pitch drops and vibrato. |
 | `voices` | The voices layer group below: the count of voices and the joins of a mono line. |
 | `envelope` | The envelope layer group below: the amplitude envelope of the notes and the sidechain pump. |
 | `conventions` | The convention of every number in `stem` and of every record of the layer groups, keyed by its field name, plus `frame_size`, `statistics`, `spectral` and `confidence`. |
 
-The top level takes no other field. Each layer adds one group with
+The top level takes no other field. `notes` is no layer group. Each layer adds one group with
 `values`, `confidence`, `flags`, `needs_render`, `suggested_edits` and
 `unrepresentable`, and extends the schema in the same change. A group with
 too little evidence writes `values: null` and says why in its confidence.
@@ -68,6 +69,10 @@ The mapping lists break reports of `layers/1` from releases up to 0.28.x:
 every group requires `unrepresentable`, and a `suggested_edits` record must
 be a `param` or a `route` with a `reason`.
 
+The notes group breaks reports of `layers/1` from releases up to 0.30:
+`notes` is a new required top-level key, and `conventions` requires the
+key `notes`.
+
 ## The transcription group
 
 The group records what produced the notes, so a note that flips between
@@ -79,6 +84,35 @@ two machines can be traced to its settings.
 | `crate_version` | The version of the transcription crate, `"0.1.0"`. |
 | `profile` | One of `"bass"`, `"lead"`, `"pad"` and `"detected"`, the last when the stem chose the settings. |
 | `note_params` | Every decoder parameter by the crate's own name: `onset_threshold`, `frame_threshold`, `minimum_note_length_ms`, `minimum_frequency`, `maximum_frequency` (both in Hz), `infer_onsets`, `melodia_trick`, `include_pitch_bends`, `energy_tolerance` and `bend_offset`. Numbers and booleans only. |
+
+## The notes group
+
+The notes that `analyze` writes to `notes.mid`: the cleaned note list
+rewritten with the pitch, voices and envelope groups. The
+[analyze guide](../../guide/analyze.md#the-final-notesmid) explains the
+rules.
+
+| Field | Value |
+| :-- | :-- |
+| `file` | `"notes.mid"`. |
+| `ticks_per_beat` | 480. |
+| `velocity` | `"level"` when `level_spread_db` exceeds 3 dB and each velocity follows the note's level, else `"constant"`, 100 for every note. |
+| `bend_events` | The pitch-bend events in the file, 0 by default. |
+| `list` | One record per written note, by start, then key. |
+
+A note record:
+
+| Field | Unit | Range | Value |
+| :-- | :-- | :-- | :-- |
+| `onset_s` | seconds | 0 or more | The note-on tick in seconds: `round(seconds * bpm / 60 * 480)` ticks. |
+| `end_s` | seconds | above 0 | The note-off tick in seconds. |
+| `list_onset_s` | seconds | 0 or more | The onset in the cleaned note list; the earliest onset of the notes a pitch drop merged. |
+| `list_end_s` | seconds | above 0 | The end in the note list; the latest end of the notes a pitch drop merged. |
+| `key` | MIDI note | 0 to 127 | The written key. |
+| `velocity` | | 1 to 127 | The written velocity. |
+| `end_rule` | | | What set the end: `knee`, `no_knee` (50 ms before the list end), `pad`, `minimum` (the decoder's minimum length), `next_note` (the next note of a mono line) or `glide` (5 ms after the next note-on, at a glide join). |
+| `level_db` | dB | any | The peak of the full-band centred RMS over one period of the fundamental, from the onset to the list end, in dB of full-scale power. Unlike `peak_db`, it compares notes on different harmonics. |
+| `octave_uncertain` | flag | | The transcriber's octave flag of the note; `null` when no transcriber ran. |
 
 ## Naming
 
@@ -330,3 +364,4 @@ counted beats or more, and its curve was taken out of the note tracks).
 | `tail` | The release, the tail fit, the write rule and the votes. |
 | `level_spread_db` | The level spread. |
 | `pump` | The pump's track, beats, curve, fields and lock, and when it is stripped. |
+| `notes` | The ticks, the merges, the end rules, the level and the velocity law of the notes group. |

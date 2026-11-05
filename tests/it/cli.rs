@@ -51,11 +51,11 @@ fn a_closed_pipe_is_not_an_error() {
 
 /// The success case of `analyze`, on a generated WAV in a temporary
 /// folder, which a trycmd case cannot name: the tempo line, the pitch
-/// lines, then both written files. The notes come from a file, so the
+/// lines, then the three written files. The notes come from a file, so the
 /// model does not run; the report tests check the notes-step lines. The f0
 /// track still runs for the pitch layer.
 #[test]
-fn analyze_writes_both_files_for_a_generated_wav() {
+fn analyze_writes_its_files_for_a_generated_wav() {
     let dir = tempfile::tempdir().unwrap();
     // A 0.3 s saw keeps the debug f0 track short.
     let rate = 22_050.0;
@@ -94,12 +94,13 @@ fn analyze_writes_both_files_for_a_generated_wav() {
              tail: release none, rt60 none, weight none, 0 of 5 reverb votes\n\
              pump: too few sustained beats\n\
              voices: mono, up to 1, mean 1.00; 0 joins, 0 legato\n\
-             wrote {}\nwrote {}\n",
+             wrote {}\nwrote {}\nwrote {}\n",
             out.join("layers.json").display(),
-            out.join("spectrogram.png").display()
+            out.join("spectrogram.png").display(),
+            out.join("notes.mid").display()
         )
     );
-    assert!(out.join("spectrogram.png").is_file());
+    assert!(out.join("spectrogram.png").is_file() && out.join("notes.mid").is_file());
 }
 
 /// A packet that becomes silence is a warning on standard error; standard
@@ -129,8 +130,9 @@ fn analyze_warns_about_corrupt_packets_on_stderr() {
     );
     assert!(
         stdout.ends_with(&format!(
-            "wrote {}\n",
-            out.join("spectrogram.png").display()
+            "wrote {}\nwrote {}\n",
+            out.join("spectrogram.png").display(),
+            out.join("notes.mid").display()
         )),
         "{stdout}"
     );

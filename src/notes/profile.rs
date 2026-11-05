@@ -9,7 +9,7 @@ use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 
 use super::Voicing;
 use crate::cast;
-use crate::units::{Bpm, Hz, MidiPitch};
+use crate::units::{Bpm, Hz, MidiPitch, Seconds};
 
 /// The lowest pitch the model can give, A0.
 pub const LOWEST_MODEL_PITCH: u8 = 21;
@@ -43,6 +43,13 @@ fn frame_ms() -> f64 {
 pub fn min_note_frames(bpm: Bpm) -> usize {
     let ms = (SIXTEENTH_FRACTION * 15_000.0 / bpm.get()).clamp(RULE_FLOOR_MS, RULE_CEILING_MS);
     cast::floor_to_usize((ms / frame_ms()).round_ties_even()).unwrap_or(DEFAULT_MIN_NOTE_FRAMES)
+}
+
+/// The minimum note length for a BPM: [`min_note_frames`] model frames,
+/// the length the decoder drops a note at.
+#[must_use]
+pub fn min_note_length(bpm: Bpm) -> Seconds {
+    Seconds::clamped(cast::usize_to_f64(min_note_frames(bpm)) * frame_ms() / 1000.0)
 }
 
 /// A range of whole MIDI pitches the decoder may create, both ends kept,

@@ -15,7 +15,7 @@ use sound_to_patch::notes::{
 };
 use sound_to_patch::report::spectrogram::{PLOT_HEIGHT, PLOT_WIDTH, Spectrogram};
 use sound_to_patch::report::{
-    AnalyzeRequest, LAYERS_FILE, NotesRequest, SPECTROGRAM_FILE, analyze, notes,
+    AnalyzeRequest, LAYERS_FILE, NOTES_FILE, NotesRequest, SPECTROGRAM_FILE, analyze, notes,
 };
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::Bpm;
@@ -377,13 +377,17 @@ fn the_default_folder_is_named_after_the_stem() {
         analysis.spectrogram,
         dir.path().join("bass").join(SPECTROGRAM_FILE)
     );
+    assert_eq!(
+        analysis.notes,
+        Some(dir.path().join("bass").join(NOTES_FILE))
+    );
     assert!(analysis.layers.is_file() && analysis.skipped.is_empty());
     // The temporary siblings are renamed away.
     let names: Vec<String> = fs::read_dir(dir.path().join("bass"))
         .unwrap()
         .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
         .collect();
-    assert_eq!(names.len(), 2, "{names:?}");
+    assert_eq!(names.len(), 3, "{names:?}");
 }
 
 #[test]
@@ -609,6 +613,13 @@ fn the_notes_step_runs_the_model_once_and_fills_the_transcription_group() {
     assert!(report["stem"]["centroid_over_f0"]["median"].is_number());
     assert_eq!(report["stem"]["bpm_given"], 120.0);
     assert_eq!(report["stem"]["bpm_refined"]["value"], Value::Null);
+    // Each final note carries the octave flag of its note in the list.
+    let list = report["notes"]["list"].as_array().unwrap();
+    assert_eq!(list.len(), truth.len());
+    for (written, note) in list.iter().zip(transcription.notes.notes()) {
+        assert_eq!(written["list_onset_s"], note.onset().get());
+        assert_eq!(written["octave_uncertain"], json!(note.octave_uncertain()));
+    }
     let errors: Vec<String> = validator()
         .iter_errors(&report)
         .map(|e| e.to_string())

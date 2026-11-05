@@ -2,7 +2,8 @@
 
 `sound-to-patch analyze` reads one stem and writes a report of its tempo,
 notes, level, spectrum, band edge, stereo image, glides, pitch drops,
-vibrato, amplitude envelope, sidechain pump and voices, with a spectrogram image. The report is what an agent reads
+vibrato, amplitude envelope, sidechain pump and voices, with a spectrogram image
+and the final `notes.mid`. The report is what an agent reads
 before it writes an edit list for the [preset commands](preset.md). The
 [CLI reference](../reference/cli.md#analyze) lists every flag, and the
 [layer report page](../reference/formats/layers.md) every field.
@@ -40,13 +41,14 @@ pump: too few sustained beats
 voices: mono, up to 1, mean 1.00; 15 joins, 0 legato
 wrote bass/layers.json
 wrote bass/spectrogram.png
+wrote bass/notes.mid
 ```
 
 The first line is the tempo: `--bpm` refined from the stem's onsets, as
 [notes](notes.md#tempo) does it; `--bpm-exact` keeps `--bpm` as it is. This
 4 s stem is too short to refine it. The next lines are the notes step of
 [notes](notes.md), which `analyze` runs once to know the stem's notes;
-`--profile` overrides its settings as there. `analyze` writes no MIDI file.
+`--profile` overrides its settings as there.
 The four lines after them are the [pitch layer](../analysis/pitch.md): this
 saw repeats one note with no glide or vibrato, and none of its 15 low
 strikes falls in pitch. Each line lists what it found, with its numbers;
@@ -64,9 +66,38 @@ many of five signs say the tail is reverb. The last is the pump: no beat here li
 The last line before the files is the [voices layer](../analysis/voices.md):
 one voice at a time, and each of the 15 joins falls to silence, so none reads
 legato.
-The files go into a folder named after the stem, next to it. `--out` picks
+The files go into a folder named after the stem, next to it. `notes.mid`
+is the final note list, [below](#the-final-notesmid); it replaces the
+first file of `notes`. `--out` picks
 another folder. A warning about a packet that did not decode goes to
 standard error; the stem keeps its timing, with silence in its place.
+
+## The final notes.mid
+
+`analyze` rewrites the note list with the layers and writes it as
+`notes.mid`, one track on channel 1 at the used tempo, 480 ticks per
+quarter note. The preset carries what the routes model, so the file holds
+only notes:
+
+- Each note ends at its note-off knee, so the release lives in the amp
+  envelope and a render does not play it twice. A note without a knee,
+  such as a pluck that decays at one rate, ends 50 ms before its end in the
+  list. A note of a polyphonic line ends where its level falls 20 dB
+  below its plateau. No cut makes a note shorter than the decoder's
+  minimum at the tempo, and no note ends after its end in the list.
+- A glide becomes two overlapping notes on its two pitches. The later note
+  starts at the glide's start, and the earlier one ends 5 ms later, rounded
+  up to whole ticks. In a mono line no other notes overlap.
+- A pitch drop becomes one note at its settled pitch, and a note under a
+  vibrato takes the key of the vibrato's mean pitch. Only the glides,
+  drops and vibratos the report trusts above low count.
+- Velocity follows the full-band level of each note when the level spread
+  exceeds 3 dB: the loudest note gets 127, and a note `d` dB under it
+  `127 * 10^(-d / 40)`, at least 1. Otherwise every note gets 100.
+- The file holds no pitch bend.
+
+The `notes` group of `layers.json` lists each written note with the rule
+that set its end, its level and the transcriber's octave flag.
 
 ## Give the notes
 

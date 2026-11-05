@@ -15,12 +15,14 @@
 //! and the [`PitchTrack`], the stem's f0 track, which also fills the note
 //! contours. [`drop_quiet`] drops notes that sound only far below the
 //! stem's loudest passage. [`write_midi`] stores a list as a format 0
-//! file.
+//! file, and [`finish()`] rewrites a list with the layer report into the
+//! final `notes.mid`.
 
 use crate::units::{Hz, MidiPitch, Seconds};
 
 mod cleanup;
 mod detect;
+mod finish;
 mod mask;
 mod midi;
 mod profile;
@@ -43,13 +45,18 @@ pub use detect::{
     REGISTER_PERCENTILES, REGISTER_WINDOW, RegisterSource, Voicing, detect, detect_with_window,
     probe_settings, voicing_of_notes,
 };
+pub use finish::{
+    BEND_MIN, BEND_RANGE, Bends, DROP_SLACK, DropSpan, EndRule, FinalNote, FinalNotes, FinishInput,
+    GLIDE_OVERLAP, GLIDE_SLACK, GlideSpan, NO_KNEE_CUT, NoteFacts, PAD_FALL, VELOCITY_LAW_DB,
+    VibratoSpan, finish,
+};
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{
     BPM_TOLERANCE, DRUM_CHANNEL, MidiError, read_midi, read_midi_bytes, read_midi_near,
 };
 pub use profile::{
     DEFAULT_MIN_NOTE_FRAMES, DecodeSettings, HIGHEST_MODEL_PITCH, LOWEST_MODEL_PITCH, PitchRange,
-    Profile, RangeError, min_note_frames,
+    Profile, RangeError, min_note_frames, min_note_length,
 };
 pub use quiet::{HARMONICS, QUIET_FRAME, QUIET_GATE, StemLevels, drop_quiet, drop_quiet_with};
 #[doc(inline)]
