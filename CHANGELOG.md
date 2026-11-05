@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.30.0](https://github.com/Akurganow/sound-to-patch/compare/8c6e9a09d45a84280a043c15049ff4e6ce73c380..v0.30.0) - 2026-11-05
+#### Features
+- (**preset**) plan pitch and envelope edits for every synth (#321) - ([8c6e9a0](https://github.com/Akurganow/sound-to-patch/commit/8c6e9a09d45a84280a043c15049ff4e6ce73c380)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.29.0](https://github.com/Akurganow/sound-to-patch/compare/1013e2f114b7e00abde6d4283b62360b7b6eb152..v0.29.0) - 2026-11-05
 #### Features
 - (**skill**) write the Vital control dictionary in the layer files (#318) - ([7957c8d](https://github.com/Akurganow/sound-to-patch/commit/7957c8d3a135d2060b6e8d7cee87efbc16571963)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
