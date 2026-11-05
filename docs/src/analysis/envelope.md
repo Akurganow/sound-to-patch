@@ -244,6 +244,38 @@ on the linear amplitude of the amp proxy, from the first frame within
     mostly 1 to 3 times the stop level on the bass line below. A quarter keeps 8.9 % of
     the long notes late under the pump there, against 7.1 % at a tenth and 13.0 % at a
     half.
+  - Under a pump that strips, the test also reads the note's level as it was before
+    the strip, and the later corner replaces nothing when either level shows the note
+    ended and the level come back [fact]. The strip lifts the frames in a beat's dip by
+    up to the pump's depth, and the last 10 ms before the stop can lie in a dip while
+    the next note's band already rings ahead of its attack. Read on the stripped level
+    alone, the stop then lay over a fiftieth of the hold, or the next note's corner lay
+    under a quarter above the stop, and the knee took the next note's corner (#323)
+    [synthetic]. On the long notes of the bass line below, the strip put 156 knees over
+    15 ms further off than the same signals read unstripped, by a median of 0.56 s
+    [synthetic]. Read on the level before the strip alone, the ring in the dip can come
+    back by under a quarter there while the stripped level comes back by more: under a
+    12 dB pump with list ends 5 ms past the next onset, 2 of 2137 notes then read about
+    0.5 s late [synthetic].
+  - Notes on the signals that strip, against the same signals generated dry, mean
+    error and notes over 150 ms off [synthetic]:
+
+    | Pump, notes, list end past the next onset | Notes | Dry | Test on the stripped level | This rule |
+    | :-- | :-- | :-- | :-- | :-- |
+    | 5 dB, 1.37 to 2.74 s, 20 to 200 ms | 2757 | 40.8 ms, 148 | 66.2 ms, 249 | 33.9 ms, 117 |
+    | 5 dB, 0.34 to 1.37 s, 20 to 200 ms | 2818 | 10.9 ms, 35 | 14.5 ms, 53 | 10.4 ms, 28 |
+    | 5 dB, 1.37 to 2.74 s, 5 ms | 2748 | 17.9 ms, 56 | 24.3 ms, 83 | 20.1 ms, 63 |
+    | 5 dB, 0.34 to 1.37 s, 5 ms | 2854 | 5.8 ms, 11 | 8.0 ms, 17 | 7.3 ms, 13 |
+    | 8 dB, 1.37 to 2.74 s, 5 ms | 2065 | 19.8 ms, 47 | 29.4 ms, 74 | 22.7 ms, 53 |
+    | 12 dB, 1.37 to 2.74 s, 5 ms | 1913 | 17.9 ms, 39 | 37.9 ms, 86 | 23.9 ms, 45 |
+    | 24 dB, 1.37 to 2.74 s, 20 to 200 ms | 1885 | 41.3 ms, 101 | 314.3 ms, 853 | 96.5 ms, 253 |
+
+    Only the 5 dB pump with list ends 20 to 200 ms past the next onset reads no worse
+    than dry. With list ends at the next onset, no note changes. No note reads over
+    15 ms worse than the test on the stripped level, except one at 24 dB, which reads
+    0.43 s early against 0.40 s late: there the stripped track holds no corner at the
+    note-off, and both knees take another corner [synthetic]. The strips do not change
+    [synthetic].
 - When the level stays at 85 % or more of the left line's end for over 10 ms
   more, the knee is where a line over its fall from there to half that level
   crosses that level [fact, proposal for 85 %]. A hold that wobbles under a
@@ -670,15 +702,16 @@ chord's beating moves the crossing [synthetic].
 - On that bass line, with a gate of 55 to 90 % and list ends 20 to 200 ms past the next
   onset, over 500 signals, knees over 15 ms late [synthetic]:
 
-  | Notes | 057d63c | 2d63f2e | This rule |
-  | :-- | :-- | :-- | :-- |
-  | 1.37 to 2.74 s, under the pump | 81.4 % | 53.9 % | 8.9 % |
-  | 0.34 to 1.37 s, under the pump | 61.4 % | 11.6 % | 4.2 % |
-  | 1.37 to 2.74 s, dry | 80.9 % | 53.5 % | 5.4 % |
-  | 0.34 to 1.37 s, dry | 60.8 % | 11.3 % | 3.2 % |
+  | Notes | 057d63c | 2d63f2e | This rule | Stripped notes tested before the strip |
+  | :-- | :-- | :-- | :-- | :-- |
+  | 1.37 to 2.74 s, under the pump | 81.4 % | 53.9 % | 8.9 % | 5.2 % |
+  | 0.34 to 1.37 s, under the pump | 61.4 % | 11.6 % | 4.2 % | 3.5 % |
+  | 1.37 to 2.74 s, dry | 80.9 % | 53.5 % | 5.4 % | 5.4 % |
+  | 0.34 to 1.37 s, dry | 60.8 % | 11.3 % | 3.2 % | 3.2 % |
 
   Both pump rows above and these rows come from this line. Notes count where both
-  commits read a knee. The long-note row replaces one read on another version of the
+  commits read a knee. The last column tests a stripped note's level before the strip,
+  see the rule above (#323). The long-note row replaces one read on another version of the
   line, 3038 notes with 44 worse, which this one does not reproduce.
 
   Dry, no note reads worse than at commit 2d63f2e. Under the pump, 25 long and 25
@@ -687,6 +720,13 @@ chord's beating moves the crossing [synthetic].
   strips on 42 and 7 fewer of the 500 signals, and on 21 and 4 more [synthetic]. The
   pump read counts beats over the held parts that the first read's knees bound, so a
   knee that moves changes the parts it counts, see #313 [fact].
+- A next note's band rings ahead of its attack, and the 10 ms before the stop can read
+  that ring over a fiftieth of the hold, with or without a pump [synthetic]. Then the
+  knee takes the next note's corner: on the long dry notes of that bass line, 188 of
+  3570 read over 150 ms late, and on long stripped notes 117 of 2757 [synthetic]. Read
+  as the lowest 10 ms since the first corner, the stop cut the dry ones to 0, but lost
+  the note-off of a filter that closes past the band's harmonic before a next note
+  that starts at the note-off, on 2 of the 1405 tally runs, 0.57 s early [synthetic].
 - A sustain under -34 dB of the earlier corner's level, with its note-off past the
   stop, loses that note-off to the decay corner when its level comes back without a
   next note: the knee reads 0.46 to 0.8 s early, where commit 2d63f2e reads it

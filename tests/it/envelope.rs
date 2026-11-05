@@ -2635,3 +2635,131 @@ fn another_note_in_a_gap_casts_no_gap_vote_and_a_short_channel_no_side_vote() {
     let votes = read_with(&notes, Some((&short, &short)));
     assert_eq!(votes.side_grows, None);
 }
+
+/// The value of `of` at the share `u` of its length.
+fn pick(u: f64, of: &[f64]) -> f64 {
+    let len = f64::from(u32::try_from(of.len()).unwrap());
+    let mut at = of.iter().zip(1_u32..);
+    at.find(|&(_, k)| u * len < f64::from(k))
+        .map_or(of[of.len() - 1], |(v, _)| *v)
+}
+
+/// A mono bass line at 175 BPM under a duck of `depth_db` that falls at each beat and
+/// recovers linearly over 220 ms: 14 notes of 8, 12 or 16 eighths, each held over
+/// 55 to 90 % of its span with a release of 30 to 120 ms, and listed `past` the next
+/// onset, or 20 to 200 ms past it. Returns the mix, the list and each note's held end.
+/// The seed of the bass probe's signal `i` is [`probe_seed`] of `i`.
+fn ducked_bass_line(seed: u64, depth_db: f64, past: Option<f64>) -> (Vec<f64>, NoteList, Vec<f64>) {
+    let mut draws = uniform(seed, 400).into_iter();
+    let mut u = move |lo: f64, hi: f64| lo + (hi - lo) * draws.next().unwrap();
+    let (eighth, beat) = (30.0 / 175.0, 60.0 / 175.0);
+    let root = u(65.0, 100.0);
+    let spans: Vec<f64> = (0..14)
+        .map(|_| eighth * pick(u(0.0, 1.0), &[8.0, 12.0, 16.0]))
+        .collect();
+    let (mut t, mut semi) = (0.1, 0.0_f64);
+    let mut held = Vec::new();
+    for span in spans {
+        let off = t + (u(0.55, 0.9) * span).max(0.06);
+        let release = u(0.03, 0.12).min((0.9 * (t + span - off)).max(0.02));
+        let step = pick(
+            u(0.0, 1.0),
+            &[-5.0, -3.0, -2.0, -1.0, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0],
+        );
+        semi = if (0.0..=12.0).contains(&(semi + step)) {
+            semi + step
+        } else {
+            semi - step
+        };
+        held.push((t, off, release, root * 2_f64.powf(semi / 12.0)));
+        t += span;
+    }
+    let seconds = t + 0.4;
+    let mut mix = vec![0.0; samples(seconds, fs())];
+    for &(on, off, release, f0) in &held {
+        let (attack, decay, sustain_db) = (u(0.004, 0.012), u(0.08, 0.2), -u(2.0, 8.0));
+        let phases: Vec<f64> = (1..=12_u32)
+            .filter(|&h| f64::from(h) * f0 <= 1800.0)
+            .map(|_| u(0.0, 1.0))
+            .collect();
+        let level = |x: f64| {
+            if x < attack {
+                x / attack
+            } else {
+                10_f64.powf(sustain_db * ((x - attack) / decay).min(1.0) / 20.0)
+            }
+        };
+        let stop = samples(off + release, fs()).min(mix.len());
+        for (j, v) in mix
+            .iter_mut()
+            .enumerate()
+            .take(stop)
+            .skip(samples(on, fs()))
+        {
+            let x = f64::from(u32::try_from(j).unwrap()) / fs() - on;
+            let gain = if x < off - on {
+                level(x)
+            } else {
+                level(off - on) * (1.0 - (x - (off - on)) / release).max(0.0)
+            };
+            let tone: f64 = phases
+                .iter()
+                .zip(1_u32..)
+                .map(|(p, h)| (TAU * (f64::from(h) * f0 * x + p)).sin() / f64::from(h))
+                .sum();
+            *v += 0.3 * gain * tone;
+        }
+    }
+    for (j, v) in mix.iter_mut().enumerate() {
+        let phase = (f64::from(u32::try_from(j).unwrap()) / fs()).rem_euclid(beat);
+        *v *= 10_f64.powf(-depth_db * (1.0 - phase / 0.22).max(0.0) / 20.0);
+    }
+    let list: Vec<(f64, f64, f64)> = held
+        .iter()
+        .enumerate()
+        .map(|(k, &(on, off, release, f0))| {
+            let end = held.get(k + 1).map_or(off + release + 0.04, |next| {
+                let span = u(0.02, 0.2);
+                next.0 + past.unwrap_or(span)
+            });
+            (on, end, f0)
+        })
+        .collect();
+    let offs = held.iter().map(|n| n.1).collect();
+    (mix, note_list(&list), offs)
+}
+
+/// The seed of signal `i` of the bass probe of #316.
+fn probe_seed(i: u64) -> u64 {
+    (i + 1).wrapping_mul(0x9E37_79B9_7F4A_7C15) ^ 0xD1B5_4A32_D192_ED03
+}
+
+/// The knee errors of a stripped read of [`ducked_bass_line`], in seconds.
+fn stripped_knee_errors(seed: u64, depth_db: f64, past: Option<f64>) -> Vec<f64> {
+    let (x, list, offs) = ducked_bass_line(seed, depth_db, past);
+    let read = layer(&x, &list, 175.0);
+    assert!(read.flags.pump_stripped, "{:?}", read.pump);
+    read.notes
+        .iter()
+        .filter_map(|e| {
+            let k = list.notes().iter().position(|n| n.onset() == e.onset)?;
+            e.knee.map(|knee| knee.get() - offs[k])
+        })
+        .collect()
+}
+
+#[test]
+fn a_stripped_bass_line_keeps_its_note_offs_before_the_gaps() {
+    // #323: stripped, the duck's dip lifts the last frames before a next note, where
+    // that note's band already rings ahead of its attack. Read on the stripped level,
+    // the gap after note 11 of the probe's signal 3 lay over a fiftieth of its hold, and
+    // its knee took the next note's corner 0.59 s late. Under a 12 dB duck with lists
+    // 5 ms past the next onset, note 6 of signal 34 read 0.46 s late when the test read
+    // only the level before the strip: there the ring in the dip came back by 1.19 times
+    // the stop, against 1.40 on the stripped level.
+    for (signal, depth_db, past) in [(3, 5.0, None), (34, 12.0, Some(0.005))] {
+        let errors = stripped_knee_errors(probe_seed(signal), depth_db, past);
+        assert!(errors.len() >= 8, "{signal} {errors:?}");
+        assert!(errors.iter().all(|e| e.abs() < 0.15), "{signal} {errors:?}");
+    }
+}

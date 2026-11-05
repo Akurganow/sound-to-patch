@@ -7,7 +7,7 @@ use crate::dsp::{FilterError, fit_line, quantile};
 use crate::notes::Note;
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
-use super::knee::{bend, find_knee};
+use super::knee::{bend, find_knee_against};
 use super::median;
 use super::pump::Pump;
 use super::tail::{TAIL_BAND_PERIODS, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG, TailFit, fit_tail};
@@ -183,7 +183,7 @@ pub fn read_note(
         return Ok(Err(NoteSkip::NoFreeHarmonic));
     }
     let overlap = !others.is_empty();
-    let (proxy, timing) = tracks(mono, rate, (from, to), f0, &partials, overlap, pump)?;
+    let (proxy, timing, mix) = tracks(mono, rate, (from, to), f0, &partials, overlap, pump)?;
     let onset = proxy.index(note.onset().get());
     let peak_db = proxy.db()[onset..]
         .iter()
@@ -213,13 +213,10 @@ pub fn read_note(
         .find(|&i| rel[i] >= -ATTACK_TOP.get())
         .unwrap_or(onset);
     let knee_end = proxy.index(to.get() - KNEE_END_GAP.get());
-    let amp: Vec<f64> = rel[top..knee_end.max(top)]
-        .iter()
-        .map(|db| 10f64.powf(db / 20.0))
-        .collect();
     let settle = settle_frames(overlap, f0, &partials);
-    let clear = clear_frames(&proxy, top, amp.len(), others, to, settle);
-    let knee = find_knee(proxy.time(top), &amp, clear);
+    let frames = knee_end.saturating_sub(top);
+    let clear = clear_frames(&proxy, top, frames, others, to, settle);
+    let knee = note_off(&proxy, mix.as_ref(), (onset, top, knee_end), clear);
     let held_end = knee.map_or(knee_end, |k| proxy.index(k)).max(top + 1);
     let window = cast::floor_to_usize(SUSTAIN_SHARE * cast::usize_to_f64(held_end - top))
         .unwrap_or(0)
@@ -413,7 +410,7 @@ pub fn amp_proxy(
     if partials.is_empty() {
         return Ok(None);
     }
-    let (proxy, _) = tracks(
+    let (proxy, _, _) = tracks(
         mono,
         rate,
         (from, to),
@@ -425,8 +422,43 @@ pub fn amp_proxy(
     Ok(Some(proxy))
 }
 
+/// The knee of the amp proxy over the frames from `top` to `end`, of which the first
+/// `clear` show the note alone. `mix` is the proxy before the pump's strip: the strip
+/// lifts the frames in a beat's dip, where the band can already ring ahead of a next
+/// note, so the test of whether the note has ended reads the mix as well.
+fn note_off(
+    proxy: &LevelTrack,
+    mix: Option<&LevelTrack>,
+    (onset, top, end): (usize, usize, usize),
+    clear: usize,
+) -> Option<f64> {
+    let amp = knee_track(proxy, onset, top, end);
+    let level = mix.map(|mix| knee_track(mix, onset, top, end));
+    find_knee_against(
+        proxy.time(top),
+        &amp,
+        level.as_deref().unwrap_or(&amp),
+        clear,
+    )
+}
+
+/// The linear level of `track` over the frames from `top` to `end`, relative to its
+/// peak from `onset` and floored [`FIT_FLOOR`] under it.
+fn knee_track(track: &LevelTrack, onset: usize, top: usize, end: usize) -> Vec<f64> {
+    let db = track.db();
+    let peak = db[onset..]
+        .iter()
+        .copied()
+        .fold(f64::NEG_INFINITY, f64::max);
+    db[top..end.max(top)]
+        .iter()
+        .map(|v| 10f64.powf((v - peak).max(-FIT_FLOOR.get()) / 20.0))
+        .collect()
+}
+
 /// The amp proxy and the attack's track of a note from `from` to `to`, with
-/// the pump stripped when it locks to the beat and its beats carry the duck.
+/// the pump stripped when it locks to the beat and its beats carry the duck,
+/// and the proxy as it was before the strip when it was stripped.
 ///
 /// A note that overlaps no other reads its harmonic by a sliding DFT over
 /// one period and its attack on the one-period RMS; an overlapping note
@@ -439,7 +471,7 @@ fn tracks(
     partials: &[(Hz, Hz)],
     overlap: bool,
     pump: Option<&Pump>,
-) -> Result<(LevelTrack, LevelTrack), FilterError> {
+) -> Result<(LevelTrack, LevelTrack, Option<LevelTrack>), FilterError> {
     // Every track reads the note's span and a margin, so a note costs its
     // own length, not the stem's. The band filters reflect three periods
     // of their cutoff at each end, and 0.3 s keeps the note clear of them;
@@ -461,11 +493,15 @@ fn tracks(
     } else {
         LevelTrack::rms(span, lo, rate, (from, to), f0, RMS_PERIODS)
     };
-    if let Some(pump) = pump.filter(|p| p.strips() && p.carries(from.get(), to.get())) {
-        pump.strip(&mut proxy);
-        pump.strip(&mut timing);
-    }
-    Ok((proxy, timing))
+    let mix = pump
+        .filter(|p| p.strips() && p.carries(from.get(), to.get()))
+        .map(|pump| {
+            let mix = proxy.clone();
+            pump.strip(&mut proxy);
+            pump.strip(&mut timing);
+            mix
+        });
+    Ok((proxy, timing, mix))
 }
 
 /// The harmonic of the amp proxy with its low-pass: the lowest of

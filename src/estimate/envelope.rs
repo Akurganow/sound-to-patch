@@ -115,8 +115,8 @@ at most 0.4 dB and the level after it rises by at most a twentieth of the mean b
 is over its first 20 ms and as the mean over every 20 ms span, up to what follows the note; a later \
 corner past what follows the note replaces none when the mean over the last 10 ms before that point \
 lies under 2 % of the earlier corner's mean before it, the mean before the later corner lies at \
-least 1.25 times that level and the left line's end lies above it; the knee \
-is where the left line crosses a line over the first 10 ms after the split, or the split itself \
+least 1.25 times that level and the left line's end lies above it, on the amp proxy or, when the \
+note is stripped, on the proxy before the pump's strip; the knee is where the left line crosses a line over the first 10 ms after the split, or the split itself \
 when that crossing lies outside the two lines; when the level stays at 85 % or more of the left \
 line's end for over 10 ms more, the knee is where a line over its fall from there to half that \
 level crosses that level; null when no split counts, as for a pluck that decays at one rate; \

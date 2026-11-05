@@ -112,6 +112,22 @@ const KNEE_DB_FLOOR: f64 = 1e-4;
 /// ```
 #[must_use]
 pub fn find_knee(start: f64, amp: &[f64], clear: usize) -> Option<f64> {
+    find_knee_against(start, amp, amp, clear)
+}
+
+/// [`find_knee`] whose later corner past the clear frames also replaces nothing when
+/// `level`, a track of the same frames, shows the note ended and the level come back.
+/// A note read with the pump stripped passes the unstripped track here. The strip
+/// lifts the frames in a beat's dip, and the last clear frames before a next note can
+/// lie there while its band already rings ahead of its attack; the unstripped track
+/// reads that ring in the dip, so either track alone can miss the next note.
+pub(super) fn find_knee_against(
+    start: f64,
+    amp: &[f64],
+    level: &[f64],
+    clear: usize,
+) -> Option<f64> {
+    debug_assert_eq!(amp.len(), level.len());
     let n = amp.len();
     if n < 2 * KNEE_SIDE_MIN {
         return None;
@@ -175,15 +191,13 @@ pub fn find_knee(start: f64, amp: &[f64], clear: usize) -> Option<f64> {
         .collect();
     let mut best = first;
     let alone = clear.min(n);
-    let stop = sums.mean(alone.saturating_sub(KNEE_SIDE_MIN), alone);
+    let mix = Sums::of(level);
     for corner in later {
         // Past the clear frames a corner reads no rise, and the bend over a silent
         // gap reads near 0, so only the level the note left there tells them apart.
         if alone > 0
             && corner.k >= alone
-            && stop < KNEE_FLOOR * best.level
-            && corner.level >= KNEE_BACK * stop
-            && corner.left.at(corner.k) >= stop
+            && (sums.came_back(alone, best.k, corner.k) || mix.came_back(alone, best.k, corner.k))
         {
             continue;
         }
@@ -322,6 +336,20 @@ impl Sums {
             }
         }
         sums
+    }
+
+    /// Whether the level has fallen under [`KNEE_FLOOR`] of the held level before
+    /// `from` by the stop level, the mean over the last [`KNEE_SIDE_MIN`] of the
+    /// `alone` frames, and has come back before `k` by [`KNEE_BACK`]: the mean over
+    /// the [`KNEE_LEFT`] frames before `k`, and the end of their line.
+    fn came_back(&self, alone: usize, from: usize, k: usize) -> bool {
+        let stop = self.mean(alone.saturating_sub(KNEE_SIDE_MIN), alone);
+        let held = |k: usize| self.mean(k.saturating_sub(KNEE_LEFT), k);
+        stop < KNEE_FLOOR * held(from)
+            && held(k) >= KNEE_BACK * stop
+            && self
+                .fit(k.saturating_sub(KNEE_LEFT), k)
+                .is_some_and(|left| left.at(k) >= stop)
     }
 
     /// The mean over frames `lo..hi`; 0 for none.
@@ -474,6 +502,17 @@ mod tests {
         let at = |next: f64| find_knee(0.0, &gap_then_next(0.01, next), 600).unwrap();
         assert!((at(0.012) - 0.8).abs() < 0.002, "{}", at(0.012));
         assert!((at(0.013) - 0.3).abs() < 0.002, "{}", at(0.013));
+    }
+
+    #[test]
+    fn the_test_past_the_clear_frames_reads_the_given_level() {
+        // A stripped track whose gap reads 0.021 of the hold and an unstripped one at
+        // 0.019: the later corner past the clear frames is read on the second.
+        let stripped = gap_then_next(0.021, 1.0);
+        let knee = find_knee_against(0.0, &stripped, &gap_then_next(0.019, 1.0), 600).unwrap();
+        assert!((knee - 0.3).abs() < 0.002, "{knee}");
+        let knee = find_knee(0.0, &stripped, 600).unwrap();
+        assert!((knee - 0.8).abs() < 0.002, "{knee}");
     }
 
     /// A hold to 100 ms that decays to `level` by 200 ms, then `sustain(i)` from there
