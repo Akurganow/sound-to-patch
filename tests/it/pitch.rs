@@ -2301,15 +2301,12 @@ fn the_report_carries_the_mapper_edits_by_group() {
         .collect();
     assert_eq!(errors, Vec::<String>::new());
 
-    let pitch = &report["pitch"]["suggested_edits"];
-    assert_eq!(pitch.as_array().unwrap().len(), 2);
-    assert_eq!(pitch[0]["param"], "portamento_time");
-    assert_eq!(pitch[0]["reason"], "pitch");
-    let glide: Seconds = pitch[0]["value"].as_str().unwrap().parse().unwrap();
-    assert!((glide.get() - 0.12).abs() < 1e-12);
     assert_eq!(
-        pitch[1],
-        json!({"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "96 st", "polarity": "unipolar"}, "reason": "pitch"})
+        report["pitch"]["suggested_edits"],
+        json!([
+            {"param": "portamento_time", "value": "0.12 s", "reason": "pitch", "uncalibrated": false, "confidence": "high"},
+            {"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "96 st", "polarity": "unipolar"}, "reason": "pitch", "uncalibrated": true, "confidence": "medium"},
+        ])
     );
     assert_eq!(
         report["pitch"]["unrepresentable"],
@@ -2323,7 +2320,7 @@ fn the_report_carries_the_mapper_edits_by_group() {
     );
     assert_eq!(
         report["voices"]["suggested_edits"],
-        json!([{"param": "polyphony", "value": 3.0, "reason": "voices"}])
+        json!([{"param": "polyphony", "value": 3.0, "reason": "voices", "uncalibrated": false, "confidence": "high"}])
     );
     assert_eq!(report["voices"]["unrepresentable"], json!([]));
     assert_eq!(report["envelope"]["suggested_edits"], json!([]));

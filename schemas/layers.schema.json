@@ -220,7 +220,7 @@
       "additionalProperties": { "type": "string", "minLength": 1 }
     },
     "suggested_edit": {
-      "description": "One record of the edit-list format: a param with its value as a unit string, a bare number or a switch, or a route with its depth as a percent of the destination's range or in semitones. reason is the name of the layer group.",
+      "description": "One record of the edit-list format: a param with its value as a unit string, a bare number or a switch, or a route with its depth as a percent of the destination's range or in semitones. reason is the name of the layer group. uncalibrated is true when the law behind the value is interim, and confidence is the level of the measurement behind it; an edit list reads and drops both.",
       "oneOf": [
         {
           "type": "object",
@@ -229,7 +229,9 @@
           "properties": {
             "param": { "type": "string", "minLength": 1 },
             "value": { "type": ["string", "number", "boolean"] },
-            "reason": { "type": "string", "minLength": 1 }
+            "reason": { "type": "string", "minLength": 1 },
+            "uncalibrated": { "type": "boolean" },
+            "confidence": { "enum": ["low", "medium", "high"] }
           }
         },
         {
@@ -248,7 +250,9 @@
                 "polarity": { "enum": [null, "unipolar", "bipolar"] }
               }
             },
-            "reason": { "type": "string", "minLength": 1 }
+            "reason": { "type": "string", "minLength": 1 },
+            "uncalibrated": { "type": "boolean" },
+            "confidence": { "enum": ["low", "medium", "high"] }
           }
         }
       ]

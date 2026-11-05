@@ -239,7 +239,9 @@ pub enum Want {
     GlideFromSilence,
     /// A unipolar envelope into oscillator pitch: the start pitch `depth`
     /// above the settled pitch, falling with time constant `tau`. The depth
-    /// law and the envelope are the adapter's interim proposals.
+    /// law and the envelope are the adapter's interim proposals. A miss of
+    /// the depth names `drops.df_st`, a miss of the envelope time
+    /// `drops.tau_s`.
     PitchDrop {
         /// The drop in semitones.
         depth: Semitones,
@@ -300,38 +302,23 @@ impl Want {
     }
 }
 
-/// One of each setting, for the field-to-group lookup.
-const EVERY_WANT: [Want; 12] = [
-    Want::Mono(false),
-    Want::Legato(false),
-    Want::Voices(1),
-    Want::GlideTime(Seconds::from_const(0.0)),
-    Want::GlideFromSilence,
-    Want::PitchDrop {
-        depth: Semitones::from_const(0.0),
-        tau: Seconds::from_const(0.0),
-    },
-    Want::VelocityToLevel {
-        spread: Decibels::from_const(0.0),
-    },
-    Want::Attack(Seconds::from_const(0.0)),
-    Want::Hold(Seconds::from_const(0.0)),
-    Want::Decay(Seconds::from_const(0.0)),
-    Want::Sustain(Decibels::from_const(0.0)),
-    Want::Release(Seconds::from_const(0.0)),
-];
-
-/// The layer group of a field that a setting or an `unwritten` entry names,
-/// such as `pitch` for `glides.time_s`; `None` for a field no setting reads.
+/// The layer group of a field that a setting, a miss or an `unwritten`
+/// entry names, such as `pitch` for `glides.time_s`; `None` for a field no
+/// setting reads.
 #[must_use]
 pub fn group_of(field: &str) -> Option<&'static str> {
-    if field == "glides.curve" {
-        return Some("pitch");
+    match field {
+        "mono" | "joins.legato" | "max_polyphony" => Some("voices"),
+        "glides.time_s"
+        | "glides.from_silence"
+        | "glides.curve"
+        | "drops.df_st"
+        | "drops.tau_s" => Some("pitch"),
+        "attack_s" | "hold_s" | "decay_s" | "sustain_db" | "release_s" | "level_spread_db" => {
+            Some("envelope")
+        }
+        _ => None,
     }
-    EVERY_WANT
-        .iter()
-        .find(|want| want.field() == field)
-        .map(Want::group)
 }
 
 /// A setting and the confidence its edits carry.
@@ -355,10 +342,12 @@ pub struct Plan {
 /// The controls and laws of one synth for the pitch and envelope groups.
 pub trait PitchEnvelopeControls {
     /// The edits of one setting: `fit_param` and its siblings with the
-    /// synth's keys, `wanted.want.field()` as the field and
-    /// `wanted.want.group()` as the reason. A setting the synth has no
-    /// control for gives a `not_in_synth` entry; one whose effect is
-    /// unprobed gives an `unprobed` entry in `unwritten`.
+    /// synth's keys and `wanted.want.field()` as the field. [`map`] sets
+    /// each edit's reason to `wanted.want.group()`. The edits are `param`
+    /// and `route` records only, the two kinds the `layers.json` schema
+    /// takes. A setting the synth has no control for gives a `not_in_synth`
+    /// entry; one whose effect is unprobed gives an `unprobed` entry in
+    /// `unwritten`.
     fn edits(&self, wanted: &Wanted, ctx: &MapContext<'_>) -> Mapped;
 }
 
@@ -377,7 +366,11 @@ pub fn map(
         ..Mapped::default()
     };
     for wanted in &plan.wants {
-        mapped.extend(controls.edits(wanted, ctx));
+        let mut edits = controls.edits(wanted, ctx);
+        for edit in &mut edits.edits {
+            edit.edit.reason = Some(wanted.want.group().to_owned());
+        }
+        mapped.extend(edits);
     }
     mapped
         .edits
@@ -395,8 +388,8 @@ fn equals_default(record: &Record, registry: &dyn ParamRegistry) -> bool {
         return false;
     };
     registry.get(&key).is_some_and(|spec| {
-        // A unit string prints a rounded number, so a value that round
-        // trips to the default counts as the default.
+        // The law's round trip through a unit string can move a value by a
+        // few ulps, so a value that close to the default counts as it.
         (stored - spec.default).abs() <= 1e-9 * (spec.stored_max - spec.stored_min).abs()
     })
 }
@@ -434,10 +427,9 @@ impl Plan {
 fn plan_voices(voices: &VoicesValues, plan: &mut Plan) {
     let group = voices.level;
     if group == Level::Low {
-        plan.skip(
-            if voices.mono { "mono" } else { "max_polyphony" },
-            UnwrittenReason::LowConfidence,
-        );
+        for field in ["mono", "joins.legato", "max_polyphony"] {
+            plan.skip(field, UnwrittenReason::LowConfidence);
+        }
         return;
     }
     if !voices.mono {
@@ -516,14 +508,21 @@ fn plan_envelope(envelope: &EnvelopeValues, plan: &mut Plan) {
     if envelope.attack_is_upper_bound {
         plan.skip("attack_s", UnwrittenReason::UpperBound);
     } else {
-        stage(plan, envelope.attack, group, Want::Attack, true);
+        stage(
+            plan,
+            envelope.attack,
+            group,
+            ("attack_s", Want::Attack),
+            true,
+        );
     }
-    // The estimator reads a hold under HOLD_MIN as 0: no plateau, no edit.
+    // Only a plateau over HOLD_MIN is a hold; the estimator reads a
+    // shorter one as 0.
     match envelope.hold {
-        Some(hold) if hold.value < HOLD_MIN => {}
-        hold => stage(plan, hold, group, Want::Hold, false),
+        Some(hold) if hold.value <= HOLD_MIN => {}
+        hold => stage(plan, hold, group, ("hold_s", Want::Hold), false),
     }
-    stage(plan, envelope.decay, group, Want::Decay, true);
+    stage(plan, envelope.decay, group, ("decay_s", Want::Decay), true);
     match envelope
         .sustain
         .filter(|sustain| sustain.level.min(group) > Level::Low)
@@ -537,7 +536,9 @@ fn plan_envelope(envelope: &EnvelopeValues, plan: &mut Plan) {
         .release_confidence
         .is_some_and(|level| level > Level::Low);
     match (envelope.release, identifiable) {
-        (release @ Some(_), true) => stage(plan, release, group, Want::Release, true),
+        (release @ Some(_), true) => {
+            stage(plan, release, group, ("release_s", Want::Release), true);
+        }
         _ => plan.skip("release_s", UnwrittenReason::NotIdentifiable),
     }
     match envelope.level_spread {
@@ -555,10 +556,9 @@ fn stage(
     plan: &mut Plan,
     reading: Option<Reading<Seconds>>,
     group: Level,
-    want: fn(Seconds) -> Want,
+    (field, want): (&str, fn(Seconds) -> Want),
     curve: bool,
 ) {
-    let field = want(Seconds::clamped(0.0)).field();
     match reading.filter(|reading| reading.level.min(group) > Level::Low) {
         Some(reading) => {
             plan.want(want(reading.value), reading.level.min(group));
@@ -590,7 +590,7 @@ mod tests {
     use crate::cast::usize_to_f64;
     use crate::preset::edits::{EditList, ParamValue, Path, PolarityText, parse, resolve};
     use crate::preset::mapper::{
-        UnrepresentableReason, fit_flag, fit_param, fit_route, fit_stored,
+        Amount, UnrepresentableReason, fit_flag, fit_param, fit_route, fit_stored,
     };
     use crate::preset::registry::tests::spec;
     use crate::preset::registry::{
@@ -721,7 +721,14 @@ mod tests {
                         reason,
                         level,
                     );
-                    mapped.extend(time("drop_decay", Seconds::clamped(3.0 * tau.get())));
+                    mapped.extend(fit_param(
+                        registry,
+                        "drops.tau_s",
+                        "drop_decay",
+                        Physical::Seconds(Seconds::clamped(3.0 * tau.get())),
+                        reason,
+                        level,
+                    ));
                     mapped
                 }
                 Want::VelocityToLevel { .. } => fit_param(
@@ -796,7 +803,15 @@ mod tests {
                 registry: self.registry,
                 capabilities: &crate::preset::vital::CAPABILITIES,
             };
-            map(groups, &ctx, self.controls)
+            let mapped = map(groups, &ctx, self.controls);
+            for miss in &mapped.unrepresentable {
+                assert!(
+                    group_of(&miss.field).is_some(),
+                    "{} has no group",
+                    miss.field
+                );
+            }
+            mapped
         }
 
         /// The edits resolved through the edit-list path, as `preset
@@ -1092,6 +1107,18 @@ mod tests {
             );
             assert_eq!(mapped.unrepresentable, Vec::new());
 
+            let slow = adapter.run(&mono_line(
+                vec![],
+                vec![DropValue {
+                    tau: s(100.0),
+                    ..drop(7.0)
+                }],
+            ));
+            let miss = &slow.unrepresentable[0];
+            assert_eq!(miss.field, "drops.tau_s");
+            assert_eq!(group_of(&miss.field), Some("pitch"));
+            assert!(matches!(&miss.wanted, Amount::Value { unit, .. } if unit == "s"));
+
             let deep = adapter.run(&mono_line(vec![], vec![drop(span + 4.0)]));
             let miss = &deep.unrepresentable[0];
             assert_eq!(miss.field, "drops.df_st");
@@ -1189,6 +1216,73 @@ mod tests {
     }
 
     #[test]
+    fn the_group_level_caps_its_records() {
+        let pitch = |group: Level| {
+            plan(&PitchEnvelopeGroups {
+                pitch: Some(PitchValues {
+                    level: group,
+                    glides: vec![glide(0.1, true, Level::High)],
+                    drops: vec![DropValue {
+                        df: Semitones::clamped(5.0),
+                        tau: s(0.02),
+                        level: Level::High,
+                    }],
+                }),
+                ..PitchEnvelopeGroups::default()
+            })
+        };
+        let low = pitch(Level::Low);
+        assert_eq!(low.wants, Vec::new());
+        assert_eq!(
+            low.unwritten,
+            vec![
+                Unwritten::new("glides.time_s", UnwrittenReason::LowConfidence),
+                Unwritten::new("drops.df_st", UnwrittenReason::LowConfidence),
+            ]
+        );
+        let medium = pitch(Level::Medium);
+        assert_eq!(medium.wants.len(), 3);
+        assert!(medium.wants.iter().all(|w| w.confidence == Level::Medium));
+
+        let envelope_at = |group: Level| {
+            plan(&with_envelope(EnvelopeValues {
+                level: group,
+                ..envelope()
+            }))
+        };
+        let low = envelope_at(Level::Low);
+        assert_eq!(low.wants, Vec::new());
+        for field in ["attack_s", "decay_s", "sustain_db", "release_s"] {
+            assert!(
+                low.unwritten
+                    .contains(&Unwritten::new(field, UnwrittenReason::LowConfidence)),
+                "{field}"
+            );
+        }
+        let medium = envelope_at(Level::Medium);
+        assert_ne!(medium.wants.len(), 0);
+        assert!(medium.wants.iter().all(|w| w.confidence == Level::Medium));
+
+        let low_sustain = plan(&with_envelope(EnvelopeValues {
+            sustain: Some(Reading {
+                value: Decibels::clamped(-6.0),
+                level: Level::Low,
+            }),
+            ..envelope()
+        }));
+        assert!(
+            !low_sustain
+                .wants
+                .iter()
+                .any(|w| matches!(w.want, Want::Sustain(_)))
+        );
+        assert!(low_sustain.unwritten.contains(&Unwritten::new(
+            "sustain_db",
+            UnwrittenReason::LowConfidence
+        )));
+    }
+
+    #[test]
     fn a_hold_needs_a_plateau() {
         let hold = |value: f64| {
             plan(&with_envelope(EnvelopeValues {
@@ -1201,7 +1295,8 @@ mod tests {
         };
         assert!(!hold(0.0));
         assert!(!hold(0.009));
-        assert!(hold(0.01));
+        assert!(!hold(0.01));
+        assert!(hold(0.011));
         assert!(hold(0.05));
     }
 
@@ -1253,10 +1348,29 @@ mod tests {
 
     #[test]
     fn every_field_has_its_group() {
-        for want in EVERY_WANT {
-            assert_eq!(group_of(want.field()), Some(want.group()));
+        let (t, db) = (s(0.0), Decibels::clamped(0.0));
+        for want in [
+            Want::Mono(false),
+            Want::Legato(false),
+            Want::Voices(1),
+            Want::GlideTime(t),
+            Want::GlideFromSilence,
+            Want::PitchDrop {
+                depth: Semitones::clamped(0.0),
+                tau: t,
+            },
+            Want::VelocityToLevel { spread: db },
+            Want::Attack(t),
+            Want::Hold(t),
+            Want::Decay(t),
+            Want::Sustain(db),
+            Want::Release(t),
+        ] {
+            assert_eq!(group_of(want.field()), Some(want.group()), "{want:?}");
         }
-        assert_eq!(group_of("glides.curve"), Some("pitch"));
+        for (field, group) in [("glides.curve", "pitch"), ("drops.tau_s", "pitch")] {
+            assert_eq!(group_of(field), Some(group));
+        }
         assert_eq!(group_of("vibrato.rate_hz"), None);
     }
 
@@ -1279,21 +1393,16 @@ mod tests {
             })
         };
         let wants = |plan: &Plan| plan.wants.iter().map(|w| w.want).collect::<Vec<_>>();
-        let low = voices(Level::Low, true, Level::High);
-        assert_eq!(wants(&low), Vec::new());
-        assert_eq!(
-            low.unwritten,
-            vec![Unwritten::new("mono", UnwrittenReason::LowConfidence)]
-        );
-        let low_poly = voices(Level::Low, false, Level::High);
-        assert_eq!(wants(&low_poly), Vec::new());
-        assert_eq!(
-            low_poly.unwritten,
-            vec![Unwritten::new(
-                "max_polyphony",
-                UnwrittenReason::LowConfidence
-            )]
-        );
+        // A low line lists every voicing field, read mono or not, so the
+        // explanation can say to set legato by ear.
+        let every = ["mono", "joins.legato", "max_polyphony"]
+            .map(|field| Unwritten::new(field, UnwrittenReason::LowConfidence))
+            .to_vec();
+        for mono in [true, false] {
+            let low = voices(Level::Low, mono, Level::High);
+            assert_eq!(wants(&low), Vec::new());
+            assert_eq!(low.unwritten, every);
+        }
         assert_eq!(
             wants(&voices(Level::Medium, true, Level::Medium)),
             vec![Want::Mono(true), Want::Legato(true)]

@@ -8,10 +8,12 @@ own laws. This page states the plan.
 
 The output holds the edits, an `unrepresentable` list for values the synth
 cannot reach, and an `unwritten` list for measured fields the plan leaves
-out on purpose. `analyze` writes the edits and the `unrepresentable` entries
-into each group of `layers.json` (see [Layer report](../reference/formats/layers.md));
-the `unwritten` list stays in the library. Each `unwritten` entry names the field by its path in the
-group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
+out on purpose. `analyze` writes the edits and the `unrepresentable`
+entries into each group of `layers.json`; see
+[Layer report](../reference/formats/layers.md). The `unwritten` list stays
+in the library. Each `unwritten` entry names the field by its path in the
+group's `values`, such as `attack_s` or `glides.curve`, and gives one
+reason:
 
 | Reason | Meaning |
 | :-- | :-- |
@@ -24,9 +26,9 @@ group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
 ## Voicing
 
 - Mono, legato and the voice count need a voices verdict of medium
-  confidence or higher. A `voices` group at low confidence writes nothing,
-  and lists `mono` or `max_polyphony`; set them by ear. A low count is no
-  evidence of voicing (see [Voices](voices.md)).
+  confidence or higher. A `voices` group at low confidence writes nothing
+  and lists `mono`, `joins.legato` and `max_polyphony`; set them by ear. A
+  low count is no evidence of voicing (see [Voices](voices.md)).
 - A mono stem writes mono on and no voice count.
 - Legato is on when a join of medium or high confidence reads legato. It is
   off when every such join retriggers. A synth's legato acts only where notes
@@ -49,9 +51,10 @@ group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
 - The pitch drop is the median `df_st` and the median `tau_s` of the
   confident drops. The adapter writes a unipolar envelope route into
   oscillator pitch. A drop beyond the destination's range lands on the range,
-  and the rest goes to `unrepresentable`. The route amount and the drop
-  envelope are interim laws, marked `uncalibrated`, until the calibration set
-  measures them.
+  and the rest goes to `unrepresentable`. The route amount is an interim
+  law, always marked `uncalibrated` until the calibration set measures it.
+  An edit of the drop envelope is marked `uncalibrated` where the registry
+  tags its control `Interim`.
 - Vibrato writes no route here.
 
 ## Amplitude envelope
@@ -60,7 +63,8 @@ group's `values`, such as `attack_s` or `glides.curve`, and gives one reason:
   lowest level of the records behind it, capped by the group's level.
 - An attack flagged `attack_is_upper_bound` writes nothing and reads
   `upper_bound`.
-- A hold is written from 10 ms, the plateau the envelope layer reads.
+- A hold is written only for a plateau over 10 ms; the envelope layer reads
+  a shorter one as 0.
 - The decay runs from the peak to the sustain level. The sustain is the held
   level from the peak in dB; the adapter's law turns it into its stored
   value.

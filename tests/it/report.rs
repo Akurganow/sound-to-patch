@@ -290,8 +290,8 @@ fn the_layer_group_shape_takes_edit_records_as_suggested_edits() {
         "needs_render": true,
         "suggested_edits": [
             {"param": "filter_1_cutoff", "value": "410 Hz", "reason": "timbre"},
-            {"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "7 st", "polarity": "unipolar"}, "reason": "pitch"},
-            {"param": "polyphony", "value": 3.0, "reason": "voices"},
+            {"route": {"source": "env_2", "dest": "osc_1_transpose", "amount": "7 st", "polarity": "unipolar"}, "reason": "pitch", "uncalibrated": true, "confidence": "low"},
+            {"param": "polyphony", "value": 3.0, "reason": "voices", "uncalibrated": false, "confidence": "high"},
             {"param": "legato", "value": true, "reason": "voices"},
         ],
         "unrepresentable": [
@@ -311,6 +311,8 @@ fn the_layer_group_shape_takes_edit_records_as_suggested_edits() {
             json!({"menu": "x", "choice": "y", "reason": "r"}),
         ),
         ("/suggested_edits/1/route/polarity", json!("both")),
+        ("/suggested_edits/1/uncalibrated", json!("yes")),
+        ("/suggested_edits/2/confidence", json!("huge")),
         ("/unrepresentable/0/reason", json!("too_high")),
         ("/unrepresentable/0/wanted", json!(20.0)),
         (

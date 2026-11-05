@@ -105,8 +105,18 @@ struct EnvelopeGroup<'a> {
 /// the misses whose field lies in it.
 #[derive(Serialize)]
 struct Mapping<'a> {
-    suggested_edits: Vec<&'a Edit>,
+    suggested_edits: Vec<EditRecord<'a>>,
     unrepresentable: Vec<Miss<'a>>,
+}
+
+/// An edit-list record with what the mapper knows of it: an interim law
+/// and the confidence, which a route cannot recover from the registry.
+#[derive(Serialize)]
+struct EditRecord<'a> {
+    #[serde(flatten)]
+    edit: &'a Edit,
+    uncalibrated: bool,
+    confidence: Level,
 }
 
 /// An `unrepresentable` entry with its residual.
@@ -125,7 +135,11 @@ impl<'a> Mapping<'a> {
                 .edits
                 .iter()
                 .filter(|edit| edit.edit.reason.as_deref() == Some(group))
-                .map(|edit| &edit.edit)
+                .map(|edit| EditRecord {
+                    edit: &edit.edit,
+                    uncalibrated: edit.uncalibrated,
+                    confidence: edit.confidence,
+                })
                 .collect(),
             unrepresentable: mapped
                 .unrepresentable

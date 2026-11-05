@@ -261,18 +261,26 @@ pub fn fit_param(
     let Ok(physical) = spec.physical(stored) else {
         return missing();
     };
+    let exact = spec
+        .stored(&wanted)
+        .is_ok_and(|exact| exact.to_bits() == stored.to_bits());
+    // The law's round trip adds float noise, such as 0.11999999999999998 s
+    // for 0.12 s: an exact fit writes the wanted value, a miss the shortest
+    // text that stores the same value to the bit.
+    let text = if exact {
+        wanted
+    } else {
+        shortest(spec, physical, stored)
+    };
     let mut mapped = one_edit(
         Record::Param {
             param: spec.key.clone(),
-            value: ParamValue::Text(physical.to_string()),
+            value: ParamValue::Text(text.to_string()),
         },
         reason,
         spec.provenance == Provenance::Interim,
         confidence,
     );
-    let exact = spec
-        .stored(&wanted)
-        .is_ok_and(|exact| exact.to_bits() == stored.to_bits());
     if !exact {
         // The physical range is the span between the values at both stored
         // bounds, so a falling law needs no special case.
@@ -290,6 +298,23 @@ pub fn fit_param(
         });
     }
     mapped
+}
+
+/// The value at a stored value with the fewest significant digits that
+/// still store exactly that value, so a bound stays inside the range.
+fn shortest(spec: &ParamSpec, physical: Physical, stored: f64) -> Physical {
+    (0..17)
+        .filter_map(|digits| {
+            let value = format!("{:.digits$e}", physical.get())
+                .parse::<f64>()
+                .ok()?;
+            Physical::new(physical.kind(), value).ok()
+        })
+        .find(|short| {
+            spec.stored(short)
+                .is_ok_and(|back| back.to_bits() == stored.to_bits())
+        })
+        .unwrap_or(physical)
 }
 
 /// A switch set on or off.
@@ -705,6 +730,26 @@ mod tests {
             Level::High,
         );
         assert!(mapped.edits[0].uncalibrated);
+    }
+
+    #[test]
+    fn a_fitted_time_prints_without_float_noise() {
+        let text = |key: &str, seconds: f64| {
+            let wanted = Physical::new(UnitKind::Seconds, seconds).unwrap();
+            let mapped = fit_param(vital(), "f", key, wanted, "x", Level::High);
+            match &mapped.edits[0].edit.record {
+                Record::Param {
+                    value: ParamValue::Text(text),
+                    ..
+                } => text.clone(),
+                other => panic!("{other:?}"),
+            }
+        };
+        assert_eq!(text("portamento_time", 0.12), "0.12 s");
+        assert_eq!(text("env_1_attack", 0.02), "0.02 s");
+        assert_eq!(text("env_1_decay", 0.2), "0.2 s");
+        // A clamped time prints the bound: 2^4 s.
+        assert_eq!(text("portamento_time", 20.0), "16 s");
     }
 
     #[test]

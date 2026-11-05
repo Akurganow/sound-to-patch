@@ -296,7 +296,6 @@ pub fn analyze_with(
     })
 }
 
-/// The first two channels of a stem that has them.
 /// The mapper's edits for the pitch, voices and envelope groups.
 fn map_groups(
     mapper: Option<&dyn SynthMapper>,
@@ -316,6 +315,7 @@ fn map_groups(
     mapper.pitch_envelope(&groups, &ctx)
 }
 
+/// The first two channels of a stem that has them.
 fn two_channels(channels: &[Vec<f64>]) -> Option<(&[f64], &[f64])> {
     match channels {
         [left, right, ..] => Some((left, right)),

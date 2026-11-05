@@ -64,7 +64,7 @@ The voices group breaks reports of `layers/1` from releases up to 0.26:
 `voices` is a new required top-level key, and `conventions` requires the
 keys `voices` and `joins`.
 
-The mapping lists break reports of `layers/1` from releases up to 0.28:
+The mapping lists break reports of `layers/1` from releases up to 0.28.x:
 every group requires `unrepresentable`, and a `suggested_edits` record must
 be a `param` or a `route` with a `reason`.
 
