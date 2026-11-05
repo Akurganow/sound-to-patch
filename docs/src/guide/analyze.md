@@ -111,15 +111,38 @@ only notes:
   tones read one level, staggered or not, and tones of different levels do
   not tell apart. A note with no frame to read gets 100.
 - Pitch motion that no route models becomes pitch bends: a note of a mono
-  line whose pitch leaves its key by 50 cents or more outside every glide,
-  drop and vibrato. The pitch track reads a little of the note before at
-  each note change, and while two notes sound it follows only one of
-  them, so those frames count for no bend. Bends are clamped to 2 semitones, so set the synth's
+  line whose pitch stays 50 cents or more off its key, on one side, for at
+  least the pitch track's reach (a quarter of its frame plus one period,
+  26 ms at 392 Hz to 49 ms at 39 Hz), outside every glide, drop and
+  vibrato. A shorter excursion fits inside what one track frame reads, so
+  jitter on a low note or a hit inside a merged note writes no bend
+  (owner decision, 2026-11-05). The pitch track reads a little of the note
+  before at each note change, and while two notes sound it follows only
+  one of them, so those frames count for no bend. Bends are clamped to 2 semitones, so set the synth's
   bend range to 2 semitones. [`render`](../reference/cli.md#render) reads
   no bend.
 
 The `notes` group of `layers.json` lists each written note with the rule
 that set its end, its level and the transcriber's octave flag.
+
+### Limits
+
+- A bend of a semitone or more becomes its own note at the transcriber,
+  so it plays as a note change, not a bend. Of generated tones with a
+  held bend, every +100 and +200 cent bend (120 of 120) split into its
+  own note; of the +60 cent bends, 41 of 60 wrote bends, 13 split, 5
+  stayed flat and 1 had no note [synthetic].
+- A slow bend that passes 50 cents only for less than the track's reach
+  writes no bend. Of the four generated bends of the tally set, two lost
+  their bends this way: 0.5 semitones over 1.5 s, and a 2-semitone ramp
+  over 1 s that the transcriber split into three notes [synthetic].
+- Of the tally's signals with motion that no route models, 7 runs lost
+  bends to the persistence rule: 2 bends, 2 trills and 3 kick drops
+  [synthetic]. The rule also took bends from 51 runs of glides, drops
+  and vibratos that the routes model.
+- Steady lines still bend in 27 of 502 generated runs without pitch
+  motion, 3,194 events, against 156 runs and 28,807 events without the
+  persistence rule [synthetic].
 
 ## Give the notes
 

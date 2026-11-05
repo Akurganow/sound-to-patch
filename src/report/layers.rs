@@ -66,8 +66,9 @@ frame, the same level over the written span; velocity is level when level_spread
 the loudest note gets 127 and a note d dB under it round(127 * 10^(-d / 40)), at least 1, and a note \
 without a level 100; else constant, 100 for every note; octave_uncertain is the transcriber's \
 octave flag, null when none ran; bend_events counts the pitch bends: on a mono line, a note whose \
-f0 contour leaves its key by 50 cents or more outside every counted glide, drop and vibrato span \
-gets a bend at each such contour frame, clamped to 2 semitones, at the frame's audio time, its \
+f0 contour leaves its key by 50 cents or more, of one sign, over adjacent counted frames that span \
+the tracker's reach of the note, a quarter frame plus one period, outside every counted glide, drop \
+and vibrato span, gets a bend at each counted contour frame, clamped to 2 semitones, at the frame's audio time, its \
 track time less the track's lag of a quarter frame less half a period; a frame counts only when \
 what it reads, from a quarter frame before it to one period after it, lies inside the note's list \
 onset and end, each one model frame of 11.6 ms inward, and outside every other note of the list; \

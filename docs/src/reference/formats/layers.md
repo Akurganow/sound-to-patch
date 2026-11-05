@@ -98,7 +98,7 @@ rules.
 | `ticks_per_beat` | 480. |
 | `velocity` | `"level"` when `level_spread_db` exceeds 3 dB and each velocity follows the note's level, else `"constant"`, 100 for every note. |
 | `dropped` | The notes of a mono line left out because a louder one started on the same tick. |
-| `bend_events` | The pitch-bend events in the file. A note of a mono line whose f0 contour leaves its key by 50 cents or more outside every glide, drop and vibrato span gets bends, clamped to 2 semitones; every other note gets none. A host must set a bend range of 2 semitones; `render` reads no bend. |
+| `bend_events` | The pitch-bend events in the file. A note of a mono line whose f0 contour stays 50 cents or more off its key, on one side, for at least the tracker's reach of the note (a quarter frame plus one period), outside every glide, drop and vibrato span, gets bends, clamped to 2 semitones; every other note gets none. A host must set a bend range of 2 semitones; `render` reads no bend. |
 | `list` | One record per written note, by start, then key. |
 
 A note record:

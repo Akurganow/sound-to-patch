@@ -11,8 +11,8 @@
 
 use super::write::{Span, encode_spans, ticks_per_second};
 use super::{
-    Contour, DEFAULT_VELOCITY, MODEL_RATE, MidiWriteError, NoteList, TRACK_FRAME, Velocity,
-    min_note_length,
+    Contour, DEFAULT_VELOCITY, MODEL_RATE, MidiWriteError, NoteList, TRACK_FRAME, TRACK_HOP,
+    Velocity, min_note_length,
 };
 use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 
@@ -34,7 +34,7 @@ pub const GLIDE_SLACK: Seconds = Seconds::from_const(0.050);
 /// onset until it settles.
 pub const DROP_SLACK: Seconds = Seconds::from_const(0.030);
 /// A note of a mono line gets bends when its contour leaves its key by
-/// this much outside every route's span.
+/// this much outside every route's span, over the tracker's reach.
 pub const BEND_MIN: Semitones = Semitones::from_const(0.5);
 /// The bend range the file assumes; a host must set the synth to it, and
 /// `render` reads no bend.
@@ -278,10 +278,11 @@ struct Work<'a> {
 /// 6. With level velocity, the loudest note gets 127 and a note `d` dB
 ///    under it `round(127 * 10^(-d / 40))`, at least 1; a note without a
 ///    level, and every note otherwise, gets [`DEFAULT_VELOCITY`].
-/// 7. On a mono line, a note whose contour
-///    leaves its key by [`BEND_MIN`] or more outside every glide, drop and
-///    vibrato span gets a bend at each contour point outside those spans,
-///    clamped to [`BEND_RANGE`], and a centred bend at its end.
+/// 7. On a mono line, a note whose contour leaves its key by [`BEND_MIN`]
+///    or more, of one sign, over adjacent frames that span the tracker's
+///    reach (a quarter frame plus one period), outside every glide, drop
+///    and vibrato span, gets a bend at each contour point outside those
+///    spans, clamped to [`BEND_RANGE`], and a centred bend at its end.
 #[must_use]
 pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
     let mut work: Vec<Work<'_>> = input
@@ -599,7 +600,9 @@ fn bends_of(
                 j == i || to <= other.list_onset.get() || other.list_end.get() <= from
             })
         };
-        let points: Vec<(u64, f64)> = contour
+        // Each kept frame: its tick, its offset from the key and its track
+        // time.
+        let points: Vec<(u64, f64, f64)> = contour
             .points()
             .iter()
             .filter(|p| {
@@ -610,13 +613,17 @@ fn bends_of(
                 let audio = p.time.get() - (before - 0.5 * after);
                 let at = tick_of(audio, tps);
                 let deviation = pitch_of(p.f0)? - f64::from(note.key);
-                (!modelled(audio) && (note.start..stop).contains(&at)).then_some((at, deviation))
+                (!modelled(audio) && (note.start..stop).contains(&at)).then_some((
+                    at,
+                    deviation,
+                    p.time.get(),
+                ))
             })
             .collect();
-        if !points.iter().any(|&(_, d)| d.abs() >= BEND_MIN.get()) {
+        if !persists(&points, before + after) {
             continue;
         }
-        for (at, deviation) in points {
+        for (at, deviation, _) in points {
             let share = deviation.clamp(-BEND_RANGE.get(), BEND_RANGE.get()) / BEND_RANGE.get();
             let value = cast::round_to_usize((f64::from(BEND_CENTRE) + share * 8191.0).max(0.0))
                 .and_then(|v| u16::try_from(v).ok())
@@ -627,6 +634,34 @@ fn bends_of(
         events.push((stop, BEND_CENTRE));
     }
     in_force(events)
+}
+
+/// Whether the kept frames hold an offset of [`BEND_MIN`] or more, of one
+/// sign, over adjacent track frames that span `reach`, the tracker's reach
+/// of the note: a quarter frame plus one period. A shorter excursion fits
+/// inside what one frame reads, so jitter and a single event, such as a
+/// hit inside a merged note, cannot tell it from motion.
+fn persists(points: &[(u64, f64, f64)], reach: f64) -> bool {
+    let hop = cast::usize_to_f64(TRACK_HOP) / MODEL_RATE.hz().get();
+    // (first time, last time, above the key) of the run of offset frames.
+    let mut run: Option<(f64, f64, bool)> = None;
+    for &(_, deviation, time) in points {
+        if deviation.abs() < BEND_MIN.get() {
+            run = None;
+            continue;
+        }
+        let sign = deviation > 0.0;
+        // Adjacent frames lie one hop apart; a missing frame ends the run.
+        let first = match run {
+            Some((first, last, s)) if s == sign && time - last <= 1.5 * hop => first,
+            _ => time,
+        };
+        if time - first >= reach {
+            return true;
+        }
+        run = Some((first, time, sign));
+    }
+    false
 }
 
 /// The bends that change the value in force: of the bends on one tick the
@@ -853,14 +888,23 @@ mod tests {
         assert_eq!(ends, [(1440, EndRule::Pad), (960, EndRule::Knee)]);
     }
 
+    /// The track's frame step.
+    fn hop() -> f64 {
+        cast::usize_to_f64(TRACK_HOP) / MODEL_RATE.hz().get()
+    }
+
+    /// A contour on the track's frames that holds the key in the note's
+    /// first half and `cents` off it in the second.
     fn bent(onset: f64, offset: f64, key: f64, cents: f64) -> Note {
         let f0 = |c: f64| Hz::from(MidiPitch::new(key + c / 100.0).unwrap());
-        let points = (0..10)
+        let middle = f64::midpoint(onset, offset);
+        let n = cast::floor_to_usize((offset - onset) / hop()).unwrap_or(0);
+        let points = (0..n)
             .map(|i| {
-                let t = onset + (offset - onset) * f64::from(i) / 10.0;
+                let t = onset + hop() * cast::usize_to_f64(i);
                 ContourPoint {
                     time: s(t),
-                    f0: f0(if i >= 5 { cents } else { 0.0 }),
+                    f0: f0(if t >= middle { cents } else { 0.0 }),
                 }
             })
             .collect();
@@ -875,11 +919,11 @@ mod tests {
         let chords = FinishInput { mono: false, ..on };
         assert_eq!(finish(&chords).bends, []);
         let (_, bends) = parse(&finish(&on).to_midi(None).unwrap());
-        // The first frame that reads only this note sits at 0.5 s of track
-        // time, 0.4802 s of audio after the lag of 19.8 ms at 146.8 Hz.
+        // The first frame off the key is frame 87 at 0.5050 s of track time,
+        // 0.4852 s of audio after the lag of 19.8 ms at 146.8 Hz, tick 466.
         // Three semitones clamp to the top of the 2-semitone range, and the
         // note's end centres the bend again.
-        assert_eq!(bends, [(461, 16_383), (912, 8192)]);
+        assert_eq!(bends, [(466, 16_383), (912, 8192)]);
         let glides = [GlideSpan {
             start: s(0.0),
             interval: Semitones::new(3.0).unwrap(),
@@ -922,6 +966,57 @@ mod tests {
         ]);
         let facts = [kneeless(), kneeless()];
         assert_eq!(finish(&input(&notes, &facts, 120.0)).bends, []);
+    }
+
+    /// A 49 Hz note (key 31) whose track jitters within ±35 cents, with a
+    /// spike past 50 cents shorter than the tracker's reach every 0.1 s,
+    /// then, when `held` is set, a bend of +60 cents from 0.6 to 0.9 s.
+    fn sub_line(held: bool) -> Note {
+        let reach_frames = cast::floor_to_usize(
+            (cast::usize_to_f64(TRACK_FRAME / 4) / MODEL_RATE.hz().get() + 1.0 / 49.0) / hop(),
+        )
+        .unwrap();
+        let n = cast::floor_to_usize(1.0 / hop()).unwrap();
+        let points = (0..n)
+            .map(|i| {
+                let t = 0.1 + hop() * cast::usize_to_f64(i);
+                let jitter = 35.0 * (cast::usize_to_f64(i) * 1.7).sin();
+                // A spike of half the reach, as at a hit inside a merged note.
+                let spike = if i % 17 < reach_frames / 2 {
+                    70.0
+                } else {
+                    jitter
+                };
+                let cents = if held && (0.6..0.9).contains(&t) {
+                    60.0
+                } else {
+                    spike
+                };
+                ContourPoint {
+                    time: s(t),
+                    f0: Hz::from(MidiPitch::new(31.0 + cents / 100.0).unwrap()),
+                }
+            })
+            .collect();
+        note(0.1, 1.1, 31.0).with_contour(Contour::new(points).unwrap())
+    }
+
+    #[test]
+    fn a_steady_sub_line_with_jitter_writes_no_bend() {
+        let notes = NoteList::new(vec![sub_line(false)]);
+        let facts = [kneeless()];
+        assert_eq!(finish(&input(&notes, &facts, 120.0)).bends, []);
+    }
+
+    #[test]
+    fn a_held_bend_of_60_cents_writes_bends() {
+        let notes = NoteList::new(vec![sub_line(true)]);
+        let facts = [kneeless()];
+        let bends = finish(&input(&notes, &facts, 120.0)).bends;
+        // +60 cents of a 2-semitone range: 8192 + 0.3 * 8191.
+        let at = |t: f64| in_force_at(&bends, tick_of(t, 960.0)).1;
+        assert_eq!(at(0.75), 10_649);
+        assert_eq!(at(1.2), BEND_CENTRE);
     }
 
     #[test]
@@ -1071,15 +1166,15 @@ mod tests {
             )
     }
 
-    /// A contour every 10 ms over the note, `cents` off its key.
+    /// A contour on the track's frames over the note, `cents` off its key.
     fn contoured(onset: f64, offset: f64, key: u8, cents: f64) -> Note {
         let pitch = f64::from(key);
-        let n = cast::floor_to_usize((offset - onset) / 0.01)
+        let n = cast::floor_to_usize((offset - onset) / hop())
             .unwrap_or(0)
             .max(1);
         let points = (0..n)
             .map(|i| ContourPoint {
-                time: s(onset + 0.01 * cast::usize_to_f64(i)),
+                time: s(onset + hop() * cast::usize_to_f64(i)),
                 f0: Hz::from(MidiPitch::new(pitch + cents / 100.0).unwrap()),
             })
             .collect();
@@ -1244,7 +1339,11 @@ mod tests {
                     v == BEND_CENTRE || (spec.cents.abs() >= 50.0 && Some(v) == own),
                     "note {i}: {v} at {t}"
                 );
+                // A glide into the note models its start, which can leave
+                // less than the tracker's reach before its end.
+                let glided = i.checked_sub(1).is_some_and(|p| list[p].end_rule == EndRule::Glide);
                 let clear = !spec.drop
+                    && !glided
                     && spec.cents.abs() >= 80.0
                     && ends[i] - onsets[i] >= 0.2
                     && finished.seconds(n.end).get() - onsets[i] >= 0.15;
