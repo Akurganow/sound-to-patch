@@ -132,10 +132,12 @@ that set its end, its level and the transcriber's octave flag.
   held bend, every +100 and +200 cent bend (120 of 120) split into its
   own note; of the +60 cent bends, 41 of 60 wrote bends, 13 split, 5
   stayed flat and 1 had no note [synthetic].
-- A slow bend that passes 50 cents only for less than the track's reach
-  writes no bend. Of the four generated bends of the tally set, two lost
-  their bends this way: 0.5 semitones over 1.5 s, and a 2-semitone ramp
-  over 1 s that the transcriber split into three notes [synthetic].
+- A slow ramp that passes 50 cents only in its last frame writes no
+  bend, because the offset never persists for the track's reach. Of the
+  four generated bends of the tally set, two lost their bends this way:
+  a rise of 0.5 semitones over 1.5 s, whose note reads +5 to +55 cents,
+  and a 2-semitone ramp over 1 s that the transcriber split into notes
+  57, 58 and 59, where note 58 reads -35 to +55 cents [synthetic].
 - Of the tally's signals with motion that no route models, 7 runs lost
   bends to the persistence rule: 2 bends, 2 trills and 3 kick drops
   [synthetic]. The rule also took bends from 51 runs of glides, drops
