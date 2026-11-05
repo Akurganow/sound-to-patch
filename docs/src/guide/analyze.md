@@ -97,8 +97,13 @@ only notes:
 - A glide becomes two overlapping notes on its two pitches. The later note
   starts at the glide's start, or at its own onset when the glide starts
   after it, and the earlier one ends 5 ms later, rounded up to whole
-  ticks. In a mono line no other notes overlap. Of two notes that start on
-  one tick, the louder stays, and the report counts the other.
+  ticks. In a mono line no other notes overlap. Of notes that start on
+  one tick, one stays and the report counts the others: a note the
+  transcriber does not flag as an octave guess before one it flags, then
+  the louder, then the longer. Both levels are read over the written
+  notes with the window of the lower note's period, because a shorter
+  window reads a peak up to about 3 dB higher and would favour the
+  higher note.
 - A pitch drop becomes one note at its settled pitch, and a note under a
   vibrato takes the key of the vibrato's mean pitch. Only the glides,
   drops and vibratos the report trusts above low count.

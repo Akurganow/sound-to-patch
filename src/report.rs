@@ -36,7 +36,7 @@ use crate::preset::mapper::pitch_envelope::velocity_reaches_level;
 use crate::preset::mapper::{MapContext, Mapped, PitchEnvelopeGroups, SynthMapper, mapper_for};
 use crate::preset::registry::registry_for;
 use crate::synth::{Synth, capabilities};
-use crate::units::{Bpm, Hz, MidiPitch, Seconds};
+use crate::units::{Bpm, Hz, Seconds};
 
 mod layers;
 pub mod spectrogram;
@@ -332,8 +332,9 @@ fn write_outputs(
     let notes_tmp = midi
         .map(|bytes| stage(dir, NOTES_FILE, bytes))
         .transpose()?;
-    // The guard has passed: a `notes.mid` here belongs to this stem, and a
-    // run without notes leaves none that the report does not describe.
+    // The guard has passed, so a `notes.mid` here is this stem's or one that
+    // `--force` replaces. A run without notes leaves none that the report
+    // does not describe.
     let stale = dir.join(NOTES_FILE);
     for old in std::iter::once(&layers).chain(notes.is_none().then_some(&stale)) {
         match std::fs::remove_file(old) {
@@ -433,7 +434,8 @@ fn final_notes(
             pitch: v.value.pitch,
         })
         .collect();
-    let mut list = finish(&FinishInput {
+    let level = |from, to, f0| full_band_level(mono, rate, (from, to), f0);
+    Ok(Some(finish(&FinishInput {
         notes,
         facts: &facts,
         bpm,
@@ -443,18 +445,8 @@ fn final_notes(
         glides: &glides,
         drops: &drops,
         vibrato: &vibrato,
-    });
-    // A note whose span for the layer's level is empty reads its written
-    // span instead.
-    list.fill_levels(|note, from, to| {
-        full_band_level(
-            mono,
-            rate,
-            (from, to),
-            Hz::from(MidiPitch::clamped(f64::from(note.key))),
-        )
-    });
-    Ok(Some(list))
+        level: &level,
+    })))
 }
 
 /// The knee, the pad end and the full-band level of each note of the

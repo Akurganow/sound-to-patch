@@ -59,10 +59,13 @@ below it, and a note the list gives shorter keeps its length; next_note is the n
 mono line, which the minimum does not hold back; glide is 5 ms after the next note-on, rounded up \
 to whole ticks, at a glide join of a mono line, whose later note starts at the glide's start or at \
 its own onset, whichever comes first; no end lies after the list end, except at a glide join; of \
-the notes of a mono line that start on one tick only the one with the highest level_db stays, the \
-longer on a tie, and dropped counts the others; level_db is the note's full-band level, as \
+the notes of a mono line that start on one tick only one stays, and dropped counts the others: a \
+note without the octave flag before one with it, then the louder, then the longer, where both \
+levels are the full-band level over each written note read with the window of the lowest note's \
+period; level_db is the note's full-band level, as \
 level_spread_db defines it, the highest of the notes a drop merged, or, when that span holds no \
-frame, the same level over the written span; velocity is level when level_spread_db exceeds 3 dB: \
+frame, the same level from its start to its end before the joins and cuts of a mono line; \
+velocity is level when level_spread_db exceeds 3 dB: \
 the loudest note gets 127 and a note d dB under it round(127 * 10^(-d / 40)), at least 1, and a note \
 without a level 100; else constant, 100 for every note; octave_uncertain is the transcriber's \
 octave flag, null when none ran; bend_events counts the pitch bends: on a mono line, a note whose \

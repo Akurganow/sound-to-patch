@@ -64,8 +64,8 @@ pub const POOL_PITCH_RANGE: f64 = 12.0;
 /// peak of a note it overlaps: a quiet second voice, such as another
 /// part's bleed or a ghost note, with an envelope of its own.
 pub const POOL_LEVEL_GATE: Decibels = Decibels::from_const(12.0);
-/// The level spread is the gap between these quantiles of the pooled
-/// peak levels.
+/// The level spread is the gap between these quantiles of the full-band
+/// levels of the pooled notes.
 pub const SPREAD_QUANTILES: (f64, f64) = (0.1, 0.9);
 
 /// The convention of the envelope stages in `layers.json`.

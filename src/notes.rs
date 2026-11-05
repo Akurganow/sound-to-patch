@@ -47,8 +47,8 @@ pub use detect::{
 };
 pub use finish::{
     BEND_MIN, BEND_RANGE, DROP_SLACK, DropSpan, EndRule, FinalNote, FinalNotes, FinishInput,
-    GLIDE_OVERLAP, GLIDE_SLACK, GlideSpan, NO_KNEE_CUT, NoteFacts, PAD_FALL, VELOCITY_LAW_DB,
-    VibratoSpan, finish,
+    GLIDE_OVERLAP, GLIDE_SLACK, GlideSpan, LevelReader, NO_KNEE_CUT, NoteFacts, PAD_FALL,
+    VELOCITY_LAW_DB, VibratoSpan, finish,
 };
 pub use mask::{FrameMask, MaskParams, Masker, out_of_mask_fraction};
 pub use midi::{

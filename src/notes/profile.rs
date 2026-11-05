@@ -28,7 +28,7 @@ const RULE_CEILING_MS: f64 = 127.7;
 const SIXTEENTH_FRACTION: f64 = 0.5;
 
 /// The length of one model frame in milliseconds, 256 / 22,050 s.
-fn frame_ms() -> f64 {
+pub(super) fn frame_ms() -> f64 {
     cast::usize_to_f64(FFT_HOP) / f64::from(AUDIO_SAMPLE_RATE) * 1000.0
 }
 

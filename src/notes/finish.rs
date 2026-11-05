@@ -12,9 +12,8 @@
 use super::write::{Span, encode_spans, ticks_per_second};
 use super::{
     Contour, DEFAULT_VELOCITY, MODEL_RATE, MidiWriteError, NoteList, TRACK_FRAME, TRACK_HOP,
-    Velocity, min_note_length,
+    Velocity, min_note_length, profile,
 };
-use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 
 use crate::cast;
 use crate::units::{Bpm, Decibels, Hz, MidiPitch, Seconds, Semitones};
@@ -96,8 +95,12 @@ pub struct VibratoSpan {
     pub pitch: Hz,
 }
 
+/// Reads the full-band level of the stem from one time to another, with
+/// the RMS window of a frequency's period.
+pub type LevelReader<'a> = &'a dyn Fn(Seconds, Seconds, Hz) -> Option<Decibels>;
+
 /// What [`finish`] reads.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct FinishInput<'a> {
     /// The note list.
     pub notes: &'a NoteList,
@@ -118,6 +121,9 @@ pub struct FinishInput<'a> {
     pub drops: &'a [DropSpan],
     /// The vibratos.
     pub vibrato: &'a [VibratoSpan],
+    /// The full-band level of the stem. It fills a level that the facts
+    /// lack and compares the notes of a mono line that start on one tick.
+    pub level: LevelReader<'a>,
 }
 
 /// Which rule set the end of a final note.
@@ -197,30 +203,10 @@ pub struct FinalNotes {
 }
 
 impl FinalNotes {
-    /// Fills each missing level from `level`, which reads a note's written
-    /// span from its start to its end in seconds, then sets the
-    /// velocities again. A note whose written span gives no level either
-    /// keeps [`DEFAULT_VELOCITY`].
-    pub fn fill_levels(
-        &mut self,
-        level: impl Fn(&FinalNote, Seconds, Seconds) -> Option<Decibels>,
-    ) {
-        for i in 0..self.notes.len() {
-            if self.notes[i].level.is_none() {
-                let note = self.notes[i];
-                self.notes[i].level =
-                    level(&note, self.seconds(note.start), self.seconds(note.end));
-            }
-        }
-        if self.level_velocity {
-            level_velocities(&mut self.notes);
-        }
-    }
-
     /// The time of a tick.
     #[must_use]
     pub fn seconds(&self, tick: u64) -> Seconds {
-        Seconds::clamped(cast::u64_to_f64(tick) / ticks_per_second(self.bpm))
+        seconds_of(tick, ticks_per_second(self.bpm))
     }
 
     /// Encodes the list as a format 0 file on channel 1, with a track
@@ -266,19 +252,24 @@ struct Work<'a> {
 ///    cut never makes a note shorter than [`min_note_length`]; a note the
 ///    list gives shorter keeps its length.
 /// 4. Times become ticks with `round(seconds * BPM / 60 * 480)`, and each
-///    note lasts at least one tick.
-/// 5. In a mono line, a glide joins the pair of neighbours whose interval
+///    note lasts at least one tick. A note without a level reads it over
+///    this written span.
+/// 5. In a mono line, of the notes that start on one tick only one stays:
+///    a note without the transcriber's octave flag before one with it, then
+///    the louder, then the longer. The loudness of each is its level over
+///    its written span, read with the window of the lowest note's period,
+///    so the window favours none of them.
+/// 6. In a mono line, a glide joins the pair of neighbours whose interval
 ///    lies within a semitone of its own and whose later onset lies within
 ///    [`GLIDE_SLACK`] of its motion, the nearest to its start. The later
-///    note starts at the glide's start, and the earlier one ends
-///    [`GLIDE_OVERLAP`] later, rounded up to whole ticks, whatever its knee
-///    says. Every other note of a mono line ends no later than the next
-///    note starts, and one that starts on the same tick as the next is
-///    dropped.
-/// 6. With level velocity, the loudest note gets 127 and a note `d` dB
+///    note starts at the glide's start, or at its own onset when the glide
+///    starts after it, and the earlier one ends [`GLIDE_OVERLAP`] after
+///    that start, rounded up to whole ticks, whatever its knee says. Every
+///    other note of a mono line ends no later than the next note starts.
+/// 7. With level velocity, the loudest note gets 127 and a note `d` dB
 ///    under it `round(127 * 10^(-d / 40))`, at least 1; a note without a
 ///    level, and every note otherwise, gets [`DEFAULT_VELOCITY`].
-/// 7. On a mono line, a note whose contour leaves its key by [`BEND_MIN`]
+/// 8. On a mono line, a note whose contour leaves its key by [`BEND_MIN`]
 ///    or more, of one sign, over adjacent frames that span the tracker's
 ///    reach (a quarter frame plus one period), outside every glide, drop
 ///    and vibrato span, gets a bend at each contour point outside those
@@ -338,14 +329,23 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
             (note, w.contour)
         })
         .collect();
+    for (note, _) in &mut notes {
+        if note.level.is_none() {
+            note.level = (input.level)(
+                seconds_of(note.start, tps),
+                seconds_of(note.end, tps),
+                Hz::from(MidiPitch::clamped(f64::from(note.key))),
+            );
+        }
+    }
     notes.sort_by_key(|(n, _)| (n.start, n.key));
     let dropped = if input.mono {
-        join_mono(&mut notes, input.glides, tps)
+        join_mono(&mut notes, input, tps)
     } else {
-        0
+        Vec::new()
     };
     let bends = if input.mono {
-        bends_of(&notes, input, tps)
+        bends_of(&notes, &dropped, input, tps)
     } else {
         Vec::new()
     };
@@ -358,8 +358,13 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
         bends,
         bpm: input.bpm,
         level_velocity: input.level_velocity,
-        dropped,
+        dropped: dropped.len(),
     }
+}
+
+/// The time of a tick.
+fn seconds_of(tick: u64, tps: f64) -> Seconds {
+    Seconds::clamped(cast::u64_to_f64(tick) / tps)
 }
 
 /// The nearest tick of a time, 0 before the start.
@@ -419,6 +424,7 @@ fn merge_drop(work: &mut Vec<Work<'_>>, drop: &DropSpan) {
             merged.list_end = other.list_end;
             merged.facts.knee = other.facts.knee;
             merged.facts.pad_end = other.facts.pad_end;
+            merged.facts.read = other.facts.read;
         }
         merged.facts.level = match (merged.facts.level, other.facts.level) {
             (Some(a), Some(b)) => Some(if b.get() > a.get() { b } else { a }),
@@ -452,24 +458,16 @@ fn follow_vibrato(note: &mut Work<'_>, vibrato: &[VibratoSpan]) {
     }
 }
 
-/// Writes the glide joins of a mono line and ends every other note where
-/// the next starts. Of the notes that start on one tick only the one with
-/// the highest level stays, the longer on a tie; returns how many went.
+/// Keeps one of the notes of a mono line that start on one tick, writes
+/// the glide joins and ends every other note where the next starts.
+/// Returns the list spans of the notes that went.
 fn join_mono(
     notes: &mut Vec<(FinalNote, Option<&Contour>)>,
-    glides: &[GlideSpan],
+    input: &FinishInput<'_>,
     tps: f64,
-) -> usize {
-    let before = notes.len();
-    notes.sort_by(|(a, _), (b, _)| {
-        let level = |n: &FinalNote| n.level.map_or(f64::NEG_INFINITY, Decibels::get);
-        a.start
-            .cmp(&b.start)
-            .then(level(b).total_cmp(&level(a)))
-            .then((b.end - b.start).cmp(&(a.end - a.start)))
-            .then(a.key.cmp(&b.key))
-    });
-    notes.dedup_by_key(|(n, _)| n.start);
+) -> Vec<(f64, f64)> {
+    let dropped = keep_one_per_tick(notes, input.level, tps);
+    let glides = input.glides;
     let overlap = cast::ceil_to_usize(GLIDE_OVERLAP.get() * tps)
         .and_then(|t| u64::try_from(t).ok())
         .unwrap_or(1)
@@ -518,7 +516,55 @@ fn join_mono(
             a.end_rule = EndRule::NextNote;
         }
     }
-    before - notes.len()
+    dropped
+}
+
+/// Of the notes sorted by start that start on one tick, keeps a note
+/// without the octave flag before one with it, then the louder, then the
+/// longer, then the lower key. Each level reads the note's written span
+/// with the window of the lowest key's period: a shorter window reads a
+/// peak up to about 3 dB higher, which would favour the higher note, often
+/// an octave ghost. Returns the list spans of the notes that went.
+fn keep_one_per_tick(
+    notes: &mut Vec<(FinalNote, Option<&Contour>)>,
+    level: LevelReader<'_>,
+    tps: f64,
+) -> Vec<(f64, f64)> {
+    let mut kept: Vec<(FinalNote, Option<&Contour>)> = Vec::with_capacity(notes.len());
+    let mut dropped = Vec::new();
+    for group in notes.chunk_by(|(a, _), (b, _)| a.start == b.start) {
+        if let [only] = group {
+            kept.push(*only);
+            continue;
+        }
+        // Sorted by key, so the first is the lowest.
+        let f0 = Hz::from(MidiPitch::clamped(f64::from(group[0].0.key)));
+        let rank = |n: &FinalNote| {
+            let loud = level(seconds_of(n.start, tps), seconds_of(n.end, tps), f0)
+                .map_or(f64::NEG_INFINITY, Decibels::get);
+            (n.octave_uncertain == Some(true), loud, n.end - n.start)
+        };
+        let ranked: Vec<_> = group.iter().map(|(n, _)| rank(n)).collect();
+        // The first of the best, so a full tie keeps the lower key.
+        let best = (1..group.len()).fold(0, |best, i| {
+            let (flag, loud, length) = ranked[i];
+            let (best_flag, best_loud, best_length) = ranked[best];
+            let better = (!flag && best_flag)
+                || (flag == best_flag
+                    && (loud > best_loud
+                        || (loud.total_cmp(&best_loud).is_eq() && length > best_length)));
+            if better { i } else { best }
+        });
+        for (i, item) in group.iter().enumerate() {
+            if i == best {
+                kept.push(*item);
+            } else {
+                dropped.push((item.0.list_onset.get(), item.0.list_end.get()));
+            }
+        }
+    }
+    *notes = kept;
+    dropped
 }
 
 /// Sets each velocity from the note's level under the loudest.
@@ -543,7 +589,7 @@ fn level_velocities(notes: &mut [FinalNote]) {
 
 /// The time step of the transcriber's note times, one model frame.
 fn model_frame() -> f64 {
-    cast::usize_to_f64(FFT_HOP) / f64::from(AUDIO_SAMPLE_RATE)
+    profile::frame_ms() / 1000.0
 }
 
 /// How far the f0 track reads around a frame: from a quarter frame before
@@ -560,11 +606,13 @@ fn track_reach(f0: Hz) -> (f64, f64) {
 /// A contour frame counts only when everything it reads lies inside its
 /// note and outside every other note of the list: the frames of a note
 /// change read the note before, and while two notes sound the one-voice
-/// f0 track follows only one of them. The note's span is its list onset
-/// and end, each one model frame inward, the time step of the
-/// transcriber's notes.
+/// f0 track follows only one of them. A note dropped for starting on the
+/// same tick still sounds in the stem, so its list span counts too. The
+/// note's span is its list onset and end, each one model frame inward, the
+/// time step of the transcriber's notes.
 fn bends_of(
     notes: &[(FinalNote, Option<&Contour>)],
+    dropped: &[(f64, f64)],
     input: &FinishInput<'_>,
     tps: f64,
 ) -> Vec<(u64, u16)> {
@@ -595,10 +643,11 @@ fn bends_of(
             note.list_onset.get() + model_frame(),
             note.list_end.get() - model_frame(),
         );
+        let apart = |(onset, end): (f64, f64), (from, to): (f64, f64)| to <= onset || end <= from;
         let alone = |from: f64, to: f64| {
             notes.iter().enumerate().all(|(j, (other, _))| {
-                j == i || to <= other.list_onset.get() || other.list_end.get() <= from
-            })
+                j == i || apart((other.list_onset.get(), other.list_end.get()), (from, to))
+            }) && dropped.iter().all(|&span| apart(span, (from, to)))
         };
         // Each kept frame: its tick, its offset from the key and its track
         // time.
@@ -728,6 +777,7 @@ mod tests {
             glides: &[],
             drops: &[],
             vibrato: &[],
+            level: &|_, _, _| None,
         }
     }
 
@@ -1059,21 +1109,109 @@ mod tests {
         assert_eq!(spans, [(480, 965), (960, 1016)]);
     }
 
+    /// A level reader that checks the window of key 40 and gives `long` to
+    /// a span past 1.4 s and `short` to one before.
+    fn twin_levels(long: f64, short: f64) -> impl Fn(Seconds, Seconds, Hz) -> Option<Decibels> {
+        move |_, to, f0| {
+            let low = Hz::from(MidiPitch::new(40.0).unwrap());
+            assert!((f0.get() - low.get()).abs() < 1e-9, "{f0:?}");
+            Decibels::new(if to.get() > 1.4 { long } else { short }).ok()
+        }
+    }
+
     #[test]
     fn of_two_notes_on_one_tick_a_mono_line_keeps_the_louder() {
         let notes = NoteList::new(vec![note(1.0, 1.5, 40.0), note(1.0, 1.4, 52.0)]);
+        // The facts' levels, read with each note's own window, do not rank.
         let loud = |db| NoteFacts {
             level: Some(Decibels::new(db).unwrap()),
             ..kneeless()
         };
-        let facts = [loud(-20.0), loud(-6.0)];
-        let finished = finish(&input(&notes, &facts, 120.0));
+        let facts = [loud(-6.0), loud(-3.0)];
+        let louder = twin_levels(-20.0, -6.0);
+        let finished = finish(&FinishInput {
+            level: &louder,
+            ..input(&notes, &facts, 120.0)
+        });
         assert_eq!(finished.dropped, 1);
         assert_eq!(finished.notes.len(), 1);
         assert_eq!(finished.notes[0].key, 52);
         // Equal levels keep the longer note.
-        let facts = [loud(-6.0), loud(-6.0)];
-        assert_eq!(finish(&input(&notes, &facts, 120.0)).notes[0].key, 40);
+        let equal = twin_levels(-6.0, -6.0);
+        let finished = finish(&FinishInput {
+            level: &equal,
+            ..input(&notes, &facts, 120.0)
+        });
+        assert_eq!(finished.notes[0].key, 40);
+    }
+
+    #[test]
+    fn of_two_notes_on_one_tick_the_one_without_an_octave_flag_stays() {
+        let notes = NoteList::new(vec![
+            note(1.0, 1.5, 40.0).with_octave_uncertain(true),
+            note(1.0, 1.4, 52.0).with_octave_uncertain(false),
+        ]);
+        let level = NoteFacts {
+            level: Decibels::new(-6.0).ok(),
+            ..kneeless()
+        };
+        let facts = [level, level];
+        let louder = twin_levels(0.0, -40.0);
+        let finished = finish(&FinishInput {
+            level: &louder,
+            ..input(&notes, &facts, 120.0)
+        });
+        assert_eq!(finished.notes.len(), 1);
+        assert_eq!(finished.notes[0].key, 52);
+    }
+
+    #[test]
+    fn a_dropped_twin_still_keeps_its_span_from_the_kept_note_s_bends() {
+        // The track follows the dropped twin at 52 for the kept note's whole
+        // length; the twin still sounds, so those frames bend nothing.
+        let n = cast::floor_to_usize(0.4 / hop()).unwrap();
+        let points = (0..n)
+            .map(|i| ContourPoint {
+                time: s(1.0 + hop() * cast::usize_to_f64(i)),
+                f0: Hz::from(MidiPitch::new(52.0).unwrap()),
+            })
+            .collect();
+        let kept = note(1.0, 1.4, 40.0).with_contour(Contour::new(points).unwrap());
+        let ghost = note(1.0, 1.5, 52.0).with_octave_uncertain(true);
+        let notes = NoteList::new(vec![kept, ghost]);
+        let facts = [kneeless(), kneeless()];
+        let finished = finish(&input(&notes, &facts, 120.0));
+        assert_eq!((finished.notes.len(), finished.notes[0].key), (1, 40));
+        assert_eq!(finished.bends, []);
+    }
+
+    #[test]
+    fn a_merged_drop_takes_its_read_flag_with_its_knee() {
+        // The later note ends the merged one and the envelope skipped it, so
+        // the merged note is unread, not without a knee.
+        let notes = NoteList::new(vec![note(1.0, 1.04, 43.0), note(1.03, 1.6, 42.0)]);
+        let facts = [kneeless(), NoteFacts::default()];
+        let f_end = Hz::from(MidiPitch::new(41.0).unwrap());
+        let drops = [DropSpan {
+            onset: s(1.0),
+            f_end,
+            df_hz: f_end.get() * (2f64.powf(0.25) - 1.0),
+            settled: s(2.5),
+        }];
+        let finished = finish(&FinishInput {
+            drops: &drops,
+            ..input(&notes, &facts, 120.0)
+        });
+        let rules: Vec<_> = finished.notes.iter().map(|n| n.end_rule).collect();
+        assert_eq!(rules, [EndRule::Unread]);
+        // And the other way round.
+        let facts = [NoteFacts::default(), kneeless()];
+        let finished = finish(&FinishInput {
+            drops: &drops,
+            ..input(&notes, &facts, 120.0)
+        });
+        let rules: Vec<_> = finished.notes.iter().map(|n| n.end_rule).collect();
+        assert_eq!(rules, [EndRule::NoKnee]);
     }
 
     #[test]
@@ -1086,16 +1224,22 @@ mod tests {
             },
             kneeless(),
         ];
-        let mut finished = finish(&FinishInput {
+        let finished = finish(&FinishInput {
             level_velocity: true,
             ..input(&notes, &facts, 120.0)
         });
         let rules: Vec<_> = finished.notes.iter().map(|n| n.end_rule).collect();
         assert_eq!(rules, [EndRule::Unread, EndRule::NoKnee]);
         assert_eq!(finished.notes[1].velocity, DEFAULT_VELOCITY);
-        finished.fill_levels(|_, from, to| {
+        // The written span of the second note fills its level.
+        let written = |from: Seconds, to: Seconds, _| {
             assert_eq!((from, to), (s(1.0), s(1.45)));
-            Some(Decibels::new(-12.0).unwrap())
+            Decibels::new(-12.0).ok()
+        };
+        let finished = finish(&FinishInput {
+            level_velocity: true,
+            level: &written,
+            ..input(&notes, &facts, 120.0)
         });
         // 127 * 10^(-6 / 40) = 89.9.
         let velocities: Vec<_> = finished.notes.iter().map(|n| n.velocity.get()).collect();
