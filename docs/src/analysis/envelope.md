@@ -435,8 +435,11 @@ exists yet [fact].
   its note-off knee, or to 50 ms before its end in the list without one,
   never past the next later onset [fact]. The amp proxy's `peak_db` reads
   one harmonic per note, so two notes on different harmonics do not
-  compare; the full band does (owner decision, 2026-11-05) [fact]. Peaks 0, 3, 6 and 12 dB apart read
-  0.04, 2.97, 5.97 and 11.97 dB [synthetic].
+  compare; the full band does (owner decision, 2026-11-05) [fact]. Notes 0, 3, 6 and 12 dB apart read 0.1, 3.0, 6.0 and 12.0 dB
+  [synthetic]. On the generated chords of equal notes, the amp proxy read
+  4.6 to 7.8 dB and the full band reads 0.9 dB [synthetic]. On a chord
+  the full band is the mix, so it cannot tell two chord tones of
+  different levels apart [fact].
 - The group's own confidence is medium with 3 or more pooled notes, else
   low, and no estimate when no note was read [fact].
 
