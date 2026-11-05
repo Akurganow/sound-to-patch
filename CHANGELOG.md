@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.29.0](https://github.com/Akurganow/sound-to-patch/compare/1013e2f114b7e00abde6d4283b62360b7b6eb152..v0.29.0) - 2026-11-05
+#### Features
+- (**skill**) write the Vital control dictionary in the layer files (#318) - ([7957c8d](https://github.com/Akurganow/sound-to-patch/commit/7957c8d3a135d2060b6e8d7cee87efbc16571963)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.28.1](https://github.com/Akurganow/sound-to-patch/compare/e3c0fe725f199c5cd7a2d50360b6a9a87e161e80..v0.28.1) - 2026-11-04
 #### Bug Fixes
 - (**analyze**) keep the note-off knee from the next note's corner after a long gap (#315) - ([91cf23e](https://github.com/Akurganow/sound-to-patch/commit/91cf23e8b7ba29819f8eea8e6639628a2123d521)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
