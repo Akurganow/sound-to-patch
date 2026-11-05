@@ -53,13 +53,14 @@ the amp proxy of a note of a polyphonic line falls 20 dB below its peak plus its
 first after its knee or its peak, minimum is the decoder's minimum length at the tempo when a cut \
 would go below it, next_note is the next note-on of a mono line, and glide is 5 ms after the next \
 note-on, rounded up to whole ticks, at a glide join of a mono line, whose later note starts at the \
-glide's start; no end lies after the list end, except at a glide join; level_db is the peak of the \
-full-band centred RMS of the mono mix over one period of the fundamental, or the fewest whole \
-periods that span 2 ms, on a 1 ms hop from the onset to the list end, in dB of the full-scale \
-power; velocity is level when level_spread_db exceeds 3 dB: the loudest note gets 127 and a note \
-d dB under it round(127 * 10^(-d / 40)), at least 1; else constant, 100 for every note; \
-octave_uncertain is the transcriber's octave flag, null when none ran; bend_events counts the \
-pitch bends, 0 by default";
+glide's start; no end lies after the list end, except at a glide join; level_db is the note's full-band \
+level, as level_spread_db defines it, the highest of the notes a drop merged; velocity is level \
+when level_spread_db exceeds 3 dB: the loudest note gets 127 and a note d dB under it \
+round(127 * 10^(-d / 40)), at least 1; else constant, 100 for every note; octave_uncertain is \
+the transcriber's octave flag, null when none ran; bend_events counts the pitch bends: on a mono \
+line, a note whose f0 contour leaves its key by 50 cents or more outside every counted glide, drop \
+and vibrato span gets a bend at each contour point outside them, clamped to 2 semitones, and a \
+centred bend at its end; a host must set a bend range of 2 semitones";
 
 /// Renders the report of a stem as pretty-printed JSON with a final
 /// newline. The same stem always gives the same bytes.

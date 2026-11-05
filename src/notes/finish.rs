@@ -6,7 +6,8 @@
 //! under a vibrato the key of the vibrato's mean pitch, ends each note at
 //! its note-off knee, and writes each glide as two overlapping notes. The
 //! velocity follows the full-band level of each note when the level spread
-//! gives velocity a path to the level, and is one constant otherwise.
+//! gives velocity a path to the level, and is one constant otherwise. Only
+//! the pitch motion of a mono line that no route models becomes bends.
 
 use super::write::{Span, encode_spans, ticks_per_second};
 use super::{Contour, DEFAULT_VELOCITY, MidiWriteError, NoteList, Velocity, min_note_length};
@@ -27,10 +28,11 @@ pub const GLIDE_SLACK: Seconds = Seconds::from_const(0.050);
 /// A pitch drop takes in the notes that start from this long before its
 /// onset until it settles.
 pub const DROP_SLACK: Seconds = Seconds::from_const(0.030);
-/// With bends on, a note gets bends when its contour leaves its key by
+/// A note of a mono line gets bends when its contour leaves its key by
 /// this much outside every route's span.
 pub const BEND_MIN: Semitones = Semitones::from_const(0.5);
-/// The bend range the file assumes; a host must set the synth to it.
+/// The bend range the file assumes; a host must set the synth to it, and
+/// `render` reads no bend.
 pub const BEND_RANGE: Semitones = Semitones::from_const(2.0);
 /// The level law: a note `d` dB under the loudest gets velocity
 /// `127 * 10^(-d / 40)`.
@@ -86,17 +88,6 @@ pub struct VibratoSpan {
     pub pitch: Hz,
 }
 
-/// Whether the file holds pitch bends.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Bends {
-    /// No bend: the preset carries the glides, drops and vibrato as routes.
-    #[default]
-    Off,
-    /// Bends for the motion of a mono line that no route models, within
-    /// [`BEND_RANGE`].
-    Unmodelled,
-}
-
 /// What [`finish`] reads.
 #[derive(Clone, Copy, Debug)]
 pub struct FinishInput<'a> {
@@ -119,8 +110,6 @@ pub struct FinishInput<'a> {
     pub drops: &'a [DropSpan],
     /// The vibratos.
     pub vibrato: &'a [VibratoSpan],
-    /// Whether to write bends.
-    pub bends: Bends,
 }
 
 /// Which rule set the end of a final note.
@@ -253,7 +242,7 @@ struct Work<'a> {
 /// 6. With level velocity, the loudest note gets 127 and a note `d` dB
 ///    under it `round(127 * 10^(-d / 40))`, at least 1; a note without a
 ///    level, and every note otherwise, gets [`DEFAULT_VELOCITY`].
-/// 7. With [`Bends::Unmodelled`] on a mono line, a note whose contour
+/// 7. On a mono line, a note whose contour
 ///    leaves its key by [`BEND_MIN`] or more outside every glide, drop and
 ///    vibrato span gets a bend at each contour point outside those spans,
 ///    clamped to [`BEND_RANGE`], and a centred bend at its end.
@@ -318,7 +307,7 @@ pub fn finish(input: &FinishInput<'_>) -> FinalNotes {
     if input.level_velocity {
         level_velocities(&mut notes);
     }
-    let bends = if input.mono && input.bends == Bends::Unmodelled {
+    let bends = if input.mono {
         bends_of(&notes, input, tps)
     } else {
         Vec::new()
@@ -602,7 +591,6 @@ mod tests {
             glides: &[],
             drops: &[],
             vibrato: &[],
-            bends: Bends::Off,
         }
     }
 
@@ -778,14 +766,12 @@ mod tests {
     }
 
     #[test]
-    fn only_unmodelled_motion_writes_bends_and_only_when_asked() {
+    fn only_unmodelled_motion_of_a_mono_line_writes_bends() {
         let notes = NoteList::new(vec![bent(0.0, 1.0, 50.0, 300.0)]);
         let facts = [knee(0.95)];
-        let on = FinishInput {
-            bends: Bends::Unmodelled,
-            ..input(&notes, &facts, 120.0)
-        };
-        assert_eq!(finish(&input(&notes, &facts, 120.0)).bends, []);
+        let on = input(&notes, &facts, 120.0);
+        let chords = FinishInput { mono: false, ..on };
+        assert_eq!(finish(&chords).bends, []);
         let (_, bends) = parse(&finish(&on).to_midi(None).unwrap());
         // Three semitones clamp to the top of the 2-semitone range, and the
         // note's end centres the bend again.

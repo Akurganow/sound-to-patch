@@ -21,21 +21,21 @@ use crate::confidence::ConfidenceError;
 use crate::confidence::Level;
 use crate::dsp::{StftParams, describe};
 use crate::estimate::envelope::{
-    EnvelopeError, EnvelopeInput, EnvelopeLayer, LevelTrack, NoteEnvelope, RMS_PERIODS, amp_proxy,
+    EnvelopeError, EnvelopeInput, EnvelopeLayer, NoteEnvelope, amp_proxy,
 };
 use crate::estimate::pitch::{PitchError, PitchInput, PitchLayer};
 use crate::estimate::voices::{VoicesError, VoicesInput, VoicesLayer};
 use crate::notes::{
-    Bends, DEFAULT_VELOCITY, DropSpan, FinalNotes, FinishInput, GlideSpan, MidiError,
-    MidiWriteError, Note, NoteFacts, NoteList, NotesError, PAD_FALL, PitchTrack, Profile,
-    QUIET_GATE, Transcriber, Transcription, Velocities, VibratoSpan, Voicing, finish,
-    midi_track_name, read_midi_near, transcribe_stem, voicing_of_notes, write_named_midi,
+    DEFAULT_VELOCITY, DropSpan, FinalNotes, FinishInput, GlideSpan, MidiError, MidiWriteError,
+    Note, NoteFacts, NoteList, NotesError, PAD_FALL, PitchTrack, Profile, QUIET_GATE, Transcriber,
+    Transcription, Velocities, VibratoSpan, Voicing, finish, midi_track_name, read_midi_near,
+    transcribe_stem, voicing_of_notes, write_named_midi,
 };
 use crate::preset::mapper::pitch_envelope::velocity_reaches_level;
 use crate::preset::mapper::{MapContext, Mapped, PitchEnvelopeGroups, SynthMapper, mapper_for};
 use crate::preset::registry::registry_for;
 use crate::synth::{Synth, capabilities};
-use crate::units::{Bpm, Decibels, Hz, Seconds};
+use crate::units::{Bpm, Seconds};
 
 mod layers;
 pub mod spectrogram;
@@ -436,14 +436,11 @@ fn final_notes(
         glides: &glides,
         drops: &drops,
         vibrato: &vibrato,
-        bends: Bends::Off,
     })))
 }
 
 /// The knee, the pad end and the full-band level of each note of the
-/// list. The full-band level is the peak of the centred RMS of the mono
-/// mix over one period of the note's fundamental, on a 1 ms hop, from its
-/// onset to its end in the list.
+/// list. The envelope layer owns the full-band level.
 fn note_facts(
     mono: &[f64],
     rate: SampleRate,
@@ -453,25 +450,12 @@ fn note_facts(
 ) -> Result<Vec<NoteFacts>, AnalyzeError> {
     let list = notes.notes();
     list.iter()
-        .map(|note| {
+        .enumerate()
+        .map(|(i, note)| {
             let read = envelope
                 .notes
                 .iter()
                 .find(|n| n.onset == note.onset() && n.pitch == note.pitch());
-            let f0 = Hz::from(note.pitch());
-            let level = LevelTrack::rms(
-                mono,
-                0,
-                rate,
-                (note.onset(), note.offset()),
-                f0,
-                RMS_PERIODS,
-            )
-            .db()
-            .iter()
-            .copied()
-            .reduce(f64::max)
-            .map(Decibels::clamped);
             let pad_end = match read {
                 Some(read) if pad => pad_end(mono, rate, note, list, read)?,
                 _ => None,
@@ -479,7 +463,7 @@ fn note_facts(
             Ok(NoteFacts {
                 knee: read.and_then(|n| n.knee),
                 pad_end,
-                level,
+                level: envelope.levels.get(i).copied().flatten(),
             })
         })
         .collect()
@@ -974,7 +958,7 @@ impl From<png::EncodingError> for AnalyzeError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::units::MidiPitch;
+    use crate::units::{Decibels, MidiPitch};
 
     /// A 220 Hz tone held at full level to 0.5 s that then falls 60 dB/s
     /// reaches 20 dB under its plateau at 0.833 s.

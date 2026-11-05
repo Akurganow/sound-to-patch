@@ -91,10 +91,17 @@ only notes:
 - A pitch drop becomes one note at its settled pitch, and a note under a
   vibrato takes the key of the vibrato's mean pitch. Only the glides,
   drops and vibratos the report trusts above low count.
-- Velocity follows the full-band level of each note when the level spread
-  exceeds 3 dB: the loudest note gets 127, and a note `d` dB under it
-  `127 * 10^(-d / 40)`, at least 1. Otherwise every note gets 100.
-- The file holds no pitch bend.
+- Velocity follows the full-band level of each note when the spread of
+  those levels exceeds 3 dB: the loudest note gets 127, and a note `d` dB
+  under it `127 * 10^(-d / 40)`, at least 1. Otherwise every note gets 100.
+  The full-band level is the peak of the one-period RMS of the whole mix
+  from the onset to the note-off knee, so two notes compare even when they
+  read different harmonics.
+- Pitch motion that no route models becomes pitch bends: a note of a mono
+  line whose pitch leaves its key by 50 cents or more outside every glide,
+  drop and vibrato. Bends are clamped to 2 semitones, so set the synth's
+  bend range to 2 semitones. [`render`](../reference/cli.md#render) reads
+  no bend.
 
 The `notes` group of `layers.json` lists each written note with the rule
 that set its end, its level and the transcriber's octave flag.

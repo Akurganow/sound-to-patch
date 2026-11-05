@@ -48,7 +48,7 @@ use crate::confidence::{
     Confidence, ConfidenceError, Estimate, Level, NoSpread, Reason, ReasonCode, Signal,
 };
 use crate::dsp::{FilterError, Stats, Summary, quantile};
-use crate::notes::{Note, NoteList};
+use crate::notes::{NO_KNEE_CUT, Note, NoteList};
 use crate::units::{Decibels, Hz, MidiPitch, Ratio, Seconds};
 
 /// A value over the pool needs this many notes; with fewer it reads low.
@@ -138,9 +138,12 @@ difference of the level in dB over the 300 ms before the knee, 25 ms each way, i
 release_confidence is null when no pooled note has a fit; tail_votes hold null where \
 nothing could be read, and tail_is_reverb stays false until a space layer exists";
 /// The convention of the level spread.
-pub const LEVEL_SPREAD_CONVENTION: &str = "the 90th minus the 10th percentile of the peak dB of \
-the amp proxy over the pooled notes, quantiles by linear interpolation; always low confidence, \
-a rule no stem has tested; null under 3 pooled notes";
+pub const LEVEL_SPREAD_CONVENTION: &str = "the 90th minus the 10th percentile of the full-band \
+level of the pooled notes, quantiles by linear interpolation; a note's full-band level is the peak \
+of the centred RMS of the mono mix in dB of full-scale power over one period of the fundamental, \
+or the fewest whole periods that span 2 ms, on a 1 ms hop from its onset to its note-off knee, or \
+to 50 ms before its end in the note list without one, and never past the next later onset in the \
+list; always low confidence, a rule no stem has tested; null under 3 pooled notes with a level";
 /// The convention of the pump.
 pub const PUMP_CONVENTION: &str = "the full-band centred RMS in dB over two periods of the lowest \
 note on a 1 ms hop, cut into beats of the used tempo from 0 s; a beat counts when the held part of \
@@ -245,8 +248,13 @@ pub struct EnvelopeLayer {
     pub release_confidence: Option<Level>,
     /// The votes that the tail is reverb.
     pub tail_votes: TailVotes,
-    /// The 90th minus the 10th percentile of the pooled peak levels.
+    /// The 90th minus the 10th percentile of the full-band levels of the
+    /// pooled notes.
     pub level_spread: Estimate<Decibels, NoSpread>,
+    /// The full-band level of each note of the list, in list order; `None`
+    /// when its span holds no frame. Unlike `peak_db`, it compares notes
+    /// that read different harmonics.
+    pub levels: Vec<Option<Decibels>>,
     /// The median ripple over the pool.
     pub ripple: Option<Decibels>,
     /// The median fit residual over the pool.
@@ -337,6 +345,7 @@ impl EnvelopeLayer {
         let fits: Vec<TailFit> = pool.iter().filter_map(|n| n.tail).collect();
         let (release, release_confidence) = release_of(&fits)?;
         let tail_votes = read_votes(input.mono, input.stereo, input.rate, notes, &pool);
+        let levels = full_band_levels(input, notes, &read);
         let confidence = if read.is_empty() {
             Confidence::no_estimate(vec![if notes.is_empty() {
                 Reason::new(ReasonCode::NoNoteList, Signal::Flag(true))?
@@ -388,7 +397,8 @@ impl EnvelopeLayer {
             tail_weight: statistic(fits.iter().map(|f| f.weight), Ratio::clamped, None)?,
             release_confidence,
             tail_votes,
-            level_spread: level_spread(&pool)?,
+            level_spread: level_spread(&pooled_levels(notes, &levels, &pool))?,
+            levels,
             ripple: pool_median(&pool, |n| n.ripple),
             residual: pool_median(&pool, |n| n.residual),
             pump,
@@ -750,16 +760,74 @@ fn statistic_at<T: crate::confidence::Spread>(
 
 /// The level spread over the pool, always at low confidence: the rule is a
 /// proposal no stem has tested.
-fn level_spread(pool: &[&NoteEnvelope]) -> Result<Estimate<Decibels, NoSpread>, ConfidenceError> {
-    let n = Reason::new(ReasonCode::TooFewNotes, Signal::Count(count(pool.len())))?;
-    if pool.len() < POOL_NOTES_MIN {
+/// The spread of the full-band levels of the pooled notes.
+fn level_spread(levels: &[f64]) -> Result<Estimate<Decibels, NoSpread>, ConfidenceError> {
+    let n = Reason::new(ReasonCode::TooFewNotes, Signal::Count(count(levels.len())))?;
+    if levels.len() < POOL_NOTES_MIN {
         return Estimate::none(vec![n]);
     }
-    let mut peaks: Vec<f64> = pool.iter().map(|p| p.peak_db.get()).collect();
-    peaks.sort_by(f64::total_cmp);
+    let mut sorted = levels.to_vec();
+    sorted.sort_by(f64::total_cmp);
     let (lo, hi) = SPREAD_QUANTILES;
-    let spread = quantile(&peaks, hi).unwrap_or(0.0) - quantile(&peaks, lo).unwrap_or(0.0);
+    let spread = quantile(&sorted, hi).unwrap_or(0.0) - quantile(&sorted, lo).unwrap_or(0.0);
     Estimate::new(Decibels::clamped(spread), Level::Low, None, vec![n])
+}
+
+/// The full-band levels of the pooled notes that have one.
+fn pooled_levels(notes: &[Note], levels: &[Option<Decibels>], pool: &[&NoteEnvelope]) -> Vec<f64> {
+    pool.iter()
+        .filter_map(|n| {
+            let i = notes
+                .iter()
+                .position(|l| l.onset() == n.onset && l.pitch() == n.pitch)?;
+            levels[i].map(Decibels::get)
+        })
+        .collect()
+}
+
+/// The full-band level of each note of the list, as
+/// [`LEVEL_SPREAD_CONVENTION`] defines it. The span ends where
+/// `notes.mid` ends a note before the rules of a mono line: at the knee,
+/// or 50 ms before the list end without one.
+fn full_band_levels(
+    input: &EnvelopeInput<'_>,
+    notes: &[Note],
+    read: &[NoteEnvelope],
+) -> Vec<Option<Decibels>> {
+    notes
+        .iter()
+        .map(|note| {
+            let knee = read
+                .iter()
+                .find(|n| n.onset == note.onset() && n.pitch == note.pitch())
+                .and_then(|n| n.knee);
+            let next = notes
+                .iter()
+                .map(Note::onset)
+                .find(|&onset| onset > note.onset())
+                .map_or(f64::INFINITY, Seconds::get);
+            let end = knee
+                .map_or(note.offset().get() - NO_KNEE_CUT.get(), Seconds::get)
+                .min(note.offset().get())
+                .min(next);
+            if end <= note.onset().get() {
+                return None;
+            }
+            LevelTrack::rms(
+                input.mono,
+                0,
+                input.rate,
+                (note.onset(), Seconds::clamped(end)),
+                Hz::from(note.pitch()),
+                RMS_PERIODS,
+            )
+            .db()
+            .iter()
+            .copied()
+            .reduce(f64::max)
+            .map(Decibels::clamped)
+        })
+        .collect()
 }
 
 fn median(values: &[f64]) -> Option<f64> {
@@ -1257,12 +1325,9 @@ mod tests {
 
     #[test]
     fn the_level_spread_needs_3_pooled_notes() {
-        let notes: Vec<NoteEnvelope> = (0..3)
-            .map(|i| note(f64::from(i), 1.0, 110.0, None))
-            .collect();
-        let pool: Vec<&NoteEnvelope> = notes.iter().collect();
-        assert!(level_spread(&pool).unwrap().value().is_some());
-        assert!(level_spread(&pool[..2]).unwrap().value().is_none());
+        let levels = [-6.0, -3.0, 0.0];
+        assert!(level_spread(&levels).unwrap().value().is_some());
+        assert!(level_spread(&levels[..2]).unwrap().value().is_none());
     }
 
     #[test]

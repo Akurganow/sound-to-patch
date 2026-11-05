@@ -46,7 +46,7 @@ pub use detect::{
     probe_settings, voicing_of_notes,
 };
 pub use finish::{
-    BEND_MIN, BEND_RANGE, Bends, DROP_SLACK, DropSpan, EndRule, FinalNote, FinalNotes, FinishInput,
+    BEND_MIN, BEND_RANGE, DROP_SLACK, DropSpan, EndRule, FinalNote, FinalNotes, FinishInput,
     GLIDE_OVERLAP, GLIDE_SLACK, GlideSpan, NO_KNEE_CUT, NoteFacts, PAD_FALL, VELOCITY_LAW_DB,
     VibratoSpan, finish,
 };

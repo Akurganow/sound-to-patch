@@ -427,9 +427,15 @@ exists yet [fact].
   median of 0 under an interquartile range above 0 has no ratio, so the
   statistic reads low with `zero_median`, that range, in place of
   `relative_spread` [fact].
-- `level_spread_db` is the 90th minus the 10th percentile of the pooled
-  peak levels, null under 3 pooled notes and always low: no stem has
-  tested the rule [fact, proposal]. Peaks 0, 3, 6 and 12 dB apart read
+- `level_spread_db` is the 90th minus the 10th percentile of the
+  full-band levels of the pooled notes, null under 3 pooled notes with a
+  level and always low: no stem has tested the rule [fact, proposal]. A
+  note's full-band level is the peak of the centred RMS of the mono mix
+  over one period of its fundamental, on a 1 ms hop, from its onset to
+  its note-off knee, or to 50 ms before its end in the list without one,
+  never past the next later onset [fact]. The amp proxy's `peak_db` reads
+  one harmonic per note, so two notes on different harmonics do not
+  compare; the full band does (owner decision, 2026-11-05) [fact]. Peaks 0, 3, 6 and 12 dB apart read
   0.04, 2.97, 5.97 and 11.97 dB [synthetic].
 - The group's own confidence is medium with 3 or more pooled notes, else
   low, and no estimate when no note was read [fact].
