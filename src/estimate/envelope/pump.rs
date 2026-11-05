@@ -287,15 +287,12 @@ impl Pump {
         let low = PUMP_BINS + dip_bin(&curve);
         let falls: Vec<f64> = beats.iter().map(|b| fall_into(b, low)).collect();
         let line = free_line(track, longest, grid);
-        let free_line = line.map(|(cents, _)| cents);
+        let cents = line.map(|(cents, _)| cents);
         let span = starts[starts.len() - 1] + period - starts[0];
-        let free = line
+        let drift = line
             .filter(|&(cents, _)| cents >= FREE_RESIDUAL.get())
-            .map(|(_, rate)| {
-                let harmonic = (rate * period).round().max(1.0) / period;
-                (rate - harmonic).abs() * span
-            });
-        let lock = lock(&beats, &onset_beats, &odd, &falls, &wide, depth, free);
+            .map(|(_, rate)| self::drift(rate, period, longest.1 - longest.0, span));
+        let lock = lock(&beats, &onset_beats, &odd, &falls, &wide, depth, drift);
         let falls = if lock == PumpLock::Beat {
             let end = track.time(track.db().len()) - grid.offset().get();
             (0..cast::floor_to_usize(end / period).unwrap_or(0))
@@ -322,7 +319,7 @@ impl Pump {
             grid,
             falls,
             fold_error,
-            free_line,
+            free_line: cents,
         })
     }
 
@@ -639,17 +636,16 @@ fn dips(curve: &[f64], depth: f64) -> usize {
 /// - `Note`: the beats with a note onset inside dip by [`PUMP_MIN`] or
 ///   more, in their median curve, and the other beats by under half of
 ///   it. Each group needs two beats.
-/// - `Free`: `free` finds a tremolo, and holds the cycles its line drifts
-///   against the nearest harmonic of the beat over the counted beats. It
-///   comes before the beat: a 5.3 Hz tremolo over 17 beats at 128 BPM left a
-///   3.6 dB dip in the median curve that passed the beat test. A duck's
-///   strongest line lies on the beat rate, so it reads free only when that
-///   rate lies [`FREE_RESIDUAL`] or more from every division of the grid;
-///   `find` then tries the period search. A line that drifts a full cycle or
-///   more could not leave the beats folded on one curve, so a beat test that
-///   passes then wins: a level step in the longest run, such as a held part
-///   that runs past its note-off into silence, moves the line of a duck on
-///   the tempo by 50 to 220 cents.
+/// - `Free`: `drift` finds a tremolo, and holds the cycles its line drifts
+///   against the beat, from [`drift`]. A free line wins over the beat test,
+///   as a 5.3 Hz tremolo over 17 beats at 128 BPM left a 3.6 dB dip in the
+///   median curve that passed it. A duck's strongest line lies on the beat
+///   rate, so it reads free only when that rate lies [`FREE_RESIDUAL`] or
+///   more from every division of the grid; `find` then tries the period
+///   search. The beat test wins instead when it passes and the line drifts a
+///   full cycle or more: a level step in the longest run, such as a held part
+///   that runs past its note-off into silence, moves the line of a duck on the
+///   tempo by 50 to 220 cents.
 /// - `Beat`: the curve dips by [`PUMP_MIN`] or more, once per beat, and
 ///   falls into its dip within [`FALL_MAX`] bins, and at least
 ///   [`PHASE_SHARE`] of the beats fall by [`PHASE_DEPTH`] of its depth
@@ -666,7 +662,7 @@ fn lock(
     falls: &[f64],
     wide: &[f64],
     depth: f64,
-    free: Option<f64>,
+    drift: Option<f64>,
 ) -> PumpLock {
     let curve = &wide[PUMP_BINS..];
     let median_of = |flags: &[bool], value: bool| -> Option<Vec<f64>> {
@@ -698,10 +694,30 @@ fn lock(
         && half_falls(false)
         && half_falls(true)
         && cast::usize_to_f64(near) >= PHASE_SHARE * cast::usize_to_f64(falls.len());
-    match free {
+    match drift {
         Some(drift) if !(beat && drift >= 1.0) => PumpLock::Free,
         _ if beat => PumpLock::Beat,
         _ => PumpLock::None,
+    }
+}
+
+/// The cycles a free line at `rate` Hz drifts against the nearest harmonic of
+/// the beat of `period` seconds over `span` seconds, from the first counted
+/// beat to the end of the last, gaps included. 0 when `run`, the span the line
+/// was read over, resolves the line from that harmonic: the line then lies off
+/// the beat, and a fold on the beat is chance.
+///
+/// The beat rate is the lowest harmonic. Over a run of 11 beats at 128 BPM, a
+/// 12 Hz tremolo lies 0.8 Hz from the sixth and is resolved; a duck on the
+/// tempo whose line a level step moves 132 cents off lies 0.21 Hz from the
+/// first over a run of 3.1 s, and is not.
+fn drift(rate: f64, period: f64, run: f64, span: f64) -> f64 {
+    let harmonic = (rate * period).round().max(1.0) / period;
+    let error = (rate - harmonic).abs();
+    if error * run >= 1.0 {
+        0.0
+    } else {
+        error * span
     }
 }
 
@@ -952,17 +968,43 @@ mod tests {
     }
 
     #[test]
+    fn the_drift_is_read_against_the_nearest_harmonic_of_the_beat() {
+        // A beat of 0.5 s, 2 Hz; a run of 0.5 s resolves nothing closer than 2 Hz.
+        let at = |rate: f64| drift(rate, 0.5, 0.5, 10.0);
+        // k = 2 and k = 3, 0.1 Hz off: a fixed beat rate would read 2.1 and 4.1 Hz.
+        assert!((at(4.1) - 1.0).abs() < 1e-9);
+        assert!((at(6.1) - 1.0).abs() < 1e-9);
+        // 2.4 and 2.6 times the beat rate: the nearest harmonic, not the floor or
+        // the ceiling.
+        assert!((at(4.8) - 8.0).abs() < 1e-9);
+        assert!((at(5.2) - 8.0).abs() < 1e-9);
+        // 1.5 times the beat rate rounds up to the second harmonic.
+        assert!((at(3.0) - 10.0).abs() < 1e-9);
+        // 0.3 times the beat rate reads against the beat rate, 1.4 Hz off, not
+        // against 0 Hz.
+        assert!((drift(0.6, 0.5, 0.5, 10.0) - 14.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_line_its_run_resolves_from_the_harmonic_does_not_drift() {
+        // 0.1 Hz off the beat rate: a run of 9.9 s cannot resolve it, 10 s can.
+        assert!((drift(2.1, 0.5, 9.9, 20.0) - 2.0).abs() < 1e-9);
+        assert_eq!(drift(2.1, 0.5, 10.0, 20.0), 0.0);
+    }
+
+    #[test]
     fn a_held_part_that_runs_into_silence_leaves_a_duck_locked_to_the_beat() {
         // A 5 dB duck over 220 ms of each beat at 175 BPM, under a note that
         // stops 40 % into the last of the 9 beats its held part covers, and a
         // shorter note 4 s later. The step to silence moves the beat's line 132
-        // cents off, and over the 15 counted beats, 9.26 s, it would drift 2.0
-        // cycles against the beat.
+        // cents off. From the first of the 13 counted beats to the end of the
+        // last, the gap included, 8.57 s, it would drift 1.84 cycles against the
+        // beat; over the beats alone, 4.46 s, 0.96.
         let bpm = Bpm::new(175.0).unwrap();
         let period = 60.0 / bpm.get();
         let end = 10.0 * period + 0.01;
         let off = end - 0.01 - 0.6 * period;
-        let (second, last) = (end + 4.0, end + 4.0 + 7.0 * period);
+        let (second, last) = (end + 4.0, end + 4.0 + 5.0 * period);
         let db = (0..10_000)
             .map(|i| {
                 let t = cast::usize_to_f64(i) * HOP.get();

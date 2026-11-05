@@ -456,6 +456,19 @@ fn a_tremolo_off_the_tempo_runs_free_and_one_on_it_is_no_pump() {
 }
 
 #[test]
+fn a_tremolo_its_run_sets_apart_from_every_harmonic_stays_free() {
+    // A 12 Hz tremolo 3 dB deep over 12 beats folds into a 3.0 dB dip that
+    // passes the beat test. Over its 11 counted beats it would drift 4 cycles
+    // against the sixth harmonic, 12.8 Hz, but its run of 5.2 s sets it 0.8 Hz
+    // apart from it, so it stays free.
+    let (x, notes) = held_chord_over(12.0);
+    let y = under(&x, |t| -3.0 * (0.5 - 0.5 * (TAU * 12.0 * t).cos()));
+    let p = pump(&y, &notes, CHORD[0]).unwrap();
+    assert_eq!(p.lock, PumpLock::Free, "{p:?}");
+    assert!(!p.strips(), "{p:?}");
+}
+
+#[test]
 fn a_dip_only_where_a_note_starts_locks_to_the_note() {
     // A held A2; on every other beat an E3 starts 0.3 beats in, and the
     // whole mix dips 9 dB there, back in 40 ms: the new note's envelope.
