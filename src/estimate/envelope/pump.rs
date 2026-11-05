@@ -931,6 +931,9 @@ mod tests {
         };
         assert_eq!(read(Some(0.99)), PumpLock::Free);
         assert_eq!(read(Some(1.0)), PumpLock::Beat);
+        // The bound is one cycle, not two: a gate 5 % off over 32 beats drifts
+        // 1.6 cycles and strips.
+        assert_eq!(read(Some(1.6)), PumpLock::Beat);
         // A curve that fails the beat test stays free however far it drifts.
         let rising = [ramp.iter().map(|v| v - 6.0).collect(), ramp].concat();
         let beats = vec![rising.clone(); 8];

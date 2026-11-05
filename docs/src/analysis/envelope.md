@@ -835,10 +835,14 @@ chord's beating moves the crossing [synthetic].
   3 % below the tempo at 55 Hz and 174 BPM strips in 4 of 376 runs [synthetic].
 - A gate off the tempo whose line drifts just over a cycle can still fold into a
   dip of 3 dB, and then strips under the drift rule of the `free` lock. On the
-  sample of 9880 signals, 2 of 919 gates do: 9 dB gates at 55 Hz and 60 BPM, 3.5
-  and 5 % above the tempo over 32 beats, read 3.5 and 3.1 dB [synthetic]. A
-  third, 3.5 % above at 80 BPM over 16 beats, strips at a fitted 82.08 BPM
-  [synthetic].
+  sample of 9880 signals, 3 of 919 gates strip where commit 7f012f9 read them
+  free [synthetic]. Two are 9 dB gates at 55 Hz and 60 BPM, 3.5 and 5 % above
+  the tempo over 32 beats, whose lines drift 1.1 and 1.6 cycles and read 3.5 and
+  3.1 dB [synthetic]. The third, 3.5 % above at 80 BPM over 16 beats, strips at
+  a fitted 82.08 BPM [synthetic]. A bound of 2 cycles would keep the two 32-beat
+  gates free, and would lose 1 of 139 and 4 of 17 of the reads the rule turns on
+  the bass line's long and medium notes, which drift 1.48 cycles or more
+  [synthetic, proposal for 1 cycle].
 - The depth reads shallow, and the bias depends on the shape: an 18 dB duck
   reads up to 11.8 dB short in the set of Depth bias. On the noiseless chords
   of the 123,840 signals, on the tempo, with releases of 80 ms or more, it
