@@ -182,10 +182,11 @@ joins `READY` when its adapter lands.
   descriptions, writes the release version, regenerates the Vital
   registry data from a local checkout of the open source, generates
   the Vital test fixtures, writes the catalogue files of the agent
-  reference from the registry and the music and word files from their
-  dictionaries, recomputes the listener agreement of the sound words
-  from the pinned listener data, runs the chord oracles of the music dictionary with the
-  golden tools, and checks the agent plugins.
+  reference from the registry and the written text of each layer, the
+  music and word files from their dictionaries, recomputes the listener
+  agreement of the sound words from the pinned listener data, runs the
+  chord oracles of the music dictionary with the golden tools, and
+  checks the agent plugins.
 - `reference`: the agent reference, one folder of plain files: the router
   `README.md`, the generated catalogue files per synth and layer, the
   generated music and word files under `core/`, and example edit lists. Nothing
@@ -200,7 +201,7 @@ joins `READY` when its adapter lands.
   topic with their stated shares and planned counts, the word entries per
   axis with the derived listener numbers, the intensity ladder, the style
   and technique lists, the source list and the probe questions, with their schemas in
-  `schemas/`.
+  `schemas/`, and the written part of each Vital layer file in `vital/`.
 - `fuzz`: the fuzz targets, a workspace of its own on a pinned nightly.
 - `tools/vita`: the load check that loads written presets in the open Vital
   engine, and the script that renders one note in it for

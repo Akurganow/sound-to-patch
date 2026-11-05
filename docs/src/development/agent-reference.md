@@ -86,6 +86,33 @@ reference --check` fails when a committed file differs; CI runs it.
 - Numbers show five significant digits. The registry keeps the exact
   values.
 
+### The written part of a layer file
+
+Each Vital layer file opens with a written part above its rows: how the
+layer works, then one entry per control or group of controls. The text
+lives in `dictionary/vital/<layer>.md`, and `cargo xtask reference`
+merges it, so edit it there.
+
+- An entry is a `###` heading with three fields, one line each: `Keys`,
+  `Effect` and `Words`. An optional `Tuning` line extends the tuning note
+  of the registry where a source gives more.
+- `Keys` lists key patterns as the rows write them, such as
+  `osc_N_level`. Every pattern of the layer sits in one entry, and an
+  entry names no key of another layer. The label, unit, range, default,
+  tag, verified build and tuning note come from the rows of those keys.
+- `Effect` says what the control does and ends with its source: a file of
+  the open source snapshot, a law measured in the app or on the open
+  engine, or `no source`.
+- `Words` links the technique words that name the control, or reads
+  `none in the word lists`. The word maps of the descriptive words add
+  their Vital controls here, so they revise those lines.
+- The command fails and names the entry when a field is missing, an
+  effect has no source, a link names no technique word, or a pattern
+  belongs to another layer, to no entry or to two entries.
+- The text above the first `##` section, such as the build the facts
+  were checked on, opens the file. A contents list follows, with the
+  written sections first and the row sections apart.
+
 ## The music dictionary
 
 The music dictionary turns a producer's note words into checkable rules:

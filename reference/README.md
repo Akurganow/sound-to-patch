@@ -4,7 +4,7 @@ The controls of each synth that sound-to-patch writes presets for, by synth laye
 
 Vital and Serum 2 are trademarks of their owners. This project is not affiliated with or endorsed by them.
 
-The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row. The files under `core/` are generated from the music and word dictionaries of sound-to-patch.
+The files under `<synth>/` are generated from the parameter registry of sound-to-patch, the same data that `preset apply` checks edit lists against. Each layer file opens with a written part: how the layer works, then one entry per control or group with its effect on the sound, its source and its producer words. Below it, each layer file has one row per control: the on-screen label, the preset key, the unit, the range, the default, the tag, the verified build and the tuning note. In a key, `N` stands for each instance number in the row. The files under `core/` are generated from the music and word dictionaries of sound-to-patch.
 
 ## Which file answers what
 
