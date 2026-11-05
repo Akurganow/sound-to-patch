@@ -14,7 +14,8 @@
     "p": 1.0,
     "reproduced": false,
     "true": true,
-    "unison": false
+    "unison": false,
+    "unison_any_seed": true
    },
    {
     "full_ms": 50.0,
@@ -25,7 +26,8 @@
     "p": 2.5,
     "reproduced": false,
     "true": true,
-    "unison": true
+    "unison": true,
+    "unison_any_seed": true
    },
    {
     "full_ms": 150.0,
@@ -36,7 +38,8 @@
     "p": 1.0,
     "reproduced": false,
     "true": true,
-    "unison": false
+    "unison": false,
+    "unison_any_seed": true
    },
    {
     "full_ms": 150.0,
@@ -47,7 +50,8 @@
     "p": 2.5,
     "reproduced": false,
     "true": true,
-    "unison": false
+    "unison": false,
+    "unison_any_seed": true
    },
    {
     "full_ms": 400.0,
@@ -58,7 +62,8 @@
     "p": 1.0,
     "reproduced": false,
     "true": true,
-    "unison": false
+    "unison": false,
+    "unison_any_seed": true
    },
    {
     "full_ms": 400.0,
@@ -69,9 +74,11 @@
     "p": 2.5,
     "reproduced": true,
     "true": true,
-    "unison": true
+    "unison": true,
+    "unison_any_seed": true
    }
-  ]
+  ],
+  "why": "unison_any_seed is for information: whether any of the 20 seeds reads the issue's unison figure within one hop; it does not enter reproduced"
  },
  "name": "66-glide",
  "recipe": {
@@ -87,11 +94,12 @@
     1.0,
     2.5
    ],
-   "rise": "time between the first voiced frames at or above 10 % and 90 % of the step, in semitones over the start pitch; lost when no voiced frame lies between those levels",
+   "rise": "time between the first voiced frames at or above 10 % and 90 % of the step, in semitones over the start pitch; lost when the first frame at or above 90 % is also the first at or above 10 %",
    "semitones": 7.0,
    "signal": "the Glide of tests/it/support/pitch.rs: band-limited saws, harmonic h at 1/h up to the Nyquist frequency of each voice's top pitch; phase is the running sum of f / rate; unison voices detuned evenly over +/- 25 cents with start phases uniform(17, 7); summed and scaled to a peak of 0.5",
    "start_hz": 110.0,
    "true_rise": "(x90 - x10) T with x_q = 1 - (1 - q)^(1 / p)",
+   "unison_seeds": "for information, the unison rise with start phases uniform(seed, 7) for seeds 1 to 20; seed 17 is the table's",
    "voices": {
     "mono": [
      1,
@@ -135,42 +143,204 @@
     "mono_rise_ms": 23.219954648526077,
     "p": 1.0,
     "true_rise_ms": 40.0,
-    "unison_rise_ms": 29.024943310657598
+    "unison_rise_ms": 29.024943310657598,
+    "unison_seeds": {
+     "lost": 6,
+     "max_ms": 52.244897959183675,
+     "min_ms": 11.609977324263038,
+     "rise_ms": [
+      34.82993197278911,
+      null,
+      46.439909297052154,
+      46.439909297052154,
+      23.219954648526077,
+      34.82993197278911,
+      46.439909297052154,
+      null,
+      17.414965986394556,
+      null,
+      null,
+      46.439909297052154,
+      null,
+      52.244897959183675,
+      34.82993197278911,
+      11.609977324263038,
+      29.024943310657598,
+      29.024943310657598,
+      null,
+      34.82993197278911
+     ]
+    }
    },
    {
     "full_ms": 50.0,
     "mono_rise_ms": null,
     "p": 2.5,
     "true_rise_ms": 28.031217248034274,
-    "unison_rise_ms": null
+    "unison_rise_ms": null,
+    "unison_seeds": {
+     "lost": 17,
+     "max_ms": 40.63492063492063,
+     "min_ms": 17.414965986394556,
+     "rise_ms": [
+      null,
+      null,
+      17.414965986394556,
+      null,
+      null,
+      null,
+      40.63492063492063,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      40.63492063492063,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+     ]
+    }
    },
    {
     "full_ms": 150.0,
     "mono_rise_ms": 116.09977324263039,
     "p": 1.0,
     "true_rise_ms": 120.0,
-    "unison_rise_ms": 116.09977324263039
+    "unison_rise_ms": 116.09977324263039,
+    "unison_seeds": {
+     "lost": 0,
+     "max_ms": 133.51473922902497,
+     "min_ms": 104.48979591836735,
+     "rise_ms": [
+      127.70975056689343,
+      121.9047619047619,
+      127.70975056689343,
+      110.29478458049887,
+      116.09977324263039,
+      121.9047619047619,
+      110.29478458049887,
+      110.29478458049887,
+      121.9047619047619,
+      127.70975056689343,
+      104.48979591836735,
+      104.48979591836735,
+      116.09977324263039,
+      104.48979591836735,
+      127.70975056689343,
+      110.29478458049887,
+      116.09977324263039,
+      110.29478458049887,
+      133.51473922902497,
+      121.9047619047619
+     ]
+    }
    },
    {
     "full_ms": 150.0,
     "mono_rise_ms": 75.46485260770976,
     "p": 2.5,
     "true_rise_ms": 84.09365174410281,
-    "unison_rise_ms": 11.609977324263038
+    "unison_rise_ms": 11.609977324263038,
+    "unison_seeds": {
+     "lost": 0,
+     "max_ms": 98.68480725623583,
+     "min_ms": 11.609977324263038,
+     "rise_ms": [
+      92.87981859410431,
+      75.46485260770976,
+      98.68480725623583,
+      87.0748299319728,
+      81.26984126984127,
+      81.26984126984127,
+      92.87981859410431,
+      75.46485260770976,
+      87.0748299319728,
+      75.46485260770976,
+      75.46485260770976,
+      81.26984126984127,
+      34.82993197278911,
+      69.65986394557822,
+      81.26984126984127,
+      75.46485260770976,
+      11.609977324263038,
+      52.244897959183675,
+      75.46485260770976,
+      81.26984126984127
+     ]
+    }
    },
    {
     "full_ms": 400.0,
     "mono_rise_ms": 319.27437641723355,
     "p": 1.0,
     "true_rise_ms": 320.0,
-    "unison_rise_ms": 319.27437641723355
+    "unison_rise_ms": 319.27437641723355,
+    "unison_seeds": {
+     "lost": 0,
+     "max_ms": 336.68934240362813,
+     "min_ms": 307.66439909297054,
+     "rise_ms": [
+      307.66439909297054,
+      336.68934240362813,
+      313.46938775510205,
+      307.66439909297054,
+      313.46938775510205,
+      325.07936507936506,
+      313.46938775510205,
+      325.07936507936506,
+      336.68934240362813,
+      325.07936507936506,
+      325.07936507936506,
+      319.27437641723355,
+      319.27437641723355,
+      319.27437641723355,
+      319.27437641723355,
+      313.46938775510205,
+      319.27437641723355,
+      313.46938775510205,
+      330.8843537414966,
+      325.07936507936506
+     ]
+    }
    },
    {
     "full_ms": 400.0,
     "mono_rise_ms": 220.58956916099774,
     "p": 2.5,
     "true_rise_ms": 224.2497379842742,
-    "unison_rise_ms": 220.58956916099774
+    "unison_rise_ms": 220.58956916099774,
+    "unison_seeds": {
+     "lost": 0,
+     "max_ms": 232.19954648526078,
+     "min_ms": 208.9795918367347,
+     "rise_ms": [
+      232.19954648526078,
+      226.39455782312925,
+      232.19954648526078,
+      214.78458049886623,
+      232.19954648526078,
+      226.39455782312925,
+      214.78458049886623,
+      208.9795918367347,
+      226.39455782312925,
+      220.58956916099774,
+      220.58956916099774,
+      220.58956916099774,
+      220.58956916099774,
+      214.78458049886623,
+      220.58956916099774,
+      214.78458049886623,
+      220.58956916099774,
+      214.78458049886623,
+      226.39455782312925,
+      232.19954648526078
+     ]
+    }
    }
   ]
  }

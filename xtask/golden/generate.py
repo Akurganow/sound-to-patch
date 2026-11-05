@@ -1428,21 +1428,33 @@ def band_onset(envelope, rate, to_s):
     return first / rate
 
 
+def drop_model(t, p):
+    return p[0] + p[1] * np.exp(-t / p[2])
+
+
+def fit_drop(t, y, tau_min):
+    """Least squares of y - (f_end + df exp(-t / tau)), started at the last
+    value, the first less the last, and 20 ms, with tau in [tau_min, 1 s]."""
+    fit = scipy.optimize.least_squares(
+        lambda p: y - drop_model(t, p),
+        [y[-1], y[0] - y[-1], 0.02],
+        bounds=([-np.inf, -np.inf, tau_min], [np.inf, np.inf, 1.0]),
+        xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=10000,
+    )
+    if fit.status <= 0:
+        raise SystemExit(f"drop fit failed: {fit.message}")
+    return fit
+
+
 def drop_fit(line, onset, rate):
     start = int(math.ceil((onset + 0.007) * rate))
     stop = int(math.ceil((onset + 0.4) * rate))
     n = np.arange(start, stop)
     t = (n + 0.5) / rate - onset
     y = line[n]
-    model = lambda p: p[0] + p[1] * np.exp(-t / p[2])
-    fit = scipy.optimize.least_squares(
-        lambda p: y - model(p),
-        [y[-1], y[0] - y[-1], 0.02],
-        bounds=([-np.inf, -np.inf, 0.007 / math.log(10)], [np.inf, np.inf, 1.0]),
-        xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=10000,
-    )
+    fit = fit_drop(t, y, 0.007 / math.log(10))
     f_end, df, tau = fit.x
-    rms = float(np.sqrt(np.mean((y - model(fit.x)) ** 2)))
+    rms = float(np.sqrt(np.mean((y - drop_model(t, fit.x)) ** 2)))
     seen = abs(float(df)) * math.exp(-0.007 / float(tau))
     return {"onset_s": onset, "f_end_hz": float(f_end), "df_hz": float(df), "tau_s": float(tau), "residual": rms / seen, "points": int(len(n))}
 
@@ -1512,20 +1524,25 @@ def glide_issue_table():
     )
 
 
-def unison_saw(f, top, rate, length, voices, detune_ct, in_phase=False):
+def unison_saw(f, top, rate, length, voices, detune_ct, seed=17):
     """The twin of `unison` in tests/it/support/pitch.rs: `voices` band-limited
-    saws detuned evenly over +/- detune_ct, start phases uniform(17, voices)
-    unless mono or in phase, summed and scaled to a peak of 0.5."""
+    saws detuned evenly over +/- detune_ct, start phases uniform(seed, voices)
+    unless mono, summed and scaled to a peak of 0.5."""
     t = times(rate, length)
     out = np.zeros(length)
-    for v, random in enumerate(uniform(17, voices)):
+    for v, random in enumerate(uniform(seed, voices)):
         offset = 0.0 if voices == 1 else detune_ct * (2.0 * v / (voices - 1) - 1.0)
         ratio = 2.0 ** (offset / 1200.0)
-        start = 0.0 if voices == 1 or in_phase else random
+        start = 0.0 if voices == 1 else random
         phase = start + np.concatenate([[0.0], np.cumsum(f(t[:-1]) * ratio / rate)])
         for h in range(1, int(math.floor(rate / 2.0 / (top * ratio))) + 1):
             out += np.sin(2.0 * np.pi * h * phase) / h
     return 0.5 * out / np.abs(out).max()
+
+
+def rust_round(x):
+    """Round half away from zero, as Rust's f64::round, for lengths >= 0."""
+    return int(math.floor(x + 0.5))
 
 
 def glide_curve(x, p):
@@ -1539,8 +1556,8 @@ def true_rise_ms(full_ms, p):
 
 
 def glide_rise(f0, r, hop_s):
-    """The 61-glide rise, or None when no voiced frame lies between the 10 % and
-    90 % levels, so the track shows a step."""
+    """The 61-glide rise, or None (lost) when the first voiced frame at or above
+    90 % of the step is also the first at or above 10 %."""
     semis = np.where(f0 > 0, 12.0 * np.log2(np.maximum(f0, 1e-9) / r["start_hz"]), -np.inf)
     lo, hi = (np.flatnonzero(semis >= q * r["semitones"]) for q in (0.1, 0.9))
     if len(lo) == 0 or len(hi) == 0 or hi[0] <= lo[0]:
@@ -1559,8 +1576,9 @@ GLIDE_66_RECIPE = {
         "curve": "s(x) = 1 - (1 - x)^p over the full time, x from 0 to 1; pitch in semitones over the start",
         "voices": {"mono": [1, 0.0], "unison": [7, 25.0]},
         "signal": "the Glide of tests/it/support/pitch.rs: band-limited saws, harmonic h at 1/h up to the Nyquist frequency of each voice's top pitch; phase is the running sum of f / rate; unison voices detuned evenly over +/- 25 cents with start phases uniform(17, 7); summed and scaled to a peak of 0.5",
-        "rise": "time between the first voiced frames at or above 10 % and 90 % of the step, in semitones over the start pitch; lost when no voiced frame lies between those levels",
+        "rise": "time between the first voiced frames at or above 10 % and 90 % of the step, in semitones over the start pitch; lost when the first frame at or above 90 % is also the first at or above 10 %",
         "true_rise": "(x90 - x10) T with x_q = 1 - (1 - q)^(1 / p)",
+        "unison_seeds": "for information, the unison rise with start phases uniform(seed, 7) for seeds 1 to 20; seed 17 is the table's",
     },
     "note": "the #66 method: frame 2048, hop 128 at 22,050 Hz; the issue states no fmin, fmax or hold, so those of 61-glide are used",
     "tolerance": "a rise is a whole number of hops (5.8 ms), so a recovered figure reproduces within one hop; a true figure within 0.5 ms, the issue's rounding; lost reproduces lost",
@@ -1589,11 +1607,20 @@ def glide_66_table():
     for full_ms in g["full_ms"]:
         for p in g["p"]:
             full_s = full_ms / 1000.0
-            length = int(round(rate * (2.0 * g["hold_s"] + full_s)))
+            length = rust_round(rate * (2.0 * g["hold_s"] + full_s))
             f = lambda t: g["start_hz"] * 2.0 ** (g["semitones"] * glide_curve((t - g["hold_s"]) / full_s, p) / 12.0)
             row = {"full_ms": full_ms, "p": p, "true_rise_ms": true_rise_ms(full_ms, p)}
             for name, (voices, detune) in g["voices"].items():
                 row[f"{name}_rise_ms"] = glide_rise(track_f0(unison_saw(f, top, rate, length, voices, detune), r["settings"]), g, hop_s)
+            voices, detune = g["voices"]["unison"]
+            seeds = [glide_rise(track_f0(unison_saw(f, top, rate, length, voices, detune, seed), r["settings"]), g, hop_s) for seed in range(1, 21)]
+            read = [v for v in seeds if v is not None]
+            row["unison_seeds"] = {
+                "rise_ms": seeds,
+                "lost": len(seeds) - len(read),
+                "min_ms": min(read) if read else None,
+                "max_ms": max(read) if read else None,
+            }
             true, mono, unison = ISSUE_66_GLIDE[(full_ms, p)]
             figures.append({
                 "full_ms": full_ms,
@@ -1604,6 +1631,7 @@ def glide_66_table():
                 "true": within(row["true_rise_ms"], true, 0.0, 0.5),
                 "mono": within(row["mono_rise_ms"], mono, 0.0, hop_ms),
                 "unison": within(row["unison_rise_ms"], unison, 0.0, hop_ms),
+                "unison_any_seed": any(within(v, unison, 0.0, hop_ms) for v in seeds),
             })
             rows.append(row)
     for figure in figures:
@@ -1619,7 +1647,7 @@ def glide_66_table():
         {"abs": hop_ms, "rel": 0.0},
         tag="[own, synthetic]",
         rounding="the issue prints whole milliseconds",
-        issue_figures={"rows": figures, "reproduced": all(f["reproduced"] for f in figures)},
+        issue_figures={"rows": figures, "reproduced": all(f["reproduced"] for f in figures), "why": "unison_any_seed is for information: whether any of the 20 seeds reads the issue's unison figure within one hop; it does not enter reproduced"},
     )
 
 
@@ -1636,7 +1664,8 @@ VIBRATO_67_RECIPE = {
     },
     "window": "the track frames whose centres lie in the tone less 50 ms at each end, all voiced, in cents over f0",
     "spectrum": "linear detrend, symmetric Hann, FFT zero-padded to 32768 points (0.0053 Hz bins), largest magnitude between 3 and 12 Hz, no interpolation",
-    "extent": "the sine amplitude at that bin, 2 |X| / sum(w), the #67 extent of half the peak-to-peak swing for a sine; half the peak-to-peak span of the detrended window is recorded too, for information",
+    "extent": "the sine amplitude at that bin, 2 |X| / sum(w), fixed in the #288 plan before measuring; #67 defines the extent as half the peak-to-peak span, which equals the amplitude only for a clean sine, so half the peak-to-peak span of the detrended window is recorded too, with its own flag outside reproduced",
+    "rate_by_window": "for information, the rate from the same spectrum over windows of 0.5 and 0.75 s centred on the tone, and over the frames centred in the whole 1 s tone; a window of L s resolves rates to about 1 / L Hz before zero padding",
     "note": "the #67 method: frame 2048, hop 128 at 22,050 Hz, a 0.5 to 1 s window, an FFT peak in 3 to 12 Hz; the issue states no fmin, fmax, window shape or length, so the pYIN settings of 61-glide and the signal of this repository's vibrato tests are used",
     "tolerance": "rates within 0.01 Hz: the issue's rounding plus about two bins; extent within 5 %",
 }
@@ -1647,14 +1676,24 @@ ISSUE_67_RATE = {"mono_35": 5.51, "unison_35": 5.49, "mono_60": 5.53}
 ISSUE_67_EXTENT = {"mono_35": 24.0}
 
 
+def vibrato_read(window, f0_hz, hop_s):
+    """Rate, sine amplitude and half peak-to-peak span of a voiced f0 window."""
+    cents = scipy.signal.detrend(1200.0 * np.log2(window / f0_hz), type="linear")
+    w = scipy.signal.get_window("hann", len(cents), fftbins=False)
+    spectrum = np.abs(np.fft.rfft(cents * w, 32768))
+    freqs = np.fft.rfftfreq(32768, hop_s)
+    band = np.flatnonzero((freqs >= 3.0) & (freqs <= 12.0))
+    peak = band[int(np.argmax(spectrum[band]))]
+    return float(freqs[peak]), 2.0 * float(spectrum[peak]) / float(w.sum()), float((cents.max() - cents.min()) / 2.0)
+
+
 def vibrato_67_table():
     r = VIBRATO_67_RECIPE
     s = r["signal"]
     rate = r["settings"]["sample_rate"]
     hop_s = r["settings"]["hop_length"] / rate
-    lead = int(round(rate * s["lead_s"]))
-    length = int(round(rate * s["length_s"]))
-    n_fft = 32768
+    lead = rust_round(rate * s["lead_s"])
+    length = rust_round(rate * s["length_s"])
     rows, figures = {}, []
     for name, (extent, voices, detune) in s["cases"].items():
         f = lambda t: s["f0_hz"] * 2.0 ** (extent * np.sin(2.0 * np.pi * s["rate_hz"] * t) / 1200.0)
@@ -1662,29 +1701,31 @@ def vibrato_67_table():
         y = np.concatenate([np.zeros(lead), unison_saw(f, top, rate, length, voices, detune), np.zeros(lead)])
         f0 = track_f0(y, r["settings"])
         centres = np.arange(len(f0)) * hop_s
-        keep = (centres >= s["lead_s"] + 0.05) & (centres <= s["lead_s"] + s["length_s"] - 0.05)
-        window = f0[keep]
+        middle = s["lead_s"] + 0.5 * s["length_s"]
+        span = lambda half: f0[(centres >= middle - half) & (centres <= middle + half)]
+        window = span(0.5 * s["length_s"] - 0.05)
         if np.any(window <= 0):
             raise SystemExit(f"67-vibrato {name}: {int(np.sum(window <= 0))} unvoiced frames in the window")
-        cents = scipy.signal.detrend(1200.0 * np.log2(window / s["f0_hz"]), type="linear")
-        w = scipy.signal.get_window("hann", len(cents), fftbins=False)
-        spectrum = np.abs(np.fft.rfft(cents * w, n_fft))
-        freqs = np.fft.rfftfreq(n_fft, hop_s)
-        band = np.flatnonzero((freqs >= 3.0) & (freqs <= 12.0))
-        peak = band[int(np.argmax(spectrum[band]))]
-        read = 2.0 * float(spectrum[peak]) / float(w.sum())
+        rate_hz, read, half_p2p = vibrato_read(window, s["f0_hz"], hop_s)
+        by_window = {}
+        for seconds in (0.5, 0.75, 1.0):
+            part = span(0.5 * seconds)
+            by_window[repr(seconds)] = vibrato_read(part, s["f0_hz"], hop_s)[0] if np.all(part > 0) else None
         rows[name] = {
             "true_extent_ct": extent,
-            "frames": int(len(cents)),
-            "rate_hz": float(freqs[peak]),
+            "frames": int(len(window)),
+            "rate_hz": rate_hz,
             "extent_ct": read,
             "share": read / extent,
-            "half_peak_to_peak_ct": float((cents.max() - cents.min()) / 2.0),
+            "half_peak_to_peak_ct": half_p2p,
+            "half_peak_to_peak_share": half_p2p / extent,
+            "rate_hz_by_window": by_window,
         }
         figure = {"case": name, "issue_rate_hz": ISSUE_67_RATE[name], "rate": within(rows[name]["rate_hz"], ISSUE_67_RATE[name], 0.0, 0.01)}
         if name in ISSUE_67_EXTENT:
             figure["issue_extent_ct"] = ISSUE_67_EXTENT[name]
             figure["extent"] = within(read, ISSUE_67_EXTENT[name], 0.05, 0.0)
+            figure["extent_p2p"] = within(half_p2p, ISSUE_67_EXTENT[name], 0.05, 0.0)
         figure["reproduced"] = figure["rate"] and figure.get("extent", True)
         figures.append(figure)
     return document(
@@ -1699,7 +1740,7 @@ def vibrato_67_table():
         tag="[own, synthetic]",
         tolerance_note="abs applies to the rates, rel to the extent",
         rounding="the issue prints rates to 0.01 Hz and the extent in whole cents",
-        issue_figures={"rows": figures, "reproduced": all(f["reproduced"] for f in figures), "why": "the issue gives the 24-cent extent and its share of 0.69 once, for the 35-cent truth, so it is checked on the mono 35-cent case only"},
+        issue_figures={"rows": figures, "reproduced": all(f["reproduced"] for f in figures), "why": "the issue gives the 24-cent extent and its share of 0.69 once, for the 35-cent truth, so it is checked on the mono 35-cent case only; extent checks the sine amplitude that the #288 plan fixed, extent_p2p checks half the peak-to-peak span that #67 defines, and only extent enters reproduced"},
     )
 
 
@@ -1726,15 +1767,17 @@ def pyin_drop_fit(f0, r, hop_s):
     t = np.arange(len(f0)) * hop_s - r["lead_s"]
     keep = (f0 > 0) & (t >= 0.003) & (t <= 0.4)
     t, y = t[keep], f0[keep]
-    model = lambda p: p[0] + p[1] * np.exp(-t / p[2])
-    fit = scipy.optimize.least_squares(
-        lambda p: y - model(p),
-        [y[-1], y[0] - y[-1], 0.02],
-        bounds=([-np.inf, -np.inf, 0.001], [np.inf, np.inf, 1.0]),
-        xtol=1e-15, ftol=1e-15, gtol=1e-15, max_nfev=10000,
-    )
+    fit = fit_drop(t, y, 0.001)
     f_end, df, tau = (float(v) for v in fit.x)
-    return {"f_end_hz": f_end, "df_hz": df, "tau_ms": 1000.0 * tau, "frames": int(len(t)), "rms_hz": float(np.sqrt(np.mean((y - model(fit.x)) ** 2)))}
+    return {
+        "f_end_hz": f_end,
+        "df_hz": df,
+        "tau_ms": 1000.0 * tau,
+        "frames": int(len(t)),
+        "rms_hz": float(np.sqrt(np.mean((y - drop_model(t, fit.x)) ** 2))),
+        "status": int(fit.status),
+        "nfev": int(fit.nfev),
+    }
 
 
 def drop_pyin_67_table():
@@ -1744,7 +1787,7 @@ def drop_pyin_67_table():
     columns, figures = {}, []
     for frame in r["settings"]["frame_length"]:
         settings = {**r["settings"], "frame_length": frame}
-        fits = [pyin_drop_fit(track_f0(drop_tone(LINE_RECIPE, row, rate), settings), r, hop_s) for row in r["rows"]]
+        fits = [pyin_drop_fit(track_f0(drop_tone(r, row, rate), settings), r, hop_s) for row in r["rows"]]
         columns[str(frame)] = fits
         for row, fit, (f, d, t) in zip(r["rows"], fits, ISSUE_67_PYIN[frame]):
             checks = {
