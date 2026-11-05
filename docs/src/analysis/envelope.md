@@ -492,6 +492,9 @@ notes [fact].
 
   The first read's strips on gates come from their own lock on the grid.
   A gate up to 2.5 % off strips either way; see Limits [synthetic].
+
+  On a seeded sample of 9880 of these signals, which keeps every value of every
+  axis, the drift rule of the `free` lock below changes no strip [synthetic].
 - `pump_depth_db` is minus the curve's minimum [fact].
 - `pump_recovery_s` is the time from the minimum until the curve comes
   back within 1.5 dB, going on over the beat's wrap, so a duck that sits
@@ -519,7 +522,26 @@ notes [fact].
    lies 50 cents or more from every division of the grid [fact]. That
    holds 3 % off the tempo, and over a short span from 2.5 %, where the
    line reads 50 to 52 cents [synthetic]. The period search then decides,
-   as above [fact].
+   as above [fact]. A free line loses to a beat test that passes when both
+   hold [fact, proposal for one cycle]:
+   - The longest run, the span the line is read on, does not set the line
+     apart from the nearest harmonic of the beat: it holds under one cycle
+     of their difference.
+   - From the first counted beat to the end of the last, gaps included, the
+     line would drift a full cycle or more against that harmonic.
+
+   A line that its run sets apart lies off the beat, and a fold on the beat
+   is chance: a 12 Hz tremolo 3 dB deep over 12 beats at 128 BPM folds into
+   a 3.0 dB dip that passes the beat test, and stays free [synthetic]. A
+   level step in the longest run moves the line of a duck on the tempo
+   without setting it apart [synthetic]. On a mono bass line at 175 BPM
+   under a 5 dB pump, where held parts ran past their note-offs into
+   silence, the beat's line read 53 to 223 cents off. The pump stripped on
+   386 of 500 signals with long notes and 389 with medium ones; with this
+   rule, on 474 and 406 [synthetic]. A duck 3 to 5 % off the tempo over one
+   run of 10 to 16 beats drifts under a cycle, so it stays free [fact]. On
+   8880 generated tremolos, gates, ramps and ducks at 0.28 to 9.6 times the
+   beat rate at 128 BPM, the rule turns no free read [synthetic].
 3. `beat`: the curve dips 3 dB or more in one run of bins half its depth
    down, and falls into its dip within 8 bins, reading on into the beat
    before and not round the beat's wrap. The odd beats and the even beats
@@ -662,8 +684,8 @@ chord's beating moves the crossing [synthetic].
 
   | Recipe | Notes | Worse | Better |
   | :-- | :-- | :-- | :-- |
-  | Mono bass line at 175 BPM, 14 notes a signal, under a 5 dB pump left unstripped, see #313 | 3570 | 11 | 2652 |
-  | The same line, medium notes, see #313 | 3530 | 31 | 2401 |
+  | Mono bass line at 175 BPM, 14 notes a signal, under a 5 dB pump, see #313 and #316 | 3570 | 11 | 2632 |
+  | The same line, medium notes | 3529 | 30 | 2406 |
   | A tremolo under a reverb | 1500 | 42 | 270 |
   | A next note 15 dB louder | 1419 | 3 | - |
 
@@ -672,7 +694,7 @@ chord's beating moves the crossing [synthetic].
 
   | Notes | 057d63c | 2d63f2e | This rule |
   | :-- | :-- | :-- | :-- |
-  | 1.37 to 2.74 s, under the pump | 81.4 % | 53.9 % | 8.9 % |
+  | 1.37 to 2.74 s, under the pump | 81.4 % | 53.9 % | 9.2 % |
   | 0.34 to 1.37 s, under the pump | 61.4 % | 11.6 % | 4.2 % |
   | 1.37 to 2.74 s, dry | 80.9 % | 53.5 % | 5.4 % |
   | 0.34 to 1.37 s, dry | 60.8 % | 11.3 % | 3.2 % |
@@ -681,12 +703,30 @@ chord's beating moves the crossing [synthetic].
   commits read a knee. The long-note row replaces one read on another version of the
   line, 3038 notes with 44 worse, which this one does not reproduce.
 
-  Dry, no note reads worse than at commit 2d63f2e. Under the pump, 25 long and 25
-  medium notes that commit 2d63f2e read right leave the 15 ms, 19 and 15 of them early
-  [synthetic]. Of these, 21 and 13 lie in signals whose pump read changes: the pump
-  strips on 42 and 7 fewer of the 500 signals, and on 21 and 4 more [synthetic]. The
-  pump read counts beats over the held parts that the first read's knees bound, so a
-  knee that moves changes the parts it counts, see #313 [fact].
+  Dry, no note reads worse than at commit 2d63f2e. Under the pump, 16 long and 22
+  medium notes that commit 2d63f2e read right leave the 15 ms, 11 and 12 of them
+  early; the mean knee error falls from 374.0 to 65.0 ms and from 52.2 to 15.8 ms,
+  and the knees over 150 ms off from 1899 to 311 and from 332 to 61 [synthetic]. Of
+  the notes that leave, 12 and 11 lie in signals whose pump read changes: the pump
+  strips on 11 and 6 fewer of the 500 signals, and on 78 and 20 more [synthetic].
+  The pump read counts beats over the held parts that the first read's knees bound, so
+  a knee that moves changes the parts it counts, see #313 [fact].
+
+  The drift rule of the pump lock, against commit 7f012f9, see #316 [synthetic]:
+
+  | Notes | Strips | Early | Worse | Better | Mean error | Over 150 ms |
+  | :-- | :-- | :-- | :-- | :-- | :-- | :-- |
+  | 1.37 to 2.74 s, under the pump | 386 to 474 | 151 to 99 | 37 | 78 | 60.1 to 65.0 ms | 282 to 311 |
+  | 0.34 to 1.37 s, under the pump | 389 to 406 | 230 to 215 | 1 | 11 | 15.9 to 15.8 ms | 61 to 62 |
+  | Dry | 0 to 0 | unchanged | 0 | 0 | unchanged | unchanged |
+
+  Early counts the knees over 15 ms early, where both commits read a knee; one medium
+  note loses its knee. On long notes the worse notes add 24.6 s of error and the
+  better ones remove 6.8 s. The 87 long-note signals that strip now and did not before
+  read 8.8 % of their knees late, against 9.2 % on the signals that stripped before,
+  and their mean error rises from 37.2 to 66.2 ms. That is the cost of the knee read
+  after a strip, not of the lock, see #323 [synthetic]. The long notes' late share
+  rises from 8.9 % to 9.2 % [synthetic].
 - A sustain under -34 dB of the earlier corner's level, with its note-off past the
   stop, loses that note-off to the decay corner when its level comes back without a
   next note: the knee reads 0.46 to 0.8 s early, where commit 2d63f2e reads it
@@ -816,6 +856,10 @@ chord's beating moves the crossing [synthetic].
   own period, at fold errors of 1.42 and 1.33 dB [synthetic].
 - The shape test can pass a gate. Over 8 phases and 9 to 32 beats, a 12 dB gate
   3 % below the tempo at 55 Hz and 174 BPM strips in 4 of 376 runs [synthetic].
+- A level step can move a duck's line so far that its own run sets it apart from
+  the beat; the drift rule of the `free` lock then leaves it free [fact]. On the
+  mono bass line at 175 BPM under a 5 dB pump, 26 of 500 long-note signals stay
+  unstripped so [synthetic].
 - The depth reads shallow, and the bias depends on the shape: an 18 dB duck
   reads up to 11.8 dB short in the set of Depth bias. On the noiseless chords
   of the 123,840 signals, on the tempo, with releases of 80 ms or more, it
@@ -826,6 +870,12 @@ chord's beating moves the crossing [synthetic].
 - A second sound on the beat, such as a kick in the same stem, can read
   as a beat-locked pump; over fewer than 8 beats it is not stripped
   [synthetic].
+- A note that the first read skips, such as one with no free harmonic, keeps
+  its held part to its list end, across any silence after its note-off
+  [fact]. On the mono bass line at 175 BPM under a 5 dB pump, with medium
+  notes and list ends past the next onset, 94 of 500 signals stay unstripped
+  [synthetic]. The silent beats put -89 to -180 dB into the curves of the odd
+  or the even beats, which then fail the beat test [synthetic].
 - The search takes the deepest fold, so a second modulation near the tempo
   can take it [fact]. Under a duck on the tempo, a deeper second duck 0.5 to
   2.5 % off took 53 of 64 locks, and a shallower sine, duck or gate took 15
