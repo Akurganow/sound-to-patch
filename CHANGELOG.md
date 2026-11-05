@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.30.1](https://github.com/Akurganow/sound-to-patch/compare/4cf3326a6468f2ccb84abb6f50cc136d7e3f4f5f..v0.30.1) - 2026-11-05
+#### Bug Fixes
+- (**analyze**) read whether a stripped note has ended on the unstripped level (#325) - ([4cf3326](https://github.com/Akurganow/sound-to-patch/commit/4cf3326a6468f2ccb84abb6f50cc136d7e3f4f5f)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.30.0](https://github.com/Akurganow/sound-to-patch/compare/8c6e9a09d45a84280a043c15049ff4e6ce73c380..v0.30.0) - 2026-11-05
 #### Features
 - (**preset**) plan pitch and envelope edits for every synth (#321) - ([8c6e9a0](https://github.com/Akurganow/sound-to-patch/commit/8c6e9a09d45a84280a043c15049ff4e6ce73c380)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
