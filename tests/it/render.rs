@@ -90,6 +90,60 @@ fn the_contract_fails_a_renderer_with_a_silent_channel() {
     );
 }
 
+/// A renderer that starts a note at 1 s or later 400 ms late, keeping the
+/// clip's length.
+struct Late(FakeRenderer);
+
+impl Renderer for Late {
+    fn identity(&self) -> HostIdentity {
+        self.0.identity()
+    }
+
+    fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        let rendered = self.0.render(job)?;
+        if job.notes()[0].onset().get() < 1.0 {
+            return Ok(rendered);
+        }
+        let rate = rendered.audio.sample_rate();
+        let delay = vec![0.0; rate.get() as usize * 2 / 5];
+        let channels = rendered
+            .audio
+            .channels()
+            .iter()
+            .map(|channel| {
+                delay
+                    .iter()
+                    .chain(channel)
+                    .copied()
+                    .take(channel.len())
+                    .collect()
+            })
+            .collect();
+        Ok(Rendered {
+            audio: sound_to_patch::audio::Audio::new(rate, channels)?,
+            record: rendered.record,
+        })
+    }
+
+    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
+        self.0.render_init(job)
+    }
+
+    fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
+        self.0.save_state()
+    }
+}
+
+#[test]
+#[should_panic(expected = "is silent in the 10 ms after the note-on")]
+fn the_contract_fails_a_renderer_that_starts_a_note_late() {
+    check_renderer(
+        &mut Late(FakeRenderer::new(Synth::Vital, 7)),
+        &state(0.3),
+        false,
+    );
+}
+
 #[test]
 fn one_seed_gives_bit_identical_renders_and_repeats_vary() {
     let first = FakeRenderer::new(Synth::Vital, 7)

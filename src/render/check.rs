@@ -10,8 +10,9 @@
 //!    init patch instead, the plug-in fell back to init.
 //! 3. The clip is compared with the plug-in's own init patch. Each clip is
 //!    reduced to its level in octave bands, and the distance is the
-//!    largest band difference in dB. A clip within three times the
-//!    distance of two init renders is init-like.
+//!    largest band difference in dB, over the bands above a floor of mean
+//!    bin power and within 30 dB of the loudest. A clip within three
+//!    times the distance of two init renders is init-like.
 //!
 //! The first two are faults. The third is a warning: mean band levels miss
 //! a change of envelope or modulation, so a preset that loaded can still
@@ -37,8 +38,15 @@ const FRAME: usize = 4096;
 /// The lower edge of the lowest octave band, in Hz. The bands run up to the
 /// Nyquist frequency.
 const LOWEST_EDGE_HZ: f64 = 44.0;
-/// A band quieter than this, in dB below full scale, is left out of the
-/// distance, so noise in empty bands does not count.
+/// A band quieter than this is left out of the distance, so noise in
+/// empty bands does not count.
+///
+/// The unit is that of [`BandLevels`], the mean bin power of the band, not
+/// dB below full scale. A full-scale sine reads `10 log10(3 / 32 / bins)`
+/// dB in a band of `bins` bins. At 44.1 kHz that is about -40 dB in the
+/// top band of 1001 bins and -16 dB in the band from 44 to 88 Hz of 4
+/// bins, so the floor passes a sine above about -50 dBFS in the top band
+/// and above about -74 dBFS in the lowest one.
 const BAND_FLOOR_DB: f64 = -90.0;
 /// A band more than this many dB below the loudest band of either clip is
 /// left out too. Below a note's fundamental a band holds only window
@@ -55,7 +63,10 @@ const MIN_MARGIN_DB: f64 = 0.1;
 /// How many mismatches a message names.
 const SHOWN: usize = 5;
 
-/// The level of a clip in octave bands, in dB of mean power.
+/// The level of a clip in octave bands: for each band, the mean over its
+/// bins of the Hann-windowed bin power over the frame length squared,
+/// averaged over the frames, in dB. A band of many bins reads lower than
+/// a band of few for one tone, as [`BAND_FLOOR_DB`] shows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BandLevels(Vec<f64>);
 
@@ -364,6 +375,52 @@ mod tests {
         assert!(a.distance(&a) < 1e-9);
         let c = BandLevels::of(&tone(3_000.0, 0.5));
         assert!(a.distance(&c) > 40.0, "{}", a.distance(&c));
+    }
+
+    /// A sine of amplitude A at a bin centre puts A N / 4 into its bin and
+    /// A N / 8 into each neighbour under a Hann window of N samples, so its
+    /// band reads the mean bin power `3 A² / 32 / bins`, not its level in
+    /// dBFS. Ten seconds of tone keep the zero-padded edge frames below
+    /// 0.1 dB of the mean.
+    #[test]
+    fn a_band_level_is_the_mean_bin_power_of_the_band() {
+        let rate = 44_100.0;
+        let bin_hz = rate / cast::usize_to_f64(FRAME);
+        let full_scale = |bin: usize| {
+            let hz = cast::usize_to_f64(bin) * bin_hz;
+            let samples: Vec<f64> = (0..441_000)
+                .map(|n| (std::f64::consts::TAU * hz * cast::usize_to_f64(n) / rate).sin())
+                .collect();
+            let audio = Audio::new(
+                SampleRate::new(44_100).unwrap(),
+                vec![samples.clone(), samples],
+            );
+            BandLevels::of(&audio.unwrap()).0
+        };
+        let edges = band_edges(SampleRate::new(44_100).unwrap());
+        let bins_in = |band: usize| {
+            (0..=FRAME / 2)
+                .filter(|bin| {
+                    (edges[band]..edges[band + 1]).contains(&(cast::usize_to_f64(*bin) * bin_hz))
+                })
+                .count()
+        };
+        let expected =
+            |band: usize| 10.0 * (3.0 / 32.0 / cast::usize_to_f64(bins_in(band))).log10();
+        let top = edges.len() - 2;
+        // Bin 1500 lies at 16.15 kHz, bin 6 at 64.6 Hz.
+        let high = full_scale(1500)[top];
+        let low = full_scale(6)[0];
+        assert!(
+            (high - expected(top)).abs() < 0.1,
+            "{high} {}",
+            expected(top)
+        );
+        assert!((low - expected(0)).abs() < 0.1, "{low} {}", expected(0));
+        // A full-scale sine reads about -40 dB in the top band at 44.1 kHz,
+        // so the floor of -90 dB passes a sine of about -50 dBFS there.
+        assert!((high + 40.3).abs() < 0.1, "{high}");
+        assert!((low + 16.3).abs() < 0.1, "{low}");
     }
 
     #[test]
