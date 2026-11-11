@@ -6,6 +6,7 @@ use std::fmt::Write as _;
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use sound_to_patch::audio::SampleRate;
 use sound_to_patch::notes::{Note, NoteList, Velocities, Velocity, write_midi};
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer, Fault};
 use sound_to_patch::render::{
@@ -50,75 +51,19 @@ fn the_contract_fails_a_silent_renderer() {
     check_renderer(&mut renderer, &state(0.3), false);
 }
 
-/// A renderer whose right channel is silent.
-struct RightSilent(FakeRenderer);
+/// The fake renderer with each clip's channels changed by `edit`, which
+/// takes the job, the sample rate and the channels.
+struct Edited<F>(FakeRenderer, F);
 
-impl Renderer for RightSilent {
+impl<F: Fn(&RenderJob, SampleRate, &[Vec<f64>]) -> Vec<Vec<f64>>> Renderer for Edited<F> {
     fn identity(&self) -> HostIdentity {
         self.0.identity()
     }
 
     fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
         let rendered = self.0.render(job)?;
-        let left = rendered.audio.channels()[0].clone();
-        let right = vec![0.0; left.len()];
-        Ok(Rendered {
-            audio: sound_to_patch::audio::Audio::new(
-                rendered.audio.sample_rate(),
-                vec![left, right],
-            )?,
-            record: rendered.record,
-        })
-    }
-
-    fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
-        self.0.render_init(job)
-    }
-
-    fn save_state(&mut self) -> Result<Vec<u8>, RenderError> {
-        self.0.save_state()
-    }
-}
-
-#[test]
-#[should_panic(expected = "channel 1 is silent")]
-fn the_contract_fails_a_renderer_with_a_silent_channel() {
-    check_renderer(
-        &mut RightSilent(FakeRenderer::new(Synth::Vital, 7)),
-        &state(0.3),
-        false,
-    );
-}
-
-/// A renderer that starts a note at 1 s or later 400 ms late, keeping the
-/// clip's length.
-struct Late(FakeRenderer);
-
-impl Renderer for Late {
-    fn identity(&self) -> HostIdentity {
-        self.0.identity()
-    }
-
-    fn render(&mut self, job: &RenderJob) -> Result<Rendered, RenderError> {
-        let rendered = self.0.render(job)?;
-        if job.notes()[0].onset().get() < 1.0 {
-            return Ok(rendered);
-        }
         let rate = rendered.audio.sample_rate();
-        let delay = vec![0.0; rate.get() as usize * 2 / 5];
-        let channels = rendered
-            .audio
-            .channels()
-            .iter()
-            .map(|channel| {
-                delay
-                    .iter()
-                    .chain(channel)
-                    .copied()
-                    .take(channel.len())
-                    .collect()
-            })
-            .collect();
+        let channels = (self.1)(job, rate, rendered.audio.channels());
         Ok(Rendered {
             audio: sound_to_patch::audio::Audio::new(rate, channels)?,
             record: rendered.record,
@@ -135,10 +80,40 @@ impl Renderer for Late {
 }
 
 #[test]
+#[should_panic(expected = "channel 1 is silent")]
+fn the_contract_fails_a_renderer_with_a_silent_channel() {
+    let right_silent = |_: &RenderJob, _: SampleRate, channels: &[Vec<f64>]| {
+        vec![channels[0].clone(), vec![0.0; channels[0].len()]]
+    };
+    check_renderer(
+        &mut Edited(FakeRenderer::new(Synth::Vital, 7), right_silent),
+        &state(0.3),
+        false,
+    );
+}
+
+#[test]
 #[should_panic(expected = "is silent in the 10 ms after the note-on")]
 fn the_contract_fails_a_renderer_that_starts_a_note_late() {
+    // A note at 1 s or later starts 400 ms late; the clip keeps its length.
+    let late = |job: &RenderJob, rate: SampleRate, channels: &[Vec<f64>]| {
+        let delay = if job.notes()[0].onset().get() < 1.0 {
+            0
+        } else {
+            rate.get() as usize * 2 / 5
+        };
+        channels
+            .iter()
+            .map(|channel| {
+                std::iter::repeat_n(0.0, delay)
+                    .chain(channel.iter().copied())
+                    .take(channel.len())
+                    .collect()
+            })
+            .collect()
+    };
     check_renderer(
-        &mut Late(FakeRenderer::new(Synth::Vital, 7)),
+        &mut Edited(FakeRenderer::new(Synth::Vital, 7), late),
         &state(0.3),
         false,
     );

@@ -25,6 +25,7 @@
 use std::io::{Read, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -47,6 +48,9 @@ const REFUSED: i32 = 3;
 /// How long one run of the script may take: a Python start, the import of
 /// the engine and the render of one note take a few seconds.
 pub const SCRIPT_TIMEOUT: Duration = Duration::from_secs(120);
+/// How long the pipe readers may run on after the script ended. A reader
+/// whose pipe a child of the script still holds open is left behind.
+const READER_WAIT: Duration = Duration::from_secs(1);
 
 /// Plays single notes through the open engine in a Python process.
 #[derive(Debug)]
@@ -281,15 +285,23 @@ fn ask_within(
         let _ = stdin.write_all(request.to_string().as_bytes());
     }
     // The pipes are read on threads, so a script that writes much output
-    // cannot block on a full pipe while this waits for its exit.
+    // cannot block on a full pipe while this waits for its exit. Each
+    // thread fills a shared buffer, so the bytes read so far stay readable
+    // when a child of the script holds a pipe open and the thread is left
+    // behind.
     let read = |pipe: Option<Box<dyn Read + Send>>| {
-        thread::spawn(move || {
-            let mut bytes = Vec::new();
-            if let Some(mut pipe) = pipe {
-                let _ = pipe.read_to_end(&mut bytes);
+        let buffer = Arc::new(Mutex::new(Vec::new()));
+        let into = Arc::clone(&buffer);
+        let reader = thread::spawn(move || {
+            let Some(mut pipe) = pipe else { return };
+            let mut chunk = [0; 8192];
+            while let Ok(read @ 1..) = pipe.read(&mut chunk) {
+                if let Ok(mut bytes) = into.lock() {
+                    bytes.extend_from_slice(&chunk[..read]);
+                }
             }
-            bytes
-        })
+        });
+        (buffer, reader)
     };
     let stdout = read(child.stdout.take().map(|pipe| Box::new(pipe) as _));
     let stderr = read(child.stderr.take().map(|pipe| Box::new(pipe) as _));
@@ -313,8 +325,14 @@ fn ask_within(
             }
         }
     };
-    let stdout = stdout.join().unwrap_or_default();
-    let stderr = stderr.join().unwrap_or_default();
+    let readers = Instant::now() + READER_WAIT;
+    while !(stdout.1.is_finished() && stderr.1.is_finished()) && Instant::now() < readers {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let take =
+        |buffer: &Mutex<Vec<u8>>| buffer.lock().map(|bytes| bytes.clone()).unwrap_or_default();
+    let stdout = take(&stdout.0);
+    let stderr = take(&stderr.0);
     let stderr = String::from_utf8_lossy(&stderr);
     let last = stderr
         .lines()
@@ -672,6 +690,38 @@ mod tests {
         );
         assert!(message.contains("was stopped"), "{message}");
         assert!(message.contains("importing"), "{message}");
+    }
+
+    #[test]
+    fn a_child_that_holds_the_pipes_does_not_hold_the_reply() {
+        let Some(python) = python3() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        // The child inherits the script's output pipes and outlives it.
+        let child = "import subprocess, sys, time\nsubprocess.Popen(['sleep', '10'])\n";
+        let hang = script(dir.path(), "hang.py", &format!("{child}time.sleep(30)\n"));
+        let done = script(dir.path(), "done.py", &format!("{child}print('{{}}')\n"));
+        let request = json!({ "op": "render" });
+        let short = std::time::Duration::from_millis(500);
+        let before = std::time::Instant::now();
+        let message = ask_within(python, &hang, &request, short)
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains("was stopped"), "{message}");
+        assert!(
+            before.elapsed() < std::time::Duration::from_secs(4),
+            "{:?}",
+            before.elapsed()
+        );
+        let before = std::time::Instant::now();
+        assert_eq!(
+            ask_within(python, &done, &request, short * 10).unwrap(),
+            json!({})
+        );
+        assert!(
+            before.elapsed() < std::time::Duration::from_secs(4),
+            "{:?}",
+            before.elapsed()
+        );
     }
 
     #[test]

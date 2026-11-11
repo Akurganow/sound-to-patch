@@ -607,13 +607,17 @@ fn tolerance_of(of: &[usize], at: impl Fn(usize, usize) -> f64) -> Option<f64> {
 pub fn lag1_autocorrelation(values: &[f64]) -> Option<f64> {
     // The values are compared, not the variance: the mean of repeated
     // copies of one value is not exactly that value, so the variance of
-    // their deviations is a tiny number above 0.
-    let first = values.first()?;
-    if values.len() < 2 || values.iter().all(|value| value.total_cmp(first).is_eq()) {
+    // their deviations is a tiny number above 0. One value repeats itself.
+    let first = *values.first()?;
+    if values.iter().all(|value| value.total_cmp(&first).is_eq()) {
         return None;
     }
-    let mean = values.iter().sum::<f64>() / cast::usize_to_f64(values.len());
-    let deviation: Vec<f64> = values.iter().map(|value| value - mean).collect();
+    // The sums run over the steps from the first value, which are exact for
+    // values near it, so a rounded mean cannot swamp deviations of one unit
+    // in the last place.
+    let steps: Vec<f64> = values.iter().map(|value| value - first).collect();
+    let mean = steps.iter().sum::<f64>() / cast::usize_to_f64(steps.len());
+    let deviation: Vec<f64> = steps.iter().map(|step| step - mean).collect();
     let variance: f64 = deviation.iter().map(|d| d * d).sum();
     let lagged: f64 = deviation.windows(2).map(|pair| pair[0] * pair[1]).sum();
     (variance > 0.0 && variance.is_finite()).then(|| lagged / variance)
@@ -1298,6 +1302,18 @@ mod tests {
         assert_eq!(lag1_autocorrelation(&[0.1; 3]), None);
         let row = SpreadRow::of_values("x", "s", &[4.2; 20], 1e-9).unwrap();
         assert_eq!(row.lag1_autocorrelation, None);
+    }
+
+    #[test]
+    fn values_one_step_apart_give_the_autocorrelation_of_their_pattern() {
+        // Two values that alternate deviate from their mean by ±c, so the
+        // lag-1 autocorrelation is -19 c² / (20 c²) = -0.95 however small c
+        // is. A mean of the raw values rounds by as much as c.
+        let values: Vec<f64> = (0..20)
+            .map(|i| if i % 2 == 0 { 4.2 } else { 4.2_f64.next_up() })
+            .collect();
+        let r = lag1_autocorrelation(&values).unwrap();
+        assert!((r + 0.95).abs() < 1e-12, "{r}");
     }
 
     #[test]

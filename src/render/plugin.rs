@@ -533,8 +533,7 @@ impl PluginRenderer {
             Ok(Err(line)) => {
                 self.stop();
                 Err(another_release(format!(
-                    "the host sent a reply this program cannot read: {}",
-                    cut(&line)
+                    "the host sent a reply this program cannot read: {line}"
                 )))
             }
             Err(RecvTimeoutError::Timeout) => {
@@ -683,7 +682,13 @@ fn read_replies(stdout: impl Read, send: &Sender<Incoming>, tail: &Tail) {
             );
             return false;
         }
-        let incoming = reply.map_err(|error| format!("{line} ({error})"));
+        // The quote is cut before the cause is appended, so a long reply
+        // keeps its parse error.
+        let incoming = reply.map_err(|error| {
+            let quoted = cut(line);
+            let more = if quoted.len() < line.len() { "..." } else { "" };
+            format!("{quoted}{more} ({error})")
+        });
         send.send(incoming).is_ok()
     });
 }
@@ -1215,6 +1220,18 @@ mod tests {
             let mut renderer = start(&junk).unwrap();
             let message = renderer.render(&job()).unwrap_err().to_string();
             assert!(message.contains("cannot read"), "{message}");
+            assert!(message.len() < 4 * TAIL_LINE_BYTES, "{}", message.len());
+        }
+
+        #[test]
+        fn a_long_unreadable_reply_keeps_its_parse_error() {
+            // 2000 bytes of reply: the quote is cut, the cause is not.
+            let junk = format!(
+                r#"{OPEN}read -r line; printf '%s{{"reply":"nonsense","x":"' "$PREFIX"; head -c 2000 /dev/zero | tr '\0' y; printf '"}}\n'; exec sleep 30"#
+            );
+            let mut renderer = start(&junk).unwrap();
+            let message = renderer.render(&job()).unwrap_err().to_string();
+            assert!(message.contains("unknown variant `nonsense`"), "{message}");
             assert!(message.len() < 4 * TAIL_LINE_BYTES, "{}", message.len());
         }
 
