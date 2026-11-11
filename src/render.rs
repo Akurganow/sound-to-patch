@@ -364,8 +364,9 @@ pub trait Renderer {
     ///
     /// # Errors
     ///
-    /// Returns [`RenderError::Host`] once a state has loaded, and the
-    /// errors of [`Renderer::render`].
+    /// Returns [`RenderError::Host`] once a state has loaded, or
+    /// [`RenderError::Engine`] for the open engine, and the errors of
+    /// [`Renderer::render`].
     fn render_init(&mut self, job: &RenderJob) -> Result<Rendered, RenderError>;
 
     /// Returns the state the plug-in saves now.
@@ -423,6 +424,17 @@ pub enum RenderError {
         /// How to fix it.
         fix: String,
     },
+    /// The open-engine script of `tools/vita` cannot start, failed or gave
+    /// a reply this program cannot read.
+    Engine {
+        /// Why.
+        cause: String,
+        /// How to fix it.
+        fix: String,
+    },
+    /// A fault of this program, not of the preset, the synth or the host:
+    /// a state it built that holds no preset, or a renderer that panicked.
+    Internal(String),
 }
 
 impl fmt::Display for RenderError {
@@ -459,6 +471,13 @@ impl fmt::Display for RenderError {
             Self::Host { cause, fix } => {
                 write!(f, "cannot render through the plug-in host: {cause}. {fix}")
             }
+            Self::Engine { cause, fix } => {
+                write!(f, "cannot render through the open engine: {cause}. {fix}")
+            }
+            Self::Internal(cause) => write!(
+                f,
+                "cannot render: {cause}. This is a fault of this program, not of the preset or the synth; report it with this message"
+            ),
         }
     }
 }

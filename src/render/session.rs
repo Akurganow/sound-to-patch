@@ -290,7 +290,7 @@ fn lock(worker: &Mutex<Worker>) -> std::sync::MutexGuard<'_, Worker> {
 }
 
 fn panicked() -> RenderError {
-    RenderError::Crashed("a render worker thread panicked".to_owned())
+    RenderError::Internal("a render worker thread panicked".to_owned())
 }
 
 /// The error of a renderer that panicked, naming the job it worked on.
@@ -304,7 +304,7 @@ fn panic_error(at: Option<usize>, payload: &(dyn std::any::Any + Send)) -> Rende
         || "while it started".to_owned(),
         |at| format!("on job {at}"),
     );
-    RenderError::Crashed(format!("the renderer panicked {job}: {message}"))
+    RenderError::Internal(format!("the renderer panicked {job}: {message}"))
 }
 
 #[cfg(test)]
@@ -339,10 +339,13 @@ mod tests {
     #[test]
     fn a_panic_names_the_job_and_its_message() {
         let error = panic_error(Some(6), &"boom");
-        assert_eq!(
-            error.to_string(),
-            RenderError::Crashed("the renderer panicked on job 6: boom".to_owned()).to_string()
+        let message = error.to_string();
+        assert!(
+            message.contains("the renderer panicked on job 6: boom"),
+            "{message}"
         );
+        assert!(message.contains("fault of this program"), "{message}");
+        assert!(!message.contains("plug-in host"), "{message}");
         let error = panic_error(None, &String::from("bad"));
         assert!(error.to_string().contains("panicked while it started: bad"));
     }

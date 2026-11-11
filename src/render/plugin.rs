@@ -519,7 +519,7 @@ impl PluginRenderer {
     /// Sends a request and waits for its reply.
     fn ask(&mut self, request: &Request, timeout: Duration) -> Result<Reply, RenderError> {
         let line = serde_json::to_string(request).map_err(|source| {
-            RenderError::Crashed(format!("cannot encode a request ({source})"))
+            RenderError::Internal(format!("cannot encode a request ({source})"))
         })?;
         if writeln!(self.stdin, "{line}")
             .and_then(|()| self.stdin.flush())
