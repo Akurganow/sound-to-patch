@@ -605,7 +605,11 @@ fn tolerance_of(of: &[usize], at: impl Fn(usize, usize) -> f64) -> Option<f64> {
 /// not vary.
 #[must_use]
 pub fn lag1_autocorrelation(values: &[f64]) -> Option<f64> {
-    if values.len() < 2 {
+    // The values are compared, not the variance: the mean of repeated
+    // copies of one value is not exactly that value, so the variance of
+    // their deviations is a tiny number above 0.
+    let first = values.first()?;
+    if values.len() < 2 || values.iter().all(|value| value.total_cmp(first).is_eq()) {
         return None;
     }
     let mean = values.iter().sum::<f64>() / cast::usize_to_f64(values.len());
@@ -701,15 +705,17 @@ pub fn layer_rows(reports: &[Value]) -> Result<Vec<SpreadRow>, SpreadError> {
 }
 
 /// The numbers of a layer report that a spread covers, with their units:
-/// each estimate and each median under `stem` and the groups later
-/// releases add.
+/// each estimate and each median of every group but the ones that hold no
+/// estimate (`schema`, `source`, `synth`, `transcription` and
+/// `conventions`).
 ///
 /// The path drops the `value` or `median` key, such as `stem.rms_dbfs` or
-/// `stem.band_share[1].share`. Confidences, IQRs, band edges and the
-/// inputs (`bpm`, `bpm_given`, `bpm_refined` and `sample_rate_hz`) are left
-/// out, and so is a `null`. The unit comes from the field name's suffix
-/// (`_hz`, `_s`, `_db`, `_dbfs`, `_deg`). A ratio has a name of
-/// [`UNITLESS`].
+/// `stem.band_share[1].share`. Left out are confidences, IQRs, band
+/// edges, the inputs (`bpm`, `bpm_given`, `bpm_refined` and
+/// `sample_rate_hz`), the format constant `ticks_per_beat`, the mapper's
+/// `suggested_edits` and `unrepresentable`, and every `null`. The unit
+/// comes from the field name's suffix (`_hz`, `_s`, `_ms`, `_db`, `_dbfs`,
+/// `_deg`, `_st`, `_ct`), or from [`NAMED_UNITS`] for a name without one.
 ///
 /// # Errors
 ///
@@ -726,13 +732,38 @@ pub fn layer_values(report: &Value) -> Result<Vec<(String, String, f64)>, Spread
     Ok(values)
 }
 
-/// The fields of a layer report that hold a ratio and have no unit suffix.
-pub const UNITLESS: [&str; 4] = ["centroid_over_f0", "flatness", "rho", "share"];
+/// The fields of a layer report that have no unit suffix, with their
+/// units: `ratio` for a number without a unit, `count` for a count, `st`
+/// for a MIDI key, whose distances are semitones, `velocity` for a MIDI
+/// velocity and `BPM` for a tempo.
+pub const NAMED_UNITS: [(&str, &str); 20] = [
+    ("bend_events", "count"),
+    ("centroid_change", "ratio"),
+    ("centroid_over_f0", "ratio"),
+    ("curve", "ratio"),
+    ("dropped", "count"),
+    ("extent_factor", "ratio"),
+    ("flatness", "ratio"),
+    ("key", "st"),
+    ("max_polyphony", "count"),
+    ("mean_polyphony", "count"),
+    ("n_notes_used", "count"),
+    ("overlap_fraction", "ratio"),
+    ("pump_beats", "count"),
+    ("pump_bpm", "BPM"),
+    ("residual", "ratio"),
+    ("rho", "ratio"),
+    ("share", "ratio"),
+    ("tail_vote_count", "count"),
+    ("tail_weight", "ratio"),
+    ("velocity", "velocity"),
+];
 
 /// The top-level keys of a layer report that hold no estimates.
 const NON_LAYERS: [&str; 5] = ["schema", "source", "synth", "transcription", "conventions"];
-/// Keys that hold no estimate, or an input of the run.
-const SKIPPED: [&str; 8] = [
+/// Keys that hold no estimate: a confidence, a spread, a band edge, an
+/// input of the run, a constant of the file format or the mapper's output.
+const SKIPPED: [&str; 11] = [
     "confidence",
     "iqr",
     "lo_hz",
@@ -741,6 +772,9 @@ const SKIPPED: [&str; 8] = [
     "bpm_given",
     "bpm_refined",
     "sample_rate_hz",
+    "ticks_per_beat",
+    "suggested_edits",
+    "unrepresentable",
 ];
 
 fn walk(
@@ -780,15 +814,18 @@ fn walk(
 }
 
 fn unit_of(name: &str) -> Option<&'static str> {
-    if UNITLESS.contains(&name) {
-        return Some("ratio");
+    if let Some((_, unit)) = NAMED_UNITS.iter().find(|(named, _)| *named == name) {
+        return Some(unit);
     }
     [
         ("_dbfs", "dB"),
         ("_db", "dB"),
         ("_hz", "Hz"),
         ("_deg", "deg"),
+        ("_ms", "ms"),
         ("_s", "s"),
+        ("_st", "st"),
+        ("_ct", "ct"),
     ]
     .iter()
     .find(|(suffix, _)| name.ends_with(suffix))
@@ -1249,6 +1286,16 @@ mod tests {
         assert!(drift.adjacent_ratio.unwrap() < 0.2, "{drift:?}");
         assert!(mixed.adjacent_ratio.unwrap() > 1.5, "{mixed:?}");
         assert_eq!(lag1_autocorrelation(&[1.0; 5]), None);
+    }
+
+    #[test]
+    fn a_value_that_every_render_repeats_has_no_autocorrelation() {
+        // The mean of 20 copies of 4.2 is not exactly 4.2, so the variance
+        // of the deviations is not 0.
+        assert_eq!(lag1_autocorrelation(&[4.2; 20]), None);
+        assert_eq!(lag1_autocorrelation(&[0.1; 3]), None);
+        let row = SpreadRow::of_values("x", "s", &[4.2; 20], 1e-9).unwrap();
+        assert_eq!(row.lag1_autocorrelation, None);
     }
 
     #[test]

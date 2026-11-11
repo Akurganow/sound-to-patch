@@ -135,7 +135,7 @@ fn untracked(transcriber: Transcriber) -> Transcriber {
     transcriber.with_tracker(|_, _| Ok(PitchTrack::default()))
 }
 
-fn run(stem: &Path, notes: Option<&Path>, out: &Path) -> Value {
+pub(crate) fn run(stem: &Path, notes: Option<&Path>, out: &Path) -> Value {
     analyze(&request(stem, notes, out), &transcriber()).unwrap();
     serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap()
 }
