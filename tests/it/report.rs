@@ -371,7 +371,7 @@ fn the_default_folder_is_named_after_the_stem() {
         out: None,
         ..request(&path, Some(&notes), dir.path())
     };
-    assert_eq!(request.out_dir(), dir.path().join("bass"));
+    assert_eq!(request.out_dir().unwrap(), dir.path().join("bass"));
     let analysis = analyze(&request, &transcriber()).unwrap();
     assert_eq!(analysis.layers, dir.path().join("bass").join(LAYERS_FILE));
     assert_eq!(
@@ -404,9 +404,14 @@ fn a_run_without_notes_removes_the_old_notes_file() {
     )
     .unwrap();
     assert!(first.notes.as_ref().is_some_and(|p| p.is_file()));
-    // The same stem, now silent: the notes step finds no note.
+    // The same stem, now silent: the notes step finds no note. Its new
+    // checksum needs `--force`.
     crate::support::signals::write_wav16(&path, 22_050, &[vec![0.0; 22_050]]);
-    let second = analyze(&request(&path, None, &out), &transcriber()).unwrap();
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&path, None, &out)
+    };
+    let second = analyze(&forced, &transcriber()).unwrap();
     assert_eq!(second.notes, None);
     assert!(!out.join(NOTES_FILE).exists());
     let report: Value =
@@ -984,4 +989,296 @@ fn a_note_file_at_an_untrusted_refined_tempo_is_rejected() {
         .unwrap_err()
         .to_string();
     assert!(message.contains("but --bpm is 120. Export"), "{message}");
+}
+
+/// The names in a folder, sorted, hidden ones included.
+fn entries(dir: &Path) -> Vec<String> {
+    let mut names: Vec<String> = fs::read_dir(dir)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    names
+}
+
+/// The bytes of the three report files, `None` for a missing file or a
+/// folder.
+fn report_files(dir: &Path) -> [Option<Vec<u8>>; 3] {
+    [LAYERS_FILE, SPECTROGRAM_FILE, NOTES_FILE].map(|name| fs::read(dir.join(name)).ok())
+}
+
+/// A rename onto a folder fails, so a folder at the place of one file
+/// fails the write at that file's rename: `notes.mid` first, then
+/// `spectrogram.png`, then `layers.json`. Each failure leaves the files the
+/// folder held before the run and no hidden temporary file.
+#[test]
+fn a_failed_rename_leaves_the_old_report_and_no_temporary_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes = given(dir.path());
+    for blocked in [NOTES_FILE, SPECTROGRAM_FILE, LAYERS_FILE] {
+        let out = dir.path().join(format!("out-{blocked}"));
+        run(&wav, Some(&notes), &out);
+        fs::remove_file(out.join(blocked)).unwrap();
+        fs::create_dir(out.join(blocked)).unwrap();
+        fs::write(out.join(blocked).join("keep"), b"x").unwrap();
+        let before = report_files(&out);
+        let forced = AnalyzeRequest {
+            force: true,
+            ..request(&wav, Some(&notes), &out)
+        };
+        let error = analyze(&forced, &transcriber()).unwrap_err().to_string();
+        assert!(error.starts_with("cannot write "), "{blocked}: {error}");
+        assert_eq!(report_files(&out), before, "{blocked}");
+        assert_eq!(
+            entries(&out),
+            [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE],
+            "{blocked}"
+        );
+        assert!(out.join(blocked).join("keep").is_file(), "{blocked}");
+    }
+}
+
+/// `notes --force` removes a report that describes the final notes only
+/// when the new `notes.mid` lands: a failed rename restores the report.
+#[test]
+fn a_failed_notes_write_keeps_the_report_that_describes_the_notes() {
+    let dir = tempfile::tempdir().unwrap();
+    let stem = bass_line(dir.path(), 120.0, 9);
+    let out = dir.path().join("out");
+    analyze(
+        &AnalyzeRequest {
+            bpm_exact: true,
+            ..request(&stem, None, &out)
+        },
+        &untracked(transcriber()),
+    )
+    .unwrap();
+    fs::remove_file(out.join(NOTES_FILE)).unwrap();
+    fs::create_dir(out.join(NOTES_FILE)).unwrap();
+    fs::write(out.join(NOTES_FILE).join("keep"), b"x").unwrap();
+    let before = report_files(&out);
+    let forced = NotesRequest {
+        force: true,
+        ..notes_request(&stem, &out, 120.0, true)
+    };
+    let error = notes(&forced, &untracked(transcriber()))
+        .unwrap_err()
+        .to_string();
+    assert!(error.starts_with("cannot write "), "{error}");
+    assert_eq!(report_files(&out), before);
+    assert_eq!(entries(&out), [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]);
+}
+
+/// A stem whose name without the extension is `.` or `..` has no folder
+/// name of its own: the default folder would be the stem's folder or its
+/// parent. Both commands stop before they write and ask for `--out`.
+#[test]
+fn a_stem_named_dot_wav_or_dot_dot_wav_is_refused_without_out() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let inner = dir.path().join("outer").join("inner");
+    fs::create_dir_all(&inner).unwrap();
+    for name in ["..wav", "...wav"] {
+        let odd = inner.join(name);
+        fs::copy(&wav, &odd).unwrap();
+        let request = AnalyzeRequest {
+            out: None,
+            ..request(&odd, None, dir.path())
+        };
+        let message = analyze(&request, &transcriber()).unwrap_err().to_string();
+        assert_eq!(
+            message,
+            format!(
+                "`{name}` gives no folder name: without its extension it is `{}`. Pass --out <dir>",
+                &name[..name.len() - 4]
+            )
+        );
+        let notes_request = NotesRequest {
+            out: None,
+            ..notes_request(&odd, dir.path(), 120.0, true)
+        };
+        let message = notes(&notes_request, &untracked(transcriber()))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            message.contains(&format!("`{name}` gives no folder name")),
+            "{message}"
+        );
+        fs::remove_file(&odd).unwrap();
+    }
+    assert_eq!(entries(&inner), Vec::<String>::new());
+    assert_eq!(entries(&dir.path().join("outer")), ["inner"]);
+}
+
+/// A `spectrogram.png` that no report in the folder owns is a file of the
+/// user's: `analyze` stops unless `--force`.
+#[test]
+fn a_spectrogram_without_a_report_is_kept_unless_forced() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes = given(dir.path());
+    let out = dir.path().join("pictures");
+    fs::create_dir(&out).unwrap();
+    fs::write(out.join(SPECTROGRAM_FILE), b"a picture").unwrap();
+    let message = analyze(&request(&wav, Some(&notes), &out), &transcriber())
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        message,
+        format!(
+            "{} exists, and no report in the folder owns it. Pass --out <dir> for this stem, or --force to replace it",
+            out.join(SPECTROGRAM_FILE).display()
+        )
+    );
+    assert_eq!(fs::read(out.join(SPECTROGRAM_FILE)).unwrap(), b"a picture");
+    assert_eq!(entries(&out), [SPECTROGRAM_FILE]);
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&wav, Some(&notes), &out)
+    };
+    analyze(&forced, &transcriber()).unwrap();
+    assert_ne!(fs::read(out.join(SPECTROGRAM_FILE)).unwrap(), b"a picture");
+}
+
+/// A `layers.json` that is not JSON, or names no `source`, is not a report
+/// of this tool, and a `notes.mid` with no track name holds no notes of
+/// it. The refusal says so, not that the file is a report of no stem.
+#[test]
+fn a_file_that_is_not_a_report_is_named_as_such() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes = given(dir.path());
+    for text in ["{\"x\":1}", "[1"] {
+        let out = dir.path().join("k1");
+        fs::create_dir_all(&out).unwrap();
+        fs::write(out.join(LAYERS_FILE), text).unwrap();
+        let message = analyze(&request(&wav, Some(&notes), &out), &transcriber())
+            .unwrap_err()
+            .to_string();
+        assert_eq!(
+            message,
+            format!(
+                "{} exists but is not a report of this tool: it cannot be read, is not JSON or names no `source`. Pass --out <dir> for this stem, or --force to replace it",
+                out.join(LAYERS_FILE).display()
+            )
+        );
+        let message = notes_of(&wav, &out);
+        assert!(
+            message.ends_with("names no `source`. Pass --out <dir> for this stem, or --force to write notes.mid next to it"),
+            "{message}"
+        );
+    }
+    let out = dir.path().join("k2");
+    fs::create_dir_all(&out).unwrap();
+    fs::write(out.join(NOTES_FILE), b"not midi").unwrap();
+    let message = analyze(&request(&wav, Some(&notes), &out), &transcriber())
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        message,
+        format!(
+            "{} exists but holds no notes of this tool: it cannot be read as MIDI or has no track name. Pass --out <dir> for this stem, or --force to replace it",
+            out.join(NOTES_FILE).display()
+        )
+    );
+}
+
+/// The refusal of `notes` for `stem` into `out`.
+fn notes_of(stem: &Path, out: &Path) -> String {
+    notes(
+        &notes_request(stem, out, 120.0, true),
+        &untracked(transcriber()),
+    )
+    .unwrap_err()
+    .to_string()
+}
+
+/// The SHA-256 of a file, in lower-case hex.
+fn sha256_of(path: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+    Sha256::digest(fs::read(path).unwrap())
+        .iter()
+        .fold(String::new(), |mut hex, byte| {
+            write!(hex, "{byte:02x}").unwrap();
+            hex
+        })
+}
+
+/// Two songs each with a `bass.wav`, analysed into one folder: the report
+/// records the checksum of the stem file, so the second stem is refused
+/// though its name matches, and `--force` replaces the report. The same
+/// file again passes.
+#[test]
+fn a_stem_with_the_same_name_and_other_audio_is_refused() {
+    let dir = tempfile::tempdir().unwrap();
+    let (d1, d2) = (dir.path().join("d1"), dir.path().join("d2"));
+    fs::create_dir_all(&d1).unwrap();
+    fs::create_dir_all(&d2).unwrap();
+    let first = stem(&d1);
+    let second = d2.join("bass.wav");
+    write_wav16(
+        &second,
+        RATE,
+        &[sine(110.0, 0.0, f64::from(RATE), 3 * SECOND)],
+    );
+    let notes = given(dir.path());
+    let out = dir.path().join("common");
+    let report = run(&first, Some(&notes), &out);
+    assert_eq!(report["source_sha256"], sha256_of(&first));
+    assert!(validator().is_valid(&report));
+    run(&first, Some(&notes), &out);
+    let before = report_files(&out);
+    let message = analyze(&request(&second, Some(&notes), &out), &transcriber())
+        .unwrap_err()
+        .to_string();
+    assert_eq!(
+        message,
+        format!(
+            "{} is the report of another file named `bass.wav`: its checksum differs from this stem's. Pass --out <dir> for this stem, or --force to replace it",
+            out.join(LAYERS_FILE).display()
+        )
+    );
+    assert_eq!(report_files(&out), before);
+    // A report without notes, as of a stem without notes, does not stop
+    // `notes` by itself, so the checksum does.
+    let beside = dir.path().join("beside");
+    fs::create_dir(&beside).unwrap();
+    let mut no_notes = report.clone();
+    no_notes["notes"] = Value::Null;
+    fs::write(beside.join(LAYERS_FILE), no_notes.to_string()).unwrap();
+    let message = notes_of(&second, &beside);
+    assert!(
+        message.starts_with(&format!(
+            "{} is the report of another file named `bass.wav`",
+            beside.join(LAYERS_FILE).display()
+        )),
+        "{message}"
+    );
+    assert_eq!(entries(&beside), [LAYERS_FILE]);
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&second, Some(&notes), &out)
+    };
+    analyze(&forced, &transcriber()).unwrap();
+    let report: Value =
+        serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
+    assert_eq!(report["source_sha256"], sha256_of(&second));
+}
+
+/// A report from before the checksum names its stem only: the guard falls
+/// back to the name, so a stem of that name replaces it.
+#[test]
+fn a_report_without_a_checksum_is_matched_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes = given(dir.path());
+    let out = dir.path().join("out");
+    let mut report = run(&wav, Some(&notes), &out);
+    report.as_object_mut().unwrap().remove("source_sha256");
+    assert!(!validator().is_valid(&report));
+    fs::write(out.join(LAYERS_FILE), report.to_string()).unwrap();
+    let report = run(&wav, Some(&notes), &out);
+    assert_eq!(report["source_sha256"], sha256_of(&wav));
 }

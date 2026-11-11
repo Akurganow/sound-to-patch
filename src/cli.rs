@@ -126,15 +126,7 @@ impl Command {
                         )
                         .map(line)
                         .collect(),
-                    stderr: analysis
-                        .skipped
-                        .iter()
-                        .map(|packet| {
-                            line(format!(
-                                "warning: {packet} did not decode and became silence"
-                            ))
-                        })
-                        .collect(),
+                    stderr: skipped_warnings(&analysis.skipped),
                 })
             }
             Self::Notes(args) => {
@@ -157,15 +149,7 @@ impl Command {
                         .chain([format!("wrote {}", report.path.display())])
                         .map(line)
                         .collect(),
-                    stderr: report
-                        .skipped
-                        .iter()
-                        .map(|packet| {
-                            line(format!(
-                                "warning: {packet} did not decode and became silence"
-                            ))
-                        })
-                        .collect(),
+                    stderr: skipped_warnings(&report.skipped),
                 })
             }
             Self::Render(args) => render(args),
@@ -209,10 +193,41 @@ fn render(args: &render::RenderArgs) -> Result<Output, Box<dyn Error + Send + Sy
             .into_iter()
             .map(|line| line + "\n")
             .collect(),
-        stderr: report
-            .warnings()
-            .into_iter()
-            .map(|warning| "warning: ".to_owned() + &warning + "\n")
-            .collect(),
+        stderr: warnings(report.warnings()),
     })
+}
+
+/// Renders each line as a `warning:` line for standard error.
+fn warnings(lines: impl IntoIterator<Item = String>) -> String {
+    lines
+        .into_iter()
+        .map(|line| ["warning: ", &line, "\n"].concat())
+        .collect()
+}
+
+/// The warnings for packets that did not decode and became silence.
+fn skipped_warnings(skipped: &[crate::audio::SkippedPacket]) -> String {
+    warnings(
+        skipped
+            .iter()
+            .map(|packet| format!("{packet} did not decode and became silence")),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::warnings;
+
+    #[test]
+    fn each_line_becomes_a_warning_line() {
+        assert_eq!(
+            warnings(["a".to_owned(), "b".to_owned()]),
+            "warning: a\nwarning: b\n"
+        );
+    }
+
+    #[test]
+    fn no_lines_give_no_text() {
+        assert_eq!(warnings([]), "");
+    }
 }

@@ -16,7 +16,7 @@ pub struct AnalyzeArgs {
     /// The tempo of the stem in beats per minute, 4 to 1000. It is refined
     /// from the stem, 2.91 % below to 3.09 % above it, unless --bpm-exact
     /// is given
-    #[arg(long, value_name = "BPM", value_parser = parse_bpm)]
+    #[arg(long, value_name = "BPM", value_parser = parse_bpm, allow_negative_numbers = true)]
     pub bpm: Bpm,
     /// Use --bpm as it is, without refining it from the stem
     #[arg(long)]

@@ -49,6 +49,20 @@ fn a_closed_pipe_is_not_an_error() {
     assert!(child.wait().unwrap().success());
 }
 
+/// A closed stderr pipe does not change the exit code. The command writes its
+/// error to stderr, so a panic there would give 101 instead of 1.
+#[test]
+fn a_closed_stderr_pipe_keeps_the_exit_code() {
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .args(["analyze", "no-such-stem.wav", "--bpm", "120"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stderr.take());
+    assert_eq!(child.wait().unwrap().code(), Some(1));
+}
+
 /// The success case of `analyze`, on a generated WAV in a temporary
 /// folder, which a trycmd case cannot name: the tempo line, the pitch
 /// lines, then the three written files. The notes come from a file, so the

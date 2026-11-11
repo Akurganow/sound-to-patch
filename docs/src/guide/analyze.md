@@ -222,9 +222,12 @@ These excerpts come from the run above: a generated 4 s stereo tone at
 }
 ```
 
-`source` names the stem. A second stem that would write into the same
-folder, such as `bass.aiff` next to `bass.wav`, stops with an error unless
-you pass `--out` or `--force`.
+`source` names the stem, and `source_sha256` is the checksum of its file.
+A second stem that would write into the same folder, such as `bass.aiff`
+next to `bass.wav`, or the `bass.wav` of another song in a shared `--out`
+folder, stops with an error unless you pass `--out` or `--force`. So does
+a folder that holds a `spectrogram.png` with no report, or a
+`layers.json` this tool did not write.
 
 ```json
 "centroid_hz": {

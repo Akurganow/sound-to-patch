@@ -70,7 +70,7 @@ pub struct ApplyArgs {
     #[arg(long, value_name = "FILE")]
     pub template: Option<PathBuf>,
     /// The preset name. Without it, the name of the output file.
-    #[arg(long)]
+    #[arg(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
     pub name: Option<String>,
     /// Replace the output file if it exists.
     #[arg(long)]

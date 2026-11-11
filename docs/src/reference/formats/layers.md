@@ -13,6 +13,7 @@ report against it.
 | :-- | :-- |
 | `schema` | `"layers/1"`. |
 | `source` | The file name of the stem, without its folder. A run of another stem into the same folder stops unless `--force` is given. |
+| `source_sha256` | The SHA-256 of the stem file's bytes, in lower-case hex. A run of another file with the same name into the same folder stops unless `--force` is given. A report without it, from release 0.31 or earlier, is matched by `source` alone. |
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
@@ -72,6 +73,9 @@ be a `param` or a `route` with a `reason`.
 The notes group breaks reports of `layers/1` from releases up to 0.30:
 `notes` is a new required top-level key, and `conventions` requires the
 key `notes`.
+
+The checksum breaks reports of `layers/1` from releases up to 0.31:
+`source_sha256` is a new required top-level key.
 
 ## The transcription group
 

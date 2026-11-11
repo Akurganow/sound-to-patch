@@ -52,14 +52,19 @@ pub const SPECTROGRAM_FILE: &str = "spectrogram.png";
 pub const NOTES_FILE: &str = "notes.mid";
 
 /// The output folder of a stem: `out`, or `<stem folder>/<stem file stem>/`.
-fn out_dir(stem: &Path, out: Option<&Path>) -> PathBuf {
-    out.map_or_else(
-        || {
-            let name = stem.file_stem().unwrap_or(stem.as_os_str());
-            stem.with_file_name(name)
-        },
-        Path::to_path_buf,
-    )
+/// A file stem of `.` or `..` would name the stem's folder or its parent,
+/// so such a stem needs `out`.
+fn out_dir(stem: &Path, out: Option<&Path>) -> Result<PathBuf, AnalyzeError> {
+    if let Some(out) = out {
+        return Ok(out.to_path_buf());
+    }
+    match stem.file_stem() {
+        Some(name) if name != "." && name != ".." => Ok(stem.with_file_name(name)),
+        name => Err(AnalyzeError::NoFolderName {
+            source: source_of(stem),
+            stem: name.unwrap_or_default().to_string_lossy().into_owned(),
+        }),
+    }
 }
 
 /// The file name of a stem, as a report records it.
@@ -95,8 +100,12 @@ pub struct AnalyzeRequest<'a> {
 
 impl AnalyzeRequest<'_> {
     /// Returns the output folder.
-    #[must_use]
-    pub fn out_dir(&self) -> PathBuf {
+    ///
+    /// # Errors
+    ///
+    /// [`AnalyzeError::NoFolderName`] without `out` for a stem whose name
+    /// without the extension is `.` or `..`.
+    pub fn out_dir(&self) -> Result<PathBuf, AnalyzeError> {
         out_dir(self.stem, self.out)
     }
 
@@ -204,10 +213,9 @@ pub fn analyze_with(
     transcriber: &Transcriber,
     mapper: Option<&dyn SynthMapper>,
 ) -> Result<Analysis, AnalyzeError> {
-    let dir = request.out_dir();
+    let dir = request.out_dir()?;
     let source = request.source();
-    check_out_dir(&dir, &source, request.force, Guarded::Report)?;
-    check_notes_file(&dir, &source, request.force)?;
+    let checksum = guard(&dir, request.stem, &source, request.force, Guarded::Report)?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
@@ -282,7 +290,7 @@ pub fn analyze_with(
         &stem,
         &descriptors,
         request.synth,
-        &source,
+        (&source, &checksum),
         &tempo,
         (
             transcription.as_ref().map(|t| &t.record),
@@ -308,11 +316,10 @@ pub fn analyze_with(
     })
 }
 
-/// Writes the files of `analyze` into `dir`, creating it: each to a
-/// temporary sibling, then renamed into place, `notes.mid` first and
-/// `layers.json` last, after the old report is removed, and the old
-/// `notes.mid` with it when there are no notes. Returns the paths
-/// of `layers.json`, `spectrogram.png` and `notes.mid` when written. The
+/// Writes the files of `analyze` into `dir`, creating it, through
+/// [`replace_files`]: `notes.mid`, or its removal when there are no notes,
+/// then `spectrogram.png`, then `layers.json`. Returns the paths of
+/// `layers.json`, `spectrogram.png` and `notes.mid` when written. The
 /// notes, when given, are encoded with the stem's name as the track name.
 fn write_outputs(
     dir: &Path,
@@ -324,46 +331,137 @@ fn write_outputs(
         .map(|(list, name)| list.to_midi(Some(name)))
         .transpose()
         .map_err(AnalyzeError::Midi)?;
-    let midi = midi.as_deref();
-    std::fs::create_dir_all(dir).map_err(|source| AnalyzeError::Write {
-        path: dir.to_path_buf(),
-        source,
-    })?;
-    let layers = dir.join(LAYERS_FILE);
-    let spectrogram = dir.join(SPECTROGRAM_FILE);
-    let notes = midi.map(|_| dir.join(NOTES_FILE));
-    let layers_tmp = stage(dir, LAYERS_FILE, json.as_bytes())?;
-    let spectrogram_tmp = stage(dir, SPECTROGRAM_FILE, png)?;
-    let notes_tmp = midi
-        .map(|bytes| stage(dir, NOTES_FILE, bytes))
-        .transpose()?;
+    create_dir(dir)?;
     // The guard has passed, so a `notes.mid` here is this stem's or one that
     // `--force` replaces. A run without notes leaves none that the report
     // does not describe.
-    let stale = dir.join(NOTES_FILE);
-    for old in std::iter::once(&layers).chain(notes.is_none().then_some(&stale)) {
-        match std::fs::remove_file(old) {
-            Err(error) if error.kind() != io::ErrorKind::NotFound => {
-                return Err(AnalyzeError::Write {
-                    path: old.clone(),
-                    source: error,
-                });
+    replace_files(
+        dir,
+        &[
+            (NOTES_FILE, midi.as_deref()),
+            (SPECTROGRAM_FILE, Some(png)),
+            (LAYERS_FILE, Some(json.as_bytes())),
+        ],
+    )?;
+    Ok((
+        dir.join(LAYERS_FILE),
+        dir.join(SPECTROGRAM_FILE),
+        midi.map(|_| dir.join(NOTES_FILE)),
+    ))
+}
+
+/// Creates the output folder and its parents.
+fn create_dir(dir: &Path) -> Result<(), AnalyzeError> {
+    std::fs::create_dir_all(dir).map_err(|source| AnalyzeError::Write {
+        path: dir.to_path_buf(),
+        source,
+    })
+}
+
+/// A file of a write: its name in the folder, and its new bytes or `None`
+/// to remove it.
+type Change<'a> = (&'static str, Option<&'a [u8]>);
+
+/// A step of [`replace_files`] that a failure undoes.
+enum Undo {
+    /// An old file moved to a hidden backup; undo renames it back, and
+    /// success drops the backup, which removes it.
+    MovedAside {
+        /// The backup.
+        backup: tempfile::TempPath,
+        /// Where the file was.
+        to: PathBuf,
+    },
+    /// A new file landed here; undo removes it.
+    Placed(PathBuf),
+}
+
+impl Undo {
+    fn revert(self) {
+        match self {
+            Self::MovedAside { backup, to } => {
+                // A backup that cannot go back stays on disk, so the old
+                // file is hidden but not lost.
+                if let Err(error) = backup.persist(&to) {
+                    let _ = error.path.keep();
+                }
             }
-            _ => {}
+            Self::Placed(path) => {
+                let _ = std::fs::remove_file(path);
+            }
         }
     }
-    let renames = notes_tmp
-        .as_ref()
-        .zip(notes.as_ref())
-        .into_iter()
-        .chain([(&spectrogram_tmp, &spectrogram), (&layers_tmp, &layers)]);
-    for (from, to) in renames {
-        std::fs::rename(from, to).map_err(|source| AnalyzeError::Write {
-            path: to.clone(),
-            source,
-        })?;
+}
+
+/// Applies `changes` to `dir` such that a failure leaves the folder as it
+/// was and success leaves exactly the new files. Each new file is first
+/// written to a hidden temporary sibling with a name of its own, so two
+/// runs never share one. Then each old file moves aside to a hidden backup
+/// and the new one is renamed into place, in order, except that an old
+/// `layers.json` moves aside before any other file changes and the new one
+/// lands last: a `layers.json` that exists always belongs to the files next
+/// to it, and none is ever cut short. A failure renames every backup back
+/// and removes every placed file; the temporary files remove themselves.
+fn replace_files(dir: &Path, changes: &[Change<'_>]) -> Result<(), AnalyzeError> {
+    let mut staged = changes
+        .iter()
+        .map(|&(name, bytes)| Ok((name, bytes.map(|b| stage(dir, name, b)).transpose()?)))
+        .collect::<Result<Vec<_>, AnalyzeError>>()?;
+    // The report goes last, after every file it describes.
+    staged.sort_by_key(|&(name, _)| name == LAYERS_FILE);
+    let mut undo = Vec::new();
+    let report = staged.iter().any(|&(name, _)| name == LAYERS_FILE);
+    let result = (|| {
+        if report {
+            move_aside(dir, LAYERS_FILE, &mut undo)?;
+        }
+        for (name, new) in staged {
+            if name != LAYERS_FILE {
+                move_aside(dir, name, &mut undo)?;
+            }
+            if let Some(new) = new {
+                let to = dir.join(name);
+                new.persist(&to).map_err(|error| AnalyzeError::Write {
+                    path: to.clone(),
+                    source: error.error,
+                })?;
+                undo.push(Undo::Placed(to));
+            }
+        }
+        Ok(())
+    })();
+    if result.is_err() {
+        for step in undo.into_iter().rev() {
+            step.revert();
+        }
     }
-    Ok((layers, spectrogram, notes))
+    result
+}
+
+/// Moves the file `name` in `dir` to a hidden backup, if it exists. A
+/// folder in its place stays, so the rename of the new file onto it fails.
+fn move_aside(dir: &Path, name: &str, undo: &mut Vec<Undo>) -> Result<(), AnalyzeError> {
+    let path = dir.join(name);
+    let fail = |source| AnalyzeError::Write {
+        path: path.clone(),
+        source,
+    };
+    match std::fs::symlink_metadata(&path) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(()),
+        Err(error) => return Err(fail(error)),
+        Ok(meta) if meta.is_dir() => return Ok(()),
+        Ok(_) => {}
+    }
+    let backup = tempfile::Builder::new()
+        .prefix(&format!(".{name}."))
+        .suffix(".old")
+        .make_in(dir, |backup| std::fs::rename(&path, backup))
+        .map_err(fail)?;
+    undo.push(Undo::MovedAside {
+        backup: backup.into_temp_path(),
+        to: path,
+    });
+    Ok(())
 }
 
 /// The mapper's edits for the pitch, voices and envelope groups.
@@ -744,7 +842,7 @@ pub fn notes(
     request: &NotesRequest<'_>,
     transcriber: &Transcriber,
 ) -> Result<NotesReport, AnalyzeError> {
-    let dir = out_dir(request.stem, request.out);
+    let dir = out_dir(request.stem, request.out)?;
     let source = source_of(request.stem);
     // A report that describes the final notes would describe a file this
     // command replaces, so it stops the run, whatever its stem; `--force`
@@ -754,8 +852,13 @@ pub fn notes(
     if describes && !request.force {
         return Err(AnalyzeError::NotesDescribed { path: report });
     }
-    check_out_dir(&dir, &source, request.force, Guarded::ReportBeside)?;
-    check_notes_file(&dir, &source, request.force)?;
+    guard(
+        &dir,
+        request.stem,
+        &source,
+        request.force,
+        Guarded::ReportBeside,
+    )?;
     let decoded = audio::decode(request.stem).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
@@ -784,32 +887,16 @@ pub fn notes(
         &source,
     )
     .map_err(AnalyzeError::Midi)?;
-    std::fs::create_dir_all(&dir).map_err(|source| AnalyzeError::Write {
-        path: dir.clone(),
-        source,
-    })?;
-    let path = dir.join(NOTES_FILE);
-    let staged = stage(&dir, NOTES_FILE, &bytes)?;
+    create_dir(&dir)?;
+    // The report that describes the final notes goes with them: removed
+    // only once the new file lands, and kept when the write fails.
+    let mut changes: Vec<Change<'_>> = Vec::with_capacity(2);
     if describes {
-        // Before the rename: a failed rename then leaves the old file with
-        // no report that misdescribes it.
-        match std::fs::remove_file(&report) {
-            Err(error) if error.kind() != io::ErrorKind::NotFound => {
-                let _ = std::fs::remove_file(&staged);
-                return Err(AnalyzeError::Write {
-                    path: report,
-                    source: error,
-                });
-            }
-            _ => {}
-        }
+        changes.push((LAYERS_FILE, None));
     }
-    if let Err(source) = std::fs::rename(&staged, &path) {
-        // The staged copy is ours alone; a failed removal changes nothing
-        // the error does not already report.
-        let _ = std::fs::remove_file(&staged);
-        return Err(AnalyzeError::Write { path, source });
-    }
+    changes.push((NOTES_FILE, Some(&bytes)));
+    replace_files(&dir, &changes)?;
+    let path = dir.join(NOTES_FILE);
     Ok(NotesReport {
         path,
         tempo,
@@ -827,15 +914,60 @@ fn describes_notes(report: &Path) -> bool {
         .is_some_and(|report| report.get("notes").is_some_and(|notes| !notes.is_null()))
 }
 
-/// Fails when the output folder is a file, or holds a `layers.json` whose
-/// source is not `source` and `force` is off. `guarded` says what `--force`
-/// does to that report.
+/// Runs the guards of the output folder for the stem file `stem` named
+/// `source` and returns the SHA-256 of the file. The guards that read only
+/// names run before the stem is read, so a refusal answers first. `guarded`
+/// is [`Guarded::Report`] for `analyze`, which also guards
+/// `spectrogram.png`, and [`Guarded::ReportBeside`] for `notes`.
+fn guard(
+    dir: &Path,
+    stem: &Path,
+    source: &str,
+    force: bool,
+    guarded: Guarded,
+) -> Result<String, AnalyzeError> {
+    let recorded = check_out_dir(dir, source, force, guarded)?;
+    if guarded == Guarded::Report {
+        check_spectrogram(dir, force)?;
+    }
+    check_notes_file(dir, source, force)?;
+    let checksum = audio::file_sha256(stem).map_err(AnalyzeError::Decode)?;
+    if recorded.is_some_and(|recorded| recorded != checksum) {
+        return Err(AnalyzeError::OtherAudio {
+            path: dir.join(LAYERS_FILE),
+            source: source.to_owned(),
+            guarded,
+        });
+    }
+    Ok(checksum)
+}
+
+/// The `source` and `source_sha256` of a `layers.json`; `None` when it
+/// cannot be read, is not JSON or has no string `source`. A report from
+/// before the checksum has no `source_sha256`.
+fn recorded_stem(report: &Path) -> Option<(String, Option<String>)> {
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(report).ok()?).ok()?;
+    let name = report.get("source")?.as_str()?.to_owned();
+    let sha256 = report
+        .get("source_sha256")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_owned);
+    Some((name, sha256))
+}
+
+/// Fails when the output folder is a file, or, with `force` off, holds a
+/// `layers.json` that is not a report or whose source is not `source`.
+/// Returns the checksum that a report of `source` records, which
+/// [`guard`] compares once it has read the stem; a report from before the
+/// checksum has none and is matched by the name alone. `guarded` says what
+/// `--force` does to that report.
 fn check_out_dir(
     dir: &Path,
     source: &str,
     force: bool,
     guarded: Guarded,
-) -> Result<(), AnalyzeError> {
+) -> Result<Option<String>, AnalyzeError> {
     if dir.exists() && !dir.is_dir() {
         return Err(AnalyzeError::OutIsFile {
             path: dir.to_path_buf(),
@@ -843,22 +975,32 @@ fn check_out_dir(
     }
     let existing = dir.join(LAYERS_FILE);
     if force || !existing.exists() {
-        return Ok(());
+        return Ok(None);
     }
-    let recorded = std::fs::read_to_string(&existing)
-        .ok()
-        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
-        .and_then(|report| report.get("source")?.as_str().map(str::to_owned));
-    if recorded.as_deref() == Some(source) {
-        Ok(())
-    } else {
-        Err(AnalyzeError::OtherSource {
+    match recorded_stem(&existing) {
+        None => Err(AnalyzeError::NotOurs {
             path: existing,
-            recorded,
+            guarded,
+        }),
+        Some((name, _)) if name != source => Err(AnalyzeError::OtherSource {
+            path: existing,
+            recorded: name,
             source: source.to_owned(),
             guarded,
-        })
+        }),
+        Some((_, sha256)) => Ok(sha256),
     }
+}
+
+/// Fails when the output folder holds a `spectrogram.png` but no
+/// `layers.json` and `force` is off: no report owns that file, so it is
+/// the user's. [`check_out_dir`] has passed a `layers.json` that exists.
+fn check_spectrogram(dir: &Path, force: bool) -> Result<(), AnalyzeError> {
+    let existing = dir.join(SPECTROGRAM_FILE);
+    if force || dir.join(LAYERS_FILE).exists() || !existing.exists() {
+        return Ok(());
+    }
+    Err(AnalyzeError::Unowned { path: existing })
 }
 
 /// Fails when the output folder holds a `notes.mid` whose track name is
@@ -868,18 +1010,21 @@ fn check_notes_file(dir: &Path, source: &str, force: bool) -> Result<(), Analyze
     if force || !existing.exists() {
         return Ok(());
     }
-    let recorded = std::fs::read(&existing)
+    match std::fs::read(&existing)
         .ok()
-        .and_then(|bytes| midi_track_name(&bytes));
-    if recorded.as_deref() == Some(source) {
-        Ok(())
-    } else {
-        Err(AnalyzeError::OtherSource {
+        .and_then(|bytes| midi_track_name(&bytes))
+    {
+        Some(recorded) if recorded == source => Ok(()),
+        Some(recorded) => Err(AnalyzeError::OtherSource {
             path: existing,
             recorded,
             source: source.to_owned(),
             guarded: Guarded::Notes,
-        })
+        }),
+        None => Err(AnalyzeError::NotOurs {
+            path: existing,
+            guarded: Guarded::Notes,
+        }),
     }
 }
 
@@ -896,18 +1041,41 @@ pub enum Guarded {
     Notes,
 }
 
-/// Writes `bytes` to a hidden temporary sibling of `name` in `dir` and
-/// flushes it to disk; returns its path.
-fn stage(dir: &Path, name: &str, bytes: &[u8]) -> Result<PathBuf, AnalyzeError> {
-    let path = dir.join(format!(".{name}.tmp"));
-    let fail = |source| AnalyzeError::Write {
-        path: path.clone(),
-        source,
-    };
-    let mut file = std::fs::File::create(&path).map_err(fail)?;
-    file.write_all(bytes).map_err(fail)?;
-    file.sync_all().map_err(fail)?;
-    Ok(path)
+impl Guarded {
+    /// The fix that a refusal names.
+    fn fix(self) -> &'static str {
+        match self {
+            Self::Report | Self::Notes => {
+                "Pass --out <dir> for this stem, or --force to replace it"
+            }
+            Self::ReportBeside => {
+                "Pass --out <dir> for this stem, or --force to write notes.mid next to it"
+            }
+        }
+    }
+}
+
+/// Writes `bytes` to a new hidden temporary sibling of `name` in `dir` and
+/// flushes it to disk. The file removes itself when dropped, so a failed
+/// write leaves none.
+fn stage(dir: &Path, name: &str, bytes: &[u8]) -> Result<tempfile::NamedTempFile, AnalyzeError> {
+    let prefix = format!(".{name}.");
+    let mut builder = tempfile::Builder::new();
+    builder.prefix(&prefix).suffix(".tmp");
+    // The umask applies, as it does to a file that File::create makes.
+    #[cfg(unix)]
+    builder.permissions(std::os::unix::fs::PermissionsExt::from_mode(0o666));
+    builder
+        .tempfile_in(dir)
+        .and_then(|mut file| {
+            file.write_all(bytes)?;
+            file.as_file().sync_all()?;
+            Ok(file)
+        })
+        .map_err(|source| AnalyzeError::Write {
+            path: dir.join(name),
+            source,
+        })
 }
 
 /// An analysis that failed.
@@ -922,16 +1090,47 @@ pub enum AnalyzeError {
         /// The path of the folder.
         path: PathBuf,
     },
+    /// The default output folder of a stem has no name of its own: the
+    /// stem's name without the extension is `.` or `..`.
+    NoFolderName {
+        /// The file name of the stem.
+        source: String,
+        /// Its name without the extension.
+        stem: String,
+    },
     /// The output folder holds the report or the notes of another stem.
     OtherSource {
         /// The existing `layers.json` or `notes.mid`.
         path: PathBuf,
-        /// The stem it names, if it names one.
-        recorded: Option<String>,
+        /// The stem it names.
+        recorded: String,
         /// The stem of this run.
         source: String,
         /// What the file is, and what `--force` does to it.
         guarded: Guarded,
+    },
+    /// The output folder holds the report of another file with the stem's
+    /// name: the recorded checksum differs.
+    OtherAudio {
+        /// The existing `layers.json`.
+        path: PathBuf,
+        /// The file name of the stem.
+        source: String,
+        /// What `--force` does to the report.
+        guarded: Guarded,
+    },
+    /// The output folder holds a `layers.json` or a `notes.mid` that this
+    /// tool did not write: it cannot be read, or names no stem.
+    NotOurs {
+        /// The existing file.
+        path: PathBuf,
+        /// What the file would be, and what `--force` does to it.
+        guarded: Guarded,
+    },
+    /// The output folder holds a `spectrogram.png` that no report owns.
+    Unowned {
+        /// The existing file.
+        path: PathBuf,
     },
     /// The output folder holds a `layers.json` that describes the final
     /// notes, which `notes` would replace with the first list.
@@ -976,26 +1175,54 @@ impl fmt::Display for AnalyzeError {
                 "the output folder {} is a file. Pass --out <dir>",
                 path.display()
             ),
+            Self::NoFolderName { source, stem } => write!(
+                f,
+                "`{source}` gives no folder name: without its extension it is `{stem}`. Pass --out <dir>"
+            ),
             Self::OtherSource {
                 path,
                 recorded,
                 source,
                 guarded,
             } => {
-                let other = recorded
-                    .as_deref()
-                    .map_or_else(|| "no named stem".to_owned(), |name| format!("`{name}`"));
-                let (what, force) = match guarded {
-                    Guarded::Report => ("is the report", "replace it"),
-                    Guarded::ReportBeside => ("is the report", "write notes.mid next to it"),
-                    Guarded::Notes => ("holds the notes", "replace it"),
+                let what = match guarded {
+                    Guarded::Report | Guarded::ReportBeside => "is the report",
+                    Guarded::Notes => "holds the notes",
                 };
                 write!(
                     f,
-                    "{} {what} of {other}, not of `{source}`. Pass --out <dir> for this stem, or --force to {force}",
-                    path.display()
+                    "{} {what} of `{recorded}`, not of `{source}`. {}",
+                    path.display(),
+                    guarded.fix()
                 )
             }
+            Self::OtherAudio {
+                path,
+                source,
+                guarded,
+            } => write!(
+                f,
+                "{} is the report of another file named `{source}`: its checksum differs from this stem's. {}",
+                path.display(),
+                guarded.fix()
+            ),
+            Self::NotOurs { path, guarded } => {
+                let what = match guarded {
+                    Guarded::Report | Guarded::ReportBeside => {
+                        "is not a report of this tool: it cannot be read, is not JSON or names no `source`"
+                    }
+                    Guarded::Notes => {
+                        "holds no notes of this tool: it cannot be read as MIDI or has no track name"
+                    }
+                };
+                write!(f, "{} exists but {what}. {}", path.display(), guarded.fix())
+            }
+            Self::Unowned { path } => write!(
+                f,
+                "{} exists, and no report in the folder owns it. {}",
+                path.display(),
+                Guarded::Report.fix()
+            ),
             Self::NotesDescribed { path } => write!(
                 f,
                 "{} describes the final notes.mid that `analyze` wrote, and `notes` would replace that file with the first note list. Pass --out <dir> for the first list, or --force to replace notes.mid and remove the report",
@@ -1036,7 +1263,11 @@ impl Error for AnalyzeError {
             Self::Midi(error) => Some(error),
             Self::Write { source, .. } => Some(source),
             Self::OutIsFile { .. }
+            | Self::NoFolderName { .. }
             | Self::OtherSource { .. }
+            | Self::OtherAudio { .. }
+            | Self::NotOurs { .. }
+            | Self::Unowned { .. }
             | Self::NotesDescribed { .. }
             | Self::NoNotes { .. }
             | Self::Internal(_) => None,

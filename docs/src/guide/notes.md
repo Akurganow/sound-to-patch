@@ -163,5 +163,6 @@ message names the stem and suggests a profile. Only digital silence,
 every sample exactly 0, is sure to give no note: the guard gate is
 relative to the loudest passage, so a file of DC alone or of faint hiss
 gives notes. A folder that
-holds the report of another stem stops the run unless you pass `--out` or
-`--force`.
+holds the report of another stem, or of another file with the same name,
+stops the run unless you pass `--out` or `--force`. A failed write leaves
+the folder as it was.

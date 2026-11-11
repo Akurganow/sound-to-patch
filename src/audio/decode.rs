@@ -258,6 +258,42 @@ impl Collected {
     }
 }
 
+/// Returns the SHA-256 of a stem file's bytes in lower-case hex, which a
+/// report records to tell apart two stems of one file name. The file is
+/// read in blocks, not held in memory.
+///
+/// # Errors
+///
+/// A [`DecodeError`] when the file cannot be opened or read, with the
+/// message that [`decode`] gives for the same file.
+pub fn file_sha256(path: &Path) -> Result<String, DecodeError> {
+    use sha2::{Digest, Sha256};
+    use std::fmt::Write as _;
+    use std::io::Read as _;
+    let fail = |kind| DecodeError {
+        path: path.to_path_buf(),
+        kind,
+    };
+    let mut file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
+    let mut hasher = Sha256::new();
+    let mut block = vec![0; 1 << 16];
+    loop {
+        match file.read(&mut block) {
+            Ok(0) => break,
+            Ok(read) => hasher.update(&block[..read]),
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(fail(Kind::Read(error))),
+        }
+    }
+    Ok(hasher
+        .finalize()
+        .iter()
+        .fold(String::with_capacity(64), |mut hex, byte| {
+            let _ = write!(hex, "{byte:02x}");
+            hex
+        }))
+}
+
 /// The frames a packet of duration `dur` covers, from the track's time base.
 fn packet_frames(dur: Duration, time_base: Option<TimeBase>, rate: SampleRate) -> Option<usize> {
     let time_base = time_base?;
