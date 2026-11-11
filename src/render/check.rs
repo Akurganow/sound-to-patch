@@ -67,8 +67,8 @@ const SHOWN: usize = 5;
 ///
 /// For each band: the mean over its bins of the Hann-windowed bin power
 /// over the frame length squared, averaged over the frames. A band of many
-/// bins reads lower than a band of few for one tone, as [`BAND_FLOOR_DB`]
-/// shows.
+/// bins reads lower than a band of few for one tone: a full-scale sine
+/// reads `10 log10(3 / 32 / bins)` dB in a band of `bins` bins.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BandLevels(Vec<f64>);
 
