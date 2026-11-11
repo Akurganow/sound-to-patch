@@ -28,15 +28,21 @@ releases call [fact].
 ## Decoding
 
 - The stem decodes at its native sample rate with every channel kept, as
-  `f64` samples [fact]. The rate must lie between 8000 and 192000 Hz, or
-  the file is refused with its rate and the range [fact]. The band-edge
-  rule looks for its fall above 2 kHz, so it needs a Nyquist frequency
-  well above that [fact]. 192 kHz is the highest standard export rate,
-  and the cost grows faster than the rate: on a generated 4 s mono stem,
-  with the bound lifted, a release build spent 1.6 s on each second of
-  audio at 192 kHz, 1.8 s at 200 kHz, 2.5 s at 256 kHz and 5.1 s at
-  384 kHz [synthetic]. The default audio track is the one the container
+  `f64` samples [fact]. The default audio track is the one the container
   flags as default, else the first with a known codec [fact].
+- The rate must lie between 8000 and 192000 Hz, or the file is refused
+  with its rate and the range [fact]. The band-edge rule looks for its
+  fall above 2 kHz, so it needs a Nyquist frequency well above that
+  [fact]. 192 kHz is the highest standard export rate [fact].
+- The cost of the analysis grows with the sample rate and with the number
+  of notes, so a stem of many short notes costs far more than a sustained
+  one [synthetic]. Examples from a release build on generated 4 s mono
+  stems of a 55 Hz band-limited sawtooth [synthetic]:
+  - Sustained: 0.08 s per second of audio at 48 kHz and 0.17 s at
+    192 kHz.
+  - Notes of 0.2 s, four per second: 0.28 s per second of audio at
+    48 kHz and 1.6 s at 192 kHz. With the bound lifted, the same stem
+    cost 1.8 s at 200 kHz, 2.5 s at 256 kHz and 5.1 s at 384 kHz.
 - The build reads WAV, AIFF, FLAC, MP3, AAC (ADTS), MP4 or M4A, Ogg, MKV
   and WebM containers [fact]. A missing codec fails with its name and, if
   one exists, the decoder feature that adds it [fact].
