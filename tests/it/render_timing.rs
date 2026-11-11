@@ -3,6 +3,7 @@
 //! architecture.
 
 use std::num::NonZeroUsize;
+use std::time::Duration;
 
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer};
 use sound_to_patch::render::session::BoxedRenderer;
@@ -81,4 +82,22 @@ fn the_clip_length_shows_a_long_tail() {
     };
     assert!((4.0..4.2).contains(&clip(0.05)), "{}", clip(0.05));
     assert!(clip(3.0) > 6.0, "{}", clip(3.0));
+}
+
+#[test]
+fn the_plugin_load_row_holds_the_time_a_start_takes() {
+    // A start that sleeps 10 ms cannot take less, so the bound never flakes.
+    let delay = Duration::from_millis(10);
+    let runs = NonZeroUsize::new(2).unwrap();
+    let spawn = move |worker| {
+        std::thread::sleep(delay);
+        Ok(fake(worker))
+    };
+    let table = measure(spawn, &state(0.05), runs).unwrap();
+    let load = table
+        .rows
+        .iter()
+        .find(|row| row.kind == TimingKind::PluginLoad)
+        .unwrap();
+    assert!(load.median >= delay.as_secs_f64(), "{load:?}");
 }
