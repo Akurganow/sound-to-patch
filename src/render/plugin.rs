@@ -295,6 +295,13 @@ fn keep(tail: &Tail, line: &str) {
     }
 }
 
+/// [`cut`] `text`, with `...` where it was cut.
+fn cut_marked(text: &str) -> String {
+    let quoted = cut(text);
+    let more = if quoted.len() < text.len() { "..." } else { "" };
+    format!("{quoted}{more}")
+}
+
 /// The first [`TAIL_LINE_BYTES`] of `text`, so a reply of several MB
 /// never lands whole in a message.
 fn cut(text: &str) -> &str {
@@ -682,12 +689,12 @@ fn read_replies(stdout: impl Read, send: &Sender<Incoming>, tail: &Tail) {
             );
             return false;
         }
-        // The quote is cut before the cause is appended, so a long reply
-        // keeps its parse error.
+        // The quote and the cause are cut apart, so a long reply keeps its
+        // parse error, and a parse error that echoes a long value stays
+        // bounded too.
         let incoming = reply.map_err(|error| {
-            let quoted = cut(line);
-            let more = if quoted.len() < line.len() { "..." } else { "" };
-            format!("{quoted}{more} ({error})")
+            let error = error.to_string();
+            format!("{} ({})", cut_marked(line), cut_marked(&error))
         });
         send.send(incoming).is_ok()
     });
@@ -1232,6 +1239,18 @@ mod tests {
             let mut renderer = start(&junk).unwrap();
             let message = renderer.render(&job()).unwrap_err().to_string();
             assert!(message.contains("unknown variant `nonsense`"), "{message}");
+            assert!(message.len() < 4 * TAIL_LINE_BYTES, "{}", message.len());
+        }
+
+        #[test]
+        fn a_parse_error_that_echoes_a_long_tag_is_cut_too() {
+            // The parse error quotes the 50 000-byte tag back.
+            let junk = format!(
+                r#"{OPEN}read -r line; printf '%s{{"reply":"' "$PREFIX"; head -c 50000 /dev/zero | tr '\0' y; printf '"}}\n'; exec sleep 30"#
+            );
+            let mut renderer = start(&junk).unwrap();
+            let message = renderer.render(&job()).unwrap_err().to_string();
+            assert!(message.contains("unknown variant"), "{message}");
             assert!(message.len() < 4 * TAIL_LINE_BYTES, "{}", message.len());
         }
 

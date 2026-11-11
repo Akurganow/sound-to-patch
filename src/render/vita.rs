@@ -285,24 +285,7 @@ fn ask_within(
         let _ = stdin.write_all(request.to_string().as_bytes());
     }
     // The pipes are read on threads, so a script that writes much output
-    // cannot block on a full pipe while this waits for its exit. Each
-    // thread fills a shared buffer, so the bytes read so far stay readable
-    // when a child of the script holds a pipe open and the thread is left
-    // behind.
-    let read = |pipe: Option<Box<dyn Read + Send>>| {
-        let buffer = Arc::new(Mutex::new(Vec::new()));
-        let into = Arc::clone(&buffer);
-        let reader = thread::spawn(move || {
-            let Some(mut pipe) = pipe else { return };
-            let mut chunk = [0; 8192];
-            while let Ok(read @ 1..) = pipe.read(&mut chunk) {
-                if let Ok(mut bytes) = into.lock() {
-                    bytes.extend_from_slice(&chunk[..read]);
-                }
-            }
-        });
-        (buffer, reader)
-    };
+    // cannot block on a full pipe while this waits for its exit.
     let stdout = read(child.stdout.take().map(|pipe| Box::new(pipe) as _));
     let stderr = read(child.stderr.take().map(|pipe| Box::new(pipe) as _));
     let deadline = Instant::now() + timeout;
@@ -371,6 +354,32 @@ fn ask_within(
             FIX_SCRIPT,
         )
     })
+}
+
+/// Reads `pipe` to its end on a thread into a shared buffer, so the bytes
+/// read so far stay readable when a child of the script holds the pipe
+/// open and the thread is left behind. A read that a signal interrupts is
+/// retried.
+fn read(pipe: Option<Box<dyn Read + Send>>) -> (Arc<Mutex<Vec<u8>>>, thread::JoinHandle<()>) {
+    let buffer = Arc::new(Mutex::new(Vec::new()));
+    let into = Arc::clone(&buffer);
+    let reader = thread::spawn(move || {
+        let Some(mut pipe) = pipe else { return };
+        let mut chunk = [0; 8192];
+        loop {
+            match pipe.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(read) => {
+                    if let Ok(mut bytes) = into.lock() {
+                        bytes.extend_from_slice(&chunk[..read]);
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(_) => break,
+            }
+        }
+    });
+    (buffer, reader)
 }
 
 /// The warm-up request: the recipe's warm-up note, in a render as long as
@@ -696,8 +705,9 @@ mod tests {
     fn a_child_that_holds_the_pipes_does_not_hold_the_reply() {
         let Some(python) = python3() else { return };
         let dir = tempfile::tempdir().unwrap();
-        // The child inherits the script's output pipes and outlives it.
-        let child = "import subprocess, sys, time\nsubprocess.Popen(['sleep', '10'])\n";
+        // The child inherits the script's output pipes and outlives the
+        // reader wait of 1 s, but only by about a second after the test.
+        let child = "import subprocess, sys, time\nsubprocess.Popen(['sleep', '3'])\n";
         let hang = script(dir.path(), "hang.py", &format!("{child}time.sleep(30)\n"));
         let done = script(dir.path(), "done.py", &format!("{child}print('{{}}')\n"));
         let request = json!({ "op": "render" });
