@@ -4,5 +4,5 @@ args = ["preset", "inspect", "tests/cmd/data/text-control.vital"]
 status.code = 1
 stdout = ""
 stderr = """
-error: tests/cmd/data/text-control.vital: cannot read the .vital preset: the control `settings.filter_1_cutoff` holds a text, not a number. Vital throws on load; write a number, or save the preset again from Vital
+error: tests/cmd/data/text-control.vital: cannot read the .vital preset: the control `settings.filter_1_cutoff` holds a text, not a number. Write a number, or save the preset again from Vital
 """

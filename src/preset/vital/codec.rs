@@ -264,7 +264,7 @@ fn validate(root: &Map<String, Value>) -> Result<(), FormatError> {
                 "the control `settings.{key}` holds {}, not a number",
                 json_kind(value)
             ),
-            "Vital throws on load; write a number, or save the preset again from Vital",
+            "Write a number, or save the preset again from Vital",
         ));
     }
     let Some(Value::Object(sample)) = settings.get("sample") else {
@@ -610,7 +610,7 @@ fn number_value(key: &str, value: &Stored) -> Result<Value, FormatError> {
         Stored::Int(number) => Ok(Value::from(*number)),
         Stored::Flag(_) | Stored::Text(_) => Err(edit_error(
             format!("{key}: a control holds a number, not {value}"),
-            "Write a number; Vital throws on a flag or a text in a control",
+            "Write a number; this writer puts only numbers into a control",
         )),
     }
 }
@@ -885,8 +885,9 @@ fn control_mark(
             "unknown key".to_owned()
         });
     };
+    // The reader refuses every other non-number in a control.
     let Some(number) = value.as_f64() else {
-        return Some("not a number; Vital throws on load".to_owned());
+        return Some("a flag, not a number; Vital loads it".to_owned());
     };
     if !spec.accepts_saved(number) {
         let whole = if spec.kind == ParamKind::Float {
@@ -967,13 +968,6 @@ mod tests {
         String::from_utf8(VitalFormat::new(1 << 20).write(model).unwrap()).unwrap()
     }
 
-    /// A model the reader would refuse, to test what `describe` marks.
-    fn unchecked(text: &str) -> VitalModel {
-        VitalModel {
-            root: serde_json::from_str(text).unwrap(),
-        }
-    }
-
     #[test]
     fn a_control_that_holds_no_number_is_refused_by_name() {
         for (value, kind) in [
@@ -989,7 +983,7 @@ mod tests {
             assert_eq!(
                 error,
                 format!(
-                    "cannot read the .vital preset: the control `settings.filter_1_cutoff` holds {kind}, not a number. Vital throws on load; write a number, or save the preset again from Vital"
+                    "cannot read the .vital preset: the control `settings.filter_1_cutoff` holds {kind}, not a number. Write a number, or save the preset again from Vital"
                 )
             );
         }
@@ -1091,30 +1085,26 @@ mod tests {
     }
 
     #[test]
-    fn lists_and_objects_in_control_slots_are_marked() {
-        let text = r#"{"synth_version":"1.0.6","zz_top":{"a":1},"settings":{"filter_1_cutoff":[1,2],"osc_1_level":{"x":1},"zz":[3],"sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#;
-        let shown = unchecked(text)
+    fn lists_and_objects_in_unknown_keys_are_marked() {
+        let text = r#"{"synth_version":"1.0.6","zz_top":{"a":1},"settings":{"zz":[1,2],"zz_object":{"x":1},"sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#;
+        let shown = model(text)
             .describe(&DescribeOptions::default())
             .to_string();
         for line in [
-            "filter_1_cutoff: list of 2  (not a number; Vital throws on load)",
-            "osc_1_level: object of 1 keys  (not a number; Vital throws on load)",
-            "zz: list of 1  (unknown key)",
+            "zz: list of 2  (unknown key)",
+            "zz_object: object of 1 keys  (unknown key)",
             "zz_top: object of 1 keys  (unknown key)",
         ] {
             assert!(shown.contains(line), "{line}\n{shown}");
         }
         assert!(shown.contains("sample:\n"), "{shown}");
-        let full = unchecked(text)
+        let full = model(text)
             .describe(&DescribeOptions {
                 full: true,
                 shown: 0,
             })
             .to_string();
-        assert!(
-            full.contains("filter_1_cutoff: [1,2]  (not a number"),
-            "{full}"
-        );
+        assert!(full.contains("zz: [1,2]  (unknown key)"), "{full}");
     }
 
     #[test]
@@ -1322,8 +1312,8 @@ mod tests {
 
     #[test]
     fn describe_marks_odd_controls_and_elides() {
-        let text = r#"{"synth_version":"1.0.6","settings":{"filter_1_cutoff":200.0,"filter_1_model":2.5,"osc_1_level":"x","sub_on":0.0,"zz":1,"sample":{"length":1,"sample_rate":44100,"samples":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"modulations":[{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""}]}}"#;
-        let shown = unchecked(text)
+        let text = r#"{"synth_version":"1.0.6","settings":{"filter_1_cutoff":200.0,"filter_1_model":2.5,"osc_1_level":true,"sub_on":0.0,"zz":1,"sample":{"length":1,"sample_rate":44100,"samples":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"modulations":[{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""}]}}"#;
+        let shown = model(text)
             .describe(&DescribeOptions::default())
             .to_string();
         assert!(
@@ -1335,7 +1325,7 @@ mod tests {
             "{shown}"
         );
         assert!(
-            shown.contains("osc_1_level: \"x\"  (not a number; Vital throws on load)"),
+            shown.contains("osc_1_level: true  (a flag, not a number; Vital loads it)"),
             "{shown}"
         );
         assert!(shown.contains("sub_on: 0.0  (legacy control)"), "{shown}");
@@ -1346,7 +1336,7 @@ mod tests {
         );
         assert!(shown.contains("modulations: list of 4"), "{shown}");
         assert!(shown.contains("- ... 1 more"), "{shown}");
-        let full = unchecked(text)
+        let full = model(text)
             .describe(&DescribeOptions {
                 full: true,
                 shown: 0,

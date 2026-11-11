@@ -306,9 +306,11 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
 /// and must not exist unless the request sets `force`. The file is
 /// written to a temporary file next to it and then published: renamed
 /// with `force`, hard-linked without it, so a file that appears meanwhile
-/// is never replaced. A folder without hard links, such as one on exFAT,
-/// gets the file through an exclusive create instead. A failed run leaves
-/// no partial file.
+/// is never replaced, and a failed run leaves no file. A folder without
+/// hard links, such as one on exFAT, gets the file through an exclusive
+/// create and a write in place instead: the file is visible while it is
+/// written, an error removes it, and a run killed during the write leaves
+/// a partial file.
 ///
 /// # Errors
 ///
@@ -453,8 +455,9 @@ fn publish(
         Ok(()) => Ok(()),
         Err(cause) if cause.kind() == io::ErrorKind::AlreadyExists => Err(exists(out)),
         // FAT, exFAT and some network folders have no hard links. An
-        // exclusive create still never replaces a file; only a failed
-        // write is visible for a moment, and it is removed.
+        // exclusive create still never replaces a file, but the file is
+        // visible while it is written. An error removes it; a kill during
+        // the write leaves it partial.
         Err(_) => {
             let mut file = fs::OpenOptions::new()
                 .write(true)

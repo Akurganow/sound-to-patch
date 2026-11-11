@@ -272,9 +272,10 @@ Options:
 
 ```
 
-`preset inspect` refuses a file that Vital refuses to load: a missing
-stamp, `settings` or sample, and a known control that holds a text, a list,
-an object or null in place of a number. The message names the key.
+`preset inspect` refuses a file without a stamp, `settings` or sample, and
+a file with a known control that holds a text, a list, an object or null in
+place of a number. Vital fails to load a text in a control and loads a
+flag, so a flag reads. The message names the key.
 
 ## preset apply
 
@@ -330,6 +331,9 @@ with a newer first or second number than the stable build 1.0.7, such as
 third number, so 1.0.8 gives none. A failed run leaves no file. A folder
 without hard links, such as one on an exFAT or FAT32 drive, gets the file
 too, and an existing file there is still replaced only with `--force`.
+There, without `--force`, the file is written in place: it is visible while
+it is written, an error removes it, and a run killed during the write
+leaves a partial file.
 
 ## The edit list
 

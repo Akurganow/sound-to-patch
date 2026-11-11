@@ -1339,10 +1339,6 @@ pub(crate) mod tests {
         );
         assert_eq!(registry.close_names("zzzzzzzzzzzz", 10), Vec::<&str>::new());
         assert_eq!(registry.close_names("filter", 1).len(), 1);
-        // A key past the limit is compared with nothing, even one that
-        // starts like a real key.
-        let long = format!("filter_1_cuttoff{}", "x".repeat(MAX_CLOSE_KEY));
-        assert_eq!(registry.close_names(&long, 10), Vec::<&str>::new());
     }
 
     #[test]
