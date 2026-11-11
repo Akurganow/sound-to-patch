@@ -328,12 +328,14 @@ The output file:
 The output keeps the template's stamp, and the summary prints it. A stamp
 with a newer first or second number than the stable build 1.0.7, such as
 1.1.0, gives a warning: that build refuses it. The load gate ignores the
-third number, so 1.0.8 gives none. A failed run leaves no file. A folder
+third number, so 1.0.8 gives none. A run that ends with an error leaves no
+file. A run killed during the write leaves at most a temporary file whose name
+ends in `.partial` next to the output. A folder
 without hard links, such as one on an exFAT or FAT32 drive, gets the file
 too, and an existing file there is still replaced only with `--force`.
 There, without `--force`, the file is written in place: it is visible while
 it is written, an error removes it, and a run killed during the write
-leaves a partial file.
+leaves a partial output file.
 
 ## The edit list
 

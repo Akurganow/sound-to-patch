@@ -496,3 +496,46 @@ fn a_raw_edit_never_replaces_a_structure_of_the_template() {
         assert!(!out.exists());
     }
 }
+
+#[test]
+fn a_skip_tells_an_earlier_edit_from_the_template() {
+    // The route writes the amount of slot 1, so the param that follows
+    // equals that edit, not the template, which held 0.
+    let dir = tempfile::tempdir().unwrap();
+    let edits = write(
+        dir.path(),
+        "edits.json",
+        r#"{"synth":"vital","edits":[{"route":{"source":"lfo_1","dest":"filter_1_cutoff","amount":"25%"},"reason":"wobble"},{"param":"modulation_1_amount","value":0.25,"reason":"same depth"}]}"#,
+    );
+    let summary = run(&edits, &dir.path().join("Out.vital"), None).unwrap();
+    assert!(
+        summary.contains("skipped modulation_1_amount: equals an earlier edit"),
+        "{summary}"
+    );
+    assert!(!summary.contains("equals the template"), "{summary}");
+
+    // The routes fixture holds lfo_1 -> filter_1_cutoff at 0.25 in slot 1.
+    let synth = Synth::Vital;
+    let format = format_for(synth).unwrap();
+    let registry = registry_for(synth).unwrap();
+    let fixture = fs::read("tests/fixtures/vital/routes.vital").unwrap();
+    let route = |amount: f64| Resolved::Route {
+        source: "lfo_1".into(),
+        destination: "filter_1_cutoff".into(),
+        amount,
+        polarity: None,
+        reason: None,
+    };
+    let mut model = format.read(&fixture).unwrap();
+    let report = apply(format, registry, model.as_mut(), &[route(0.25)]).unwrap();
+    assert_eq!(report.skipped[0].why, "equals the template");
+    let mut model = format.read(&fixture).unwrap();
+    let amount = Resolved::Param {
+        key: "modulation_1_amount".into(),
+        stored: 0.5,
+        uncalibrated: false,
+        reason: None,
+    };
+    let report = apply(format, registry, model.as_mut(), &[amount, route(0.5)]).unwrap();
+    assert_eq!(report.skipped[0].why, "equals an earlier edit");
+}

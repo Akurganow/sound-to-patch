@@ -628,7 +628,7 @@ pub(crate) fn scan(model: &VitalModel, edited: &[&str]) -> Result<Vec<String>, F
         let Some(number) = value.as_f64() else {
             return Err(write_error(
                 format!("control {key} holds {value}, not a number"),
-                "Vital throws on load; write a number",
+                "Write a number; this writer keeps only numbers in a control",
             ));
         };
         // An edited control must be in range. One the edits left keeps

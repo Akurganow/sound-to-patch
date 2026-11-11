@@ -306,11 +306,12 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
 /// and must not exist unless the request sets `force`. The file is
 /// written to a temporary file next to it and then published: renamed
 /// with `force`, hard-linked without it, so a file that appears meanwhile
-/// is never replaced, and a failed run leaves no file. A folder without
-/// hard links, such as one on exFAT, gets the file through an exclusive
-/// create and a write in place instead: the file is visible while it is
-/// written, an error removes it, and a run killed during the write leaves
-/// a partial file.
+/// is never replaced. A run that returns an error leaves no file, and a
+/// run killed during the write leaves at most the temporary `.partial`
+/// file next to the output. A folder without hard links, such as one on
+/// exFAT, gets the file through an exclusive create and a write in place
+/// instead: the file is visible while it is written, an error removes it,
+/// and a run killed during the write leaves a partial output file.
 ///
 /// # Errors
 ///
