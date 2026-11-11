@@ -225,7 +225,8 @@ pub fn analyze_with(
 ) -> Result<Analysis, AnalyzeError> {
     let dir = request.out_dir()?;
     let source = request.source();
-    let (bytes, checksum) = guard(&dir, request.stem, &source, request.force, Guarded::Report)?;
+    let (bytes, checksum, backups) =
+        guard(&dir, request.stem, &source, request.force, Guarded::Report)?;
     let decoded = audio::decode_bytes(request.stem, bytes).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
     let stem_audio = decoded.into_audio();
@@ -312,6 +313,7 @@ pub fn analyze_with(
 
     let midi = final_notes.as_ref().map(|list| (list, source.as_str()));
     let (layers, spectrogram, notes_file) = write_outputs(&dir, &json, &png, midi)?;
+    remove_backups(&backups);
     Ok(Analysis {
         layers,
         spectrogram,
@@ -896,7 +898,7 @@ pub fn notes(
     if describes && !request.force {
         return Err(AnalyzeError::NotesDescribed { path: report });
     }
-    let (stem_bytes, _) = guard(
+    let (stem_bytes, _, backups) = guard(
         &dir,
         request.stem,
         &source,
@@ -939,6 +941,7 @@ pub fn notes(
     }
     changes.push((NOTES_FILE, Some(&bytes)));
     replace_files(&dir, &changes)?;
+    remove_backups(&backups);
     let path = dir.join(NOTES_FILE);
     Ok(NotesReport {
         path,
@@ -958,7 +961,8 @@ fn describes_notes(report: &Path) -> bool {
 }
 
 /// Runs the guards of the output folder for the stem file `stem` named
-/// `source` and returns the bytes of the file and their SHA-256. The
+/// `source` and returns the bytes of the file, their SHA-256 and the
+/// backups that a forced run removes once its files are in place. The
 /// guards that read only names run before the stem is read, so a refusal
 /// answers first. The stem is read once, so the decoder gets the bytes the
 /// checksum read, as a pipe allows. `guarded` is [`Guarded::Report`] for
@@ -970,9 +974,9 @@ fn guard(
     source: &str,
     force: bool,
     guarded: Guarded,
-) -> Result<(Vec<u8>, String), AnalyzeError> {
+) -> Result<(Vec<u8>, String, Vec<PathBuf>), AnalyzeError> {
     let recorded = check_out_dir(dir, source, force, guarded)?;
-    check_backups(dir, force)?;
+    let backups = check_backups(dir, force)?;
     if guarded == Guarded::Report {
         check_spectrogram(dir, force)?;
     }
@@ -986,42 +990,50 @@ fn guard(
             guarded,
         });
     }
-    Ok((bytes, checksum))
+    Ok((bytes, checksum, backups))
 }
 
-/// Fails when, with `force` off, the folder holds the backup of a report
-/// file but not the file: a run that was killed during its renames left
-/// the earlier file there. `force` replaces the files and leaves the
-/// backup.
-fn check_backups(dir: &Path, force: bool) -> Result<(), AnalyzeError> {
-    if force {
-        return Ok(());
-    }
+/// The backups of report files in the folder, `.<file>.<random>.old`,
+/// with the file each backs up. A run that was killed during its renames
+/// left them. Fails with every backup when, with `force` off, one of them
+/// stands for a file that the folder lacks. Otherwise returns them, so a
+/// forced run removes them once its new files are in place.
+fn check_backups(dir: &Path, force: bool) -> Result<Vec<PathBuf>, AnalyzeError> {
     // A folder that does not exist yet holds no backup.
     let Ok(entries) = std::fs::read_dir(dir) else {
-        return Ok(());
+        return Ok(Vec::new());
     };
     let mut names: Vec<String> = entries
         .flatten()
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
         .collect();
     names.sort();
-    for file in [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE] {
-        let prefix = format!(".{file}.");
-        let backup = names.iter().find(|name| {
-            // The suffix is the one `move_aside` writes, so case matters.
-            name.starts_with(&prefix) && Path::new(name).extension().is_some_and(|ext| ext == "old")
-        });
-        if let Some(backup) = backup
-            && !dir.join(file).exists()
-        {
-            return Err(AnalyzeError::Backup {
-                path: dir.join(backup),
-                file,
-            });
-        }
+    let backups: Vec<(PathBuf, &'static str)> = [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]
+        .into_iter()
+        .flat_map(|file| {
+            let prefix = format!(".{file}.");
+            names
+                .iter()
+                .filter(move |name| {
+                    // The suffix is the one `move_aside` writes, so case matters.
+                    name.starts_with(&prefix)
+                        && Path::new(name).extension().is_some_and(|ext| ext == "old")
+                })
+                .map(move |name| (dir.join(name), file))
+        })
+        .collect();
+    if !force && backups.iter().any(|(_, file)| !dir.join(file).exists()) {
+        return Err(AnalyzeError::Backup { backups });
     }
-    Ok(())
+    Ok(backups.into_iter().map(|(path, _)| path).collect())
+}
+
+/// Removes the backups that a forced run replaced, after its new files
+/// are in place. A backup that cannot go stays, as before the run.
+fn remove_backups(backups: &[PathBuf]) {
+    for backup in backups {
+        let _ = std::fs::remove_file(backup);
+    }
 }
 
 /// The `source` and `source_sha256` of a `layers.json`; `None` when it
@@ -1213,10 +1225,9 @@ pub enum AnalyzeError {
     /// The output folder holds the backup of a report file, but not the
     /// file: a run was killed during its renames.
     Backup {
-        /// The backup, `.<file>.<random>.old`.
-        path: PathBuf,
-        /// The file it backs up.
-        file: &'static str,
+        /// Every backup in the folder, `.<file>.<random>.old`, with the
+        /// file it backs up.
+        backups: Vec<(PathBuf, &'static str)>,
     },
     /// The output folder holds a `spectrogram.png` that no report owns.
     Unowned {
@@ -1314,11 +1325,17 @@ impl fmt::Display for AnalyzeError {
                 };
                 write!(f, "{} exists but {what}. {}", path.display(), guarded.fix())
             }
-            Self::Backup { path, file } => write!(
-                f,
-                "{} is a backup of {file} from a run that stopped before it ended, and the folder has no {file}. Rename the backup to {file} to restore the earlier file, or pass --force to write new files and leave the backup",
-                path.display()
-            ),
+            Self::Backup { backups } => {
+                let list = backups
+                    .iter()
+                    .map(|(path, file)| format!("{} of {file}", path.display()))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(
+                    f,
+                    "the folder holds backups that a run left when it stopped before it ended: {list}. Rename each backup to its file name to restore the earlier files, or pass --force to write new files and remove the backups"
+                )
+            }
             Self::Unowned { path } => write!(
                 f,
                 "{} exists, and no report in the folder owns it. {}",

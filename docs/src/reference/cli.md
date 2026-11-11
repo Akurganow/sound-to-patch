@@ -104,8 +104,9 @@ temporary file and removes a folder the run created. A run killed during
 the renames, such as by a power loss, can leave the old files as hidden
 backups named `.<file>.<random>.old`, such as
 `.layers.json.a1B2c3.old`, with no `layers.json`. The next run stops and
-names the backup: rename each backup back to its file name to keep the
-old report, or pass `--force` to write new files and leave the backups. The
+names every backup: rename each backup back to its file name to keep the
+old report, or pass `--force` to write new files and remove the backups
+once they are in place. The
 command prints one `wrote <path>` line per file to standard output, and a
 warning line for each corrupt packet that became silence to standard
 error.
@@ -241,8 +242,8 @@ gives each step.
   replace the file the report describes; `--force` replaces `notes.mid`
   and removes that report once the new file is in place, so no report
   describes a file that is gone. A backup that a killed run left, as
-  for `analyze`, stops it too; `--force` writes `notes.mid` and leaves
-  the backup.
+  for `analyze`, stops it too; `--force` writes `notes.mid` and then
+  removes the backups.
   `--out` picks another folder in every case.
 
 | Exit code | Meaning |

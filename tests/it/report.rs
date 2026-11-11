@@ -449,7 +449,13 @@ fn an_output_folder_that_is_a_file_fails_with_a_fix() {
         let message = notes(&notes_request, &untracked(transcriber()))
             .unwrap_err()
             .to_string();
-        assert!(message.starts_with("the output folder "), "{message}");
+        assert_eq!(
+            message,
+            format!(
+                "the output folder {} is a file. Pass --out <dir>",
+                folder.display()
+            )
+        );
     }
 }
 
@@ -1324,10 +1330,11 @@ fn the_report_files_get_the_mode_of_a_new_file() {
 }
 
 /// A run killed during its renames can leave the earlier `layers.json` as
-/// a hidden backup and no `layers.json`. The next run of either command
-/// stops and names the backup, so `notes` does not replace the
-/// `notes.mid` it describes; `--force` writes new files and leaves the
-/// backup.
+/// a hidden backup and no `layers.json`, here after the new `notes.mid`
+/// landed and the old one became a backup too. The next run of either
+/// command stops and names every backup, so `notes` does not replace the
+/// `notes.mid` the report describes. A forced run removes the backups once
+/// its files are in place, and a plain run of the stem then passes.
 #[test]
 fn a_backup_left_by_a_killed_run_is_named_before_any_write() {
     let dir = tempfile::tempdir().unwrap();
@@ -1335,24 +1342,37 @@ fn a_backup_left_by_a_killed_run_is_named_before_any_write() {
     let notes_file = given(dir.path());
     let out = dir.path().join("out");
     run(&wav, Some(&notes_file), &out);
-    let backup = out.join(".layers.json.a1B2c3.old");
-    fs::rename(out.join(LAYERS_FILE), &backup).unwrap();
-    let before = (fs::read(&backup).unwrap(), report_files(&out));
+    let report = out.join(".layers.json.a1B2c3.old");
+    let old_notes = out.join(".notes.mid.q1W2e3.old");
+    fs::rename(out.join(LAYERS_FILE), &report).unwrap();
+    fs::copy(out.join(NOTES_FILE), &old_notes).unwrap();
+    let before = (
+        fs::read(&report).unwrap(),
+        fs::read(&old_notes).unwrap(),
+        report_files(&out),
+    );
     let expected = format!(
-        "{} is a backup of layers.json from a run that stopped before it ended, and the folder has no layers.json. Rename the backup to layers.json to restore the earlier file, or pass --force to write new files and leave the backup",
-        backup.display()
+        "the folder holds backups that a run left when it stopped before it ended: {} of layers.json, {} of notes.mid. Rename each backup to its file name to restore the earlier files, or pass --force to write new files and remove the backups",
+        report.display(),
+        old_notes.display()
     );
     let message = analyze(&request(&wav, Some(&notes_file), &out), &transcriber())
         .unwrap_err()
         .to_string();
     assert_eq!(message, expected);
     assert_eq!(notes_of(&wav, &out), expected);
-    assert_eq!((fs::read(&backup).unwrap(), report_files(&out)), before);
+    let after = (
+        fs::read(&report).unwrap(),
+        fs::read(&old_notes).unwrap(),
+        report_files(&out),
+    );
+    assert_eq!(after, before);
     let forced = AnalyzeRequest {
         force: true,
         ..request(&wav, Some(&notes_file), &out)
     };
     analyze(&forced, &transcriber()).unwrap();
-    assert_eq!(fs::read(&backup).unwrap(), before.0);
-    assert!(out.join(LAYERS_FILE).is_file());
+    assert_eq!(entries(&out), [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]);
+    run(&wav, Some(&notes_file), &out);
+    assert_eq!(entries(&out), [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]);
 }

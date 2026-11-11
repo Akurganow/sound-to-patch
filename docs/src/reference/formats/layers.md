@@ -13,7 +13,7 @@ report against it.
 | :-- | :-- |
 | `schema` | `"layers/1"`. |
 | `source` | The file name of the stem, without its folder. A run of another stem into the same folder stops unless `--force` is given. |
-| `source_sha256` | The SHA-256 of the stem file's bytes, in lower-case hex. A run of a stem of the same name with other bytes, another stem or a new export of this one, into the same folder stops unless `--force` is given. A report without it, from release 0.31 or earlier, is matched by `source` alone. |
+| `source_sha256` | The SHA-256 of the stem file's bytes, in lower-case hex. A run into the same folder of a stem with the same name and other bytes stops unless `--force` is given. Such a stem is another stem of that name or a new export of this one. A report without it, from release 0.31 or earlier, is matched by `source` alone. |
 | `synth` | The `--synth` value, `"vital"` or `"serum2"`. Later mappers pick the synth from it; the layer fields stay synth-neutral. |
 | `stem` | The stem group below. |
 | `transcription` | The transcriber's model and settings, the group below. `null` with `--notes`, which skips the transcriber. |
