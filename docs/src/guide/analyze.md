@@ -217,6 +217,7 @@ These excerpts come from the run above: a generated 4 s stereo tone at
 {
   "schema": "layers/1",
   "source": "bass.wav",
+  "source_sha256": "<64 hex digits>",
   "synth": "vital",
   ...
 }
@@ -225,7 +226,9 @@ These excerpts come from the run above: a generated 4 s stereo tone at
 `source` names the stem, and `source_sha256` is the checksum of its file.
 A second stem that would write into the same folder, such as `bass.aiff`
 next to `bass.wav`, or the `bass.wav` of another song in a shared `--out`
-folder, stops with an error unless you pass `--out` or `--force`. So does
+folder, stops with an error unless you pass `--out` or `--force`. A new
+export of the same `bass.wav` has other bytes, so it stops the same way,
+and `--force` replaces its report. So does
 a folder that holds a `spectrogram.png` with no report, or a
 `layers.json` this tool did not write.
 

@@ -32,7 +32,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Write next to a report of another stem, or replace the final notes and remove the report that describes them
+          Write next to a report that is not this stem's, replace a notes.mid of another stem, or replace the final notes and remove the report that describes them
 
   -h, --help
           Print help (see a summary with '-h')

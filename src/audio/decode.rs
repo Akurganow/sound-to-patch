@@ -119,12 +119,53 @@ impl fmt::Display for SkippedPacket {
 /// stream or too many corrupt packets, or a NaN or infinite sample with its
 /// offset.
 pub fn decode(path: &Path) -> Result<Decoded, DecodeError> {
+    let file = File::open(path).map_err(|source| DecodeError {
+        path: path.to_path_buf(),
+        kind: Kind::Open(source),
+    })?;
+    decode_source(path, Box::new(file))
+}
+
+/// Reads a stem file into memory. [`decode_bytes`] then decodes the same
+/// bytes that a checksum reads, so a file that allows one read only, such
+/// as a pipe, still decodes.
+///
+/// # Errors
+///
+/// The [`DecodeError`] that [`decode`] gives when the file cannot be opened
+/// or read.
+pub(crate) fn read_stem(path: &Path) -> Result<Vec<u8>, DecodeError> {
+    use std::io::Read as _;
     let fail = |kind| DecodeError {
         path: path.to_path_buf(),
         kind,
     };
-    let file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
-    let stream = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
+    let mut file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .map_err(|source| fail(Kind::Read(source)))?;
+    Ok(bytes)
+}
+
+/// [`decode`] of a file that [`read_stem`] read; errors name `path`.
+///
+/// # Errors
+///
+/// As [`decode`].
+pub(crate) fn decode_bytes(path: &Path, bytes: Vec<u8>) -> Result<Decoded, DecodeError> {
+    decode_source(path, Box::new(io::Cursor::new(bytes)))
+}
+
+/// [`decode`] of an open source; errors name `path`.
+fn decode_source(
+    path: &Path,
+    source: Box<dyn symphonia::core::io::MediaSource>,
+) -> Result<Decoded, DecodeError> {
+    let fail = |kind| DecodeError {
+        path: path.to_path_buf(),
+        kind,
+    };
+    let stream = MediaSourceStream::new(source, MediaSourceStreamOptions::default());
     let mut hint = Hint::new();
     if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
         hint.with_extension(extension);
@@ -256,42 +297,6 @@ impl Collected {
         }
         Ok(())
     }
-}
-
-/// Returns the SHA-256 of a stem file's bytes in lower-case hex, which a
-/// report records to tell apart two stems of one file name. The file is
-/// read in blocks, not held in memory.
-///
-/// # Errors
-///
-/// A [`DecodeError`] when the file cannot be opened or read, with the
-/// message that [`decode`] gives for the same file.
-pub fn file_sha256(path: &Path) -> Result<String, DecodeError> {
-    use sha2::{Digest, Sha256};
-    use std::fmt::Write as _;
-    use std::io::Read as _;
-    let fail = |kind| DecodeError {
-        path: path.to_path_buf(),
-        kind,
-    };
-    let mut file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
-    let mut hasher = Sha256::new();
-    let mut block = vec![0; 1 << 16];
-    loop {
-        match file.read(&mut block) {
-            Ok(0) => break,
-            Ok(read) => hasher.update(&block[..read]),
-            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
-            Err(error) => return Err(fail(Kind::Read(error))),
-        }
-    }
-    Ok(hasher
-        .finalize()
-        .iter()
-        .fold(String::with_capacity(64), |mut hex, byte| {
-            let _ = write!(hex, "{byte:02x}");
-            hex
-        }))
 }
 
 /// The frames a packet of duration `dur` covers, from the track's time base.

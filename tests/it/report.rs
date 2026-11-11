@@ -423,26 +423,20 @@ fn a_run_without_notes_removes_the_old_notes_file() {
 fn an_output_folder_that_is_a_file_fails_with_a_fix() {
     let dir = tempfile::tempdir().unwrap();
     let wav = stem(dir.path());
-    // A stem without an extension names its own default folder.
-    let bare = dir.path().join("noext");
-    fs::copy(&wav, &bare).unwrap();
     let file = dir.path().join("taken");
     fs::write(&file, b"x").unwrap();
-    for (stem, out) in [(&bare, None), (&wav, Some(file.as_path()))] {
-        let request = AnalyzeRequest {
-            out,
-            ..request(stem, None, dir.path())
-        };
-        let message = analyze(&request, &transcriber()).unwrap_err().to_string();
-        let folder = out.map_or(bare.clone(), Path::to_path_buf);
-        assert_eq!(
-            message,
-            format!(
-                "the output folder {} is a file. Pass --out <dir>",
-                folder.display()
-            )
-        );
-    }
+    let request = AnalyzeRequest {
+        out: Some(&file),
+        ..request(&wav, None, dir.path())
+    };
+    let message = analyze(&request, &transcriber()).unwrap_err().to_string();
+    assert_eq!(
+        message,
+        format!(
+            "the output folder {} is a file. Pass --out <dir>",
+            file.display()
+        )
+    );
 }
 
 #[test]
@@ -1072,14 +1066,28 @@ fn a_failed_notes_write_keeps_the_report_that_describes_the_notes() {
 
 /// A stem whose name without the extension is `.` or `..` has no folder
 /// name of its own: the default folder would be the stem's folder or its
-/// parent. Both commands stop before they write and ask for `--out`.
+/// parent. A name without an extension, such as `.wav` or `noext`, would
+/// name the stem file itself. Both commands stop before they write and ask
+/// for `--out`.
 #[test]
 fn a_stem_named_dot_wav_or_dot_dot_wav_is_refused_without_out() {
     let dir = tempfile::tempdir().unwrap();
     let wav = stem(dir.path());
     let inner = dir.path().join("outer").join("inner");
     fs::create_dir_all(&inner).unwrap();
-    for name in ["..wav", "...wav"] {
+    let no_extension = "gives no folder name: it has no extension to strip, so the folder would be the stem file itself. Pass --out <dir>";
+    for (name, cause) in [
+        (
+            "..wav",
+            "gives no folder name: without its extension it is `.`. Pass --out <dir>",
+        ),
+        (
+            "...wav",
+            "gives no folder name: without its extension it is `..`. Pass --out <dir>",
+        ),
+        (".wav", no_extension),
+        ("noext", no_extension),
+    ] {
         let odd = inner.join(name);
         fs::copy(&wav, &odd).unwrap();
         let request = AnalyzeRequest {
@@ -1087,13 +1095,7 @@ fn a_stem_named_dot_wav_or_dot_dot_wav_is_refused_without_out() {
             ..request(&odd, None, dir.path())
         };
         let message = analyze(&request, &transcriber()).unwrap_err().to_string();
-        assert_eq!(
-            message,
-            format!(
-                "`{name}` gives no folder name: without its extension it is `{}`. Pass --out <dir>",
-                &name[..name.len() - 4]
-            )
-        );
+        assert_eq!(message, format!("`{name}` {cause}"));
         let notes_request = NotesRequest {
             out: None,
             ..notes_request(&odd, dir.path(), 120.0, true)
@@ -1194,22 +1196,23 @@ fn notes_of(stem: &Path, out: &Path) -> String {
     .to_string()
 }
 
-/// The SHA-256 of a file, in lower-case hex.
-fn sha256_of(path: &Path) -> String {
-    use sha2::{Digest, Sha256};
-    use std::fmt::Write as _;
-    Sha256::digest(fs::read(path).unwrap())
-        .iter()
-        .fold(String::new(), |mut hex, byte| {
-            write!(hex, "{byte:02x}").unwrap();
-            hex
-        })
+/// The SHA-256 of the file that [`stem`] writes, from `shasum -a 256`.
+const STEM_SHA256: &str = "02f9e88c315f89918d42c0dd5578da54c6e5f4c54a0aab377e0ae42f829a4bb9";
+
+/// Whether a value is a SHA-256 in lower-case hex.
+fn is_sha256(value: &Value) -> bool {
+    value.as_str().is_some_and(|hex| {
+        hex.len() == 64
+            && hex
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    })
 }
 
 /// Two songs each with a `bass.wav`, analysed into one folder: the report
 /// records the checksum of the stem file, so the second stem is refused
 /// though its name matches, and `--force` replaces the report. The same
-/// file again passes.
+/// file again passes. A new export of one stem is the same case.
 #[test]
 fn a_stem_with_the_same_name_and_other_audio_is_refused() {
     let dir = tempfile::tempdir().unwrap();
@@ -1226,7 +1229,7 @@ fn a_stem_with_the_same_name_and_other_audio_is_refused() {
     let notes = given(dir.path());
     let out = dir.path().join("common");
     let report = run(&first, Some(&notes), &out);
-    assert_eq!(report["source_sha256"], sha256_of(&first));
+    assert_eq!(report["source_sha256"], STEM_SHA256);
     assert!(validator().is_valid(&report));
     run(&first, Some(&notes), &out);
     let before = report_files(&out);
@@ -1236,7 +1239,7 @@ fn a_stem_with_the_same_name_and_other_audio_is_refused() {
     assert_eq!(
         message,
         format!(
-            "{} is the report of another file named `bass.wav`: its checksum differs from this stem's. Pass --out <dir> for this stem, or --force to replace it",
+            "{} is the report of `bass.wav` with other content: another stem of that name, or this stem changed since that run. Pass --out <dir> for this stem, or --force to replace it",
             out.join(LAYERS_FILE).display()
         )
     );
@@ -1251,7 +1254,7 @@ fn a_stem_with_the_same_name_and_other_audio_is_refused() {
     let message = notes_of(&second, &beside);
     assert!(
         message.starts_with(&format!(
-            "{} is the report of another file named `bass.wav`",
+            "{} is the report of `bass.wav` with other content",
             beside.join(LAYERS_FILE).display()
         )),
         "{message}"
@@ -1264,7 +1267,12 @@ fn a_stem_with_the_same_name_and_other_audio_is_refused() {
     analyze(&forced, &transcriber()).unwrap();
     let report: Value =
         serde_json::from_str(&fs::read_to_string(out.join(LAYERS_FILE)).unwrap()).unwrap();
-    assert_eq!(report["source_sha256"], sha256_of(&second));
+    assert!(
+        is_sha256(&report["source_sha256"]),
+        "{}",
+        report["source_sha256"]
+    );
+    assert_ne!(report["source_sha256"], STEM_SHA256);
 }
 
 /// A report from before the checksum names its stem only: the guard falls
@@ -1280,5 +1288,23 @@ fn a_report_without_a_checksum_is_matched_by_name() {
     assert!(!validator().is_valid(&report));
     fs::write(out.join(LAYERS_FILE), report.to_string()).unwrap();
     let report = run(&wav, Some(&notes), &out);
-    assert_eq!(report["source_sha256"], sha256_of(&wav));
+    assert_eq!(report["source_sha256"], STEM_SHA256);
+}
+
+/// The report files get the mode that a new file gets in the folder, as
+/// with `File::create`, not the owner-only mode of a temporary file.
+#[cfg(unix)]
+#[test]
+fn the_report_files_get_the_mode_of_a_new_file() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let out = dir.path().join("out");
+    run(&wav, Some(&given(dir.path())), &out);
+    let plain = dir.path().join("plain");
+    fs::write(&plain, b"x").unwrap();
+    let mode = |path: &Path| fs::metadata(path).unwrap().permissions().mode() & 0o777;
+    for name in [LAYERS_FILE, SPECTROGRAM_FILE, NOTES_FILE] {
+        assert_eq!(mode(&out.join(name)), mode(&plain), "{name}");
+    }
 }

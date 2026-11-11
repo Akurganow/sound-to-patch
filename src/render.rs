@@ -82,7 +82,7 @@ pub fn notes_of_list(list: &NoteList, default: Velocity) -> Result<Vec<RenderNot
 }
 
 /// The SHA-256 of `bytes` in lower-case hex.
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
     use std::fmt::Write as _;
     Sha256::digest(bytes)

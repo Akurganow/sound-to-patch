@@ -34,7 +34,10 @@ pub struct AnalyzeArgs {
     /// it]
     #[arg(short, long, value_name = "DIR")]
     pub out: Option<PathBuf>,
-    /// Replace a report of another stem in the output folder
+    /// Replace files in the output folder that this stem's report does not
+    /// own: a report or notes of another stem, a report of the same name
+    /// with other content, a file this tool did not write, or a
+    /// spectrogram.png without a report
     #[arg(long)]
     pub force: bool,
     /// The target synth that the report names [default: vital]

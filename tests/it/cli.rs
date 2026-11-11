@@ -375,3 +375,77 @@ fn notes_with_a_profile_and_force_replaces_the_notes_of_another_stem() {
         r#"{"source": "other.wav"}"#
     );
 }
+
+/// Runs the command with `args` and the bytes of `stem` on standard input,
+/// through a pipe.
+#[cfg(unix)]
+fn run_with_piped_stem(args: &[&std::ffi::OsStr], stem: &std::path::Path) -> std::process::Output {
+    use std::io::Write as _;
+    let bytes = std::fs::read(stem).unwrap();
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let writer = std::thread::spawn(move || {
+        // The command may stop reading early on an error; the exit code
+        // then tells.
+        let _ = stdin.write_all(&bytes);
+    });
+    let output = child.wait_with_output().unwrap();
+    writer.join().unwrap();
+    output
+}
+
+/// A stem read through a pipe, here `/dev/stdin`, decodes in both commands:
+/// the stem is read once, so its checksum and the decoder see the same
+/// bytes, and the report records the checksum.
+#[cfg(unix)]
+#[test]
+fn a_stem_through_a_pipe_decodes() {
+    use std::ffi::OsStr;
+    let dir = tempfile::tempdir().unwrap();
+    let (rate, samples) = crate::tempo::bass_line(120.0, 9);
+    let stem = dir.path().join("line.wav");
+    crate::support::signals::write_wav16(&stem, rate, &[samples]);
+    let notes = crate::report::given(dir.path());
+    let out = dir.path().join("analyze");
+    let output = run_with_piped_stem(
+        &[
+            OsStr::new("analyze"),
+            OsStr::new("/dev/stdin"),
+            OsStr::new("--bpm"),
+            OsStr::new("120"),
+            OsStr::new("--notes"),
+            notes.as_os_str(),
+            OsStr::new("--out"),
+            out.as_os_str(),
+        ],
+        &stem,
+    );
+    assert!(output.status.success(), "{output:?}");
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out.join("layers.json")).unwrap()).unwrap();
+    assert_eq!(report["source"], "stdin");
+    assert_eq!(report["source_sha256"].as_str().map(str::len), Some(64));
+    let out = dir.path().join("notes");
+    let output = run_with_piped_stem(
+        &[
+            OsStr::new("notes"),
+            OsStr::new("/dev/stdin"),
+            OsStr::new("--bpm"),
+            OsStr::new("120"),
+            OsStr::new("--bpm-exact"),
+            OsStr::new("--profile"),
+            OsStr::new("bass"),
+            OsStr::new("--out"),
+            out.as_os_str(),
+        ],
+        &stem,
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert!(out.join("notes.mid").is_file());
+}
