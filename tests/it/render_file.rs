@@ -4,6 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
+use serde_json::Value;
+
 use sound_to_patch::render::file::{Backend, RenderFileError, RenderRequest, render_file};
 use sound_to_patch::synth::Synth;
 use sound_to_patch::units::Bpm;
@@ -104,4 +106,77 @@ fn a_failed_write_keeps_the_old_outputs() {
     assert_eq!(std::fs::read(&out).unwrap(), b"old clip");
     assert_eq!(std::fs::read(&record).unwrap(), b"old record");
     assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 2);
+}
+
+/// Clears the immutable flag of a file when it drops, so the temporary
+/// folder can be removed even when an assert fails.
+#[cfg(target_os = "macos")]
+struct Immutable(PathBuf);
+
+#[cfg(target_os = "macos")]
+impl Immutable {
+    fn set(path: &Path) -> Self {
+        chflags("uchg", path);
+        Self(path.to_owned())
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for Immutable {
+    fn drop(&mut self) {
+        chflags("nouchg", &self.0);
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn chflags(flag: &str, path: &Path) {
+    let status = std::process::Command::new("chflags")
+        .arg(flag)
+        .arg(path)
+        .status()
+        .unwrap();
+    assert!(status.success(), "chflags {flag} failed");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn a_forced_write_that_cannot_replace_the_record_names_the_mixed_pair() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("clip.wav");
+    let record = dir.path().join("clip.json");
+    render(&out, false).unwrap();
+    let old_record = std::fs::read(&record).unwrap();
+    let _immutable = Immutable::set(&record);
+    let error = message(render(&out, true));
+    assert!(error.contains("clip.json"), "{error}");
+    assert!(
+        error.contains("clip.wav now holds the new render"),
+        "{error}"
+    );
+    assert!(
+        error.contains("clip.json still holds the old one"),
+        "{error}"
+    );
+    assert!(error.contains("no longer match"), "{error}");
+    assert!(error.contains("render again with --force"), "{error}");
+    assert_eq!(std::fs::read(&record).unwrap(), old_record);
+}
+
+#[test]
+fn the_written_record_matches_the_committed_schema_with_its_load_check() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("clip.wav");
+    let path = render(&out, false).unwrap();
+    let record: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    assert!(record["load_check"].is_object(), "{record}");
+    let schema: Value = serde_json::from_str(
+        &std::fs::read_to_string("schemas/render-record.schema.json").unwrap(),
+    )
+    .unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    let errors: Vec<String> = validator
+        .iter_errors(&record)
+        .map(|error| error.to_string())
+        .collect();
+    assert_eq!(errors, Vec::<String>::new(), "{record}");
 }

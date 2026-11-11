@@ -202,13 +202,41 @@ fn exists(path: &Path) -> RenderFileError {
     }
 }
 
+/// The error for a forced write whose rename failed after an earlier output
+/// was already placed: the folder now holds a new file beside an old one.
+fn mixed(path: &Path, placed: &[&Path], cause: &io::Error) -> RenderFileError {
+    let new = placed
+        .iter()
+        .map(|placed| placed.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" and ");
+    let old = if path.exists() {
+        "still holds the old one"
+    } else {
+        "was not written"
+    };
+    RenderFileError::Output {
+        path: path.to_owned(),
+        cause: format!(
+            "{cause}. {new} now holds the new render, but {} {old}, so the files no longer match",
+            path.display()
+        ),
+        fix: format!(
+            "Make {} replaceable and render again with --force",
+            path.display()
+        ),
+    }
+}
+
 /// Writes one output file.
 type WriteOutput<'a> = &'a dyn Fn(&mut dyn Write) -> io::Result<()>;
 
 /// Writes each output to a new temporary file in `folder`, and renames the
 /// temporary files over the outputs only once every write succeeded. A
 /// failed write removes the temporary files and leaves the outputs as they
-/// were.
+/// were. A failed rename leaves them as they were without `force`; with
+/// `force` it can leave a new output beside an old one, and the error says
+/// so.
 fn write_outputs(
     folder: &Path,
     outputs: &[(&Path, WriteOutput<'_>)],
@@ -251,10 +279,11 @@ fn write_outputs(
             continue;
         };
         // Without force every placed output is new, so removing it restores
-        // the folder. shortcut: with force, an output already renamed stays
-        // replaced; a rename within one folder fails only when another
-        // program changes the folder during the write, because render_file
-        // refuses an output that is a folder.
+        // the folder. With force an output already renamed stays replaced.
+        // The rename of a later output fails when the file cannot be
+        // replaced, for example under an immutable flag or an ACL that denies
+        // delete, or when another program changes the folder. The error
+        // then names the mismatch.
         if !force {
             for path in placed {
                 let _ = fs::remove_file(path);
@@ -262,6 +291,8 @@ fn write_outputs(
             if error.error.kind() == io::ErrorKind::AlreadyExists {
                 return Err(exists(path));
             }
+        } else if !placed.is_empty() {
+            return Err(mixed(path, &placed, &error.error));
         }
         return Err(failed(path, error.error));
     }
