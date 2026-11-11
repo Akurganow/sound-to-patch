@@ -134,7 +134,8 @@ pub fn mach_o_archs(bytes: &[u8]) -> Vec<Arch> {
 /// # Errors
 ///
 /// Returns [`RenderError::Host`] when `plugin` is a folder without
-/// `Contents/Info.plist` or without the executable the bundle names.
+/// `Contents/Info.plist` or without the executable the bundle names, and
+/// when its `Info.plist` cannot be read.
 pub fn bundle_executable(plugin: &Path) -> Result<PathBuf, RenderError> {
     if plugin.is_file() {
         return Ok(plugin.to_owned());
@@ -145,8 +146,18 @@ pub fn bundle_executable(plugin: &Path) -> Result<PathBuf, RenderError> {
             "Pass --plugin with the path of the plug-in's .vst3 bundle",
         )
     };
-    let info = std::fs::read(plugin.join("Contents").join("Info.plist"))
-        .map_err(|_| not_a_bundle("it has no Contents/Info.plist".to_owned()))?;
+    let plist = plugin.join("Contents").join("Info.plist");
+    let info = std::fs::read(&plist).map_err(|error| {
+        // A dead link reads as not found too, but the bundle is there.
+        if error.kind() == io::ErrorKind::NotFound && plist.symlink_metadata().is_err() {
+            not_a_bundle("it has no Contents/Info.plist".to_owned())
+        } else {
+            host_error(
+                format!("cannot read {} ({error})", plist.display()),
+                "Check that it is a readable file; reinstall the plug-in if it is not",
+            )
+        }
+    })?;
     let name = plist_executable(&String::from_utf8_lossy(&info))
         .or_else(|| {
             plugin
@@ -276,16 +287,22 @@ fn keep(tail: &Tail, line: &str) {
     if line.is_empty() {
         return;
     }
-    let mut end = line.len().min(TAIL_LINE_BYTES);
-    while !line.is_char_boundary(end) {
-        end -= 1;
-    }
     if let Ok(mut lines) = tail.lock() {
         if lines.len() == TAIL_LINES {
             lines.pop_front();
         }
-        lines.push_back(line[..end].to_owned());
+        lines.push_back(cut(line).to_owned());
     }
+}
+
+/// The first [`TAIL_LINE_BYTES`] of `text`, so a reply of several MB
+/// never lands whole in a message.
+fn cut(text: &str) -> &str {
+    let mut end = text.len().min(TAIL_LINE_BYTES);
+    while !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
 }
 
 fn quote(tail: &Tail) -> String {
@@ -516,7 +533,8 @@ impl PluginRenderer {
             Ok(Err(line)) => {
                 self.stop();
                 Err(another_release(format!(
-                    "the host sent a reply this program cannot read: {line}"
+                    "the host sent a reply this program cannot read: {}",
+                    cut(&line)
                 )))
             }
             Err(RecvTimeoutError::Timeout) => {
@@ -584,7 +602,10 @@ impl PluginRenderer {
 }
 
 fn unexpected(reply: &Reply) -> RenderError {
-    RenderError::Crashed(format!("it gave the reply {reply:?} out of turn"))
+    RenderError::Crashed(format!(
+        "it gave the reply {} out of turn",
+        cut(&format!("{reply:?}"))
+    ))
 }
 
 fn another_release(cause: String) -> RenderError {
@@ -597,7 +618,13 @@ fn another_release(cause: String) -> RenderError {
 /// Reads a pipe line by line until it closes. Bytes that are not UTF-8
 /// are replaced, so plug-in output of any kind never stops the reader. A
 /// line stops at [`MAX_LINE`] bytes unless `whole` accepts its start.
-fn each_line(pipe: impl Read, whole: impl Fn(&[u8]) -> bool, mut line: impl FnMut(&str) -> bool) {
+/// `line` gets each line and whether a line end closed it: the last line
+/// of a pipe that closed in the middle of a line has none.
+fn each_line(
+    pipe: impl Read,
+    whole: impl Fn(&[u8]) -> bool,
+    mut line: impl FnMut(&str, bool) -> bool,
+) {
     let mut reader = BufReader::new(pipe);
     let mut bytes = Vec::new();
     loop {
@@ -606,7 +633,8 @@ fn each_line(pipe: impl Read, whole: impl Fn(&[u8]) -> bool, mut line: impl FnMu
             Ok(0) | Err(_) => break,
             Ok(_) => {
                 let text = String::from_utf8_lossy(&bytes);
-                if !line(text.trim_end_matches(['\n', '\r'])) {
+                let ended = bytes.last() == Some(&b'\n');
+                if !line(text.trim_end_matches(['\n', '\r']), ended) {
                     break;
                 }
             }
@@ -639,12 +667,22 @@ fn holds_reply(bytes: &[u8]) -> bool {
 }
 
 fn read_replies(stdout: impl Read, send: &Sender<Incoming>, tail: &Tail) {
-    each_line(stdout, holds_reply, |line| {
+    each_line(stdout, holds_reply, |line, ended| {
         let Some((output, reply)) = wire::parse_reply(line) else {
             keep(tail, line);
             return true;
         };
         keep(tail, output);
+        if !ended {
+            // A reply without its line end is a host that died while it
+            // wrote. Dropping it closes the channel, so the caller reports
+            // the crash with the exit status, not a protocol fault.
+            keep(
+                tail,
+                &format!("(a reply cut off after {} bytes)", line.len()),
+            );
+            return false;
+        }
         let incoming = reply.map_err(|error| format!("{line} ({error})"));
         send.send(incoming).is_ok()
     });
@@ -671,7 +709,7 @@ fn connect(child: &mut Child) -> Result<Pipes, RenderError> {
             each_line(
                 stderr,
                 |_| false,
-                |line| {
+                |line, _| {
                     keep(&err_tail, line);
                     true
                 },
@@ -874,7 +912,7 @@ mod tests {
 
     fn lines(input: &[u8]) -> Vec<String> {
         let mut out = Vec::new();
-        each_line(input, holds_reply, |line| {
+        each_line(input, holds_reply, |line, _| {
             out.push(line.to_owned());
             true
         });
@@ -949,6 +987,45 @@ mod tests {
         assert!(message.contains("it has no executable Contents/MacOS/Gone"));
         let dir = bundle("<key>CFBundleExecutable</key><string>../x</string>", "x");
         assert!(bundle_executable(&dir.path().join("Synth.vst3")).is_err());
+    }
+
+    #[test]
+    fn a_reply_out_of_turn_is_quoted_in_bounded_length() {
+        let reply = Reply::Saved {
+            state: "a".repeat(64 * TAIL_LINE_BYTES),
+        };
+        let message = unexpected(&reply).to_string();
+        assert!(message.len() < 2 * TAIL_LINE_BYTES, "{}", message.len());
+        assert!(message.contains("Saved"), "{message}");
+    }
+
+    #[test]
+    fn an_info_plist_that_cannot_be_read_is_named_with_its_cause() {
+        let dir = tempfile::tempdir().unwrap();
+        let contents = dir.path().join("Synth.vst3").join("Contents");
+        std::fs::create_dir_all(contents.join("Info.plist")).unwrap();
+        let message = bundle_executable(&dir.path().join("Synth.vst3"))
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains("cannot read"), "{message}");
+        assert!(
+            !message.contains("it has no Contents/Info.plist"),
+            "{message}"
+        );
+        assert!(!message.contains("Pass --plugin"), "{message}");
+        #[cfg(unix)]
+        {
+            let dir = tempfile::tempdir().unwrap();
+            let contents = dir.path().join("Synth.vst3").join("Contents");
+            std::fs::create_dir_all(&contents).unwrap();
+            std::os::unix::fs::symlink(dir.path().join("gone"), contents.join("Info.plist"))
+                .unwrap();
+            let message = bundle_executable(&dir.path().join("Synth.vst3"))
+                .unwrap_err()
+                .to_string();
+            assert!(message.contains("cannot read"), "{message}");
+            assert!(!message.contains("Pass --plugin"), "{message}");
+        }
     }
 
     /// A host played by a shell script, for the paths a real plug-in
@@ -1096,6 +1173,7 @@ mod tests {
         #[test]
         fn a_host_that_never_answers_quit_is_stopped() {
             let renderer = start(&format!("{OPEN}read -r line; exec sleep 30")).unwrap();
+            let pid = renderer.child.id();
             let before = Instant::now();
             drop(renderer);
             assert!(
@@ -1103,6 +1181,41 @@ mod tests {
                 "{:?}",
                 before.elapsed()
             );
+            assert!(!alive(pid), "the host still runs after the drop");
+        }
+
+        /// Whether the process `pid` still runs.
+        fn alive(pid: u32) -> bool {
+            Command::new("kill")
+                .args(["-0", &pid.to_string()])
+                .stderr(Stdio::null())
+                .status()
+                .unwrap()
+                .success()
+        }
+
+        #[test]
+        fn a_host_that_dies_in_a_reply_is_a_crash_with_a_bounded_quote() {
+            let cut = format!(
+                r#"{OPEN}read -r line; printf '%s{{"reply":"saved","state":"' "$PREFIX"; head -c 300000 /dev/zero | tr '\0' y; exit 9"#
+            );
+            let mut renderer = start(&cut).unwrap();
+            let error = renderer.render(&job()).unwrap_err();
+            let message = error.to_string();
+            assert!(matches!(error, RenderError::Crashed(_)), "{message}");
+            assert!(message.contains("exit status: 9"), "{message}");
+            assert!(message.len() < 8 * TAIL_LINE_BYTES, "{}", message.len());
+        }
+
+        #[test]
+        fn an_unreadable_reply_is_quoted_in_bounded_length() {
+            let junk = format!(
+                r#"{OPEN}read -r line; printf '%s{{"reply":"opened","x":"' "$PREFIX"; head -c 300000 /dev/zero | tr '\0' y; printf '\n'; exec sleep 30"#
+            );
+            let mut renderer = start(&junk).unwrap();
+            let message = renderer.render(&job()).unwrap_err().to_string();
+            assert!(message.contains("cannot read"), "{message}");
+            assert!(message.len() < 4 * TAIL_LINE_BYTES, "{}", message.len());
         }
 
         #[test]
@@ -1136,12 +1249,7 @@ mod tests {
                 "{:?}",
                 before.elapsed()
             );
-            let alive = Command::new("kill")
-                .args(["-0", &pid.to_string()])
-                .stderr(Stdio::null())
-                .status()
-                .unwrap();
-            assert!(!alive.success());
+            assert!(!alive(pid));
         }
 
         #[test]
