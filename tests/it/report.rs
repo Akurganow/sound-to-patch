@@ -419,24 +419,38 @@ fn a_run_without_notes_removes_the_old_notes_file() {
     assert_eq!(report["notes"], Value::Null);
 }
 
+/// An output folder that is a file, given by `--out` or the default
+/// folder of `bass.wav` with a file `bass` next to it, stops the run.
 #[test]
 fn an_output_folder_that_is_a_file_fails_with_a_fix() {
     let dir = tempfile::tempdir().unwrap();
     let wav = stem(dir.path());
-    let file = dir.path().join("taken");
-    fs::write(&file, b"x").unwrap();
-    let request = AnalyzeRequest {
-        out: Some(&file),
-        ..request(&wav, None, dir.path())
-    };
-    let message = analyze(&request, &transcriber()).unwrap_err().to_string();
-    assert_eq!(
-        message,
-        format!(
-            "the output folder {} is a file. Pass --out <dir>",
-            file.display()
-        )
-    );
+    let taken = dir.path().join("taken");
+    fs::write(&taken, b"x").unwrap();
+    let default = dir.path().join("bass");
+    fs::write(&default, b"x").unwrap();
+    for (out, folder) in [(Some(taken.as_path()), &taken), (None, &default)] {
+        let request = AnalyzeRequest {
+            out,
+            ..request(&wav, None, dir.path())
+        };
+        let message = analyze(&request, &transcriber()).unwrap_err().to_string();
+        assert_eq!(
+            message,
+            format!(
+                "the output folder {} is a file. Pass --out <dir>",
+                folder.display()
+            )
+        );
+        let notes_request = NotesRequest {
+            out,
+            ..notes_request(&wav, dir.path(), 120.0, true)
+        };
+        let message = notes(&notes_request, &untracked(transcriber()))
+            .unwrap_err()
+            .to_string();
+        assert!(message.starts_with("the output folder "), "{message}");
+    }
 }
 
 #[test]
@@ -1307,4 +1321,38 @@ fn the_report_files_get_the_mode_of_a_new_file() {
     for name in [LAYERS_FILE, SPECTROGRAM_FILE, NOTES_FILE] {
         assert_eq!(mode(&out.join(name)), mode(&plain), "{name}");
     }
+}
+
+/// A run killed during its renames can leave the earlier `layers.json` as
+/// a hidden backup and no `layers.json`. The next run of either command
+/// stops and names the backup, so `notes` does not replace the
+/// `notes.mid` it describes; `--force` writes new files and leaves the
+/// backup.
+#[test]
+fn a_backup_left_by_a_killed_run_is_named_before_any_write() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes_file = given(dir.path());
+    let out = dir.path().join("out");
+    run(&wav, Some(&notes_file), &out);
+    let backup = out.join(".layers.json.a1B2c3.old");
+    fs::rename(out.join(LAYERS_FILE), &backup).unwrap();
+    let before = (fs::read(&backup).unwrap(), report_files(&out));
+    let expected = format!(
+        "{} is a backup of layers.json from a run that stopped before it ended, and the folder has no layers.json. Rename the backup to layers.json to restore the earlier file, or pass --force to write new files and leave the backup",
+        backup.display()
+    );
+    let message = analyze(&request(&wav, Some(&notes_file), &out), &transcriber())
+        .unwrap_err()
+        .to_string();
+    assert_eq!(message, expected);
+    assert_eq!(notes_of(&wav, &out), expected);
+    assert_eq!((fs::read(&backup).unwrap(), report_files(&out)), before);
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&wav, Some(&notes_file), &out)
+    };
+    analyze(&forced, &transcriber()).unwrap();
+    assert_eq!(fs::read(&backup).unwrap(), before.0);
+    assert!(out.join(LAYERS_FILE).is_file());
 }

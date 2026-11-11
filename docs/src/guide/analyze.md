@@ -228,9 +228,9 @@ A second stem that would write into the same folder, such as `bass.aiff`
 next to `bass.wav`, or the `bass.wav` of another song in a shared `--out`
 folder, stops with an error unless you pass `--out` or `--force`. A new
 export of the same `bass.wav` has other bytes, so it stops the same way,
-and `--force` replaces its report. So does
-a folder that holds a `spectrogram.png` with no report, or a
-`layers.json` this tool did not write.
+and `--force` replaces its report. A folder that holds a
+`spectrogram.png` with no report, or a `layers.json` this tool did not
+write, stops the run too.
 
 ```json
 "centroid_hz": {

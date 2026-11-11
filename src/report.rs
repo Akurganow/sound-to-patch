@@ -188,13 +188,12 @@ fn given_track(
 /// of `transcriber` still reads the stem for the pitch layer.
 ///
 /// The files are replaced; nothing else in the folder changes. The stem
-/// is read once, for its checksum and for the decoder. Each file goes to a
-/// hidden temporary sibling and is renamed into place, `notes.mid` first
-/// and `layers.json` last: the old
-/// report moves aside before any file changes, so a `layers.json` that
-/// exists always belongs to the files next to it, and a failure puts the
-/// old files back. The final `notes.mid` replaces the first one of
-/// `notes`.
+/// is read once, for its checksum and for the decoder. Each file goes to
+/// a hidden temporary sibling and is renamed into place, `notes.mid`
+/// first and `layers.json` last. The old report moves aside before any
+/// file changes, so a `layers.json` that exists always belongs to the
+/// files next to it, and a failure puts the old files back. The final
+/// `notes.mid` replaces the first one of `notes`.
 ///
 /// # Errors
 ///
@@ -202,9 +201,9 @@ fn given_track(
 /// `out` is given, when the output folder is a file, or, without `force`,
 /// when it holds a report or notes of another stem, a report of the same
 /// name with other content, a `layers.json` or `notes.mid` that is not
-/// this tool's, or a `spectrogram.png` without a report; when the note list
-/// or the stem cannot be read, when the notes step fails, or when an output
-/// file cannot be written.
+/// this tool's, a `spectrogram.png` without a report, or the backup that a
+/// killed run left; when the note list or the stem cannot be read, when the
+/// notes step fails, or when an output file cannot be written.
 pub fn analyze(
     request: &AnalyzeRequest<'_>,
     transcriber: &Transcriber,
@@ -368,11 +367,22 @@ fn create_dir(dir: &Path) -> Result<Vec<PathBuf>, AnalyzeError> {
         .take_while(|folder| !folder.as_os_str().is_empty() && !folder.exists())
         .map(Path::to_path_buf)
         .collect();
-    std::fs::create_dir_all(dir).map_err(|source| AnalyzeError::Write {
-        path: dir.to_path_buf(),
-        source,
-    })?;
+    if let Err(source) = std::fs::create_dir_all(dir) {
+        remove_created(&created);
+        return Err(AnalyzeError::Write {
+            path: dir.to_path_buf(),
+            source,
+        });
+    }
     Ok(created)
+}
+
+/// Removes the folders that [`create_dir`] created, the deepest first.
+/// Only an empty folder goes: `remove_dir` keeps one with files.
+fn remove_created(created: &[PathBuf]) {
+    for folder in created {
+        let _ = std::fs::remove_dir(folder);
+    }
 }
 
 /// A file of a write: its name in the folder, and its new bytes or `None`
@@ -425,10 +435,7 @@ fn replace_files(dir: &Path, changes: &[Change<'_>]) -> Result<(), AnalyzeError>
     let created = create_dir(dir)?;
     let result = swap_files(dir, changes);
     if result.is_err() {
-        // Only an empty folder goes: `remove_dir` keeps one with files.
-        for folder in created {
-            let _ = std::fs::remove_dir(folder);
-        }
+        remove_created(&created);
     }
     result
 }
@@ -769,8 +776,8 @@ pub struct NotesRequest<'a> {
     /// The output folder; by default `<stem folder>/<stem file stem>/`.
     pub out: Option<&'a Path>,
     /// Write next to a report that is not this stem's, replace a
-    /// `notes.mid` of another stem, or replace the final notes and remove
-    /// the report that describes them.
+    /// `notes.mid` of another stem or with no track name, or replace the
+    /// final notes and remove the report that describes them.
     pub force: bool,
 }
 
@@ -861,9 +868,10 @@ fn transcription_summary(t: &Transcription) -> Vec<String> {
 /// `bpm_exact`. The stem runs through [`transcribe_stem`] at that tempo
 /// with the detected settings, or those of the profile, and the file
 /// carries that tempo. The file is written to a hidden temporary sibling
-/// and renamed into place, so a failure leaves the old file. Nothing else in the folder changes, except that `force` removes a
-/// `layers.json` that describes the final notes once the new file is in
-/// place, so no report describes a file that is gone.
+/// and renamed into place, so a failure leaves the old file. Nothing else
+/// in the folder changes, except that `force` removes a `layers.json`
+/// that describes the final notes once the new file is in place, so no
+/// report describes a file that is gone.
 ///
 /// # Errors
 ///
@@ -871,9 +879,9 @@ fn transcription_summary(t: &Transcription) -> Vec<String> {
 /// `out` is given, when the output folder is a file, or, without `force`,
 /// when it holds a `layers.json` that describes the final notes, a report
 /// or notes of another stem, a report of the same name with other content,
-/// or a `layers.json` or `notes.mid` that is not this tool's; when the stem
-/// cannot be decoded or transcribed, when it gives no note, or when the
-/// file cannot be written.
+/// a `layers.json` or `notes.mid` that is not this tool's, or the backup
+/// that a killed run left; when the stem cannot be decoded or transcribed,
+/// when it gives no note, or when the file cannot be written.
 pub fn notes(
     request: &NotesRequest<'_>,
     transcriber: &Transcriber,
@@ -964,6 +972,7 @@ fn guard(
     guarded: Guarded,
 ) -> Result<(Vec<u8>, String), AnalyzeError> {
     let recorded = check_out_dir(dir, source, force, guarded)?;
+    check_backups(dir, force)?;
     if guarded == Guarded::Report {
         check_spectrogram(dir, force)?;
     }
@@ -978,6 +987,41 @@ fn guard(
         });
     }
     Ok((bytes, checksum))
+}
+
+/// Fails when, with `force` off, the folder holds the backup of a report
+/// file but not the file: a run that was killed during its renames left
+/// the earlier file there. `force` replaces the files and leaves the
+/// backup.
+fn check_backups(dir: &Path, force: bool) -> Result<(), AnalyzeError> {
+    if force {
+        return Ok(());
+    }
+    // A folder that does not exist yet holds no backup.
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Ok(());
+    };
+    let mut names: Vec<String> = entries
+        .flatten()
+        .map(|entry| entry.file_name().to_string_lossy().into_owned())
+        .collect();
+    names.sort();
+    for file in [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE] {
+        let prefix = format!(".{file}.");
+        let backup = names.iter().find(|name| {
+            // The suffix is the one `move_aside` writes, so case matters.
+            name.starts_with(&prefix) && Path::new(name).extension().is_some_and(|ext| ext == "old")
+        });
+        if let Some(backup) = backup
+            && !dir.join(file).exists()
+        {
+            return Err(AnalyzeError::Backup {
+                path: dir.join(backup),
+                file,
+            });
+        }
+    }
+    Ok(())
 }
 
 /// The `source` and `source_sha256` of a `layers.json`; `None` when it
@@ -1166,6 +1210,14 @@ pub enum AnalyzeError {
         /// What the file would be, and what `--force` does to it.
         guarded: Guarded,
     },
+    /// The output folder holds the backup of a report file, but not the
+    /// file: a run was killed during its renames.
+    Backup {
+        /// The backup, `.<file>.<random>.old`.
+        path: PathBuf,
+        /// The file it backs up.
+        file: &'static str,
+    },
     /// The output folder holds a `spectrogram.png` that no report owns.
     Unowned {
         /// The existing file.
@@ -1262,6 +1314,11 @@ impl fmt::Display for AnalyzeError {
                 };
                 write!(f, "{} exists but {what}. {}", path.display(), guarded.fix())
             }
+            Self::Backup { path, file } => write!(
+                f,
+                "{} is a backup of {file} from a run that stopped before it ended, and the folder has no {file}. Rename the backup to {file} to restore the earlier file, or pass --force to write new files and leave the backup",
+                path.display()
+            ),
             Self::Unowned { path } => write!(
                 f,
                 "{} exists, and no report in the folder owns it. {}",
@@ -1312,6 +1369,7 @@ impl Error for AnalyzeError {
             | Self::OtherSource { .. }
             | Self::OtherAudio { .. }
             | Self::NotOurs { .. }
+            | Self::Backup { .. }
             | Self::Unowned { .. }
             | Self::NotesDescribed { .. }
             | Self::NoNotes { .. }

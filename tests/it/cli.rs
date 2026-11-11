@@ -449,3 +449,40 @@ fn a_stem_through_a_pipe_decodes() {
     assert!(output.status.success(), "{output:?}");
     assert!(out.join("notes.mid").is_file());
 }
+
+/// A failed write into a new output folder removes the folders the run
+/// created. A umask of 222 makes each new folder read-only: one new folder
+/// takes no temporary file, and a second level cannot be created.
+#[cfg(unix)]
+#[test]
+fn a_failed_write_removes_the_new_output_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0);
+    let stem = dir.path().join("lead.wav");
+    crate::support::signals::write_wav16(&stem, 22_050, &[saw.iter().map(|x| 0.3 * x).collect()]);
+    let notes = crate::report::given(dir.path());
+    for out in [dir.path().join("new"), dir.path().join("deep").join("new")] {
+        let output = std::process::Command::new("sh")
+            .args(["-c", "umask 222 && exec \"$0\" \"$@\""])
+            .arg(env!("CARGO_BIN_EXE_sound-to-patch"))
+            .arg("analyze")
+            .arg(&stem)
+            .args(["--bpm", "120", "--notes"])
+            .arg(&notes)
+            .arg("--out")
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.starts_with("error: cannot write "), "{stderr}");
+        let mut names: Vec<String> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["bass.mid", "lead.wav"], "{}", out.display());
+    }
+}

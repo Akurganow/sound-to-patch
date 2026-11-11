@@ -30,8 +30,8 @@ pub struct NotesArgs {
     #[arg(short, long, value_name = "DIR")]
     pub out: Option<PathBuf>,
     /// Write next to a report that is not this stem's, replace a notes.mid of
-    /// another stem, or replace the final notes and remove the report that
-    /// describes them
+    /// another stem or with no track name, or replace the final notes and
+    /// remove the report that describes them
     #[arg(long)]
     pub force: bool,
 }

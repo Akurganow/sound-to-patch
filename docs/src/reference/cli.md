@@ -103,9 +103,9 @@ fails, such as on a full disk, puts the old files back, leaves no
 temporary file and removes a folder the run created. A run killed during
 the renames, such as by a power loss, can leave the old files as hidden
 backups named `.<file>.<random>.old`, such as
-`.layers.json.a1B2c3.old`, with no `layers.json`. Rename each back to
-its file name to keep the old report, or pass `--force` to replace the
-files. The
+`.layers.json.a1B2c3.old`, with no `layers.json`. The next run stops and
+names the backup: rename each backup back to its file name to keep the
+old report, or pass `--force` to write new files and leave the backups. The
 command prints one `wrote <path>` line per file to standard output, and a
 warning line for each corrupt packet that became silence to standard
 error.
@@ -128,8 +128,8 @@ the file and asks for `--out` or `--force` when the folder holds:
   name, as in [`notes`](#notes).
 
 `--out` picks another folder, and `--force` replaces the files. An
-`--out` path that is a file stops the command with a request for another
-`--out`.
+output folder that is a file, by default or by `--out`, such as a file
+`bass` next to `bass.wav`, stops the command with a request for `--out`.
 
 Without `--out`, the folder is named after the stem file and sits next to
 it: `stems/bass.wav` writes `stems/bass/`. A stem whose name without the
@@ -196,7 +196,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Write next to a report that is not this stem's, replace a notes.mid of another stem, or replace the final notes and remove the report that describes them
+          Write next to a report that is not this stem's, replace a notes.mid of another stem or with no track name, or replace the final notes and remove the report that describes them
 
   -h, --help
           Print help (see a summary with '-h')
@@ -240,7 +240,9 @@ gives each step.
   `notes.mid`, it stops whatever the stem, because the first list would
   replace the file the report describes; `--force` replaces `notes.mid`
   and removes that report once the new file is in place, so no report
-  describes a file that is gone.
+  describes a file that is gone. A backup that a killed run left, as
+  for `analyze`, stops it too; `--force` writes `notes.mid` and leaves
+  the backup.
   `--out` picks another folder in every case.
 
 | Exit code | Meaning |
