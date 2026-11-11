@@ -17,8 +17,8 @@ use sound_to_patch_core::render::wire::{
     PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote,
 };
 use sound_to_patch_core::render::{
-    ControlKind, EventKind, PreRoll, RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of,
-    note_events,
+    ControlKind, EventKind, PreRoll, ProcessMode as RecipeProcessMode, RECIPE_VERSION, Recipe,
+    RenderNote, TailWatch, frame_of, note_events,
 };
 use sound_to_patch_core::synth::Synth;
 use sound_to_patch_core::units::Seconds;
@@ -27,6 +27,7 @@ use vst3_host::{
     TransportPosition, Vst3Host,
 };
 
+use crate::order::clip_order;
 use crate::{Handler, failed};
 
 /// The version of `vst3-host`, the exact pin in `host/Cargo.toml`.
@@ -78,6 +79,14 @@ fn step(what: &str) -> impl Fn(vst3_host::Error) -> Reply + '_ {
             format!("{what} failed ({error})"),
             "Check that the plug-in loads in a DAW, then render again",
         )
+    }
+}
+
+/// Maps the recipe's process mode to the host's. The match names every
+/// variant, so a new recipe mode fails to compile until it is mapped here.
+fn process_mode(mode: RecipeProcessMode) -> ProcessMode {
+    match mode {
+        RecipeProcessMode::Offline => ProcessMode::Offline,
     }
 }
 
@@ -138,7 +147,7 @@ impl Session {
             ));
         }
         plugin
-            .set_process_mode(ProcessMode::Offline)
+            .set_process_mode(process_mode(recipe.process_mode()))
             .map_err(step("setting offline processing"))?;
         let buffers = AudioBuffers::new(0, plugin.output_channel_count(), block, rate);
         let reply = Reply::Opened {
@@ -312,17 +321,16 @@ impl Session {
                 quarter_notes: 0.0,
             })
             .map_err(step("moving the transport to the start"))?;
-        // Controllers come before the notes of their frame, so a bend at a
-        // note's start applies to the note. The sort keeps that order.
-        let mut events = controls;
-        events.extend(note_events(notes, rate).iter().map(|event| {
-            let midi = match event.kind {
-                EventKind::On => note_on(event.key, event.velocity.get()),
-                EventKind::Off => note_off(event.key),
-            };
-            (event.frame, midi)
-        }));
-        events.sort_by_key(|(frame, _)| *frame);
+        let events = clip_order(
+            controls,
+            note_events(notes, rate).iter().map(|event| {
+                let midi = match event.kind {
+                    EventKind::On => note_on(event.key, event.velocity.get()),
+                    EventKind::Off => note_off(event.key),
+                };
+                (event.frame, midi)
+            }),
+        );
         let mut watch: TailWatch = self.recipe.tail_watch(notes);
         let mut channels = vec![Vec::new(), Vec::new()];
         let mut end = None;
