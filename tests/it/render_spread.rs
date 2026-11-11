@@ -757,10 +757,10 @@ fn every_number(
         }
         merge(Value::Object(map));
     }
-    if node.get("items").is_some() {
-        if let Some(value) = every_number(&node["items"], defs, depth + 1) {
-            return Some(json!([value]));
-        }
+    if node.get("items").is_some()
+        && let Some(value) = every_number(&node["items"], defs, depth + 1)
+    {
+        return Some(json!([value]));
     }
     let types: Vec<&str> = match &node["type"] {
         Value::String(one) => vec![one.as_str()],

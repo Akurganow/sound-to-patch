@@ -704,10 +704,11 @@ pub fn layer_rows(reports: &[Value]) -> Result<Vec<SpreadRow>, SpreadError> {
         .collect())
 }
 
-/// The numbers of a layer report that a spread covers, with their units:
-/// each estimate and each median of every group but the ones that hold no
-/// estimate (`schema`, `source`, `synth`, `transcription` and
-/// `conventions`).
+/// The numbers of a layer report that a spread covers, with their units.
+///
+/// They are each estimate and each median of every group but the ones
+/// that hold no estimate: `schema`, `source`, `synth`, `transcription` and
+/// `conventions`.
 ///
 /// The path drops the `value` or `median` key, such as `stem.rms_dbfs` or
 /// `stem.band_share[1].share`. Left out are confidences, IQRs, band
@@ -732,10 +733,11 @@ pub fn layer_values(report: &Value) -> Result<Vec<(String, String, f64)>, Spread
     Ok(values)
 }
 
-/// The fields of a layer report that have no unit suffix, with their
-/// units: `ratio` for a number without a unit, `count` for a count, `st`
-/// for a MIDI key, whose distances are semitones, `velocity` for a MIDI
-/// velocity and `BPM` for a tempo.
+/// The fields of a layer report that have no unit suffix, with their units.
+///
+/// The units are `ratio` for a number without a unit, `count` for a count,
+/// `st` for a MIDI key, whose distances are semitones, `velocity` for a
+/// MIDI velocity and `BPM` for a tempo.
 pub const NAMED_UNITS: [(&str, &str); 20] = [
     ("bend_events", "count"),
     ("centroid_change", "ratio"),

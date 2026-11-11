@@ -63,10 +63,12 @@ const MIN_MARGIN_DB: f64 = 0.1;
 /// How many mismatches a message names.
 const SHOWN: usize = 5;
 
-/// The level of a clip in octave bands: for each band, the mean over its
-/// bins of the Hann-windowed bin power over the frame length squared,
-/// averaged over the frames, in dB. A band of many bins reads lower than
-/// a band of few for one tone, as [`BAND_FLOOR_DB`] shows.
+/// The level of a clip in octave bands, in dB of mean bin power.
+///
+/// For each band: the mean over its bins of the Hann-windowed bin power
+/// over the frame length squared, averaged over the frames. A band of many
+/// bins reads lower than a band of few for one tone, as [`BAND_FLOOR_DB`]
+/// shows.
 #[derive(Clone, Debug, PartialEq)]
 pub struct BandLevels(Vec<f64>);
 
