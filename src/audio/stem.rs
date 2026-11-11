@@ -120,6 +120,19 @@ pub enum Feel {
     Dotted,
 }
 
+impl Feel {
+    /// The length of a cycle against the plain value, as `(num, den)`.
+    /// Both [`Division::beats_per_cycle`] and [`Division::rate`] read it,
+    /// so a new feel changes one place.
+    fn stretch(self) -> (f64, f64) {
+        match self {
+            Self::Straight => (1.0, 1.0),
+            Self::Triplet => (2.0, 3.0),
+            Self::Dotted => (3.0, 2.0),
+        }
+    }
+}
+
 /// A note division, such as a dotted eighth, that an LFO rate can lock to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Division {
@@ -167,24 +180,18 @@ impl Division {
     /// for a triplet and 3/2 for a dotted note.
     #[must_use]
     pub fn beats_per_cycle(self) -> f64 {
-        let beats = self.value.beats();
-        match self.feel {
-            Feel::Straight => beats,
-            Feel::Triplet => beats * 2.0 / 3.0,
-            Feel::Dotted => beats * 1.5,
-        }
+        let (num, den) = self.feel.stretch();
+        self.value.beats() * num / den
     }
 
     /// Returns the rate of one cycle per division at a tempo,
     /// `(BPM / 60) / beats_per_cycle`.
     #[must_use]
     pub fn rate(self, bpm: Bpm) -> Hz {
-        let beat_hz = bpm.get() / 60.0;
-        Hz::clamped(match self.feel {
-            Feel::Straight => beat_hz / self.value.beats(),
-            Feel::Triplet => beat_hz / self.value.beats() * 1.5,
-            Feel::Dotted => beat_hz / self.value.beats() * 2.0 / 3.0,
-        })
+        // Dividing by `beats_per_cycle` would round once more and move some
+        // rates by one ulp; this order keeps the earlier values bit for bit.
+        let (num, den) = self.feel.stretch();
+        Hz::clamped(bpm.get() / 60.0 / self.value.beats() * den / num)
     }
 }
 
@@ -623,6 +630,29 @@ mod tests {
         };
         assert_eq!(grid.rate(quarter(Feel::Triplet)).get(), 3.0);
         assert!((grid.rate(quarter(Feel::Dotted)).get() - 4.0 / 3.0).abs() < 1e-15);
+    }
+
+    #[test]
+    fn rate_and_beats_per_cycle_read_one_ratio() {
+        for tempo in [60.0, 97.3, 120.0, 128.0, 174.25] {
+            let beat_hz = tempo / 60.0;
+            for division in Division::ALL {
+                let rate = division.rate(bpm(tempo)).get();
+                let product = rate * division.beats_per_cycle();
+                assert!(
+                    (product / beat_hz - 1.0).abs() < 1e-12,
+                    "{division} at {tempo}"
+                );
+                // The rates of 2a219a0, bit for bit.
+                let base = beat_hz / division.value.beats();
+                let earlier = match division.feel {
+                    Feel::Straight => base,
+                    Feel::Triplet => base * 1.5,
+                    Feel::Dotted => base * 2.0 / 3.0,
+                };
+                assert_eq!(rate.to_bits(), earlier.to_bits(), "{division} at {tempo}");
+            }
+        }
     }
 
     #[test]
