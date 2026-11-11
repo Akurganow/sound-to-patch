@@ -140,6 +140,36 @@ fn analyze_warns_about_corrupt_packets_on_stderr() {
     assert!(stderr.starts_with("warning: packet 5 "), "{stderr}");
 }
 
+/// A file of three channels is read from its first two, and standard
+/// error says so.
+#[test]
+fn analyze_warns_that_a_third_channel_is_ignored() {
+    let dir = tempfile::tempdir().unwrap();
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw: Vec<f64> = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0)
+        .iter()
+        .map(|x| 0.3 * x)
+        .collect();
+    let path = dir.path().join("three.wav");
+    crate::support::signals::write_wav16(&path, 22_050, &[saw.clone(), saw.clone(), saw]);
+    let notes = crate::report::given(dir.path());
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .arg("analyze")
+        .arg(&path)
+        .args(["--bpm", "120", "--notes"])
+        .arg(&notes)
+        .arg("--out")
+        .arg(dir.path().join("out"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        "warning: the file has 3 channels; the analysis reads the first two and ignores the other 1\n"
+    );
+}
+
 /// Three dry saw notes above 110 Hz, A3, C4 and E4, at 120 BPM: 0.2 s on
 /// each eighth note from the second.
 pub(crate) fn saw_notes(dir: &std::path::Path) -> (std::path::PathBuf, [(f64, f64); 3]) {

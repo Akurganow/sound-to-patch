@@ -134,6 +134,7 @@ impl Command {
                                 "warning: {packet} did not decode and became silence"
                             ))
                         })
+                        .chain(analysis.warnings.iter().map(|w| format!("warning: {w}\n")))
                         .collect(),
                 })
             }
@@ -165,6 +166,7 @@ impl Command {
                                 "warning: {packet} did not decode and became silence"
                             ))
                         })
+                        .chain(report.warnings.iter().map(|w| format!("warning: {w}\n")))
                         .collect(),
                 })
             }
