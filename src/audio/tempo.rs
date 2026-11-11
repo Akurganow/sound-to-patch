@@ -88,20 +88,24 @@ pub const SPARSE_ONSETS_MAX: f64 = 0.8;
 /// The convention of the refined tempo in `layers.json`.
 pub const TEMPO_CONVENTION: &str = "onset strength: the rise of each third-octave band power \
 from 30 Hz, compressed as ln(1 + P / knee) with the knee 60 dB below full scale, against the \
-frame 10 ms earlier, in 46.4 ms Hann frames on a 1 ms hop, low-passed at 20 Hz, less its \
+frame 10 ms earlier, in Hann frames of the power of two of samples nearest 46.4 ms (2048 at 44.1 \
+and 48 kHz) on a 1 ms hop, low-passed at 20 Hz, less its \
 100 ms mean, below 10 % of its largest rise set to 0; each tempo t with |given / t - 1| at \
 most 3 % (2.91 % below to 3.09 % above the given one), in 0.01 BPM steps, scores the unbiased \
 autocorrelation summed at 1 to 32 beats; the refined tempo is used when its score is at least \
 1.5 times the median score (tempo_peak) and either 0.4 of the lag count times the zero-lag \
 autocorrelation (beat_periodicity), or 0.75 of that on every second or fourth beat lag alone \
-(sparse_periodicity) with at most 0.8 peaks of the onset strength per beat (onsets_per_beat), \
+(sparse_periodicity) with at most 0.8 peaks of the onset strength per beat at the slowest \
+tempo of the search (onsets_per_beat), \
 and at least 0.9 of the energy of the rise before its low-pass lies within 25 ms of its peaks, \
 each the largest within 30 ms (onset_sharpness); both shares stop at 1; cycles_in_span counts \
-the whole beats of the stem";
+the whole beats of the stem at the slowest tempo of the search, given / 1.03, so the longest lag \
+keeps 4 beats of overlap at every candidate; a stem of fewer than 8 keeps the given tempo";
 
 /// The hop of the onset strength.
 const ONSET_HOP_S: f64 = 0.001;
-/// The frame of the onset strength, rounded to the nearest power of two.
+/// The frame of the onset strength, rounded to the nearest power of two of
+/// samples: 2048 samples, 46.4 ms at 44.1 kHz and 42.7 ms at 48 kHz.
 const ONSET_FRAME_S: f64 = 0.0464;
 /// How far apart the two frames of the spectral flux lie.
 const FLUX_LAG_S: f64 = 0.01;
@@ -321,13 +325,17 @@ impl Tempo {
             _ if signal(ReasonCode::BpmExact).is_some() => {
                 format!("tempo: {given} BPM as given (--bpm-exact)")
             }
-            _ => match signal(ReasonCode::CyclesInSpan) {
-                Some(Signal::Count(0)) => {
-                    format!("tempo: {given} BPM as given; the stem is shorter than one beat")
-                }
-                Some(Signal::Count(beats)) => format!(
-                    "tempo: {given} BPM as given; the stem holds {beats} beat{}, too few to refine it",
-                    if beats == 1 { "" } else { "s" }
+            _ => match (
+                signal(ReasonCode::CyclesInSpan),
+                candidates(self.given).first(),
+            ) {
+                (Some(Signal::Count(0)), Some(slowest)) => format!(
+                    "tempo: {given} BPM as given; the stem is shorter than one beat at {slowest} BPM, the slowest tempo of the search"
+                ),
+                (Some(Signal::Count(beats)), Some(slowest)) => format!(
+                    "tempo: {given} BPM as given; the stem holds {beats} whole beat{} at {slowest} BPM, the slowest tempo of the search, and refining needs {}",
+                    if beats == 1 { "" } else { "s" },
+                    MIN_BEAT_LAGS + OVERLAP_BEATS,
                 ),
                 _ => format!("tempo: {given} BPM as given; the stem has no onsets to refine it"),
             },
@@ -354,16 +362,7 @@ fn candidates(given: Bpm) -> Vec<f64> {
 /// as `ln(1 + P / knee)` with the knee [`FLUX_KNEE_DB`] below a full-scale
 /// bin.
 fn onset_strength(mono: &[f64], rate: SampleRate, hop: usize) -> Vec<f64> {
-    let wanted = f64::from(rate.get()) * ONSET_FRAME_S;
-    let up = cast::ceil_to_usize(wanted)
-        .unwrap_or(4)
-        .max(4)
-        .next_power_of_two();
-    let frame_len = if cast::usize_to_f64(up) - wanted > wanted - cast::usize_to_f64(up / 2) {
-        (up / 2).max(4)
-    } else {
-        up
-    };
+    let frame_len = onset_frame_len(rate);
     let peak = mono.iter().fold(0.0_f64, |m, x| m.max(x.abs()));
     let Ok(params) = StftParams::new(frame_len).and_then(|p| p.with_hop(hop)) else {
         return Vec::new();
@@ -408,6 +407,21 @@ fn onset_strength(mono: &[f64], rate: SampleRate, hop: usize) -> Vec<f64> {
         history.push(levels);
     }
     strength
+}
+
+/// The frame length of the onset strength: the power of two of samples
+/// nearest [`ONSET_FRAME_S`].
+fn onset_frame_len(rate: SampleRate) -> usize {
+    let wanted = f64::from(rate.get()) * ONSET_FRAME_S;
+    let up = cast::ceil_to_usize(wanted)
+        .unwrap_or(4)
+        .max(4)
+        .next_power_of_two();
+    if cast::usize_to_f64(up) - wanted > wanted - cast::usize_to_f64(up / 2) {
+        (up / 2).max(4)
+    } else {
+        up
+    }
 }
 
 /// The bands of the onset strength, as bin ranges: a third of an octave
@@ -626,11 +640,38 @@ mod tests {
             .collect();
         let tempo = Tempo::refine(&clicks, rate, bpm(120.0)).unwrap();
         assert_eq!(tempo.used(), bpm(120.0));
-        assert!(
-            tempo.summary().contains("too few to refine it"),
-            "{}",
-            tempo.summary()
+        // 3 s at 116.51 BPM is 5.8 beats.
+        assert_eq!(
+            tempo.summary(),
+            "tempo: 120 BPM as given; the stem holds 5 whole beats at 116.51 BPM, the slowest \
+tempo of the search, and refining needs 8"
         );
+    }
+
+    #[test]
+    fn a_stem_of_8_beats_at_the_given_tempo_names_the_slowest_one() {
+        let rate = SampleRate::new(8000).unwrap();
+        // 4 s at 120 BPM is 8 beats, but 7.77 at 116.51 BPM, where the
+        // longest lag must still keep 4 beats of overlap.
+        let clicks: Vec<f64> = (0..8000 * 4)
+            .map(|n| if n % 4000 == 0 { 1.0 } else { 0.0 })
+            .collect();
+        let tempo = Tempo::refine(&clicks, rate, bpm(120.0)).unwrap();
+        assert_eq!(
+            tempo.summary(),
+            "tempo: 120 BPM as given; the stem holds 7 whole beats at 116.51 BPM, the slowest \
+tempo of the search, and refining needs 8"
+        );
+    }
+
+    #[test]
+    fn the_onset_frame_is_the_power_of_two_nearest_46_ms() {
+        let frame = |hz| onset_frame_len(SampleRate::new(hz).unwrap());
+        assert_eq!(frame(44_100), 2048);
+        assert_eq!(frame(48_000), 2048);
+        assert_eq!(frame(22_050), 1024);
+        assert_eq!(frame(96_000), 4096);
+        assert!(TEMPO_CONVENTION.contains("nearest 46.4 ms (2048 at 44.1 and 48 kHz)"));
     }
 
     #[test]
@@ -639,7 +680,8 @@ mod tests {
         let tempo = Tempo::refine(&[0.5; 1600], rate, bpm(120.0)).unwrap();
         assert_eq!(
             tempo.summary(),
-            "tempo: 120 BPM as given; the stem is shorter than one beat"
+            "tempo: 120 BPM as given; the stem is shorter than one beat at 116.51 BPM, the \
+slowest tempo of the search"
         );
     }
 

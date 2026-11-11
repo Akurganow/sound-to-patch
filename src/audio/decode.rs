@@ -25,6 +25,13 @@ use crate::units::Seconds;
 /// The containers this build reads, for the unsupported-container message.
 const CONTAINERS: &str = "WAV, AIFF, FLAC, MP3, AAC (ADTS), MP4 or M4A, Ogg, MKV or WebM";
 
+/// The lowest sample rate the analysis reads: the band-edge rule looks for
+/// its fall above 2 kHz, so it needs a Nyquist frequency well above that.
+pub const MIN_SAMPLE_RATE: SampleRate = SampleRate::from_const(8_000);
+/// The highest sample rate the analysis reads, the top of the standard
+/// export rates. The cost of the analysis grows faster than the rate.
+pub const MAX_SAMPLE_RATE: SampleRate = SampleRate::from_const(192_000);
+
 /// The most packets a file may lose to decode errors.
 ///
 /// symphonia reports a corrupt packet as recoverable: the next packet
@@ -50,6 +57,19 @@ impl Decoded {
     #[must_use]
     pub fn into_audio(self) -> Audio {
         self.audio
+    }
+
+    /// Returns what the analysis leaves out of the file, one line each,
+    /// without a `warning:` prefix: the channels past the first two.
+    #[must_use]
+    pub fn warnings(&self) -> Vec<String> {
+        match self.audio.channels().len() {
+            count @ 3.. => vec![format!(
+                "the file has {count} channels; the analysis reads the first two and ignores the other {}",
+                count - 2
+            )],
+            _ => Vec::new(),
+        }
     }
 
     /// Returns the packets that failed to decode, at most
@@ -116,8 +136,9 @@ impl fmt::Display for SkippedPacket {
 ///
 /// Returns a [`DecodeError`] that names the file, what failed and how to fix
 /// it: an unreadable file, an unsupported container or codec, a malformed
-/// stream or too many corrupt packets, or a NaN or infinite sample with its
-/// offset.
+/// stream or too many corrupt packets, a sample rate outside
+/// [`MIN_SAMPLE_RATE`] to [`MAX_SAMPLE_RATE`], or a NaN or infinite sample
+/// with its offset.
 pub fn decode(path: &Path) -> Result<Decoded, DecodeError> {
     let fail = |kind| DecodeError {
         path: path.to_path_buf(),
@@ -155,6 +176,10 @@ pub fn decode(path: &Path) -> Result<Decoded, DecodeError> {
         .sample_rate
         .and_then(|rate| SampleRate::new(rate).ok())
         .ok_or_else(|| fail(Kind::NoSampleRate))?;
+    // A header rate far outside the range costs gigabytes later on.
+    if !(MIN_SAMPLE_RATE..=MAX_SAMPLE_RATE).contains(&sample_rate) {
+        return Err(fail(Kind::RateOutOfRange(sample_rate)));
+    }
     let mut decoder = symphonia::default::get_codecs()
         .make_audio_decoder(&params, &AudioDecoderOptions::default())
         .map_err(|error| match error {
@@ -285,10 +310,12 @@ impl DecodeError {
 enum Kind {
     Open(io::Error),
     Read(io::Error),
+    Truncated,
     UnsupportedContainer,
     UnsupportedCodec(AudioCodecId),
     NoAudioTrack,
     NoSampleRate,
+    RateOutOfRange(SampleRate),
     Malformed(&'static str),
     Limit(&'static str),
     ResetRequired,
@@ -303,6 +330,9 @@ enum Kind {
 impl Kind {
     fn from_symphonia(error: SymphoniaError) -> Self {
         match error {
+            SymphoniaError::IoError(source) if source.kind() == io::ErrorKind::UnexpectedEof => {
+                Self::Truncated
+            }
             SymphoniaError::IoError(source) => Self::Read(source),
             SymphoniaError::DecodeError(message) | SymphoniaError::Unsupported(message) => {
                 Self::Malformed(message)
@@ -340,6 +370,10 @@ impl fmt::Display for DecodeError {
         match &self.kind {
             Kind::Open(source) => write!(f, "cannot open the file ({source}). Check the path"),
             Kind::Read(source) => write!(f, "reading failed ({source}). Check the file"),
+            Kind::Truncated => write!(
+                f,
+                "the file ends before the data its header declares. Export the stem again"
+            ),
             Kind::UnsupportedContainer => write!(
                 f,
                 "the container is not supported. Export the stem as one of: {CONTAINERS}"
@@ -358,6 +392,10 @@ impl fmt::Display for DecodeError {
             Kind::NoSampleRate => write!(
                 f,
                 "the audio track declares no sample rate. Export the stem again as WAV"
+            ),
+            Kind::RateOutOfRange(rate) => write!(
+                f,
+                "the header declares a sample rate of {rate}, outside the {MIN_SAMPLE_RATE} to {MAX_SAMPLE_RATE} that the analysis reads. Export the stem again at 44.1 or 48 kHz"
             ),
             Kind::Malformed(message) => write!(
                 f,
@@ -415,10 +453,20 @@ mod tests {
     }
 
     #[test]
+    fn the_rate_bounds_pass_the_unit_check() {
+        assert_eq!(MIN_SAMPLE_RATE, SampleRate::new(8_000).unwrap());
+        assert_eq!(MAX_SAMPLE_RATE, SampleRate::new(192_000).unwrap());
+    }
+
+    #[test]
     fn every_symphonia_error_maps_to_its_kind() {
-        let io = || io::Error::new(io::ErrorKind::UnexpectedEof, "short");
+        let io = |kind| io::Error::new(kind, "short");
         assert!(matches!(
-            Kind::from_symphonia(SymphoniaError::IoError(io())),
+            Kind::from_symphonia(SymphoniaError::IoError(io(io::ErrorKind::UnexpectedEof))),
+            Kind::Truncated
+        ));
+        assert!(matches!(
+            Kind::from_symphonia(SymphoniaError::IoError(io(io::ErrorKind::Other))),
             Kind::Read(_)
         ));
         assert!(matches!(
@@ -460,7 +508,15 @@ mod tests {
                 "cannot open the file (denied). Check the path",
             ),
             (Kind::Read(io()), "reading failed (denied). Check the file"),
+            (
+                Kind::Truncated,
+                "the file ends before the data its header declares. Export the stem again",
+            ),
             (Kind::NoAudioTrack, "the file has no audio track"),
+            (
+                Kind::RateOutOfRange(SampleRate::new(1).unwrap()),
+                "the header declares a sample rate of 1 Hz, outside the 8000 Hz to 192000 Hz that the analysis reads. Export the stem again at 44.1 or 48 kHz",
+            ),
             (
                 Kind::NoSampleRate,
                 "the audio track declares no sample rate. Export the stem again as WAV",

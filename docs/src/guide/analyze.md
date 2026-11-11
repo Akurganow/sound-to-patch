@@ -10,15 +10,18 @@ before it writes an edit list for the [preset commands](preset.md). The
 
 ## Run it
 
-Export one instrument as a WAV, AIFF, FLAC, MP3 or AAC file and pass its
-tempo:
+Export one instrument as a WAV, AIFF, FLAC, MP3 or AAC file at 8000 to
+192000 Hz and pass its tempo. A file at another rate is refused with its
+rate and the range; 44.1 or 48 kHz is the usual export. A file of three or
+more channels is read from its first two, with a warning that names the
+channel count:
 
 ```sh
 sound-to-patch analyze bass.wav --bpm 120
 ```
 
 ```text
-tempo: 120 BPM as given; the stem holds 7 beats, too few to refine it
+tempo: 120 BPM as given; the stem holds 7 whole beats at 116.51 BPM, the slowest tempo of the search, and refining needs 8
 detected range: MIDI 30 to 36, from the f0 track
 detected voicing: monophonic, chord share 0.00
 register window: 20 dB

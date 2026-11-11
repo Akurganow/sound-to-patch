@@ -13,9 +13,12 @@ use crate::units::{Bpm, Decibels, Hz, Normalized, Seconds};
 use super::stereo::{StereoScreen, stereo_screen};
 use super::{Audio, SampleRate};
 
-/// Harmonic analysis uses 8192-sample frames below this median f0, else
-/// 4096: a Hann main lobe is about 4 bins wide, so harmonics `f0` apart
-/// need `N >= 4 fs / f0`.
+/// The median f0 below which harmonic analysis uses its long frame.
+///
+/// At 44.1 kHz the frame is 8192 samples below it, else 4096: a Hann main
+/// lobe is about 4 bins wide, so harmonics `f0` apart need
+/// `N >= 4 fs / f0`. At another rate the length scales with the rate, see
+/// [`Stem::frame_len`].
 pub const LONG_FRAME_BELOW_HZ: Hz = Hz::from_const(100.0);
 /// A fall of at least this much over one semitone marks a cutoff, and the
 /// band edge sits at its half-depth point. Synthetic cuts fall 57 to 91 dB
@@ -282,8 +285,8 @@ impl Stem {
     ) -> Result<Self, ConfidenceError> {
         let mid = audio.mono();
         let median_f0 = notes.and_then(median_f0);
-        let frame_len = frame_len_for(median_f0);
         let rate = audio.sample_rate();
+        let frame_len = frame_len_for(median_f0, rate);
         let band_edge = band_edge(&mid, rate, StftParams::fixed(frame_len))?;
         let hard_limited = audio
             .channels()
@@ -324,7 +327,9 @@ impl Stem {
     }
 
     /// Returns the mid, `M = (L + R) / 2`: the mono signal of every
-    /// non-stereo estimate. A one-channel file's mid is its channel.
+    /// non-stereo estimate. A one-channel file's mid is its channel; a file
+    /// of three or more channels mixes only the first two, as the side and
+    /// the stereo screen read them.
     #[must_use]
     pub fn mid(&self) -> &[f64] {
         &self.mid
@@ -352,8 +357,12 @@ impl Stem {
         self.median_f0
     }
 
-    /// Returns the frame length of harmonic analysis: 8192 below a median
-    /// f0 of 100 Hz, else 4096, and 4096 without a note list.
+    /// Returns the frame length of harmonic analysis: at 44.1 kHz 8192
+    /// below a median f0 of 100 Hz, else 4096, and 4096 without a note
+    /// list. At another rate the length is the power of two nearest, in log,
+    /// to that length times `fs / 44100`, so the frame keeps its duration
+    /// within a factor of the square root of 2: 32 and 48 kHz keep 4096 and
+    /// 8192, 96 kHz takes 8192 and 16384.
     #[must_use]
     pub fn frame_len(&self) -> usize {
         self.frame_len
@@ -390,10 +399,25 @@ fn median_f0(notes: &NoteList) -> Option<Hz> {
     Summary::of(&frequencies).map(|summary| Hz::clamped(summary.median()))
 }
 
-fn frame_len_for(median_f0: Option<Hz>) -> usize {
-    match median_f0 {
-        Some(f0) if f0 < LONG_FRAME_BELOW_HZ => 8192,
-        _ => 4096,
+/// The rate whose frame lengths are 4096 and 8192 samples.
+const FRAME_BASE_RATE_HZ: f64 = 44_100.0;
+
+fn frame_len_for(median_f0: Option<Hz>, rate: SampleRate) -> usize {
+    let base = match median_f0 {
+        Some(f0) if f0 < LONG_FRAME_BELOW_HZ => 8192.0,
+        _ => 4096.0,
+    };
+    let wanted = base * rate.hz().get() / FRAME_BASE_RATE_HZ;
+    let up = cast::ceil_to_usize(wanted)
+        .unwrap_or(1)
+        .max(1)
+        .next_power_of_two();
+    // Nearest in log: halve when the power above lies more than a factor of
+    // the square root of 2 above the wanted length.
+    if cast::usize_to_f64(up) > wanted * std::f64::consts::SQRT_2 {
+        (up / 2).max(1)
+    } else {
+        up
     }
 }
 
@@ -701,6 +725,59 @@ mod tests {
         let opposite =
             Stem::new(Audio::new(rate(), vec![x, negated]).unwrap(), grid, None).unwrap();
         assert!(opposite.mid().iter().all(|&m| m == 0.0));
+    }
+
+    #[test]
+    fn the_harmonic_frame_keeps_its_duration_at_every_rate() {
+        let low = Some(Hz::new(55.0).unwrap());
+        let high = Some(Hz::new(220.0).unwrap());
+        let lens = |hz| {
+            let rate = SampleRate::new(hz).unwrap();
+            (
+                frame_len_for(high, rate),
+                frame_len_for(low, rate),
+                frame_len_for(None, rate),
+            )
+        };
+        assert_eq!(lens(44_100), (4096, 8192, 4096));
+        assert_eq!(lens(48_000), (4096, 8192, 4096));
+        assert_eq!(lens(32_000), (4096, 8192, 4096));
+        assert_eq!(lens(88_200), (8192, 16_384, 8192));
+        assert_eq!(lens(96_000), (8192, 16_384, 8192));
+        assert_eq!(lens(192_000), (16_384, 32_768, 16_384));
+        assert_eq!(lens(22_050), (2048, 4096, 2048));
+        assert_eq!(lens(8_000), (1024, 2048, 1024));
+        // The square root of 2 bounds the duration's ratio to 44.1 kHz's,
+        // so the long frame meets N >= 4 fs / f0 down to 30.5 Hz.
+        for hz in (8_000..=192_000).step_by(50) {
+            let rate = SampleRate::new(hz).unwrap();
+            let seconds = |len| cast::usize_to_f64(len) / f64::from(hz);
+            let ratio = seconds(frame_len_for(low, rate)) / (8192.0 / 44_100.0);
+            assert!(
+                (1.0 / std::f64::consts::SQRT_2..=std::f64::consts::SQRT_2).contains(&ratio),
+                "{hz}: {ratio}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stem_at_96_khz_keeps_the_frame_duration_of_44_1_khz() {
+        let at = |hz: u32| {
+            let rate = SampleRate::new(hz).unwrap();
+            let samples: Vec<f64> = (0..usize::try_from(hz).unwrap())
+                .map(|n| (cast::usize_to_f64(n) * 0.05).sin())
+                .collect();
+            let stem = Stem::new(
+                Audio::new(rate, vec![samples]).unwrap(),
+                BeatGrid::new(bpm(120.0), Seconds::new(0.0).unwrap()),
+                None,
+            )
+            .unwrap();
+            rate.seconds(stem.frame_len()).get()
+        };
+        // 8192 samples at 96 kHz last 85.3 ms, 4096 at 44.1 kHz 92.9 ms.
+        assert!((at(96_000) - 8192.0 / 96_000.0).abs() < 1e-12);
+        assert!((at(44_100) - 4096.0 / 44_100.0).abs() < 1e-12);
     }
 
     #[test]

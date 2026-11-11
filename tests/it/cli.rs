@@ -84,7 +84,7 @@ fn analyze_writes_its_files_for_a_generated_wav() {
     assert_eq!(
         stdout,
         format!(
-            "tempo: 120 BPM as given; the stem is shorter than one beat\n\
+            "tempo: 120 BPM as given; the stem is shorter than one beat at 116.51 BPM, the slowest tempo of the search\n\
              glides: 0, 0 too short\n\
              pitch drops: 0 of 1 low strikes\n\
              drop skips: 1 no strike\n\

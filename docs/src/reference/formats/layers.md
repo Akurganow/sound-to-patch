@@ -159,9 +159,9 @@ them.
 | :-- | :-- | :-- | :-- | :-- |
 | `bpm` | beats per minute | 4 to 1000 | number | The tempo of the beat grid and of every later step: `bpm_refined` when its confidence is high, else `bpm_given`. |
 | `bpm_given` | beats per minute | 4 to 1000 | number | Given by `--bpm`. |
-| `bpm_refined` | beats per minute | 4 to 1000 | value | The tempo refined from the onsets, from 2.91 % below to 3.09 % above `bpm_given`, in 0.01 BPM steps; see the [tempo section](../../analysis/pipeline.md#tempo). Its reasons give `tempo_peak`, `beat_periodicity`, `sparse_periodicity`, `onset_sharpness`, `onsets_per_beat` and the whole beats of the stem as `cycles_in_span`. No value with `--bpm-exact` (`bpm_exact`), for a stem of fewer than 8 beats or for one without onsets. |
+| `bpm_refined` | beats per minute | 4 to 1000 | value | The tempo refined from the onsets, from 2.91 % below to 3.09 % above `bpm_given`, in 0.01 BPM steps; see the [tempo section](../../analysis/pipeline.md#tempo). Its reasons give `tempo_peak`, `beat_periodicity`, `sparse_periodicity`, `onset_sharpness`, `onsets_per_beat` and the whole beats of the stem as `cycles_in_span`, both counted at the slowest tempo of the search, `bpm_given` / 1.03. No value with `--bpm-exact` (`bpm_exact`), for a stem of fewer than 8 such beats or for one without onsets. |
 | `duration_s` | seconds | 0 or more | number | Decoded frames over the sample rate. |
-| `sample_rate_hz` | hertz | 1 or more | integer | The native rate of the file; no resampling. |
+| `sample_rate_hz` | hertz | 8000 to 192000 | integer | The native rate of the file; no resampling. |
 | `band_edge_hz` | hertz | 0 to Nyquist | value | The steepest fall of at least 25 dB per semitone above 2 kHz on a plateau, else the highest bin 30 dB above the floor at low confidence. |
 | `hard_limited` | flag | | boolean | Flat runs of at least 1 ms within 1e-5 of the channel peak, entered and left from at least half the peak, cover 0.1 % of a channel. |
 | `peak_dbfs` | dB re full scale 1.0 | 0 or less for unclipped audio | value | Peak of the mono mix over the whole stem. |
@@ -352,7 +352,7 @@ counted beats or more, and its curve was taken out of the note tracks).
 
 | Key | Holds |
 | :-- | :-- |
-| `frame_size` | The STFT frame length of the descriptors and the band edge: 8192 when the note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list. |
+| `frame_size` | The STFT frame length of the descriptors and the band edge: at 44.1 kHz 8192 when the note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list; at another rate the power of two nearest, in log, to that length times the rate over 44100 Hz. |
 | `statistics` | Median and IQR over active frames, with linear-interpolation quantiles; the active-frame gate. |
 | `spectral` | Magnitude weights for shape, power for band shares; the window and the hop. |
 | `confidence` | What the level, the reasons and the spread mean. |

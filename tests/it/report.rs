@@ -613,7 +613,7 @@ fn the_notes_step_runs_the_model_once_and_fills_the_transcription_group() {
     let summary = analysis.summary();
     assert_eq!(
         summary[0],
-        "tempo: 120 BPM as given; the stem holds 2 beats, too few to refine it"
+        "tempo: 120 BPM as given; the stem holds 2 whole beats at 116.51 BPM, the slowest tempo of the search, and refining needs 8"
     );
     for step in [
         "detected range: ",

@@ -193,3 +193,24 @@ fn a_spectrum_without_a_floor_margin_reports_no_edge() {
     );
     assert_eq!(estimate.value().unwrap().get(), f64::from(RATE) / 2.0);
 }
+
+#[test]
+fn a_third_channel_stays_out_of_the_mid_and_the_stereo_screen() {
+    let tone = |freq: f64, gain: f64| -> Vec<f64> {
+        (0..RATE)
+            .map(|n| gain * (std::f64::consts::TAU * freq * f64::from(n) / f64::from(RATE)).sin())
+            .collect()
+    };
+    let (left, right) = (tone(220.0, 0.5), tone(330.0, 0.25));
+    let pair = stem(vec![left.clone(), right.clone()], None);
+    let three = stem(vec![left.clone(), right.clone(), tone(55.0, 0.9)], None);
+    let mid: Vec<f64> = left
+        .iter()
+        .zip(&right)
+        .map(|(l, r)| (l + r) / 2.0)
+        .collect();
+    assert_eq!(three.mid(), mid.as_slice());
+    assert_eq!(three.side(), pair.side());
+    assert_eq!(three.stereo(), pair.stereo());
+    assert_eq!(three.band_edge(), pair.band_edge());
+}
