@@ -214,3 +214,15 @@ fn a_third_channel_stays_out_of_the_mid_and_the_stereo_screen() {
     assert_eq!(three.stereo(), pair.stereo());
     assert_eq!(three.band_edge(), pair.band_edge());
 }
+
+#[test]
+fn a_clipped_third_channel_does_not_mark_the_stem_hard_limited() {
+    let sine: Vec<f64> = (0..RATE)
+        .map(|n| (std::f64::consts::TAU * 110.0 * f64::from(n) / f64::from(RATE)).sin())
+        .collect();
+    let clipped: Vec<f64> = sine.iter().map(|v| v.clamp(-0.5, 0.5)).collect();
+    let third = stem(vec![sine.clone(), sine.clone(), clipped.clone()], None);
+    assert!(!third.hard_limited());
+    let second = stem(vec![sine.clone(), clipped, sine], None);
+    assert!(second.hard_limited());
+}

@@ -61,7 +61,7 @@ frequency when no bin above 1 kHz is";
 /// The convention of the flat-top flag.
 pub const HARD_LIMITED_CONVENTION: &str = "true when runs of at least 1 ms of samples \
 within 1e-5 of the channel peak, each with its neighbours on both sides at least half the \
-peak on the same side, cover at least 0.1 % of a channel";
+peak on the same side, cover at least 0.1 % of one of the first two channels";
 
 /// The length of a note division in beats, before its feel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -288,9 +288,11 @@ impl Stem {
         let rate = audio.sample_rate();
         let frame_len = frame_len_for(median_f0, rate);
         let band_edge = band_edge(&mid, rate, StftParams::fixed(frame_len))?;
+        // The first two channels, the pair the mid and the stereo screen read.
         let hard_limited = audio
             .channels()
             .iter()
+            .take(2)
             .any(|channel| is_flat_topped(channel, rate));
         let stereo = match audio.channels() {
             [left, right, ..] => stereo_screen(left, right, rate, median_f0)?,
@@ -377,7 +379,7 @@ impl Stem {
     }
 
     /// Returns whether the stem is flat-topped at its peak, as a limiter or
-    /// clipping leaves it.
+    /// clipping leaves it, in either of its first two channels.
     #[must_use]
     pub fn hard_limited(&self) -> bool {
         self.hard_limited

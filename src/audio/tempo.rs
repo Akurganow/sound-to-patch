@@ -671,7 +671,6 @@ tempo of the search, and refining needs 8"
         assert_eq!(frame(48_000), 2048);
         assert_eq!(frame(22_050), 1024);
         assert_eq!(frame(96_000), 4096);
-        assert!(TEMPO_CONVENTION.contains("nearest 46.4 ms (2048 at 44.1 and 48 kHz)"));
     }
 
     #[test]

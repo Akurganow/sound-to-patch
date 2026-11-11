@@ -71,8 +71,9 @@ joins `READY` when its adapter lands.
 ## Code map
 
 - `audio`: stem intake. It decodes a file at its native rate with every
-  channel kept, mixes to mono as the channel mean and resamples for a
-  consumer with a fixed rate. The `Tempo` refines the given BPM from the
+  channel kept, mixes the first two channels to mono as their mean, or
+  takes the one channel of a mono file, and resamples for a consumer with
+  a fixed rate. The `Tempo` refines the given BPM from the
   onsets. The `Stem` adds the beat grid and note divisions, the band
   edge, the flat-top flag and the stereo screen.
 - `cast`: the audited numeric casts. Every `as` between number types goes

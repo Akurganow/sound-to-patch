@@ -343,16 +343,14 @@ fn a_header_without_a_sample_rate_says_so() {
 }
 
 #[test]
-fn a_header_that_claims_more_data_than_the_file_holds_is_refused() {
+fn a_header_that_claims_more_data_than_the_file_holds_fails_as_a_read() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("short.wav");
     // 1000 frames of 4 bytes hold 4000 bytes; the header claims 100 times as many.
     raw_wav(&path, 44_100, 2, 1000, Some(400_000));
     let message = audio::decode(&path).unwrap_err().to_string();
     assert!(
-        message.ends_with(
-            "short.wav: the file ends before the data its header declares. Export the stem again"
-        ),
+        message.contains("short.wav: reading failed (") && message.ends_with("). Check the file"),
         "{message}"
     );
 }

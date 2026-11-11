@@ -529,7 +529,7 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
     "duration_s": "decoded frames over the sample rate",
     "sample_rate_hz": "the native rate of the file; no resampling",
     "band_edge_hz": "long-term power spectrum of the mid over the active frames that lie wholly inside the stem, median-smoothed over one semitone on each side; where the smoothed level falls at least 25 dB over one semitone above 2 kHz and the median level of the octave below lies within 20 dB of the level where the fall starts, the edge is the half-depth point of the steepest such fall; otherwise the noise floor is the lowest level above 1 kHz and the edge is the highest bin at least 30 dB above it, at low confidence, or the Nyquist frequency when no bin above 1 kHz is",
-    "hard_limited": "true when runs of at least 1 ms of samples within 1e-5 of the channel peak, each with its neighbours on both sides at least half the peak on the same side, cover at least 0.1 % of a channel",
+    "hard_limited": "true when runs of at least 1 ms of samples within 1e-5 of the channel peak, each with its neighbours on both sides at least half the peak on the same side, cover at least 0.1 % of one of the first two channels",
     "peak_dbfs": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",
     "rms_dbfs": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",
     "crest_db": "peak and RMS of the mono mix over the whole stem in dB relative to full scale 1.0; a full-scale sine reads -3.01 dB RMS; crest is peak minus RMS",

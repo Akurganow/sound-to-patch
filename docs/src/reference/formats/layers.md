@@ -163,7 +163,7 @@ them.
 | `duration_s` | seconds | 0 or more | number | Decoded frames over the sample rate. |
 | `sample_rate_hz` | hertz | 8000 to 192000 | integer | The native rate of the file; no resampling. |
 | `band_edge_hz` | hertz | 0 to Nyquist | value | The steepest fall of at least 25 dB per semitone above 2 kHz on a plateau, else the highest bin 30 dB above the floor at low confidence. |
-| `hard_limited` | flag | | boolean | Flat runs of at least 1 ms within 1e-5 of the channel peak, entered and left from at least half the peak, cover 0.1 % of a channel. |
+| `hard_limited` | flag | | boolean | Flat runs of at least 1 ms within 1e-5 of the channel peak, entered and left from at least half the peak, cover 0.1 % of one of the first two channels. |
 | `peak_dbfs` | dB re full scale 1.0 | 0 or less for unclipped audio | value | Peak of the mono mix over the whole stem. |
 | `rms_dbfs` | dB re full scale 1.0 | below `peak_dbfs` | value | RMS of the mono mix over the whole stem; a full-scale sine reads -3.01 dB. |
 | `crest_db` | dB | 0 or more | value | `peak_dbfs - rms_dbfs`. |

@@ -31,8 +31,11 @@ releases call [fact].
   `f64` samples [fact]. The rate must lie between 8000 and 192000 Hz, or
   the file is refused with its rate and the range [fact]. The band-edge
   rule looks for its fall above 2 kHz, so it needs a Nyquist frequency
-  well above that, and above 192 kHz a release build spends 46 s or more
-  on each second of audio [fact]. The default audio track is the one the container
+  well above that [fact]. 192 kHz is the highest standard export rate,
+  and the cost grows faster than the rate: on a generated 4 s mono stem,
+  with the bound lifted, a release build spent 1.6 s on each second of
+  audio at 192 kHz, 1.8 s at 200 kHz, 2.5 s at 256 kHz and 5.1 s at
+  384 kHz [synthetic]. The default audio track is the one the container
   flags as default, else the first with a known codec [fact].
 - The build reads WAV, AIFF, FLAC, MP3, AAC (ADTS), MP4 or M4A, Ogg, MKV
   and WebM containers [fact]. A missing codec fails with its name and, if
@@ -795,8 +798,8 @@ cut [fact].
 ### Flat tops
 
 `hard_limited` is true when runs of at least 1 ms of samples within 1e-5
-of the channel peak cover at least 0.1 % of a channel [fact, proposal for
-the thresholds]. A run counts only when the samples on both sides lie at
+of the channel peak cover at least 0.1 % of one of the first two
+channels [fact, proposal for the thresholds]. A run counts only when the samples on both sides lie at
 least half the peak on the same side: clipping runs into the ceiling,
 while a square or pulse wave jumps to it [fact]. Square and pulse waves at
 55 and 220 Hz do not flag [synthetic]. The level descriptors carry the

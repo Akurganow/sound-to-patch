@@ -29,26 +29,31 @@ const SECOND: usize = 48_000;
 /// A 3 s stereo stem: a 55 Hz tone with five harmonics from 0.25 to
 /// 2.75 s, the right channel at 0.8 of the left.
 pub(crate) fn stem(dir: &Path) -> PathBuf {
-    let len = 3 * SECOND;
+    stem_at(dir, RATE)
+}
+
+/// [`stem`] at another sample rate.
+fn stem_at(dir: &Path, rate: u32) -> PathBuf {
+    let len = 3 * usize::try_from(rate).unwrap();
     let mut left = vec![0.0; len];
     for harmonic in 1..=5 {
         let h = f64::from(harmonic);
         for (sample, value) in left
             .iter_mut()
-            .zip(sine(55.0 * h, 0.0, f64::from(RATE), len))
+            .zip(sine(55.0 * h, 0.0, f64::from(rate), len))
         {
             *sample += 0.2 * value / h;
         }
     }
     for (n, sample) in left.iter_mut().enumerate() {
-        let t = f64::from(u32::try_from(n).unwrap()) / f64::from(RATE);
+        let t = f64::from(u32::try_from(n).unwrap()) / f64::from(rate);
         if !(0.25..2.75).contains(&t) {
             *sample = 0.0;
         }
     }
     let right: Vec<f64> = left.iter().map(|v| 0.8 * v).collect();
     let path = dir.join("bass.wav");
-    write_wav16(&path, RATE, &[left, right]);
+    write_wav16(&path, rate, &[left, right]);
     path
 }
 
@@ -564,6 +569,25 @@ fn given_notes_reach_the_report_and_run_no_transcriber() {
     assert!(report["stem"]["stereo"]["full"]["ipd_deg"].is_number());
     assert_eq!(report["transcription"], Value::Null);
     assert!(validator().is_valid(&report));
+}
+
+/// The lowest and the highest accepted rate run the whole analysis, with
+/// the 8192-sample frame of 44.1 kHz scaled to keep its duration.
+#[test]
+fn the_edges_of_the_rate_range_analyse_with_a_scaled_frame() {
+    for (rate, frame) in [(8_000, 2048), (192_000, 32_768)] {
+        let dir = tempfile::tempdir().unwrap();
+        let path = stem_at(dir.path(), rate);
+        let notes = given(dir.path());
+        let report = run(&path, Some(&notes), &dir.path().join("out"));
+        assert_eq!(report["stem"]["sample_rate_hz"], rate, "{rate}");
+        assert_eq!(report["conventions"]["frame_size"], frame, "{rate}");
+        assert!(
+            report["stem"]["centroid_hz"]["median"].is_number(),
+            "{rate}"
+        );
+        assert!(validator().is_valid(&report), "{rate}");
+    }
 }
 
 #[test]

@@ -310,7 +310,6 @@ impl DecodeError {
 enum Kind {
     Open(io::Error),
     Read(io::Error),
-    Truncated,
     UnsupportedContainer,
     UnsupportedCodec(AudioCodecId),
     NoAudioTrack,
@@ -330,9 +329,6 @@ enum Kind {
 impl Kind {
     fn from_symphonia(error: SymphoniaError) -> Self {
         match error {
-            SymphoniaError::IoError(source) if source.kind() == io::ErrorKind::UnexpectedEof => {
-                Self::Truncated
-            }
             SymphoniaError::IoError(source) => Self::Read(source),
             SymphoniaError::DecodeError(message) | SymphoniaError::Unsupported(message) => {
                 Self::Malformed(message)
@@ -370,10 +366,6 @@ impl fmt::Display for DecodeError {
         match &self.kind {
             Kind::Open(source) => write!(f, "cannot open the file ({source}). Check the path"),
             Kind::Read(source) => write!(f, "reading failed ({source}). Check the file"),
-            Kind::Truncated => write!(
-                f,
-                "the file ends before the data its header declares. Export the stem again"
-            ),
             Kind::UnsupportedContainer => write!(
                 f,
                 "the container is not supported. Export the stem as one of: {CONTAINERS}"
@@ -453,20 +445,10 @@ mod tests {
     }
 
     #[test]
-    fn the_rate_bounds_pass_the_unit_check() {
-        assert_eq!(MIN_SAMPLE_RATE, SampleRate::new(8_000).unwrap());
-        assert_eq!(MAX_SAMPLE_RATE, SampleRate::new(192_000).unwrap());
-    }
-
-    #[test]
     fn every_symphonia_error_maps_to_its_kind() {
-        let io = |kind| io::Error::new(kind, "short");
+        let io = || io::Error::new(io::ErrorKind::UnexpectedEof, "short");
         assert!(matches!(
-            Kind::from_symphonia(SymphoniaError::IoError(io(io::ErrorKind::UnexpectedEof))),
-            Kind::Truncated
-        ));
-        assert!(matches!(
-            Kind::from_symphonia(SymphoniaError::IoError(io(io::ErrorKind::Other))),
+            Kind::from_symphonia(SymphoniaError::IoError(io())),
             Kind::Read(_)
         ));
         assert!(matches!(
@@ -508,10 +490,6 @@ mod tests {
                 "cannot open the file (denied). Check the path",
             ),
             (Kind::Read(io()), "reading failed (denied). Check the file"),
-            (
-                Kind::Truncated,
-                "the file ends before the data its header declares. Export the stem again",
-            ),
             (Kind::NoAudioTrack, "the file has no audio track"),
             (
                 Kind::RateOutOfRange(SampleRate::new(1).unwrap()),

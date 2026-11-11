@@ -203,8 +203,9 @@ sound-to-patch analyze bass.wav --bpm 120 --notes bass.mid
 The file's notes replace the notes step, and the transcription model does
 not run. The f0 track still reads the stem for the pitch layer, unless the
 notes play chords.
-The notes set the frame length, 8192 samples for a bass below
-100 Hz, and let the report fill `centroid_over_f0` and the stereo phase
+The notes set the frame length: at 32 to 48 kHz, 8192 samples for a bass
+below 100 Hz and 4096 above, scaled with the rate at other rates, so
+96 kHz takes 16384 and 8192. They also let the report fill `centroid_over_f0` and the stereo phase
 `ipd_deg`. The file's tempo must match `--bpm` or the refined tempo, so a
 file that `notes` wrote at the refined tempo reads too. Notes on MIDI
 channel 10, the drum channel, are left out, because their keys name drums,
@@ -245,7 +246,7 @@ you pass `--out` or `--force`.
 A statistic over frames gives the median and the interquartile range of the
 frames with sound, and its confidence names the evidence: here 94 active
 frames of 8192 samples, the frame length that a note list with a median f0
-below 100 Hz picks. A clip with fewer than 16 active frames gets no value
+below 100 Hz picks at 48 kHz. A clip with fewer than 16 active frames gets no value
 and the reason `too_few_frames`.
 
 ```json
