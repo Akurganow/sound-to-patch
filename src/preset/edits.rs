@@ -19,6 +19,7 @@
 //! problem, not only the first, and each message names the edit, the
 //! cause and the fix.
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fmt;
 
@@ -190,6 +191,19 @@ fn place(index: usize, name: &str) -> String {
     format!("edit {} ({name})", index + 1)
 }
 
+/// The most problems [`parse`] and [`resolve`] report. A real list has a
+/// few; a list with thousands of bad edits stops early.
+const MAX_PROBLEMS: usize = 50;
+
+/// The last entry of a report that stopped at [`MAX_PROBLEMS`].
+fn stopped() -> EditError {
+    EditError {
+        place: "the edit list".to_owned(),
+        cause: format!("the check stopped after {MAX_PROBLEMS} problems"),
+        fix: "Fix these and run the command again".to_owned(),
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ParamData {
@@ -261,14 +275,16 @@ pub enum Path {
     Report,
 }
 
-/// Reads an edit list.
+/// Reads an edit list. A leading UTF-8 byte order mark, which some
+/// editors add, is skipped.
 ///
 /// # Errors
 ///
-/// [`EditErrors`] with one entry per bad record: unknown fields, a record
-/// of no known kind, a wrong value type or, on the agent path, a missing
-/// or empty reason.
+/// [`EditErrors`] with one entry per bad record, up to 50: unknown
+/// fields, a record of no known kind, a wrong value type or, on the agent
+/// path, a missing or empty reason.
 pub fn parse(text: &str, path: Path) -> Result<EditList, EditErrors> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     let data: ListData = serde_json::from_str(text).map_err(|error| {
         EditErrors(vec![EditError {
             place: "the edit list".to_owned(),
@@ -280,6 +296,10 @@ pub fn parse(text: &str, path: Path) -> Result<EditList, EditErrors> {
     let mut edits = Vec::new();
     let mut errors = Vec::new();
     for (index, value) in data.edits.into_iter().enumerate() {
+        if errors.len() >= MAX_PROBLEMS {
+            errors.push(stopped());
+            break;
+        }
         match parse_edit(&value) {
             Ok(edit) => {
                 if path == Path::Agent && edit.reason.as_deref().is_none_or(|r| r.trim().is_empty())
@@ -510,11 +530,13 @@ pub enum Resolved {
 ///
 /// # Errors
 ///
-/// [`EditErrors`] with one entry per edit that fails: the list is for
-/// another synth, an unknown key (with up to ten close names), a wrong
-/// value kind, a unit string that does not parse, a value out of range
-/// (with the range, the unit and the nearest valid value), an unknown
-/// menu label or a raw key the registry covers.
+/// [`EditErrors`] with one entry per edit that fails, up to 50: the list
+/// is for another synth, an unknown key (with up to ten close names), a
+/// wrong value kind, a unit string that does not parse, a value out of
+/// range (with the range, the unit and the nearest valid value), an
+/// unknown menu label, a raw key the registry covers, or a second edit of
+/// one control or of one route's source and destination (with the number
+/// of the first).
 pub fn resolve(list: &EditList, registry: &dyn ParamRegistry) -> Result<Vec<Resolved>, EditErrors> {
     if list.synth != registry.synth() {
         return Err(EditErrors(vec![EditError {
@@ -533,7 +555,14 @@ pub fn resolve(list: &EditList, registry: &dyn ParamRegistry) -> Result<Vec<Reso
     }
     let mut resolved = Vec::new();
     let mut errors = Vec::new();
+    // The first edit of each control and of each route's source and
+    // destination: a second one would override it in silence.
+    let mut first: HashMap<(String, String), usize> = HashMap::new();
     for (index, edit) in list.edits.iter().enumerate() {
+        if errors.len() >= MAX_PROBLEMS {
+            errors.push(stopped());
+            break;
+        }
         let name = edit.record.name();
         match resolve_record(&edit.record, registry) {
             Ok(mut item) => {
@@ -542,6 +571,29 @@ pub fn resolve(list: &EditList, registry: &dyn ParamRegistry) -> Result<Vec<Reso
                     | Resolved::Route { reason, .. }
                     | Resolved::Raw { reason, .. } => reason.clone_from(&edit.reason),
                 }
+                let (target, what) = match &item {
+                    Resolved::Param { key, .. } | Resolved::Raw { key, .. } => {
+                        ((key.clone(), String::new()), format!("{key} again"))
+                    }
+                    Resolved::Route {
+                        source,
+                        destination,
+                        ..
+                    } => (
+                        (source.clone(), destination.clone()),
+                        format!("the route {source} -> {destination} again"),
+                    ),
+                };
+                if let Some(earlier) = first.get(&target) {
+                    errors.push(EditError {
+                        place: place(index, name),
+                        cause: format!("it edits {what}, after edit {}", earlier + 1),
+                        fix: "Keep one of the two edits; the second would override the first"
+                            .to_owned(),
+                    });
+                    continue;
+                }
+                first.insert(target, index);
                 resolved.push(item);
             }
             Err((cause, fix)) => errors.push(EditError {
@@ -770,20 +822,8 @@ fn route_amount(spec: &ParamSpec, text: &str) -> Result<f64, Problem> {
     } else {
         "Write the depth as a percent of the destination's range, such as \"25%\""
     };
-    let amount = if let Ok(percent) = text.parse::<Percent<Bipolar>>() {
-        percent.get() / 100.0
-    } else if let (true, Ok(semitones)) = (semitones_ok, text.parse::<Semitones>()) {
-        semitones.get() / span
-    } else {
-        return Err((
-            format!("route amount {text:?} into {} does not read", spec.key),
-            fix.to_owned(),
-        ));
-    };
-    if (-1.0..=1.0).contains(&amount) {
-        Ok(amount)
-    } else {
-        Err((
+    let beyond = || {
+        (
             format!(
                 "route amount {text:?} is beyond the full range of {}",
                 spec.key
@@ -796,7 +836,27 @@ fn route_amount(spec: &ParamSpec, text: &str) -> Result<f64, Problem> {
                     String::new()
                 }
             ),
-        ))
+        )
+    };
+    let amount = match text.parse::<Percent<Bipolar>>() {
+        Ok(percent) => percent.get() / 100.0,
+        // Only a range error has a source: the text reads as a percent
+        // past ±100%.
+        Err(error) if error.source().is_some() => return Err(beyond()),
+        Err(_) => match (semitones_ok, text.parse::<Semitones>()) {
+            (true, Ok(semitones)) => semitones.get() / span,
+            _ => {
+                return Err((
+                    format!("route amount {text:?} into {} does not read", spec.key),
+                    fix.to_owned(),
+                ));
+            }
+        },
+    };
+    if (-1.0..=1.0).contains(&amount) {
+        Ok(amount)
+    } else {
+        Err(beyond())
     }
 }
 
@@ -930,10 +990,13 @@ mod tests {
         );
         let range = resolve_one(r#"{"param":"filter_1_cutoff","value":"30 kHz","reason":"r"}"#)
             .unwrap_err();
+        // One scale, the unit the value is written in; the stored range
+        // stays out of the message.
         assert!(
-            range.contains("outside 8.0 to 136.0")
-                && range.contains("Hz to")
-                && range.contains("nearest"),
+            range.contains(
+                "filter_1_cutoff: 30000 Hz is outside 12.978271799303903 Hz to 21096.16364231088 Hz. Use the nearest, 21096.16364231088 Hz"
+            ) && !range.contains("stored")
+                && !range.contains("136"),
             "{range}"
         );
         let reason = parse(
@@ -987,6 +1050,97 @@ mod tests {
             Resolved::Route { amount, .. } => assert_eq!(amount, 0.5),
             other => panic!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn a_percent_route_depth_past_the_full_range_names_the_range() {
+        for amount in ["150%", "-150%"] {
+            for dest in ["filter_1_cutoff", "osc_1_level"] {
+                let error = resolve_one(&format!(
+                    r#"{{"route":{{"source":"lfo_1","dest":"{dest}","amount":"{amount}"}},"reason":"r"}}"#
+                ))
+                .unwrap_err();
+                assert!(
+                    error.contains(&format!(
+                        "route amount \"{amount}\" is beyond the full range of {dest}. Keep it within -100% to 100%"
+                    )),
+                    "{error}"
+                );
+            }
+        }
+        let error = resolve_one(
+            r#"{"route":{"source":"lfo_1","dest":"osc_1_level","amount":"lots"},"reason":"r"}"#,
+        )
+        .unwrap_err();
+        assert!(error.contains("does not read"), "{error}");
+    }
+
+    #[test]
+    fn a_second_edit_of_one_target_names_the_first() {
+        for (edits, needle) in [
+            (
+                r#"{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"},{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"}"#,
+                "edit 2 (filter_1_cutoff): it edits filter_1_cutoff again, after edit 1",
+            ),
+            (
+                r#"{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"},{"param":"env_1_attack","value":"1 s","reason":"r"},{"param":"filter_1_cutoff","value":"900 Hz","reason":"r"}"#,
+                "edit 3 (filter_1_cutoff): it edits filter_1_cutoff again, after edit 1",
+            ),
+            (
+                r#"{"menu":"filter_1_model","choice":"Ladder","reason":"r"},{"param":"filter_1_model","value":1,"reason":"r"}"#,
+                "edit 2 (filter_1_model): it edits filter_1_model again, after edit 1",
+            ),
+            (
+                r#"{"raw":{"key":"k","value":1},"reason":"r"},{"raw":{"key":"k","value":2},"reason":"r"}"#,
+                "edit 2 (k): it edits k again, after edit 1",
+            ),
+            (
+                r#"{"route":{"source":"lfo_1","dest":"filter_1_cutoff","amount":"25%"},"reason":"r"},{"route":{"source":"lfo_1","dest":"filter_1_cutoff","amount":"50%"},"reason":"r"}"#,
+                "edit 2 (filter_1_cutoff): it edits the route lfo_1 -> filter_1_cutoff again, after edit 1",
+            ),
+        ] {
+            let errors = resolve(&parse(&list(edits), Path::Agent).unwrap(), vital())
+                .unwrap_err()
+                .to_string();
+            assert!(errors.contains(needle), "{needle}\n{errors}");
+            assert!(errors.contains("has 1 problem(s)"), "{errors}");
+        }
+        // A route into a control is no second edit of the control, and
+        // another source is another route.
+        let text = list(
+            r#"{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"},{"route":{"source":"lfo_1","dest":"filter_1_cutoff","amount":"25%"},"reason":"r"},{"route":{"source":"lfo_2","dest":"filter_1_cutoff","amount":"25%"},"reason":"r"}"#,
+        );
+        assert_eq!(
+            resolve(&parse(&text, Path::Agent).unwrap(), vital())
+                .unwrap()
+                .len(),
+            3
+        );
+    }
+
+    #[test]
+    fn a_list_with_a_byte_order_mark_reads() {
+        let text = list(r#"{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"}"#);
+        assert_eq!(
+            parse(&format!("\u{feff}{text}"), Path::Agent).unwrap(),
+            parse(&text, Path::Agent).unwrap()
+        );
+    }
+
+    #[test]
+    fn a_list_of_many_bad_edits_stops_at_fifty_problems() {
+        let bad = vec![r#"{"param":"a","value":1,"reason":"r"}"#; 200].join(",");
+        let errors = resolve(&parse(&list(&bad), Path::Agent).unwrap(), vital()).unwrap_err();
+        assert_eq!(errors.0.len(), MAX_PROBLEMS + 1);
+        assert_eq!(errors.0[MAX_PROBLEMS], stopped());
+        let unreadable = vec![r#"{"param":"a"}"#; 200].join(",");
+        let errors = parse(&list(&unreadable), Path::Agent).unwrap_err();
+        assert_eq!(errors.0.len(), MAX_PROBLEMS + 1);
+        assert_eq!(errors.0[MAX_PROBLEMS], stopped());
+        // Fifty problems in fifty edits end the report without the stop.
+        let fifty = vec![r#"{"param":"a","value":1,"reason":"r"}"#; 50].join(",");
+        let errors = resolve(&parse(&list(&fifty), Path::Agent).unwrap(), vital()).unwrap_err();
+        assert_eq!(errors.0.len(), MAX_PROBLEMS);
     }
 
     #[test]

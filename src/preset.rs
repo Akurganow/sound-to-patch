@@ -27,7 +27,7 @@ use std::io::{Read, Write as _};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::preset::edits::EditErrors;
+use crate::preset::edits::{EditError, EditErrors};
 use crate::preset::format::{DescribeOptions, FormatError, PresetFormat, format_for};
 use crate::preset::registry::registry_for;
 use crate::preset::template::{Severity, TemplateError, locate_template};
@@ -62,7 +62,12 @@ pub enum PresetError {
         error: FormatError,
     },
     /// The edit list is not valid or does not apply.
-    Edits(EditErrors),
+    Edits {
+        /// The edit list file.
+        path: PathBuf,
+        /// Every problem.
+        errors: EditErrors,
+    },
     /// No usable template.
     Template(TemplateError),
     /// The output path is refused.
@@ -86,7 +91,7 @@ impl fmt::Display for PresetError {
                 path.display()
             ),
             Self::Format { path, error } => write!(f, "{}: {error}", path.display()),
-            Self::Edits(errors) => errors.fmt(f),
+            Self::Edits { path, errors } => write!(f, "{}: {errors}", path.display()),
             Self::Template(error) => error.fmt(f),
             Self::Output { path, cause, fix } => {
                 write!(f, "cannot write {}: {cause}. {fix}", path.display())
@@ -101,7 +106,7 @@ impl Error for PresetError {
             Self::Synth(error) => Some(error),
             Self::Read { cause, .. } => Some(cause),
             Self::Format { error, .. } => Some(error),
-            Self::Edits(errors) => Some(errors),
+            Self::Edits { errors, .. } => Some(errors),
             Self::Template(error) => Some(error),
             Self::Output { .. } => None,
         }
@@ -142,6 +147,43 @@ pub(crate) fn read_prefix(path: &Path, max: usize) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::new();
     fs::File::open(path).and_then(|file| file.take(limit).read_to_end(&mut bytes))?;
     Ok(bytes)
+}
+
+/// The largest edit list `preset apply` reads. A list that sets every
+/// control of a synth takes about 100 kB.
+const EDIT_LIST_MAX_BYTES: usize = 1 << 20;
+
+/// Reads the edit list as text. A file larger than
+/// [`EDIT_LIST_MAX_BYTES`] is refused without loading it, and a file that
+/// is not UTF-8 is refused with the offset of the first bad byte.
+fn read_edit_list(path: &Path) -> Result<String, PresetError> {
+    let refuse = |cause: String, fix: &str| PresetError::Edits {
+        path: path.to_owned(),
+        errors: EditErrors(vec![EditError {
+            place: "the edit list".to_owned(),
+            cause,
+            fix: fix.to_owned(),
+        }]),
+    };
+    let bytes = read_prefix(path, EDIT_LIST_MAX_BYTES).map_err(|cause| PresetError::Read {
+        path: path.to_owned(),
+        cause,
+    })?;
+    if bytes.len() > EDIT_LIST_MAX_BYTES {
+        return Err(refuse(
+            format!("the file is larger than the limit of {EDIT_LIST_MAX_BYTES} bytes"),
+            "Pass the edit list itself; a list holds one short record per edit",
+        ));
+    }
+    String::from_utf8(bytes).map_err(|error| {
+        refuse(
+            format!(
+                "byte {} is not UTF-8 text",
+                error.utf8_error().valid_up_to()
+            ),
+            "Save the file as UTF-8",
+        )
+    })
 }
 
 /// Reads at most `max` bytes of a file, so an oversized file is refused
@@ -264,7 +306,9 @@ fn check_output(request: &ApplyRequest<'_>, format: &dyn PresetFormat) -> Result
 /// and must not exist unless the request sets `force`. The file is
 /// written to a temporary file next to it and then published: renamed
 /// with `force`, hard-linked without it, so a file that appears meanwhile
-/// is never replaced. A failed run leaves no partial file.
+/// is never replaced. A folder without hard links, such as one on exFAT,
+/// gets the file through an exclusive create instead. A failed run leaves
+/// no partial file.
 ///
 /// # Errors
 ///
@@ -275,14 +319,12 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
     let format = format_for(synth)?;
     let registry = registry_for(synth)?;
     check_output(request, format)?;
-    let text =
-        String::from_utf8(read_capped(request.edits, format.max_bytes())?).map_err(|error| {
-            PresetError::Read {
-                path: request.edits.to_owned(),
-                cause: io::Error::new(io::ErrorKind::InvalidData, error),
-            }
-        })?;
-    let list = edits::parse(&text, edits::Path::Agent).map_err(PresetError::Edits)?;
+    let edit_errors = |errors: EditErrors| PresetError::Edits {
+        path: request.edits.to_owned(),
+        errors,
+    };
+    let text = read_edit_list(request.edits)?;
+    let list = edits::parse(&text, edits::Path::Agent).map_err(edit_errors)?;
     let template = locate_template(format.template(), request.template, format.max_bytes())
         .map_err(PresetError::Template)?;
     let template_path = match &template.origin {
@@ -309,9 +351,8 @@ pub fn apply_file(request: &ApplyRequest<'_>) -> Result<String, PresetError> {
             ),
         });
     }
-    let resolved = edits::resolve(&list, registry).map_err(PresetError::Edits)?;
-    let report =
-        apply::apply(format, registry, model.as_mut(), &resolved).map_err(PresetError::Edits)?;
+    let resolved = edits::resolve(&list, registry).map_err(edit_errors)?;
+    let report = apply::apply(format, registry, model.as_mut(), &resolved).map_err(edit_errors)?;
     let name = request
         .name
         .map(str::to_owned)
@@ -364,6 +405,20 @@ fn write_atomically(
     bytes: &[u8],
     force: bool,
 ) -> Result<(), PresetError> {
+    publish(out, extension, bytes, force, |from, to| {
+        fs::hard_link(from, to)
+    })
+}
+
+/// [`write_atomically`] with the hard link as a parameter, so a test can
+/// stand in for a file system without links.
+fn publish(
+    out: &Path,
+    extension: &str,
+    bytes: &[u8],
+    force: bool,
+    link: impl Fn(&Path, &Path) -> io::Result<()>,
+) -> Result<(), PresetError> {
     static RUN: AtomicUsize = AtomicUsize::new(0);
     let temporary = out.with_extension(format!(
         "{extension}.{}-{}.partial",
@@ -392,12 +447,30 @@ fn write_atomically(
     if force {
         return fs::rename(&temporary, out).map_err(failed);
     }
-    let linked = fs::hard_link(&temporary, out);
+    let linked = link(&temporary, out);
     let _ = fs::remove_file(&temporary);
     match linked {
         Ok(()) => Ok(()),
         Err(cause) if cause.kind() == io::ErrorKind::AlreadyExists => Err(exists(out)),
-        Err(cause) => Err(output_error(cause)),
+        // FAT, exFAT and some network folders have no hard links. An
+        // exclusive create still never replaces a file; only a failed
+        // write is visible for a moment, and it is removed.
+        Err(_) => {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(out)
+                .map_err(|cause| match cause.kind() {
+                    io::ErrorKind::AlreadyExists => exists(out),
+                    _ => output_error(cause),
+                })?;
+            file.write_all(bytes)
+                .and_then(|()| file.sync_all())
+                .map_err(|cause| {
+                    let _ = fs::remove_file(out);
+                    output_error(cause)
+                })
+        }
     }
 }
 
@@ -462,6 +535,45 @@ mod tests {
         write_atomically(&new, "vital", b"new", false).unwrap();
         assert_eq!(fs::read_to_string(&new).unwrap(), "new");
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 2);
+    }
+
+    #[test]
+    fn a_folder_without_hard_links_still_gets_a_new_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let no_links = |_: &Path, _: &Path| Err(io::Error::from(io::ErrorKind::Unsupported));
+        let new = dir.path().join("New.vital");
+        publish(&new, "vital", b"new", false, no_links).unwrap();
+        assert_eq!(fs::read_to_string(&new).unwrap(), "new");
+        let error = publish(&new, "vital", b"again", false, no_links)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("the file exists. Pass --force"), "{error}");
+        assert_eq!(fs::read_to_string(&new).unwrap(), "new");
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn an_edit_list_is_refused_as_an_edit_list() {
+        let dir = tempfile::tempdir().unwrap();
+        let big = dir.path().join("big.json");
+        fs::write(&big, vec![b' '; EDIT_LIST_MAX_BYTES + 1]).unwrap();
+        let error = read_edit_list(&big).unwrap_err().to_string();
+        assert_eq!(
+            error,
+            format!(
+                "{}: the edit list has 1 problem(s):\n  the edit list: the file is larger than the limit of 1048576 bytes. Pass the edit list itself; a list holds one short record per edit",
+                big.display()
+            )
+        );
+        fs::write(&big, vec![b' '; EDIT_LIST_MAX_BYTES]).unwrap();
+        assert_eq!(read_edit_list(&big).unwrap().len(), EDIT_LIST_MAX_BYTES);
+        let latin = dir.path().join("latin.json");
+        fs::write(&latin, b"{\"x\": \"caf\xe9\"}").unwrap();
+        let error = read_edit_list(&latin).unwrap_err().to_string();
+        assert!(
+            error.ends_with("the edit list: byte 10 is not UTF-8 text. Save the file as UTF-8"),
+            "{error}"
+        );
     }
 
     #[test]

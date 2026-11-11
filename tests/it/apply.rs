@@ -430,3 +430,132 @@ fn every_choice_label_resolves_to_its_index() {
         }
     });
 }
+
+#[test]
+fn a_repeated_edit_names_the_earlier_one_not_the_template() {
+    let synth = Synth::Vital;
+    let format = format_for(synth).unwrap();
+    let registry = registry_for(synth).unwrap();
+    let mut model = template(synth);
+    let cutoff = Resolved::Param {
+        key: "filter_1_cutoff".into(),
+        stored: 72.0,
+        uncalibrated: false,
+        reason: None,
+    };
+    let route = Resolved::Route {
+        source: "lfo_1".into(),
+        destination: "filter_1_cutoff".into(),
+        amount: 0.25,
+        polarity: None,
+        reason: None,
+    };
+    let edits = [cutoff.clone(), route.clone(), cutoff, route];
+    let report = apply(format, registry, model.as_mut(), &edits).unwrap();
+    let skipped: Vec<(&str, &str)> = report
+        .skipped
+        .iter()
+        .map(|skip| (skip.target.as_str(), skip.why.as_str()))
+        .collect();
+    assert_eq!(
+        skipped,
+        [
+            ("filter_1_cutoff", "equals edit 1"),
+            ("lfo_1 -> filter_1_cutoff", "equals edit 2"),
+        ]
+    );
+    let again = Resolved::Param {
+        key: "filter_1_cutoff".into(),
+        stored: 72.0,
+        uncalibrated: false,
+        reason: None,
+    };
+    let report = apply(format, registry, model.as_mut(), &[again]).unwrap();
+    assert_eq!(report.skipped[0].why, "equals the template");
+}
+
+#[test]
+fn a_failed_edit_keeps_the_edits_after_it() {
+    let synth = Synth::Vital;
+    let format = format_for(synth).unwrap();
+    let registry = registry_for(synth).unwrap();
+    let mut model = template(synth);
+    let edits = [
+        Resolved::Raw {
+            key: "zz_text".into(),
+            value: Stored::Text("x".into()),
+            reason: None,
+        },
+        Resolved::Param {
+            key: "filter_1_cutoff".into(),
+            stored: 72.0,
+            uncalibrated: false,
+            reason: None,
+        },
+    ];
+    assert!(apply(format, registry, model.as_mut(), &edits).is_err());
+    assert_eq!(model.get("filter_1_cutoff"), Some(Stored::Float(72.0)));
+}
+
+#[test]
+fn a_list_that_edits_one_control_twice_is_refused_and_writes_nothing() {
+    let dir = tempfile::tempdir().unwrap();
+    let edits = write(
+        dir.path(),
+        "edits.json",
+        r#"{"synth":"vital","edits":[{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"},{"param":"filter_1_cutoff","value":"400 Hz","reason":"r"}]}"#,
+    );
+    let out = dir.path().join("Out.vital");
+    let message = run(&edits, &out, None).unwrap_err();
+    assert!(
+        message.contains("edit 2 (filter_1_cutoff): it edits filter_1_cutoff again, after edit 1"),
+        "{message}"
+    );
+    assert!(!message.contains("equals the template"), "{message}");
+    assert!(!out.exists());
+}
+
+#[test]
+fn a_raw_edit_never_replaces_a_structure_of_the_template() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut root: Value =
+        serde_json::from_slice(&fs::read("tests/fixtures/vital/marks.vital").unwrap()).unwrap();
+    let settings = root["settings"].as_object_mut().unwrap();
+    assert!(settings["custom_warps"].is_array());
+    settings.insert("zz_object".into(), serde_json::json!({"a": 1}));
+    let template_path = dir.path().join("Template.vital");
+    fs::write(&template_path, serde_json::to_vec(&root).unwrap()).unwrap();
+    for key in ["custom_warps", "zz_object"] {
+        let edits = write(
+            dir.path(),
+            "edits.json",
+            &format!(
+                r#"{{"synth":"vital","edits":[{{"raw":{{"key":"{key}","value":2}},"reason":"x"}}]}}"#
+            ),
+        );
+        let out = dir.path().join("Out.vital");
+        let message = run(&edits, &out, Some(&template_path)).unwrap_err();
+        assert!(message.contains(&format!("`{key}` holds a")), "{message}");
+        assert!(!out.exists());
+    }
+}
+
+#[test]
+fn an_edit_list_error_names_the_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("Out.vital");
+    for text in [
+        "not json",
+        r#"{"synth":"vital","edits":[{"param":"nope","value":1,"reason":"r"}]}"#,
+    ] {
+        let edits = write(dir.path(), "edits.json", text);
+        let message = run(&edits, &out, None).unwrap_err();
+        assert!(
+            message.starts_with(&format!(
+                "{}: the edit list has 1 problem(s)",
+                edits.display()
+            )),
+            "{message}"
+        );
+    }
+}

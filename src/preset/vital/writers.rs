@@ -204,8 +204,10 @@ pub fn effect_order(code: u32) -> Option<[EffectFamily; 9]> {
 impl VitalModel {
     /// Adds a route, or updates the slot that joins the same source and
     /// destination, so a route never fires twice. It writes the amount,
-    /// the bipolar flag, the curve power (0 unless given), and the stereo
-    /// and bypass flags (0).
+    /// the bipolar flag and, when given, the curve power. An update keeps
+    /// the slot's power when none is given, and always keeps its stereo
+    /// and bypass flags. A new route starts them from their defaults:
+    /// power 0, stereo and bypass off.
     ///
     /// # Errors
     ///
@@ -243,8 +245,9 @@ impl VitalModel {
                 "Use a fraction of the destination's range from -1 to 1",
             ));
         }
-        let power = power.unwrap_or(0.0);
-        if !(-10.0..=10.0).contains(&power) {
+        if let Some(power) = power
+            && !(-10.0..=10.0).contains(&power)
+        {
             return Err(write_error(
                 format!("route power {power} is outside -10 to 10"),
                 "Use a curve power from -10 to 10",
@@ -265,7 +268,7 @@ impl VitalModel {
                     .is_some_and(|have| have.source == source && have.destination == destination)
             })
             .or_else(|| self.routes().iter().position(Option::is_none));
-        if let Some(slot) = slot {
+        if let (Some(slot), Some(power)) = (slot, power) {
             route.extras.push((
                 format!("modulation_{}_power", slot + 1),
                 Stored::Float(power),
@@ -761,6 +764,38 @@ mod tests {
         );
         assert_eq!(model.get("modulation_1_amount"), Some(Stored::Float(-0.5)));
         assert_eq!(model.get("modulation_1_power"), Some(Stored::Float(2.0)));
+    }
+
+    #[test]
+    fn an_update_in_place_keeps_power_stereo_and_bypass() {
+        let mut model = empty();
+        model
+            .route("lfo_1", "filter_1_cutoff", 0.25, None, Some(2.0))
+            .unwrap();
+        model
+            .set("modulation_1_bypass", Stored::Float(1.0))
+            .unwrap();
+        model
+            .set("modulation_1_stereo", Stored::Float(1.0))
+            .unwrap();
+        assert_eq!(
+            model
+                .route("lfo_1", "filter_1_cutoff", 0.5, None, None)
+                .unwrap(),
+            0
+        );
+        for (name, value) in [
+            ("amount", 0.5),
+            ("power", 2.0),
+            ("bypass", 1.0),
+            ("stereo", 1.0),
+        ] {
+            assert_eq!(
+                model.get(&format!("modulation_1_{name}")),
+                Some(Stored::Float(value)),
+                "{name}"
+            );
+        }
     }
 
     #[test]

@@ -78,14 +78,16 @@ pub fn place_route(model: &mut dyn PresetModel, route: Route) -> Result<usize, F
 
 /// Applies resolved edits in order, then runs the format scan.
 ///
-/// A parameter equal to the value already in the model changes nothing. A
-/// parameter equal to its default is skipped when the key is absent and
-/// the format reads an absent key as the default.
+/// A parameter equal to the value already in the model changes nothing,
+/// and its skip names the earlier edit that set the value, or the
+/// template. A parameter equal to its default is skipped when the key is
+/// absent and the format reads an absent key as the default.
 ///
 /// # Errors
 ///
 /// [`EditErrors`] with one entry per edit the format refuses, or with the
-/// scan error. The model may hold the edits before the failing one.
+/// scan error. The model then holds every edit that succeeded, before and
+/// after a failing one.
 pub fn apply(
     format: &dyn PresetFormat,
     registry: &dyn ParamRegistry,
@@ -101,7 +103,10 @@ pub fn apply(
                 stored,
                 uncalibrated,
                 reason,
-            } => apply_param(format, registry, model, key, *stored, &mut report).map(|changed| {
+            } => apply_param(format, registry, model, key, *stored, &mut report, || {
+                same_as(resolved, index)
+            })
+            .map(|changed| {
                 if changed {
                     let physical = registry.get(key).map_or_else(String::new, |spec| {
                         shown_value(spec, *stored)
@@ -133,7 +138,7 @@ pub fn apply(
                     }),
                     None => report.skipped.push(Skipped {
                         target: format!("{source} -> {destination}"),
-                        why: "equals the template".to_owned(),
+                        why: same_as(resolved, index),
                     }),
                 }
             }),
@@ -202,6 +207,27 @@ fn shown_value(spec: &crate::preset::registry::ParamSpec, stored: f64) -> Option
     }
 }
 
+/// Why an edit equal to the model changes nothing: the last earlier edit
+/// of the same control or route set the value, or the template holds it.
+fn same_as(resolved: &[Resolved], index: usize) -> String {
+    let target = |edit: &Resolved| match edit {
+        Resolved::Param { key, .. } | Resolved::Raw { key, .. } => (key.clone(), None),
+        Resolved::Route {
+            source,
+            destination,
+            ..
+        } => (source.clone(), Some(destination.clone())),
+    };
+    let this = target(&resolved[index]);
+    resolved[..index]
+        .iter()
+        .rposition(|edit| target(edit) == this)
+        .map_or_else(
+            || "equals the template".to_owned(),
+            |earlier| format!("equals edit {}", earlier + 1),
+        )
+}
+
 fn apply_param(
     format: &dyn PresetFormat,
     registry: &dyn ParamRegistry,
@@ -209,6 +235,7 @@ fn apply_param(
     key: &str,
     stored: f64,
     report: &mut ApplyReport,
+    same: impl FnOnce() -> String,
 ) -> Result<bool, FormatError> {
     format.check_value(key, stored)?;
     let current = model.get(key);
@@ -219,7 +246,7 @@ fn apply_param(
     {
         report.skipped.push(Skipped {
             target: key.to_owned(),
-            why: "equals the template".to_owned(),
+            why: same(),
         });
         return Ok(false);
     }

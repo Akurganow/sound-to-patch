@@ -1,0 +1,8 @@
+# A known control that holds a text makes Vital throw on load, so the reader refuses it by name.
+bin.name = "sound-to-patch"
+args = ["preset", "inspect", "tests/cmd/data/text-control.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/text-control.vital: cannot read the .vital preset: the control `settings.filter_1_cutoff` holds a text, not a number. Vital throws on load; write a number, or save the preset again from Vital
+"""
