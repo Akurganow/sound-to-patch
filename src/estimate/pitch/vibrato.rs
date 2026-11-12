@@ -258,10 +258,6 @@ fn kurtosis(residuals: &[f64]) -> f64 {
 
 /// Solves four linear equations, the augmented rows of `m`, by Gaussian
 /// elimination with partial pivoting. `None` for a singular system.
-#[expect(
-    clippy::needless_range_loop,
-    reason = "each step reads two rows of `m`"
-)]
 fn solve4(mut m: [[f64; 5]; 4]) -> Option<[f64; 4]> {
     for col in 0..4 {
         let pivot = (col..4).max_by(|&a, &b| m[a][col].abs().total_cmp(&m[b][col].abs()))?;
