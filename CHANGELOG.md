@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.32.2](https://github.com/Akurganow/sound-to-patch/compare/03982896c2e899992a099284a1fe1f6c1c403459..v0.32.2) - 2026-11-12
+#### Bug Fixes
+- (**units**) read every unit string and millisecond value the same way (#345) - ([4693721](https://github.com/Akurganow/sound-to-patch/commit/469372121b18bbfa65fbf4f41d02d7effdf0ca1e)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.32.1](https://github.com/Akurganow/sound-to-patch/compare/4c008691bb9b9525de1fe949a2d7454c39461126..v0.32.1) - 2026-11-12
 #### Bug Fixes
 - ship a man page for every subcommand (#342) - ([f7890ec](https://github.com/Akurganow/sound-to-patch/commit/f7890ec6a8c38955fdc5c6512e4fb8ef922038df)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
