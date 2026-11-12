@@ -431,4 +431,12 @@ mod tests {
         assert_eq!(majority(&[true, false]), Some(false));
         assert_eq!(majority(&[true, true, false]), Some(true));
     }
+
+    #[test]
+    fn frame_counts_keep_their_typed_values() {
+        assert_eq!(
+            [DENSE_FRAMES, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG],
+            [200, 300, 25]
+        );
+    }
 }

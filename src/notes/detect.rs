@@ -723,4 +723,10 @@ mod tests {
         assert!((pair(0.999) - 0.5).abs() < 1e-12);
         assert_eq!(chord_share(&NoteList::default()), 0.0);
     }
+
+    #[test]
+    fn the_hold_window_keeps_its_typed_value() {
+        assert_eq!(HOLD_WINDOW.get().to_bits(), 10.0_f64.to_bits());
+        assert_eq!(REGISTER_WINDOW.get().to_bits(), 20.0_f64.to_bits());
+    }
 }

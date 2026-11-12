@@ -1034,4 +1034,18 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn frame_counts_keep_their_typed_values() {
+        assert_eq!(
+            [
+                KNEE_SIDE_MIN,
+                KNEE_LEFT,
+                KNEE_RIGHT,
+                KNEE_BEND_LAG,
+                KNEE_RISE_FRAMES
+            ],
+            [10, 100, 200, 10, 20]
+        );
+    }
 }

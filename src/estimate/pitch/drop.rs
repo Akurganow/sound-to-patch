@@ -604,4 +604,18 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        assert_eq!(
+            DROP_TAU_MIN.get().to_bits(),
+            (0.007 / std::f64::consts::LN_10).to_bits()
+        );
+        assert_eq!(
+            DROP_TAU_MIN.get().to_bits(),
+            0.003_040_061_373_322_762_6_f64.to_bits()
+        );
+        assert_eq!(ATTACK_FROM.to_bits(), 0.1_f64.to_bits());
+        assert_eq!(ATTACK_TO.to_bits(), 0.9_f64.to_bits());
+    }
 }

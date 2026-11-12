@@ -424,4 +424,11 @@ mod tests {
             ReasonCode::NoNoteList
         );
     }
+
+    #[test]
+    fn the_band_edges_keep_their_typed_values() {
+        let edges = BAND_EDGES_HZ.map(|edge| edge.get().to_bits());
+        let typed = [20.0_f64, 60.0, 250.0, 1000.0, 4000.0, 10_000.0, 20_000.0].map(f64::to_bits);
+        assert_eq!(edges, typed);
+    }
 }

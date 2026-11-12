@@ -418,4 +418,9 @@ mod tests {
         assert_eq!(track.index(0.0155), 6);
         assert_eq!(track.index(0.0150), 5);
     }
+
+    #[test]
+    fn the_hop_keeps_its_typed_value() {
+        assert_eq!(HOP.get().to_bits(), 0.001_f64.to_bits());
+    }
 }

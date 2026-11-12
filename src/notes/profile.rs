@@ -444,4 +444,12 @@ mod tests {
         // stores an end frame one lower.
         assert_eq!(lengths(13), vec![12]);
     }
+
+    #[test]
+    fn the_model_frame_keeps_its_typed_value() {
+        assert_eq!(
+            frame_ms().to_bits(),
+            (256.0_f64 / 22_050.0 * 1000.0).to_bits()
+        );
+    }
 }

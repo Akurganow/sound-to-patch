@@ -1404,4 +1404,12 @@ mod tests {
         let error = compare(&other, &renders, &rows).unwrap_err();
         assert!(matches!(error, SpreadError::SampleRate { .. }), "{error}");
     }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        assert_eq!(SPREAD_QUANTILE.to_bits(), 0.95_f64.to_bits());
+        assert_eq!(COVERAGE_PERCENT, 95);
+        assert_eq!(ENVELOPE_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
+        assert_eq!(ONSET_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
+    }
 }

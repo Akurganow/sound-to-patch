@@ -1123,4 +1123,9 @@ mod tests {
             proptest::prop_assert_eq!(recovery(&curve), recovery(&rotated));
         }
     }
+
+    #[test]
+    fn the_pump_bins_keep_their_typed_value() {
+        assert_eq!(PUMP_BINS, 64);
+    }
 }

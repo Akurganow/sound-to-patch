@@ -890,4 +890,10 @@ mod tests {
             "an octave above has no free harmonic"
         );
     }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        assert_eq!(RAMP_FACTOR.to_bits(), 1.25_f64.to_bits());
+        assert_eq!(LEVEL_FRAMES, 50);
+    }
 }

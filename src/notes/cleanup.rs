@@ -1900,4 +1900,14 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        let two_frames = (2.0_f64 * 256.0 / 22_050.0).to_bits();
+        assert_eq!(COPY_SLACK.get().to_bits(), two_frames);
+        assert_eq!(SPLIT_GAP.get().to_bits(), two_frames);
+        assert_eq!(RISE_STEP.get().to_bits(), 0.001_f64.to_bits());
+        assert_eq!(RISE_SPAN.0.to_bits(), 0.1_f64.to_bits());
+        assert_eq!(RISE_SPAN.1.to_bits(), 0.9_f64.to_bits());
+    }
 }

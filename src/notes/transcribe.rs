@@ -202,3 +202,14 @@ impl Error for TranscribeError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_model_frame_keeps_its_typed_values() {
+        assert_eq!(MODEL_HOP, 256);
+        assert_eq!(MODEL_RATE.get(), 22_050);
+    }
+}

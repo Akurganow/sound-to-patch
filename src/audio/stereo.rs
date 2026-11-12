@@ -343,4 +343,9 @@ mod tests {
         assert!(Band::High.contains(1000.0));
         assert!(!Band::Full.contains(0.0));
     }
+
+    #[test]
+    fn the_high_edge_keeps_its_typed_value() {
+        assert_eq!(HIGH_EDGE_HZ.get().to_bits(), 1000.0_f64.to_bits());
+    }
 }

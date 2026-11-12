@@ -224,7 +224,7 @@ macro_rules! unit {
 
             /// Returns the inner value.
             #[must_use]
-            pub fn get(self) -> f64 {
+            pub const fn get(self) -> f64 {
                 self.0
             }
 
@@ -543,7 +543,7 @@ impl<P: Polarity> Percent<P> {
 
     /// Returns the inner value, in percent.
     #[must_use]
-    pub fn get(self) -> f64 {
+    pub const fn get(self) -> f64 {
         self.value
     }
 

@@ -706,4 +706,9 @@ needs 1.5; onset sharpness 1.00, needs 0.9; beat periodicity 0.24, needs 0.4, or
 or 4 beats with 0.25 onsets per beat, needs 0.75 with 0.8 at most)"
         );
     }
+
+    #[test]
+    fn the_onset_hop_keeps_its_typed_value() {
+        assert_eq!(ONSET_HOP_S.to_bits(), 0.001_f64.to_bits());
+    }
 }
