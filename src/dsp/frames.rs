@@ -3,11 +3,22 @@
 use super::StftParams;
 use super::stft::padded_sample;
 use crate::cast;
-use crate::units::Decibels;
+use crate::units::{Decibels, Seconds};
 
 /// The gate of the project's convention: a frame is active when its RMS
 /// lies within 40 dB of the loudest frame.
 pub const ACTIVE_GATE_DB: Decibels = Decibels::from_const(40.0);
+
+/// The shares of the peak that bound a rise, the 10-90 % rise.
+///
+/// A rise starts where the level reaches the first share and ends where
+/// it reaches the second. The attack of a note, the strike of a pitch drop
+/// and the rise test of the cleanup all read it.
+pub const RISE_SHARES: (f64, f64) = (0.1, 0.9);
+
+/// The hop of every level reading: the envelope tracks and the rise test
+/// of the cleanup read the level on this grid.
+pub const LEVEL_HOP: Seconds = Seconds::from_const(0.001);
 
 /// The fewest active frames a statistic over frames needs; with fewer it
 /// gives no estimate.

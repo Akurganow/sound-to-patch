@@ -3,17 +3,17 @@
 
 use crate::audio::SampleRate;
 use crate::cast;
-use crate::dsp::{FilterError, fit_line, quantile};
+use crate::dsp::{FilterError, RISE_SHARES, fit_line, quantile};
 use crate::notes::Note;
 use crate::units::{Decibels, Hz, MidiPitch, Seconds};
 
 use super::knee::{bend, find_knee_against};
-use super::median;
 use super::pump::Pump;
 use super::tail::{TAIL_BAND_PERIODS, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG, TailFit, fit_tail};
 use super::track::{
     HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
 };
+use super::{SPREAD_QUANTILES, median};
 
 /// How little the level may rise after the attack's top.
 ///
@@ -27,8 +27,9 @@ use super::track::{
 /// 2 to 3 dB over 600 ms, the rise to 90 % of the peak read 400 to 525 ms.
 pub const ATTACK_TOP: Decibels = Decibels::from_const(1.0);
 /// A linear ramp spends 80 % of its time between 10 % and 90 % of its
-/// peak, so the 10-90 % rise times 1.25 is the full attack.
-pub const RAMP_FACTOR: f64 = 1.25;
+/// peak, so the 10-90 % rise times 1.25 is the full attack: one over the
+/// gap between the [`RISE_SHARES`].
+pub const RAMP_FACTOR: f64 = 1.0 / (RISE_SHARES.1 - RISE_SHARES.0);
 /// A rise shorter than this many RMS windows cannot be told from a
 /// shorter one: the attack is an upper bound.
 ///
@@ -551,10 +552,11 @@ fn rise(track: &LevelTrack, onset: usize, resolution: f64) -> Option<f64> {
     let db = track.db();
     let peak = attack_top(db, onset, resolution)?;
     let amp: Vec<f64> = db.iter().map(|d| 10f64.powf((d - peak) / 20.0)).collect();
-    let up = (onset.max(1)..amp.len()).find(|&i| amp[i] >= 0.9)?;
-    let t90 = between(&amp, up, 0.9);
-    let low = (0..up).rev().find(|&i| amp[i] < 0.1)?;
-    let t10 = between(&amp, low + 1, 0.1);
+    let (from, to) = RISE_SHARES;
+    let up = (onset.max(1)..amp.len()).find(|&i| amp[i] >= to)?;
+    let t90 = between(&amp, up, to);
+    let low = (0..up).rev().find(|&i| amp[i] < from)?;
+    let t10 = between(&amp, low + 1, from);
     Some((t90 - t10) * HOP.get())
 }
 
@@ -632,7 +634,8 @@ fn ripple(values: &[f64]) -> Option<f64> {
     let b = fit_line(&points).map_or(0.0, |(slope, _)| slope);
     let mut rest: Vec<f64> = points.iter().map(|&(x, y)| y - b * x).collect();
     rest.sort_by(f64::total_cmp);
-    Some(quantile(&rest, 0.9)? - quantile(&rest, 0.1)?)
+    let (low, high) = SPREAD_QUANTILES;
+    Some(quantile(&rest, high)? - quantile(&rest, low)?)
 }
 
 #[cfg(test)]
@@ -895,5 +898,26 @@ mod tests {
     fn derived_constants_keep_their_typed_values() {
         assert_eq!(RAMP_FACTOR.to_bits(), 1.25_f64.to_bits());
         assert_eq!(LEVEL_FRAMES, 50);
+    }
+
+    #[test]
+    fn the_ramp_factor_and_the_ripple_follow_their_sources() {
+        let (from, to) = crate::dsp::RISE_SHARES;
+        assert_eq!(RAMP_FACTOR.to_bits(), (1.0 / (to - from)).to_bits());
+        let values: Vec<f64> = (0..=100)
+            .map(cast::usize_to_f64)
+            .map(|i| (i * 0.7).sin())
+            .collect();
+        let points: Vec<(f64, f64)> = values
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| (cast::usize_to_f64(i), v))
+            .collect();
+        let slope = fit_line(&points).map_or(0.0, |(slope, _)| slope);
+        let mut rest: Vec<f64> = points.iter().map(|&(x, y)| y - slope * x).collect();
+        rest.sort_by(f64::total_cmp);
+        let (low, high) = SPREAD_QUANTILES;
+        let spread = quantile(&rest, high).unwrap() - quantile(&rest, low).unwrap();
+        assert_eq!(ripple(&values).unwrap().to_bits(), spread.to_bits());
     }
 }

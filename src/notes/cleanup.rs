@@ -14,6 +14,7 @@
 
 use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, QUIET_FRAME, StemLevels};
 use crate::cast;
+use crate::dsp::{LEVEL_HOP, RISE_SHARES};
 use crate::units::Hz;
 use crate::units::{Decibels, MidiPitch, Seconds, Semitones};
 
@@ -102,11 +103,12 @@ pub const HARMONIC_DIP: Decibels = Decibels::from_const(22.0);
 /// One period reads a periodic tone steady. Two periods smooth the dip of
 /// a tremolo at A1 away, and a window between the two ripples.
 pub const RISE_WINDOW: Seconds = Seconds::from_const(0.004);
-/// The step between envelope readings of the rise test.
-pub const RISE_STEP: Seconds = Seconds::from_const(0.001);
+/// The step between envelope readings of the rise test, the hop of every
+/// level reading.
+pub const RISE_STEP: Seconds = LEVEL_HOP;
 /// The share of the loudest envelope reading a rise starts below, and the
-/// share it ends above.
-pub const RISE_SPAN: (f64, f64) = (0.1, 0.9);
+/// share it ends above: the shares of every rise.
+pub const RISE_SPAN: (f64, f64) = RISE_SHARES;
 /// How far after the onset a rise may start: the decoder starts a note up
 /// to 15 ms before its attack.
 pub const RISE_LATEST: Seconds = Seconds::from_const(0.02);
@@ -1909,5 +1911,12 @@ mod tests {
         assert_eq!(RISE_STEP.get().to_bits(), 0.001_f64.to_bits());
         assert_eq!(RISE_SPAN.0.to_bits(), 0.1_f64.to_bits());
         assert_eq!(RISE_SPAN.1.to_bits(), 0.9_f64.to_bits());
+    }
+
+    #[test]
+    fn the_rise_test_reads_the_shares_and_the_hop_of_every_rise() {
+        assert_eq!(RISE_STEP, crate::dsp::LEVEL_HOP);
+        assert_eq!(RISE_SPAN.0.to_bits(), crate::dsp::RISE_SHARES.0.to_bits());
+        assert_eq!(RISE_SPAN.1.to_bits(), crate::dsp::RISE_SHARES.1.to_bits());
     }
 }

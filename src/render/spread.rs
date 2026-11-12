@@ -40,7 +40,7 @@ use super::session::{BoxedRenderer, RESTART_AFTER, RenderOutcome, RenderSession}
 use super::{HostIdentity, Oversampling, RenderError, RenderJob, Rendered};
 use crate::audio::{Audio, AudioError, SampleRate};
 use crate::cast;
-use crate::dsp::{Summary, quantile};
+use crate::dsp::{ACTIVE_GATE_DB, Summary, quantile};
 use crate::units::{Bpm, Decibels};
 
 /// How many renders a spread takes.
@@ -63,8 +63,8 @@ pub const ONSET_RANGE_DB: Decibels = Decibels::from_const(40.0);
 /// The envelope frames per second: one frame is 10 ms.
 pub const ENVELOPE_FRAMES_PER_S: u32 = 100;
 /// The envelope distance counts the frames within this many dB of the
-/// loudest frame of either clip.
-pub const ENVELOPE_RANGE_DB: Decibels = Decibels::from_const(40.0);
+/// loudest frame of either clip: the gate of an active frame.
+pub const ENVELOPE_RANGE_DB: Decibels = ACTIVE_GATE_DB;
 /// The floor of a tolerance in dB: a level difference below it counts as
 /// none.
 pub const LEVEL_FLOOR_DB: f64 = 0.01;
@@ -1411,5 +1411,10 @@ mod tests {
         assert_eq!(COVERAGE_PERCENT, 95);
         assert_eq!(ENVELOPE_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
         assert_eq!(ONSET_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
+    }
+
+    #[test]
+    fn the_envelope_range_is_the_active_frame_gate() {
+        assert_eq!(ENVELOPE_RANGE_DB, crate::dsp::ACTIVE_GATE_DB);
     }
 }

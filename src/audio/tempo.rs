@@ -103,6 +103,10 @@ the whole beats of the stem at the slowest tempo of the search, given / 1.03, so
 keeps 4 beats of overlap at every candidate; a stem of fewer than 8 keeps the given tempo";
 
 /// The hop of the onset strength.
+///
+/// A choice of the tempo search, apart from the 1 ms hop of the envelope
+/// tracks: it sets the grid of the spectral flux and of its beat lags, so
+/// a change of the level hop must not move the tempo.
 const ONSET_HOP_S: f64 = 0.001;
 /// The frame of the onset strength, rounded to the nearest power of two of
 /// samples: 2048 samples, 46.4 ms at 44.1 kHz and 42.7 ms at 48 kHz.

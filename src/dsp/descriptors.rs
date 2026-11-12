@@ -6,7 +6,7 @@
 //! the conventions differ by up to 15x on the same sound, so a value is
 //! comparable only together with its convention.
 
-use crate::audio::SampleRate;
+use crate::audio::{HIGH_EDGE_HZ, SampleRate};
 use crate::cast;
 use crate::confidence::{ConfidenceError, Estimate, Level, Reason, ReasonCode, Signal, Spread};
 use crate::units::{Decibels, Hz, Normalized, Ratio};
@@ -35,7 +35,7 @@ pub const BAND_EDGES_HZ: [Hz; 7] = [
     Hz::from_const(20.0),
     Hz::from_const(60.0),
     Hz::from_const(250.0),
-    Hz::from_const(1000.0),
+    HIGH_EDGE_HZ,
     Hz::from_const(4000.0),
     Hz::from_const(10_000.0),
     Hz::from_const(20_000.0),
@@ -430,5 +430,10 @@ mod tests {
         let edges = BAND_EDGES_HZ.map(|edge| edge.get().to_bits());
         let typed = [20.0_f64, 60.0, 250.0, 1000.0, 4000.0, 10_000.0, 20_000.0].map(f64::to_bits);
         assert_eq!(edges, typed);
+    }
+
+    #[test]
+    fn the_band_shares_split_at_the_high_edge_of_the_stereo_screen() {
+        assert_eq!(BAND_EDGES_HZ[3], crate::audio::HIGH_EDGE_HZ);
     }
 }
