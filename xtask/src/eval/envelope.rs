@@ -16,6 +16,7 @@ use std::path::Path;
 
 use serde_json::{Value, json};
 use sound_to_patch::audio::{BeatGrid, SampleRate};
+use sound_to_patch::cast;
 use sound_to_patch::estimate::envelope::{
     EnvelopeInput, EnvelopeLayer, PUMP_BACK, Pump, PumpLock, RAMP_FACTOR, RMS_PERIODS, lock_name,
     rms_window,
@@ -125,16 +126,11 @@ fn index(n: usize) -> f64 {
     f64::from(u32::try_from(n).unwrap_or(u32::MAX))
 }
 
+/// The sample at `seconds`, rounded; a time before the start is sample 0.
+/// The parts last a few minutes at most, far below the `2^53` limit of the
+/// cast.
 fn samples(seconds: f64) -> usize {
-    let n = (seconds * f64::from(RATE)).round().max(0.0);
-    // At most a few minutes of audio, so the cast is exact.
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "checked"
-    )]
-    let n = n as usize;
-    n
+    cast::round_to_usize((seconds * f64::from(RATE)).max(0.0)).unwrap_or(usize::MAX)
 }
 
 /// SplitMix64 values in `[0, 1)`.
@@ -668,13 +664,8 @@ fn duck(t: f64, depth_db: f64, release: f64, beat: f64, shape: Shape) -> f64 {
 /// [`PUMP_BACK`], on a 0.1 ms grid.
 fn back_time(depth_db: f64, release: f64, beat: f64, shape: Shape) -> Option<f64> {
     let db = |t: f64| 20.0 * duck(t, depth_db, release, beat, shape).log10();
-    let steps = (beat / 1e-4).floor();
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "a beat of 1e-4 steps"
-    )]
-    let steps = steps as usize;
+    // A beat lasts at most a few seconds, so its 0.1 ms steps fit the cast.
+    let steps = cast::floor_to_usize(beat / 1e-4).unwrap_or(0);
     let grid: Vec<f64> = (0..steps).map(|i| index(i) * 1e-4).collect();
     let low = grid
         .iter()

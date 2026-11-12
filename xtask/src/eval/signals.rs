@@ -5,6 +5,7 @@
 use std::f64::consts::TAU;
 
 use realfft::RealFftPlanner;
+use sound_to_patch::cast;
 
 use super::matcher::{EvalNote, count};
 
@@ -119,23 +120,10 @@ fn blep(t: f64, dt: f64) -> f64 {
     }
 }
 
+/// The sample at `seconds`, rounded; a time before the start is sample 0.
+/// The set never reaches minutes, far below the `2^53` limit of the cast.
 fn index(seconds: f64) -> usize {
-    let samples = (seconds * f64::from(RATE)).round();
-    // The set never reaches minutes, so the cast is exact.
-    if samples <= 0.0 {
-        0
-    } else {
-        samples_to_usize(samples)
-    }
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "callers pass a rounded, non-negative sample count of a short signal"
-)]
-fn samples_to_usize(samples: f64) -> usize {
-    samples as usize
+    cast::round_to_usize(seconds * f64::from(RATE)).unwrap_or(0)
 }
 
 /// The reference notes of a render: with gate offsets, and with offsets
@@ -269,14 +257,6 @@ pub(super) fn splitmix(seed: u64, count: usize) -> Vec<u64> {
         .collect()
 }
 
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "the top 53 bits are exact in f64"
-)]
-fn unit(bits: u64) -> f64 {
-    (bits >> 11) as f64 / (1_u64 << 53) as f64
-}
-
 /// Adds a reverb tail: seeded Gaussian noise under an exponential decay of
 /// `rt60` seconds, normalised to unit energy, mixed `wet_db` below the dry
 /// signal.
@@ -285,7 +265,10 @@ fn reverb(dry: &[f64], rt60: f64, wet_db: f64, seed: u64) -> Vec<f64> {
     let bits = splitmix(seed, length + 1);
     let mut ir: Vec<f64> = (0..length)
         .map(|i| {
-            let (u1, u2) = (unit(bits[i]).max(f64::MIN_POSITIVE), unit(bits[i + 1]));
+            let (u1, u2) = (
+                cast::unit_interval(bits[i]).max(f64::MIN_POSITIVE),
+                cast::unit_interval(bits[i + 1]),
+            );
             let gauss = (-2.0 * u1.ln()).sqrt() * (TAU * u2).cos();
             gauss * (-(1000_f64.ln()) * count(i) / f64::from(RATE) / rt60).exp()
         })
@@ -744,7 +727,10 @@ fn transient_parts() -> Vec<Part> {
             "noise burst",
             (0..1000)
                 .map(|i| {
-                    let (u1, u2) = (unit(bits[i]).max(f64::MIN_POSITIVE), unit(bits[i + 1]));
+                    let (u1, u2) = (
+                        cast::unit_interval(bits[i]).max(f64::MIN_POSITIVE),
+                        cast::unit_interval(bits[i + 1]),
+                    );
                     ((-2.0 * u1.ln()).sqrt() * (TAU * u2).cos()).clamp(-1.0, 1.0)
                 })
                 .collect(),

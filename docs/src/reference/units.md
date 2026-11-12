@@ -1,10 +1,13 @@
 # Units
 
-Every physical value in the library has a unit type. A value is checked
-once, when it is built from a number, a JSON field or a unit string, and is
-valid by type afterwards. Only the constructors and the ratio and gain
-conversions take a bare float; every other public function takes a unit
-type.
+Each physical unit the library handles has a unit type. A value is
+checked once, when it is built from a number, a JSON field or, for a type
+with a suffix, a unit string, and is valid by type afterwards. Not every
+public function takes a unit type. The constructors and the ratio and gain
+conversions take a bare float, and so do many signal-processing and rhythm
+helpers and some fields of the estimators. For example,
+`music::rhythm::ticks_for_ms` takes a time in milliseconds and a tempo as
+plain numbers.
 
 The code examples on this page come from `examples/units.rs`, which CI
 compiles. `cargo run --example units` prints their results.
@@ -107,8 +110,9 @@ only these, matched case-sensitively:
 
 A target type accepts only its own suffixes. A suffix of another unit, an
 unknown suffix and a missing number are errors that list the accepted
-suffixes. A bare number for a unit value is an error too; only enums,
-counts and bools take bare values. The parsed value then passes the range
+suffixes. A bare number for a control with a physical unit is an error;
+only counts, bools, menu labels and the stored value of a control without
+a physical unit take bare values. The parsed value then passes the range
 check of its type, so `"-5 Hz"` fails with the range of `Hz`, and `"-40%"`
 parses for a bipolar control but fails for a unipolar one.
 
@@ -116,8 +120,10 @@ parses for a bipolar control but fails for a unipolar one.
 {{#include ../../../examples/units.rs:parse}}
 ```
 
-Each type prints in a form that parses back to the same value, such as
-`1200 Hz` or `-40%`.
+Each type in the suffix table prints in a form that parses back to the
+same value, such as `1200 Hz` or `-40%`. `Normalized`, `Correlation`,
+`Degrees`, `Bpm` and `Ratio` have no suffix, so they have neither a unit
+string nor a printed form.
 
 ## JSON forms
 

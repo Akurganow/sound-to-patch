@@ -330,8 +330,7 @@ fn runs_parser() -> clap::builder::RangedU64ValueParser<usize> {
 }
 
 /// [`MIN_RUNS`] for the range of [`runs_parser`].
-#[allow(clippy::as_conversions, reason = "a const cast of a small constant")]
-const MIN_RUNS_U64: u64 = MIN_RUNS as u64;
+const MIN_RUNS_U64: u64 = sound_to_patch::cast::usize_to_u64(MIN_RUNS);
 /// The recordings a reference run renders at once.
 const WORKERS: NonZeroUsize = NonZeroUsize::new(4).unwrap();
 

@@ -656,7 +656,7 @@ fn read_line(
     whole: impl Fn(&[u8]) -> bool,
 ) -> io::Result<usize> {
     let read = reader.by_ref().take(MAX_LINE).read_until(b'\n', bytes)?;
-    if bytes.last() != Some(&b'\n') && read as u64 == MAX_LINE {
+    if bytes.last() != Some(&b'\n') && crate::cast::usize_to_u64(read) == MAX_LINE {
         if whole(bytes) {
             reader.read_until(b'\n', bytes)?;
         } else {

@@ -21,7 +21,7 @@ use std::fmt;
 
 use serde_json::{Map, Value};
 
-use super::{PresetState, Recipe, RenderError};
+use super::{MAX_KEY, PresetState, Recipe, RenderError};
 use crate::cast;
 use crate::preset::format::{FormatError, PresetFormat, Stored};
 use crate::preset::vital;
@@ -39,8 +39,6 @@ const TUNING: &str = "tuning";
 const TEMPO: &str = "beats_per_minute";
 /// The path of the tempo control in a [`Mismatch`].
 pub const TEMPO_PATH: &str = "settings.beats_per_minute";
-/// The highest MIDI note.
-const MAX_MIDI_NOTE: u64 = 127;
 /// How many characters of a value a mismatch message shows.
 const SHOWN_CHARS: usize = 40;
 
@@ -134,7 +132,7 @@ fn check_tuning(tuning: &Value) -> Result<(), RenderError> {
     if tuning
         .get("scale_start_midi_note")
         .and_then(Value::as_u64)
-        .is_none_or(|note| note > MAX_MIDI_NOTE)
+        .is_none_or(|note| note > u64::from(MAX_KEY))
     {
         return fail("`tuning.scale_start_midi_note` is not a MIDI note from 0 to 127".to_owned());
     }

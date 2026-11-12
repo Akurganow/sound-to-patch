@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::Deserialize;
 
+use crate::cast;
 use crate::music::Dictionary;
 use crate::music::chord::ALTERED_DOMINANT;
 use crate::music::entry::{Entry, Fragment, Group, Rule, Tier};
@@ -516,8 +517,7 @@ pub fn recompute(share: f64, count: u64, total: u64) -> Option<String> {
     if count > total {
         return Some(format!("count {count} exceeds total {total}"));
     }
-    #[allow(clippy::cast_precision_loss, reason = "counts stay far below 2^52")]
-    let computed = count as f64 / total as f64 * 100.0;
+    let computed = cast::u64_to_f64(count) / cast::u64_to_f64(total) * 100.0;
     let step = decimal_step(share);
     if (computed - share).abs() <= step * ROUNDING + f64::EPSILON * 100.0 {
         None

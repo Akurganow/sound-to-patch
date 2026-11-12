@@ -43,7 +43,10 @@
 //!   conversions, serde and the unit-string parser.
 
 pub mod audio;
-use sound_to_patch_core::cast;
+/// The audited numeric casts of `core`, for the developer tools and the
+/// integration tests, so they carry no copies.
+#[doc(hidden)]
+pub use sound_to_patch_core::cast;
 pub mod cli;
 pub mod confidence;
 pub mod dsp;

@@ -16,6 +16,7 @@ use super::{
 };
 
 use crate::cast;
+use crate::render::{MAX_PITCH_BEND, PITCH_BEND_CENTRE};
 use crate::units::{Bpm, Decibels, Hz, MidiPitch, Seconds, Semitones};
 
 /// A glide join overlaps the two notes by at least this long, rounded up
@@ -41,9 +42,6 @@ pub const BEND_RANGE: Semitones = Semitones::from_const(2.0);
 /// The level law: a note `d` dB under the loudest gets velocity
 /// `127 * 10^(-d / 40)`.
 pub const VELOCITY_LAW_DB: f64 = 40.0;
-
-/// The centre of the 14-bit pitch-bend value.
-const BEND_CENTRE: u16 = 8192;
 
 /// What the layer report says of one note of the list.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -672,13 +670,17 @@ fn bends_of(
         }
         for (at, deviation, _) in points {
             let share = deviation.clamp(-BEND_RANGE.get(), BEND_RANGE.get()) / BEND_RANGE.get();
-            let value = cast::round_to_usize((f64::from(BEND_CENTRE) + share * 8191.0).max(0.0))
-                .and_then(|v| u16::try_from(v).ok())
-                .unwrap_or(BEND_CENTRE)
-                .min(16_383);
+            let value = cast::round_to_usize(
+                (f64::from(PITCH_BEND_CENTRE)
+                    + share * f64::from(MAX_PITCH_BEND - PITCH_BEND_CENTRE))
+                .max(0.0),
+            )
+            .and_then(|v| u16::try_from(v).ok())
+            .unwrap_or(PITCH_BEND_CENTRE)
+            .min(MAX_PITCH_BEND);
             events.push((at, value));
         }
-        events.push((stop, BEND_CENTRE));
+        events.push((stop, PITCH_BEND_CENTRE));
     }
     in_force(events)
 }
@@ -722,7 +724,7 @@ fn in_force(mut events: Vec<(u64, u16)>) -> Vec<(u64, u16)> {
         if events.get(i + 1).is_some_and(|&(next, _)| next == at) {
             continue;
         }
-        if bends.last().map_or(BEND_CENTRE, |&(_, v)| v) != value {
+        if bends.last().map_or(PITCH_BEND_CENTRE, |&(_, v)| v) != value {
             bends.push((at, value));
         }
     }
@@ -1081,7 +1083,7 @@ mod tests {
         // +60 cents of a 2-semitone range: 8192 + 0.3 * 8191.
         let at = |t: f64| in_force_at(&bends, tick_of(t, 960.0)).1;
         assert_eq!(at(0.75), 10_649);
-        assert_eq!(at(1.2), BEND_CENTRE);
+        assert_eq!(at(1.2), PITCH_BEND_CENTRE);
     }
 
     #[test]
@@ -1285,7 +1287,7 @@ mod tests {
             .iter()
             .rev()
             .find(|&&(t, _)| t <= at)
-            .map_or((0, BEND_CENTRE), |&b| b)
+            .map_or((0, PITCH_BEND_CENTRE), |&b| b)
     }
 
     /// One note of a generated mono line: the gap to the next onset, the
@@ -1508,11 +1510,11 @@ mod tests {
                 // by as much.
                 let (t, v) = in_force_at(&finished.bends, n.start);
                 let own = cast::round_to_usize(
-                    f64::from(BEND_CENTRE) + (spec.cents / 100.0).clamp(-2.0, 2.0) / 2.0 * 8191.0,
+                    f64::from(PITCH_BEND_CENTRE) + (spec.cents / 100.0).clamp(-2.0, 2.0) / 2.0 * f64::from(MAX_PITCH_BEND - PITCH_BEND_CENTRE),
                 )
                 .and_then(|v| u16::try_from(v).ok());
                 prop_assert!(
-                    v == BEND_CENTRE || (spec.cents.abs() >= 50.0 && Some(v) == own),
+                    v == PITCH_BEND_CENTRE || (spec.cents.abs() >= 50.0 && Some(v) == own),
                     "note {i}: {v} at {t}"
                 );
                 // A glide into the note models its start, which can leave
@@ -1526,11 +1528,11 @@ mod tests {
                 if clear {
                     // A bend of the note's own, or one already in force at
                     // its note-on with the same value.
-                    let bent = in_force_at(&finished.bends, n.start).1 != BEND_CENTRE
+                    let bent = in_force_at(&finished.bends, n.start).1 != PITCH_BEND_CENTRE
                         || finished
                             .bends
                             .iter()
-                            .any(|&(t, v)| (n.start..n.end).contains(&t) && v != BEND_CENTRE);
+                            .any(|&(t, v)| (n.start..n.end).contains(&t) && v != PITCH_BEND_CENTRE);
                     prop_assert!(bent, "note {i}: {spec:?}");
                 }
                 if spec.cents.abs() < 50.0 || spec.drop {
@@ -1539,7 +1541,7 @@ mod tests {
                         finished
                             .bends
                             .iter()
-                            .all(|&(t, v)| !(n.start..stop).contains(&t) || v == BEND_CENTRE),
+                            .all(|&(t, v)| !(n.start..stop).contains(&t) || v == PITCH_BEND_CENTRE),
                         "note {i}: {spec:?}"
                     );
                 }

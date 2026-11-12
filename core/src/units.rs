@@ -242,7 +242,8 @@ macro_rules! unit {
                     Self::RANGE.contains(value),
                     concat!(stringify!($name), "::from_const: the value lies outside the range")
                 );
-                Self(value)
+                // `+ 0.0` stores `-0.0` as `+0.0`, as `new` does.
+                Self(value + 0.0)
             }
 
             /// Builds a value that the computation guarantees to be in
@@ -462,13 +463,15 @@ unit!(
 );
 
 impl Seconds {
-    /// Converts milliseconds, such as a reverb pre-delay, to seconds.
+    /// Converts milliseconds, such as a reverb pre-delay, to seconds. The
+    /// value equals the `ms` unit string of the same number: both move the
+    /// decimal exponent and round once.
     ///
     /// # Errors
     ///
     /// Returns a [`RangeError`] when the result is not a valid [`Seconds`].
     pub fn from_millis(millis: f64) -> Result<Self, RangeError> {
-        Self::new(millis / 1000.0)
+        Self::new(parse::shift_decimal(millis, -3))
     }
 }
 
@@ -574,7 +577,7 @@ impl<P: Polarity> Percent<P> {
             "Percent::from_const: the value lies outside the range"
         );
         Self {
-            value,
+            value: value + 0.0,
             polarity: PhantomData,
         }
     }
@@ -821,6 +824,52 @@ pub(crate) mod tests {
     fn millis_convert_to_seconds() {
         assert_eq!(Seconds::from_millis(250.0).unwrap().get(), 0.25);
         assert!(Seconds::from_millis(-1.0).is_err());
+        assert!(Seconds::from_millis(f64::NAN).is_err());
+        assert!(Seconds::from_millis(f64::INFINITY).is_err());
+        assert!(Seconds::from_millis(-0.0).unwrap().get().is_sign_positive());
+    }
+
+    #[test]
+    fn millis_round_once_like_the_ms_suffix() {
+        // `33.3 / 1000.0` rounds twice and lands one ulp below 0.0333.
+        assert_eq!(Seconds::from_millis(33.3).unwrap().get(), 0.0333);
+        assert_eq!(
+            Seconds::from_millis(f64::MAX).unwrap(),
+            format!("{} ms", f64::MAX).parse().unwrap()
+        );
+        assert_eq!(
+            Seconds::from_millis(5e-324).unwrap(),
+            "5e-324 ms".parse().unwrap()
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn millis_equal_the_ms_suffix(any in finite()) {
+            let millis = any.abs();
+            let text: Seconds = format!("{millis} ms").parse().unwrap();
+            prop_assert_eq!(Seconds::from_millis(millis).unwrap(), text);
+        }
+
+        #[test]
+        fn millis_of_three_decimals_equal_the_ms_suffix(thousandths in 0_u32..10_000_000) {
+            let text = format!("{}.{:03}", thousandths / 1000, thousandths % 1000);
+            let millis: f64 = text.parse().unwrap();
+            let parsed: Seconds = format!("{text} ms").parse().unwrap();
+            prop_assert_eq!(Seconds::from_millis(millis).unwrap(), parsed);
+        }
+    }
+
+    #[test]
+    fn from_const_stores_negative_zero_as_positive_zero() {
+        const HZ: Hz = Hz::from_const(-0.0);
+        const CENTS: Cents = Cents::from_const(-0.0);
+        const PERCENT: Percent<Bipolar> = Percent::from_const(-0.0);
+        assert!(HZ.get().is_sign_positive());
+        assert!(CENTS.get().is_sign_positive());
+        assert!(PERCENT.get().is_sign_positive());
+        assert_eq!(HZ.to_string(), "0 Hz");
+        assert_eq!(Hz::from_const(440.0).get(), 440.0);
     }
 
     #[test]

@@ -204,12 +204,6 @@ pub fn read_note(text: &str, range: Option<[u8; 2]>) -> Result<NoteReading, Musi
     })
 }
 
-/// The pitch in Hz of a MIDI number in equal temperament, A4 = 440 Hz.
-#[must_use]
-pub fn frequency(pitch: u8) -> f64 {
-    440.0 * 2f64.powf((f64::from(pitch) - 69.0) / 12.0)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,11 +268,5 @@ mod tests {
         assert_eq!((unbound.pitch, unbound.label), (69, OctaveLabel::C4));
         let wide = read_note("C4", Some([21, 108])).unwrap();
         assert_eq!((wide.pitch, wide.label), (60, OctaveLabel::C4));
-    }
-
-    #[test]
-    fn middle_c_and_a4_have_their_frequencies() {
-        assert!((frequency(69) - 440.0).abs() < 1e-9);
-        assert!((frequency(60) - 261.6256).abs() < 1e-4);
     }
 }

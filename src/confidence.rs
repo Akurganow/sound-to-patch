@@ -240,9 +240,10 @@ impl Reason {
     /// Returns a [`ConfidenceError`] for a [`Signal::Number`] that is NaN or
     /// infinite.
     pub fn new(code: ReasonCode, value: Signal) -> Result<Self, ConfidenceError> {
-        if let Signal::Number(number) = value {
-            check_signal(number).map_err(Kind::Signal)?;
-        }
+        let value = match value {
+            Signal::Number(number) => Signal::Number(check_signal(number).map_err(Kind::Signal)?),
+            other => other,
+        };
         Ok(Self { code, value })
     }
 
@@ -259,9 +260,11 @@ impl Reason {
     }
 }
 
+/// Accepts a finite signal, with `-0.0` stored as `+0.0` as the unit types
+/// store it, so the sign of a zero never reaches a report.
 fn check_signal(number: f64) -> Result<f64, RangeError> {
     if number.is_finite() {
-        Ok(number)
+        Ok(number + 0.0)
     } else {
         Err(RangeError::new(
             "Reason signal",
@@ -905,6 +908,21 @@ mod tests {
         assert!(error.source().is_some());
         assert!(Reason::new(ReasonCode::ActiveFrames, Signal::Number(f64::INFINITY)).is_err());
         assert!(Reason::new(ReasonCode::ActiveFrames, Signal::Number(-2.5)).is_ok());
+    }
+
+    #[test]
+    fn a_signal_stores_negative_zero_as_positive_zero() {
+        let reason = Reason::new(ReasonCode::ActiveFrames, Signal::Number(-0.0)).unwrap();
+        let Signal::Number(number) = reason.value() else {
+            panic!("{reason:?}");
+        };
+        assert!(number.is_sign_positive());
+        assert_eq!(
+            serde_json::to_string(&reason).unwrap(),
+            r#"{"code":"active_frames","value":0.0}"#
+        );
+        let read: Signal = serde_json::from_str("-0.0").unwrap();
+        assert!(matches!(read, Signal::Number(number) if number.is_sign_positive()));
     }
 
     #[test]

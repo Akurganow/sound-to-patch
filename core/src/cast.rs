@@ -1,6 +1,10 @@
 //! The audited numeric casts. Every `as` between number types in the
-//! library goes through one function here, with the reason it is sound and
-//! a test of its edge cases.
+//! library and the host goes through one function here, with the reason it
+//! is sound and a test of its edge cases.
+//!
+//! The library re-exports this module for the developer tools and the
+//! integration tests. The developer tools keep two local casts, under an
+//! `expect` attribute with its reason.
 
 /// An integer count as `f64`. Exact up to 2^53, far above any count of
 /// samples, keys or slots this crate handles.
@@ -22,6 +26,15 @@ pub fn usize_to_f64(n: usize) -> f64 {
 #[must_use]
 pub fn u64_to_f64(n: u64) -> f64 {
     n as f64
+}
+
+/// An index or a byte count as `u64`. Exact: every target this crate
+/// builds for has a `usize` of at most 64 bits, which the assertion below
+/// proves at compile time.
+#[must_use]
+pub const fn usize_to_u64(n: usize) -> u64 {
+    const _: () = assert!(usize::BITS <= u64::BITS);
+    n as u64
 }
 
 /// A signed integer read from a file as `f64`. Exact up to ±2^53; larger
@@ -85,14 +98,20 @@ pub fn floor_to_usize(value: f64) -> Option<usize> {
 }
 
 /// Converts a non-negative `f64` to the nearest index, ties away from zero.
-/// Returns `None` where [`floor_to_usize`] does.
+///
+/// Returns `None` for NaN, an infinity, a value of -0.5 or less, or a value
+/// that rounds to `2^53` or more. A value above -0.5 rounds to `-0.0` and
+/// gives `Some(0)`.
 #[must_use]
 pub fn round_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.round())
 }
 
-/// Converts a non-negative `f64` to the next index up. Returns `None` where
-/// [`floor_to_usize`] does.
+/// Converts a non-negative `f64` to the next index up.
+///
+/// Returns `None` for NaN, an infinity, a value of -1 or less, or a value
+/// above `2^53 - 1`. A value above -1 rounds up to `-0.0` and gives
+/// `Some(0)`.
 #[must_use]
 pub fn ceil_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.ceil())
@@ -109,6 +128,12 @@ mod tests {
         assert_eq!(usize_to_f64(1 << 53), 9_007_199_254_740_992.0);
         assert_eq!(i64_to_f64(-48), -48.0);
         assert_eq!(i64_to_f64(1 << 53), 9_007_199_254_740_992.0);
+        assert_eq!(u64_to_f64(0), 0.0);
+        assert_eq!(u64_to_f64(1 << 53), 9_007_199_254_740_992.0);
+        assert_eq!(u64_to_f64((1 << 53) + 1), 9_007_199_254_740_992.0);
+        assert_eq!(u64_to_f64(u64::MAX), 18_446_744_073_709_551_616.0);
+        assert_eq!(usize_to_u64(0), 0);
+        assert_eq!(usize_to_u64(usize::MAX), u64::try_from(usize::MAX).unwrap());
     }
 
     #[test]
@@ -156,5 +181,23 @@ mod tests {
         assert_eq!(ceil_to_usize(2.0), Some(2));
         assert_eq!(ceil_to_usize(-0.5), Some(0));
         assert_eq!(round_to_usize(-0.6), None);
+    }
+
+    #[test]
+    fn round_and_ceil_admit_a_small_negative_value_as_zero() {
+        assert_eq!(round_to_usize(-0.4), Some(0));
+        assert_eq!(round_to_usize(-0.5), None);
+        assert_eq!(ceil_to_usize(-0.9), Some(0));
+        assert_eq!(ceil_to_usize(-1.0), None);
+    }
+
+    #[test]
+    fn round_and_ceil_reject_nan_infinity_and_two_to_the_53() {
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, EXACT_LIMIT] {
+            assert_eq!(round_to_usize(value), None, "{value}");
+            assert_eq!(ceil_to_usize(value), None, "{value}");
+        }
+        assert_eq!(round_to_usize(EXACT_LIMIT - 1.0), Some((1 << 53) - 1));
+        assert_eq!(ceil_to_usize(EXACT_LIMIT - 1.0), Some((1 << 53) - 1));
     }
 }
