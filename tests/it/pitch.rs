@@ -52,6 +52,9 @@ fn s(value: f64) -> Seconds {
     Seconds::new(value).unwrap()
 }
 
+/// The level and the length in seconds of [`Signal::Dc`].
+const DC: (f64, f64) = (0.3, 1.0);
+
 /// A generated signal with a fixture.
 #[derive(Clone, Copy, Debug)]
 enum Signal {
@@ -65,7 +68,7 @@ enum Signal {
     Hits(Hits),
     Rc(RcGlide),
     Trill(Trill),
-    /// A constant 0.3 for 1 s.
+    /// A constant level, [`DC`].
     Dc,
     Bass,
 }
@@ -85,7 +88,7 @@ impl Signal {
             Self::Hits(hits) => hits.render(f64::from(RATE)),
             Self::Rc(rc) => rc.render(f64::from(RATE)),
             Self::Trill(trill) => trill.render(f64::from(RATE)),
-            Self::Dc => vec![0.3; round_to_usize(f64::from(RATE))],
+            Self::Dc => vec![DC.0; round_to_usize(DC.1 * f64::from(RATE))],
             Self::Bass => BassLine::render(f64::from(RATE)),
         }
     }
@@ -110,6 +113,10 @@ impl Signal {
                 "notes": BassLine::NOTES,
                 "drop": BassLine::DROP,
                 "glide": BassLine::GLIDE,
+                "drop_envelope": BassLine::DROP_ENVELOPE,
+                "saw": BassLine::SAW,
+                "fade_s": BassLine::FADE_S,
+                "length_s": BassLine::LENGTH_S,
             }),
             Self::Glide(g) | Self::Glide44(g) => json!({
                 "kind": "glide",
@@ -130,6 +137,9 @@ impl Signal {
                 "full_s": g.full_s,
                 "p": g.p,
                 "hold_s": g.hold_s,
+                "voices": g.voices,
+                "detune_ct": g.detune_ct,
+                "in_phase": g.in_phase,
             }),
             Self::Hits(h) => json!({
                 "kind": "hits",
@@ -139,6 +149,8 @@ impl Signal {
                 "gap_s": h.gap_s,
                 "lead_s": h.lead_s,
                 "drive": h.drive,
+                "drops": h.drops,
+                "release_s": h.release_s,
                 "continuous": h.continuous,
             }),
             Self::Rc(r) => json!({
@@ -156,7 +168,7 @@ impl Signal {
                 "length_s": t.length_s,
                 "lead_s": t.lead_s,
             }),
-            Self::Dc => json!({"kind": "dc", "value": 0.3, "length_s": 1.0}),
+            Self::Dc => json!({"kind": "dc", "value": DC.0, "length_s": DC.1}),
             Self::Vibrato(v) => json!({
                 "kind": "vibrato",
                 "f0_hz": v.f0_hz,
@@ -470,10 +482,10 @@ const REFRESH: &str = "UPDATE_PITCH_FIXTURES=1 cargo nextest run --release --tes
 /// number within `tolerance`.
 fn agrees(stored: &Value, fresh: &Value, tolerance: f64) -> bool {
     match (stored, fresh) {
-        (Value::Number(a), Value::Number(b)) => match (a.as_f64(), b.as_f64()) {
-            (Some(a), Some(b)) => (a - b).abs() <= tolerance,
-            _ => a == b,
-        },
+        (Value::Number(a), Value::Number(b)) => a
+            .as_f64()
+            .zip(b.as_f64())
+            .is_some_and(|(a, b)| (a - b).abs() <= tolerance),
         (Value::Array(a), Value::Array(b)) => {
             a.len() == b.len() && a.iter().zip(b).all(|(a, b)| agrees(a, b, tolerance))
         }
@@ -507,6 +519,11 @@ fn every_pitch_fixture_holds_the_recipe_of_its_signal() {
     let mut files: Vec<String> = fs::read_dir(FIXTURES)
         .unwrap()
         .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .filter(|file| {
+            Path::new(file)
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+        })
         .collect();
     files.sort();
     let mut names: Vec<String> = cases()

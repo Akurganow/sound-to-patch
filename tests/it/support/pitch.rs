@@ -419,44 +419,54 @@ impl BassLine {
     pub(crate) const DROP: (f64, f64, f64) = (41.2, 41.2, 0.02);
     /// The glide: start, semitones, full time, power.
     pub(crate) const GLIDE: (f64, f64, f64, f64) = (1.7, 5.0, 0.15, 1.0);
+    /// The envelope of the drop: decay, lead, length and attack, in seconds.
+    pub(crate) const DROP_ENVELOPE: (f64, f64, f64, f64) = (0.5, 0.25, 1.0, 0.0);
+    /// The saw: its frequency before the glide, its onset and length in
+    /// seconds, and its gain.
+    pub(crate) const SAW: (f64, f64, f64, f64) = (55.0, 1.2, 1.3, 0.8);
+    /// The fade at each end of the drop and of the saw.
+    pub(crate) const FADE_S: f64 = 0.05;
+    /// The length of the line.
+    pub(crate) const LENGTH_S: f64 = 3.0;
 
     pub(crate) fn render(rate: f64) -> Vec<f64> {
         let (f_end, df, tau) = Self::DROP;
+        let (decay_s, lead_s, length_s, attack_s) = Self::DROP_ENVELOPE;
         let mut out: Vec<f64> = PitchDrop {
             f_end_hz: f_end,
             df_hz: df,
             tau_s: tau,
-            decay_s: 0.5,
-            lead_s: 0.25,
-            length_s: 1.0,
-            attack_s: 0.0,
+            decay_s,
+            lead_s,
+            length_s,
+            attack_s,
         }
         .render(rate);
         let fade = |t: f64, from: f64, to: f64| {
-            ((t - from) / 0.05).clamp(0.0, 1.0) * ((to - t) / 0.05).clamp(0.0, 1.0)
+            ((t - from) / Self::FADE_S).clamp(0.0, 1.0) * ((to - t) / Self::FADE_S).clamp(0.0, 1.0)
         };
         for (n, x) in out.iter_mut().enumerate() {
-            *x *= fade(f64::from(u32::try_from(n).unwrap()) / rate, 0.0, 1.0);
+            *x *= fade(f64::from(u32::try_from(n).unwrap()) / rate, 0.0, length_s);
         }
-        out.resize(round_to_usize(1.2 * rate), 0.0);
+        let (saw_hz, saw_on, saw_s, gain) = Self::SAW;
+        out.resize(round_to_usize(saw_on * rate), 0.0);
         let (start, semitones, full, p) = Self::GLIDE;
-        let f =
-            move |t: f64| 55.0 * 2f64.powf(semitones * curve((t + 1.2 - start) / full, p) / 12.0);
-        let length = round_to_usize(1.3 * rate);
+        let f = move |t: f64| {
+            saw_hz * 2f64.powf(semitones * curve((t + saw_on - start) / full, p) / 12.0)
+        };
+        let length = round_to_usize(saw_s * rate);
         let saw = unison(
             f,
-            55.0 * 2f64.powf(semitones / 12.0),
+            saw_hz * 2f64.powf(semitones / 12.0),
             rate,
             length,
             (1, 0.0),
             false,
         );
-        out.extend(
-            saw.iter().enumerate().map(|(n, x)| {
-                0.8 * x * fade(f64::from(u32::try_from(n).unwrap()) / rate, 0.0, 1.3)
-            }),
-        );
-        out.resize(round_to_usize(3.0 * rate), 0.0);
+        out.extend(saw.iter().enumerate().map(|(n, x)| {
+            gain * x * fade(f64::from(u32::try_from(n).unwrap()) / rate, 0.0, saw_s)
+        }));
+        out.resize(round_to_usize(Self::LENGTH_S * rate), 0.0);
         out
     }
 }

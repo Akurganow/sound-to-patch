@@ -2,8 +2,9 @@ name: CI
 
 # The job names fmt, clippy, test, doc, licenses and docs are required
 # checks in the main ruleset, with `commits` from commits.yml; test-linux,
-# open-engine, pitch-fixtures, vital-registry, pages and release are not. No `paths:` filter: a skipped
-# workflow never reports, and its required check stays pending.
+# open-engine, pitch-fixtures, vital-registry, pages and release are not.
+# No `paths:` filter: a skipped workflow never reports, and its required
+# check stays pending.
 on:
   pull_request:
     # Not `edited`: a title or description change re-runs only commits.yml.
@@ -143,31 +144,28 @@ jobs:
       - run: cargo nextest run --release --test it --profile ci --run-ignored only -E 'test(pitch_fixtures_are_current)'
 
   # The Vital registry is generated from the Vital source at the commit
-  # that `src/preset/vital/registry.json` names. The archive of that commit
-  # is pinned by SHA-256; a new commit needs a new pin here. The generator
-  # reads the commit from `.git/HEAD`, which an archive lacks, so the step
-  # writes it. Not a required check: it downloads from outside.
+  # that `src/preset/vital/registry.json` names. The checkout pins that
+  # commit by its hash, as the actions are pinned; a registry made from a
+  # newer commit needs the new hash here, or the check fails. A detached
+  # checkout leaves the hash in `.git/HEAD`, where the generator reads it.
+  # Not a required check: it fetches another repository.
   vital-registry:
     runs-on: ubuntu-latest
-    env:
-      VITAL_COMMIT: 636ca0ef517a4db087a6a08a6a8a5e704e21f836
-      VITAL_SHA256: 10753a9045d1c8bde15c07cc19f7f1521dac18fbe53ad581374131c003982a6d
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: mtytel/vital
+          ref: 636ca0ef517a4db087a6a08a6a8a5e704e21f836
+          path: vital-source
           persist-credentials: false
       - uses: ./.github/actions/setup-rust
         with:
           cache: "true"
           cache-key: linux-xtask
-      - run: >-
-          cargo xtask fetch "https://github.com/mtytel/vital/archive/$VITAL_COMMIT.tar.gz"
-          --sha256 "$VITAL_SHA256" --out "$RUNNER_TEMP/vital.tar.gz"
-      - run: |
-          mkdir -p "$RUNNER_TEMP/vital/.git"
-          tar -xzf "$RUNNER_TEMP/vital.tar.gz" -C "$RUNNER_TEMP/vital" --strip-components 1
-          printf '%s\n' "$VITAL_COMMIT" > "$RUNNER_TEMP/vital/.git/HEAD"
-      - run: cargo xtask vital-registry --check --source "$RUNNER_TEMP/vital"
+      - run: cargo xtask vital-registry --check --source vital-source
 
   doc:
     runs-on: macos-latest

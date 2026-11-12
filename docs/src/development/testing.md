@@ -94,12 +94,11 @@ rebuild. Neither is a required check.
 - `pitch-fixtures` runs `pitch_fixtures_are_current` in a release build on
   macOS. It fails when the transcriber or the cleanup now gives other
   notes or frames for a signal of `tests/fixtures/pitch/`.
-- `vital-registry` downloads the Vital source at the commit that
-  `src/preset/vital/registry.json` names, through `cargo xtask fetch` with
-  its SHA-256 pin, and runs `cargo xtask vital-registry --check`. It fails
-  when a change to the generator leaves the committed registry stale. A
-  registry made from a newer Vital commit needs a new commit and SHA-256 in
-  the job.
+- `vital-registry` checks out the Vital source at the commit that
+  `src/preset/vital/registry.json` names, pinned by its commit hash, and
+  runs `cargo xtask vital-registry --check`. It fails when a change to the
+  generator leaves the committed registry stale. A registry made from a
+  newer Vital commit needs the new hash in the job.
 
 `commits` has its own workflow because it reads only the title and the
 description. Editing them runs that one Linux job and none of the heavy
@@ -555,13 +554,16 @@ unit test with the input bytes inline, next to the code it broke.
 
   Add `--upgrade` to move every package to its latest release. The command
   also stands in the header of `requirements.txt`.
-- CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
-  fails when a vector lacks a field, lacks the Python version in `tools`,
-  names a version other than the pin, or when a prototype table has no
-  recipe file. The same job runs `cargo xtask check-no-ort`, which fails
-  when `Cargo.lock` holds the ONNX Runtime crate of the transcription
-  model, and `cargo xtask check-fuzz-lock`, which fails when
+- CI never runs Python. The `test` job runs the xtask test
+  `the_committed_vectors_match_the_pins`, which fails when a vector lacks a
+  field, lacks the Python version in `tools`, names a version other than
+  the pin, or when a prototype table has no recipe file. The same job runs
+  `the_workspace_lock_has_no_ort`, which fails when `Cargo.lock` holds the
+  ONNX Runtime crate of the transcription model, and
+  `the_fuzz_lock_names_the_workspace_version`, which fails when
   `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.
+  `cargo xtask golden-check`, `check-no-ort` and `check-fuzz-lock` run the
+  same checks locally.
 - `cargo run --release -p xtask -- eval` scores the notes step on generated
   parts with known notes and prints its tables. It stays local, renders
   its audio on each run and commits nothing. Run it as a release build:

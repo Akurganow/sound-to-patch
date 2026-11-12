@@ -43,9 +43,10 @@ one tags or uploads by hand.
 The version commit starts the CI workflow again. The `release` job skips a
 commit whose subject starts with `chore(version)`, so the loop stops there.
 
-The `test` job runs `cargo xtask check-fuzz-lock`, which fails when
-`Cargo.lock` and `fuzz/Cargo.lock` name different versions of the
-library or its core.
+The `test` job runs the xtask test
+`the_fuzz_lock_names_the_workspace_version`, which fails when `Cargo.lock`
+and `fuzz/Cargo.lock` name different versions of the library or its core.
+`cargo xtask check-fuzz-lock` runs the same check locally.
 
 ## The release archive
 

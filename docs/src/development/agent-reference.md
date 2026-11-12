@@ -274,7 +274,8 @@ To add a word, add its entry to the axis file, cite only ids of
 
 ## Checks
 
-`cargo xtask check-plugins` runs in the docs job. It fails on:
+The `test` job runs these checks as the xtask test `the_real_plugins_pass`,
+and `cargo xtask check-plugins` runs them locally. They fail on:
 
 - a marketplace entry whose source does not start with `./`, leaves the
   repository or names another plugin, and a plugin folder with no entry;
