@@ -34,15 +34,17 @@ cargo clippy -p sound-to-patch-host --all-targets --target x86_64-apple-darwin -
 cargo clippy --manifest-path fuzz/Cargo.toml --all-targets -- -D warnings
 cargo nextest run --workspace
 cargo test --workspace --doc
-cargo xtask golden-check
-cargo xtask check-no-ort
-cargo xtask check-fuzz-lock
 cargo xtask reference --check
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 cargo about generate --locked --fail --workspace -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
 grep -q '>vst3-host ' THIRD-PARTY-LICENSES.html
 ```
+
+`cargo nextest run --workspace` also runs the golden-vector, lock and
+plugin checks as tests of xtask. `cargo xtask golden-check`,
+`check-no-ort`, `check-fuzz-lock` and `check-plugins` run each of them
+alone.
 
 The book check needs mdBook, its KaTeX preprocessor and lychee:
 
@@ -54,7 +56,6 @@ cp -R target/doc docs/book/api
 lychee --offline --no-progress --include-fragments --exclude-path docs/book/api --exclude-path docs/book/404.html docs/book
 cargo xtask check-architecture
 cargo xtask check-credits
-cargo xtask check-plugins
 cargo xtask check-rust-version
 ```
 

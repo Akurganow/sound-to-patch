@@ -84,9 +84,21 @@ Three workflows run on a pull request.
 
 | Workflow | Jobs | Starts on |
 | :-- | :-- | :-- |
-| `ci.yml` | `fmt`, `clippy`, `test`, `doc`, `licenses`, `docs`, `test-linux` | a pull request that is opened, pushed to or reopened, and a push to `main` |
+| `ci.yml` | `fmt`, `clippy`, `test`, `doc`, `licenses`, `docs`, `test-linux`, `open-engine`, `pitch-fixtures`, `vital-registry` | a pull request that is opened, pushed to or reopened, and a push to `main` |
 | `commits.yml` | `commits` | the same events, and a change of the title or description |
 | `codeql.yml` | `Analyze (rust)` | a pull request to `main`, a push to `main`, weekly, and by hand |
+
+Two jobs of `ci.yml` check generated files that a normal test cannot
+rebuild. Neither is a required check.
+
+- `pitch-fixtures` runs `pitch_fixtures_are_current` in a release build on
+  macOS. It fails when the transcriber or the cleanup now gives other
+  notes or frames for a signal of `tests/fixtures/pitch/`.
+- `vital-registry` checks out the Vital source at the commit that
+  `src/preset/vital/registry.json` names, pinned by its commit hash, and
+  runs `cargo xtask vital-registry --check`. It fails when a change to the
+  generator leaves the committed registry stale. A registry made from a
+  newer Vital commit needs the new hash in the job.
 
 `commits` has its own workflow because it reads only the title and the
 description. Editing them runs that one Linux job and none of the heavy
@@ -131,6 +143,20 @@ both builds.
   carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
+- These ignored tests run in no CI job. Each needs something a hosted
+  runner lacks, so run them locally before a change that touches their
+  code:
+
+  | Tests | Why not in CI | Command |
+  | :-- | :-- | :-- |
+  | the 21 `render_vital` tests | they need the retail Vital plug-in, which needs a licence, and an x86_64 host under Rosetta | see [Rendering](#rendering) |
+  | `vita::a_preset_saved_by_vital_keeps_the_edits` | it needs a copy of a written preset saved by the Vital app | `VITAL_SAVED_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(a_preset_saved_by_vital_keeps_the_edits)'` |
+  | `preset::a_retail_default_preset_matches_the_builtin_template` | it needs the default preset of the Vital app | `VITAL_DEFAULT_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(a_retail_default_preset_matches_the_builtin_template)'` |
+  | `reference::the_catalogue_covers_every_key_of_a_saved_preset` | it needs a preset saved by the Vital app | `VITAL_PROBE_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(the_catalogue_covers_every_key_of_a_saved_preset)'` |
+  | `vital::tests::the_committed_registry_matches_the_checkout` in `xtask` | it needs a Vital checkout; the `vital-registry` job runs the same comparison through the command | `VITAL_SOURCE=<checkout> cargo nextest run -p xtask --run-ignored only -E 'test(the_committed_registry_matches_the_checkout)'` |
+
+  The 11 open-engine tests run in the `open-engine` job, and
+  `pitch_fixtures_are_current` runs in the `pitch-fixtures` job.
 - Never skip a test at run time with an early `return`. It reports a pass
   that never happened.
 - Never gate a test behind a Cargo feature. CI builds with `--all-features`,
@@ -482,14 +508,23 @@ keeps the comparison as recorded on all five outputs for information.
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated
 nightly in `fuzz/rust-toolchain.toml`. CI lints them on stable, and a
-scheduled job runs each one for five minutes. Run one locally from the
-repository root, seeded from the fixtures:
+scheduled job runs each one for five minutes. A failed scheduled run opens
+an issue titled "The weekly scheduled run failed", or comments on the open
+one, so the failure reaches the repository's watchers without a visit to
+the Actions page. Run one target locally from the repository root, seeded
+from the fixtures:
 
 ```sh
 mkdir -p fuzz/corpus/vital_read
 cp tests/fixtures/vital/*.vital fuzz/corpus/vital_read/
-cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
+RUSTFLAGS=-Cllvm-args=-asan-globals=0 cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
 ```
+
+`RUSTFLAGS` turns off the AddressSanitizer checks of globals; stack and
+heap checks stay on. Without it the link fails on macOS with
+`initializer pointer has no target`: the sanitizer pads each constructor
+pointer that the tract crates register, and the linker reads the padding
+as pointers.
 
 Seed `edits_apply`, which runs edit lists through `preset apply` on the
 routes fixture, from `tests/cmd/data/*.json`. The corpus and the crash
@@ -525,20 +560,24 @@ unit test with the input bytes inline, next to the code it broke.
 
   Add `--upgrade` to move every package to its latest release. The command
   also stands in the header of `requirements.txt`.
-- CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
-  fails when a vector lacks a field, lacks the Python version in `tools`,
-  names a version other than the pin, or was made from another version of
-  its script or of `requirements.txt`. It also fails when a vector of
-  `VECTORS` in `xtask/src/golden.rs` is missing, when a file is in no
-  recipe, and when a `reproduced` flag beside its `rows` disagrees with
-  them. A test ties `VECTORS` to the recipes of `generate.py`. Two checks
-  run only inside `cargo xtask golden`, in no CI job: the generator's tests
-  in `xtask/golden/test_generate.py`, among them the rule of a glide's
-  rise, and the flips of the `reproduced` flags that have no `rows` beside
-  them, 42 of the 49. The same job runs `cargo xtask check-no-ort`, which fails
-  when `Cargo.lock` holds the ONNX Runtime crate of the transcription
-  model, and `cargo xtask check-fuzz-lock`, which fails when
-  `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.
+- CI never runs Python. The `test` job runs the xtask test
+  `the_committed_vectors_match_the_pins`, which fails when a vector lacks a
+  field, lacks the Python version in `tools`, names a version other than
+  the pin, or was made from another version of its script or of
+  `requirements.txt`. It also fails when a vector of `VECTORS` in
+  `xtask/src/golden.rs` is missing, when a file is in no recipe, and when
+  a `reproduced` flag beside its `rows` disagrees with them. A test ties
+  `VECTORS` to the recipes of `generate.py`. Two checks run only inside
+  `cargo xtask golden`, in no CI job: the generator's tests in
+  `xtask/golden/test_generate.py`, among them the rule of a glide's rise,
+  and the flips of the `reproduced` flags that have no `rows` beside them,
+  42 of the 49. The same job runs `the_workspace_lock_has_no_ort`, which
+  fails when `Cargo.lock` holds the ONNX Runtime crate of the
+  transcription model, and `the_fuzz_lock_names_the_workspace_version`,
+  which fails when `fuzz/Cargo.lock` names another version of the crate
+  than `Cargo.lock`.
+  `cargo xtask golden-check`, `check-no-ort` and `check-fuzz-lock` run the
+  same checks locally.
 - `cargo run --release -p xtask -- eval` scores the notes step on generated
   parts with known notes and prints its tables. It stays local, renders
   its audio on each run and commits nothing. Run it as a release build:
