@@ -692,7 +692,13 @@ notes: saws, sines, an 808, plucks, pads, strums, a broken chord with
 sustain, glides, octave basses, sixteenths at 175 BPM with repeats, a
 fast run with an octave jump, reverb, bleed, loud transients over a bass line,
 silence and an A6 saw [fact]. A note matches when its onset lies within
-50 ms and its pitch within 50 cents, one-to-one [fact]. Onset F1 with
+50 ms and its pitch within 50 cents, one-to-one [fact]. The truth of a
+note is its gate: the onset comes before the attack, the offset before
+the release, a kick's pitch is the one it falls to, and a glide splits at
+its midpoint into two notes [fact]. `F1off` adds the offset within 20 %
+of the duration or 50 ms, as `mir_eval` does; `F1o20` drops the 50 ms
+floor, which accepts most of a short note; `F1end` scores the offset
+against the end of the sound, the gate plus the release [fact]. Onset F1 with
 matched, estimated and reference notes, raw and after the cleanup
 [synthetic]:
 

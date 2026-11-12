@@ -74,6 +74,10 @@
   "top": "ours rises to the attack's top: the first frame from the onset that the level exceeds by less than 1 dB over as long again as it took to rise to it from under 10 % of it, and at least over the shortest rise the track can tell, here 1.5 RMS windows, and the shares are of the highest frame over that span; the #69 window rises to the highest frame from the onset on",
   "track": "centred RMS on a 1 ms hop from 30 ms before the onset"
  },
+ "sources": {
+  "xtask/golden/generate.py": "f6458ddd6512c14be4d3974f314cf73f660c8d0265d26ccd8bbd38499fcf1157",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
   "abs": 0.0001,

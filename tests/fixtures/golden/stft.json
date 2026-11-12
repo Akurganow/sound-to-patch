@@ -28,6 +28,10 @@
   },
   "window": "hann"
  },
+ "sources": {
+  "xtask/golden/generate.py": "f6458ddd6512c14be4d3974f314cf73f660c8d0265d26ccd8bbd38499fcf1157",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tolerance": {
   "abs": 1e-10,
   "rel": 1e-12

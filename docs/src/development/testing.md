@@ -507,9 +507,14 @@ unit test with the input bytes inline, next to the code it broke.
   tool versions, the values and the tolerance.
 - `xtask/golden/.python-version` pins the interpreter and
   `xtask/golden/requirements.txt` pins every package with its hashes.
-  `cargo xtask golden` installs them with uv into `target/golden-venv` and
+  `cargo xtask golden` installs them with uv into `target/golden-venv`,
+  runs the generator's tests in `xtask/golden/test_generate.py`, and
   rewrites every vector. A second run with the same pins writes
   byte-identical files.
+- Each vector stores the SHA-256 of its script and of `requirements.txt`,
+  with LF line ends, under `sources`. `cargo xtask golden` prints each
+  value that changed, and fails after the rewrite when a `reproduced` flag
+  flipped: check each flip against its issue before you commit it.
 - `requirements.in` lists the direct packages. To change a pin, edit it and
   regenerate the lock from the repository root:
 
@@ -521,8 +526,11 @@ unit test with the input bytes inline, next to the code it broke.
   also stands in the header of `requirements.txt`.
 - CI never runs Python. The `test` job runs `cargo xtask golden-check`, which
   fails when a vector lacks a field, lacks the Python version in `tools`,
-  names a version other than the pin, or when a prototype table has no
-  recipe file. The same job runs `cargo xtask check-no-ort`, which fails
+  names a version other than the pin, or was made from another version of
+  its script or of `requirements.txt`. It also fails when a vector of
+  `VECTORS` in `xtask/src/golden.rs` is missing, when a file is in no
+  recipe, and when a `reproduced` flag beside its `rows` disagrees with
+  them. A test ties `VECTORS` to the recipes of `generate.py`. The same job runs `cargo xtask check-no-ort`, which fails
   when `Cargo.lock` holds the ONNX Runtime crate of the transcription
   model, and `cargo xtask check-fuzz-lock`, which fails when
   `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.
@@ -532,7 +540,8 @@ unit test with the input bytes inline, next to the code it broke.
   the f0 tracker is part of our crate, so a debug run costs about 15
   times the CPU time: 160 s against 10 s for the whole table.
   `--part TEXT` runs the matching parts and prints their notes, raw and
-  clean. It fails when a golden of the cleanup breaks. The dry 110 Hz saw
+  clean. With `--layer envelope`, `--part` renders only the matching
+  parts. It fails when a golden of the cleanup breaks. The dry 110 Hz saw
   must show its octave copy at MIDI 57 before the cleanup, and all 6 of
   its true notes after it: the model misses the fourth onset, and the
   attack split restores it. Its six notes through reverb must give the

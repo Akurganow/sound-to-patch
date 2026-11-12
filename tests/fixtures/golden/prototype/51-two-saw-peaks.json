@@ -20,12 +20,16 @@
   "track": "block means of 240 samples, a 200 Hz track"
  },
  "rounding": "the issue prints Hz to two decimals",
+ "sources": {
+  "xtask/golden/generate.py": "f6458ddd6512c14be4d3974f314cf73f660c8d0265d26ccd8bbd38499fcf1157",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
   "abs": 0.125,
   "rel": 0.0
  },
- "tolerance_note": "the rate rule of the issue: within 1 / T, 0.125 Hz for 8 s",
+ "tolerance_note": "the rate rule of the issue: within 1 / T, 0.125 Hz for 8 s; for harmonic 1 that is 39 % of the predicted 0.32 Hz, and the window reaches the 0.2 Hz edge of the search band",
  "tools": {
   "numpy": "2.5.4",
   "python": "3.14.7",

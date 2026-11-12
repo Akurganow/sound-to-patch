@@ -125,6 +125,10 @@
   "tolerance": "a rise is a whole number of hops (5.8 ms), so a recovered figure reproduces within one hop; a true figure within 0.5 ms, the issue's rounding; lost reproduces lost"
  },
  "rounding": "the issue prints whole milliseconds",
+ "sources": {
+  "xtask/golden/generate.py": "f6458ddd6512c14be4d3974f314cf73f660c8d0265d26ccd8bbd38499fcf1157",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
   "abs": 5.804988662131519,
