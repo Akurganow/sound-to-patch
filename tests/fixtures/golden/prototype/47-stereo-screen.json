@@ -117,12 +117,20 @@
   "source": "band-limited sawtooth: harmonic h at amplitude 1/h below the Nyquist frequency, phase 0"
  },
  "rounding": "the issue prints rho to three decimals, dB to one and degrees to one",
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
-  "abs": 2.0,
+  "abs": 0.0,
+  "ipd_deg": {
+   "abs": 2.0,
+   "rel": 0.1
+  },
   "rel": 0.1
  },
- "tolerance_note": "10 % or 2 degrees, whichever is larger, as the issue states",
+ "tolerance_note": "rho and sm_db within 10 % of the value; ipd_deg within the larger of 10 % and 2 degrees, as the issue states and tests/it/stereo.rs applies",
  "tools": {
   "librosa": "1.0.0",
   "numpy": "2.5.4",

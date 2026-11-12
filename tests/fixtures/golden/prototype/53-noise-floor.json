@@ -113,6 +113,10 @@
   "trials": 15
  },
  "rounding": "the issue prints seconds to two decimals",
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
   "abs": 0.0,
