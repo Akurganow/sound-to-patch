@@ -5,9 +5,9 @@ use std::error::Error;
 use std::fmt;
 
 use basic_pitch::NoteParams;
-use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 
 use super::Voicing;
+use super::transcribe::model_frames;
 use crate::cast;
 use crate::units::{Bpm, Hz, MidiPitch, Seconds};
 
@@ -29,7 +29,7 @@ const SIXTEENTH_FRACTION: f64 = 0.5;
 
 /// The length of one model frame in milliseconds, 256 / 22,050 s.
 pub(super) fn frame_ms() -> f64 {
-    cast::usize_to_f64(FFT_HOP) / f64::from(AUDIO_SAMPLE_RATE) * 1000.0
+    model_frames(1.0).get() * 1000.0
 }
 
 /// The minimum note length for a BPM, in model frames.

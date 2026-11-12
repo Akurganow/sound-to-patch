@@ -8,6 +8,12 @@ use crate::units::{Hz, Seconds};
 
 /// The hop of every envelope track, the hop of every level reading.
 pub const HOP: Seconds = LEVEL_HOP;
+
+/// The count of [`HOP`] frames nearest to `span`: a span that a doc or a
+/// convention gives in milliseconds, as a frame count of the tracks.
+pub(super) const fn frames(span: Seconds) -> usize {
+    cast::round_to_usize_const(span.get() / HOP.get())
+}
 /// The RMS window of a note spans this many periods of its fundamental.
 ///
 /// A whole number of periods of a periodic wave leaves no ripple, and one
@@ -427,5 +433,12 @@ mod tests {
     #[test]
     fn the_track_hop_is_the_hop_of_every_level_reading() {
         assert_eq!(HOP, crate::dsp::LEVEL_HOP);
+    }
+
+    #[test]
+    fn a_span_gives_the_nearest_count_of_hops() {
+        assert_eq!(frames(Seconds::new(0.1).unwrap()), 100);
+        assert_eq!(frames(Seconds::new(0.0104).unwrap()), 10);
+        assert_eq!(frames(Seconds::new(0.0).unwrap()), 0);
     }
 }

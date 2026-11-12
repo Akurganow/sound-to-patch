@@ -12,6 +12,7 @@
 //! in the stem, is the rest of that note. A note that holds an attack of
 //! its own in the stem holds a repeat the decoder missed, and splits there.
 
+use super::transcribe::model_frames;
 use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, QUIET_FRAME, StemLevels};
 use crate::cast;
 use crate::dsp::{LEVEL_HOP, RISE_SHARES};
@@ -33,7 +34,7 @@ pub const OCTAVE_FIX_CEILING: MidiPitch = MidiPitch::from_const(45.0);
 /// down only inside such a note,
 /// because the track can read the lower octave of a true note, and a late
 /// end of the decoder makes a true note's neighbour overlap it.
-pub const COPY_SLACK: Seconds = Seconds::from_const(2.0 * 256.0 / 22_050.0);
+pub const COPY_SLACK: Seconds = model_frames(2.0);
 /// The fewest voiced frames, 17 ms of track, that check a note.
 pub const OCTAVE_MIN_FRAMES: usize = 3;
 /// The onset activation below which a note that starts where a note of
@@ -43,7 +44,7 @@ pub const OCTAVE_MIN_FRAMES: usize = 3;
 /// less. The weakest repeated note, a sixteenth at 175 BPM, starts at 0.70.
 pub const SPLIT_ONSET: f64 = 0.68;
 /// The widest gap a split may leave: two model frames.
-pub const SPLIT_GAP: Seconds = Seconds::from_const(2.0 * 256.0 / 22_050.0);
+pub const SPLIT_GAP: Seconds = model_frames(2.0);
 /// The lowest key whose notes [`split_at_attacks`] splits: A1, 55 Hz.
 ///
 /// Below A1 the envelope window of one period lasts 19 ms or more, as long
@@ -1918,5 +1919,11 @@ mod tests {
         assert_eq!(RISE_STEP, crate::dsp::LEVEL_HOP);
         assert_eq!(RISE_SPAN.0.to_bits(), crate::dsp::RISE_SHARES.0.to_bits());
         assert_eq!(RISE_SPAN.1.to_bits(), crate::dsp::RISE_SHARES.1.to_bits());
+    }
+
+    #[test]
+    fn the_slack_and_the_gap_are_two_model_frames() {
+        assert_eq!(COPY_SLACK, model_frames(2.0));
+        assert_eq!(SPLIT_GAP, model_frames(2.0));
     }
 }

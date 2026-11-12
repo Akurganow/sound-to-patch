@@ -11,7 +11,7 @@ use super::knee::{bend, find_knee_against};
 use super::pump::Pump;
 use super::tail::{TAIL_BAND_PERIODS, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG, TailFit, fit_tail};
 use super::track::{
-    HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, rms_window,
+    HARMONIC_CUTOFF_MAX, HARMONIC_CUTOFF_MIN, HOP, LevelTrack, RMS_PERIODS, frames, rms_window,
 };
 use super::{SPREAD_QUANTILES, median};
 
@@ -101,7 +101,7 @@ pub const FREE_GAP: Hz = Hz::from_const(30.0);
 /// 1.033 s.
 pub const PROXY_HARMONICS: u32 = 3;
 /// The level before a knee reads this many frames, 50 ms.
-const LEVEL_FRAMES: usize = 50;
+const LEVEL_FRAMES: usize = frames(Seconds::from_const(0.05));
 
 /// The envelope of one note.
 #[derive(Clone, Debug, PartialEq)]
@@ -919,5 +919,10 @@ mod tests {
         let (low, high) = SPREAD_QUANTILES;
         let spread = quantile(&rest, high).unwrap() - quantile(&rest, low).unwrap();
         assert_eq!(ripple(&values).unwrap().to_bits(), spread.to_bits());
+    }
+
+    #[test]
+    fn the_level_before_a_knee_is_a_span_over_the_hop() {
+        assert_eq!(LEVEL_FRAMES, frames(Seconds::new(0.05).unwrap()));
     }
 }

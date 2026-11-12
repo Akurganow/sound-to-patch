@@ -9,16 +9,16 @@
 //! late.
 
 use crate::cast;
-use crate::units::Decibels;
+use crate::units::{Decibels, Seconds};
 
-use super::track::HOP;
+use super::track::{HOP, frames};
 
 /// Each side of a knee spans at least this many frames, 10 ms.
-pub const KNEE_SIDE_MIN: usize = 10;
+pub const KNEE_SIDE_MIN: usize = frames(Seconds::from_const(0.01));
 /// The held side of a knee spans up to this many frames, 100 ms.
-pub const KNEE_LEFT: usize = 100;
+pub const KNEE_LEFT: usize = frames(Seconds::from_const(0.1));
 /// The release side of a knee spans up to this many frames, 200 ms.
-pub const KNEE_RIGHT: usize = 200;
+pub const KNEE_RIGHT: usize = frames(Seconds::from_const(0.2));
 /// At a knee the slope steepens by at least this share of the held level
 /// per second. With [`KNEE_FALL`] over [`KNEE_RIGHT`], a linear release shows a
 /// knee up to about 400 ms.
@@ -45,14 +45,15 @@ pub const KNEE_FLOOR: f64 = 0.02;
 /// near 0, and the fades of a reverb read more.
 pub const KNEE_BEND: Decibels = Decibels::from_const(0.4);
 /// The frames each way of the second difference of [`KNEE_BEND`], 10 ms.
-pub const KNEE_BEND_LAG: usize = 10;
+pub const KNEE_BEND_LAG: usize = frames(Seconds::from_const(0.01));
 /// A later corner replaces an earlier one only when the level after it rises
 /// by at most this share of the level before it. A note-off falls for good,
 /// and a fade of a reverb comes back.
 pub const KNEE_RISE: f64 = 0.05;
-/// The frames of the mean that the rise reads past its start, so that a noise
-/// floor's wobble after the note-off does not count as a level that comes back.
-pub const KNEE_RISE_FRAMES: usize = 20;
+/// The frames of the mean that the rise reads past its start, 20 ms, so that a
+/// noise floor's wobble after the note-off does not count as a level that comes
+/// back.
+pub const KNEE_RISE_FRAMES: usize = frames(Seconds::from_const(0.02));
 /// The least ratio of a next note's held level to the level at the last clear frames.
 ///
 /// A later corner past the frames that show a note alone belongs to the next note
@@ -1046,6 +1047,21 @@ mod tests {
                 KNEE_RISE_FRAMES
             ],
             [10, 100, 200, 10, 20]
+        );
+    }
+
+    #[test]
+    fn frame_counts_are_spans_over_the_hop() {
+        let ms = |count: f64| frames(Seconds::new(count / 1000.0).unwrap());
+        assert_eq!(
+            [
+                KNEE_SIDE_MIN,
+                KNEE_LEFT,
+                KNEE_RIGHT,
+                KNEE_BEND_LAG,
+                KNEE_RISE_FRAMES
+            ],
+            [ms(10.0), ms(100.0), ms(200.0), ms(10.0), ms(20.0)]
         );
     }
 }

@@ -611,7 +611,7 @@ mod tests {
     fn derived_constants_keep_their_typed_values() {
         assert_eq!(
             DROP_TAU_MIN.get().to_bits(),
-            (0.007 / std::f64::consts::LN_10).to_bits()
+            (0.007_f64 / std::f64::consts::LN_10).to_bits()
         );
         assert_eq!(
             DROP_TAU_MIN.get().to_bits(),
