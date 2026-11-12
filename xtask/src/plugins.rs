@@ -14,12 +14,12 @@
 
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use serde_json::Value;
 
 use crate::fetch::sha256_hex;
-use crate::reference::{CONTENTS_ABOVE, REFERENCE};
+use crate::reference::{REFERENCE, needs_contents};
 
 /// The line every plugin manifest description, plugin README and
 /// `SKILL.md` carries, as the README states it.
@@ -113,7 +113,7 @@ fn banned_words(synth: &str) -> &'static [&'static str] {
 /// Runs every check and lists every problem.
 pub(crate) fn check(root: &Path) -> crate::Result<()> {
     let mut problems = Vec::new();
-    let plugins = plugin_dirs(root)?;
+    let plugins = subdirs(&root.join("plugins"))?;
     check_marketplace(root, &plugins, &mut problems)?;
     for dir in &plugins {
         check_plugin(root, dir, &mut problems)?;
@@ -125,20 +125,6 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
     } else {
         Err(problems.join("\n").into())
     }
-}
-
-fn plugin_dirs(root: &Path) -> crate::Result<Vec<PathBuf>> {
-    let mut dirs = Vec::new();
-    if let Ok(entries) = fs::read_dir(root.join("plugins")) {
-        for entry in entries {
-            let path = entry?.path();
-            if path.is_dir() {
-                dirs.push(path);
-            }
-        }
-    }
-    dirs.sort();
-    Ok(dirs)
 }
 
 fn shown(root: &Path, path: &Path) -> String {
@@ -184,13 +170,21 @@ fn check_marketplace(
     {
         let name = entry.get("name").and_then(Value::as_str).unwrap_or("");
         let source = entry.get("source").and_then(Value::as_str).unwrap_or("");
-        if !source.starts_with("./") || source.contains("..") {
+        let Some(relative) = inside_source(source) else {
             problems.push(format!(
-                "marketplace entry `{name}` has source {source:?}: start it with `./` and stay inside the repository"
+                "marketplace entry `{name}` has source {source:?}: start it with `./`, name a folder below it, and stay inside the repository (no `..`, no absolute path)"
+            ));
+            continue;
+        };
+        let dir = root.join(relative);
+        // A link inside the repository may lead out of it, and `join` alone
+        // would not notice.
+        if !resolves_inside(root, &dir) {
+            problems.push(format!(
+                "marketplace entry `{name}` has source {source:?}, which resolves outside the repository; point it at a real folder inside the repository"
             ));
             continue;
         }
-        let dir = root.join(&source[2..]);
         let manifest = dir.join(".claude-plugin/plugin.json");
         match json(&manifest) {
             Ok(value) if value.get("name").and_then(Value::as_str) == Some(name) => {}
@@ -210,6 +204,26 @@ fn check_marketplace(
         }
     }
     Ok(())
+}
+
+/// The part of a marketplace `source` after `./`, when it is a path of
+/// plain folder names. An absolute rest such as `.//tmp/x` would make
+/// `Path::join` drop the repository root.
+fn inside_source(source: &str) -> Option<&str> {
+    let rest = source.strip_prefix("./")?;
+    let plain = Path::new(rest)
+        .components()
+        .all(|part| matches!(part, Component::Normal(_)));
+    (!rest.is_empty() && plain).then_some(rest)
+}
+
+/// Whether `dir`, with every link followed, lies inside `root`. A folder
+/// that does not exist passes: the manifest read reports it.
+fn resolves_inside(root: &Path, dir: &Path) -> bool {
+    match (fs::canonicalize(root), fs::canonicalize(dir)) {
+        (Ok(root), Ok(dir)) => dir.starts_with(root),
+        _ => true,
+    }
 }
 
 fn check_plugin(root: &Path, dir: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
@@ -403,7 +417,9 @@ fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
             }
             let description = get("description").unwrap_or("");
             let length = description.chars().count();
-            if length == 0 || length > DESCRIPTION_MAX {
+            if description.is_empty() || description.starts_with(['>', '|', '"', '\'']) {
+                problems.push(format!("{at}: the description is empty or a YAML block or quoted value, which the check cannot measure; write it as plain text on one line after `description:`"));
+            } else if length > DESCRIPTION_MAX {
                 problems.push(format!("{at}: the description has {length} characters; keep it within 1 to {DESCRIPTION_MAX} on one line"));
             }
             if get("compatibility").is_some_and(|value| value.chars().count() > COMPATIBILITY_MAX) {
@@ -465,7 +481,7 @@ fn check_reference(
             "{at} has {lines} lines; split it to stay within {REFERENCE_LINES}"
         ));
     }
-    if lines > CONTENTS_ABOVE {
+    if needs_contents(lines) {
         let headings: Vec<&str> = text
             .lines()
             .filter(|line| line.starts_with("## "))
@@ -804,5 +820,113 @@ mod tests {
         .unwrap();
         fails_with(&dir, "start it with `./`");
         fails_with(&dir, "is not listed");
+    }
+
+    fn set_source(dir: &tempfile::TempDir, source: &str) {
+        let market = serde_json::json!({
+            "name": "m",
+            "owner": {"name": "o"},
+            "plugins": [{"name": "ref", "source": source}],
+        });
+        fs::write(
+            dir.path().join(".claude-plugin/marketplace.json"),
+            market.to_string(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn a_marketplace_source_must_stay_inside_the_repository_in_every_spelling() {
+        let dir = repo();
+        let outside = tempfile::tempdir().unwrap();
+        fs::create_dir_all(outside.path().join(".claude-plugin")).unwrap();
+        fs::write(
+            outside.path().join(".claude-plugin/plugin.json"),
+            r#"{"name":"ref"}"#,
+        )
+        .unwrap();
+        let absolute = format!(".//{}", outside.path().display());
+        for source in [
+            absolute.as_str(),
+            ".//tmp/evil",
+            "./../x",
+            "./a/../../x",
+            "./plugins/ref/..",
+            "./",
+            ".//",
+            "./.",
+        ] {
+            set_source(&dir, source);
+            let err = check(dir.path()).unwrap_err().to_string();
+            assert!(
+                err.contains("stay inside the repository"),
+                "{source:?}: {err}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_marketplace_source_with_dots_in_a_name_or_a_current_folder_step_passes() {
+        let dir = repo();
+        for source in ["./plugins/ref", "./plugins/./ref", "./plugins/ref/"] {
+            set_source(&dir, source);
+            check(dir.path()).unwrap_or_else(|error| panic!("{source:?}: {error}"));
+        }
+        let plugins = dir.path().join("plugins");
+        fs::rename(plugins.join("ref"), plugins.join("a..b")).unwrap();
+        fs::write(
+            plugins.join("a..b/.claude-plugin/plugin.json"),
+            format!(r#"{{"name":"a..b","description":"A plugin. {NON_AFFILIATION}"}}"#),
+        )
+        .unwrap();
+        let market = serde_json::json!({
+            "name": "m",
+            "owner": {"name": "o"},
+            "plugins": [{"name": "a..b", "source": "./plugins/a..b"}],
+        });
+        fs::write(
+            dir.path().join(".claude-plugin/marketplace.json"),
+            market.to_string(),
+        )
+        .unwrap();
+        let err = check(dir.path()).unwrap_err().to_string();
+        assert!(!err.contains("stay inside the repository"), "{err}");
+        assert!(!err.contains("marketplace entry"), "{err}");
+    }
+
+    #[test]
+    fn a_plugin_folder_linked_to_a_place_outside_the_repository_fails() {
+        let dir = repo();
+        let outside = tempfile::tempdir().unwrap();
+        let moved = outside.path().join("ref");
+        fs::rename(dir.path().join("plugins/ref"), &moved).unwrap();
+        fs::remove_dir_all(moved.join("skills")).unwrap();
+        fs::remove_file(dir.path().join(".claude/skills/synth-reference")).unwrap();
+        std::os::unix::fs::symlink(&moved, dir.path().join("plugins/ref")).unwrap();
+        fails_with(&dir, "resolves outside the repository");
+    }
+
+    #[test]
+    fn a_description_must_be_plain_text_on_one_line() {
+        let dir = repo();
+        let path = dir
+            .path()
+            .join("plugins/ref/skills/synth-reference/SKILL.md");
+        let plain = "description: A reference. Use when writing presets.\n";
+        let folded = format!("description: >\n  {}\n", "a".repeat(3000));
+        for value in [
+            folded,
+            "description: |\n  text\n".to_owned(),
+            "description: >-\n  text\n".to_owned(),
+            "description: \"A reference.\"\n".to_owned(),
+            "description: 'A reference.'\n".to_owned(),
+            "description:\n".to_owned(),
+        ] {
+            fs::write(&path, SKILL.replace(plain, &value)).unwrap();
+            let err = check(dir.path()).unwrap_err().to_string();
+            assert!(err.contains("plain text on one line"), "{value:?}: {err}");
+        }
+        fs::write(&path, SKILL).unwrap();
+        check(dir.path()).unwrap();
     }
 }

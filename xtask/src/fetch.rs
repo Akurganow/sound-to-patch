@@ -51,7 +51,9 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
 /// `expected`.
 ///
 /// A file already at `out` with the right digest is kept and not fetched
-/// again. A download with the wrong digest is deleted.
+/// again. A download with the wrong digest is deleted. Only `https://` and
+/// `file://` URLs work, and a redirect must stay on `https://`. The connect
+/// step times out after 30 seconds and the whole transfer after an hour.
 pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Result<()> {
     if out.exists() && digest_of(out)? == *expected {
         return Ok(());
@@ -66,9 +68,18 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
             "--location",
             "--silent",
             "--show-error",
+            "--proto",
+            "=https,file",
+            "--proto-redir",
+            "=https",
+            "--connect-timeout",
+            "30",
+            "--max-time",
+            "3600",
             "--output",
         ])
         .arg(&partial)
+        .arg("--")
         .arg(url)
         .status()
         .map_err(|err| format!("could not run curl: {err}. Install curl and retry"))?;
@@ -152,6 +163,44 @@ mod tests {
         let wrong = "00".repeat(32).parse().unwrap();
         let err = fetch(&source(dir.path()), &wrong, &out).unwrap_err();
         assert!(err.to_string().contains(ABC), "{err}");
+        assert!(!out.exists());
+        assert!(!out.with_extension("part").exists());
+    }
+
+    #[test]
+    fn fetch_refuses_a_plain_http_url() {
+        use std::io::Write;
+        use std::net::TcpListener;
+
+        // A live server that sends the pinned bytes: only the protocol
+        // rule can make the call fail.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            while let Ok((mut stream, _)) = listener.accept() {
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: close\r\n\r\nabc",
+                );
+            }
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("abc.txt");
+        let url = format!("http://127.0.0.1:{port}/x");
+        let err = fetch(&url, &ABC.parse().unwrap(), &out).unwrap_err();
+        assert!(err.to_string().contains("curl failed"), "{err}");
+        assert!(!out.exists());
+        assert!(!out.with_extension("part").exists());
+    }
+
+    #[test]
+    fn fetch_does_not_read_a_url_that_starts_with_a_dash_as_an_option() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("abc.txt");
+        let err = fetch("--version", &ABC.parse().unwrap(), &out).unwrap_err();
+        assert!(
+            err.to_string().contains("curl failed on --version"),
+            "{err}"
+        );
         assert!(!out.exists());
         assert!(!out.with_extension("part").exists());
     }

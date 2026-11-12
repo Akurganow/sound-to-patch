@@ -36,6 +36,28 @@ pub(crate) fn check_title(title: &str) -> crate::Result<()> {
     }
 }
 
+/// Fails on a `BREAKING CHANGE` footer line in the description unless the
+/// title marks the change as breaking with `!`. From 1.0 on, cog bumps the
+/// major version for such a line in any commit type, so a pasted line would
+/// make a major release that the title does not show.
+pub(crate) fn check_breaking(title: &str, body: &str) -> crate::Result<()> {
+    let marked = title
+        .split_once(':')
+        .is_some_and(|(prefix, _)| prefix.trim_end().ends_with('!'));
+    let footer = body
+        .lines()
+        .map(str::trim_start)
+        .find(|line| line.starts_with("BREAKING CHANGE") || line.starts_with("BREAKING-CHANGE"));
+    match footer {
+        Some(line) if !marked => Err(format!(
+            "the description has the line `{line}`, which cog reads as a breaking change, \
+             but the title has no `!`: add `!` before the colon of the title, or reword the line"
+        )
+        .into()),
+        _ => Ok(()),
+    }
+}
+
 /// Fails on a workflow skip marker, on any count of checked authorship boxes
 /// but one, and on a verification section that holds only comments.
 pub(crate) fn check_body(body: &str) -> crate::Result<()> {
@@ -48,7 +70,7 @@ pub(crate) fn check_body(body: &str) -> crate::Result<()> {
     }
     let authorship = section(body, "Authorship")
         .ok_or("the description has no `## Authorship` section: restore it from the template")?;
-    let checked = authorship
+    let checked = without_comments(authorship)
         .lines()
         .filter(|line| {
             let line = line.trim_start();
@@ -72,22 +94,47 @@ pub(crate) fn check_body(body: &str) -> crate::Result<()> {
     Ok(())
 }
 
-/// The text under `## {title}` up to the next `## ` heading.
+/// The template the description fills in.
+const TEMPLATE: &str = include_str!("../../.github/pull_request_template.md");
+
+/// Whether a line is one of the `## ` headings of the template.
+fn template_heading(line: &str) -> bool {
+    let line = line.trim_end();
+    line.starts_with("## ") && TEMPLATE.lines().any(|heading| heading.trim_end() == line)
+}
+
+/// The text under `## {title}` up to the next heading of the template. Pasted
+/// output may hold any other `## ` line, such as the first line of
+/// `git status -sb`, and a line inside a fenced block never ends the section.
 fn section<'a>(body: &'a str, title: &str) -> Option<&'a str> {
     let heading = format!("## {title}");
-    let mut offset = 0;
-    for line in body.split_inclusive('\n') {
-        offset += line.len();
+    let mut lines = body.split_inclusive('\n');
+    let mut start = 0;
+    loop {
+        let line = lines.next()?;
+        start += line.len();
         if line.trim_end() == heading {
-            let rest = &body[offset..];
-            let end = rest
-                .match_indices("## ")
-                .find(|&(at, _)| at == 0 || rest.as_bytes()[at - 1] == b'\n')
-                .map_or(rest.len(), |(at, _)| at);
-            return Some(&rest[..end]);
+            break;
         }
     }
-    None
+    let mut end = start;
+    let mut fence: Option<&str> = None;
+    for line in lines {
+        let trimmed = line.trim_start();
+        if let Some(open) = fence {
+            if trimmed.trim_end().starts_with(open) {
+                fence = None;
+            }
+        } else if trimmed.starts_with("```") {
+            fence = Some("```");
+        } else if trimmed.starts_with("~~~") {
+            fence = Some("~~~");
+        } else if template_heading(line) {
+            break;
+        }
+        end += line.len();
+    }
+    Some(&body[start..end])
 }
 
 fn without_comments(text: &str) -> String {
@@ -106,8 +153,6 @@ fn without_comments(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    const TEMPLATE: &str = include_str!("../../.github/pull_request_template.md");
 
     fn filled(person: &str, agent: &str, verification: &str) -> String {
         TEMPLATE
@@ -175,6 +220,46 @@ mod tests {
         let err = check_title("fix: x [ci skip]").unwrap_err().to_string();
         assert!(err.contains("title"), "{err}");
         check_title("fix: skip the ci step").unwrap();
+    }
+
+    #[test]
+    fn a_pasted_heading_line_does_not_end_the_verification() {
+        let body = filled(" ", "x", "## main...origin/main\n M src/lib.rs");
+        check_body(&body).unwrap();
+        let fenced = filled(" ", "x", "```\n## main...origin/main\n```");
+        check_body(&fenced).unwrap();
+    }
+
+    #[test]
+    fn a_heading_inside_a_fence_does_not_end_the_section() {
+        let body = "## Authorship\n\n- [x] A person\n\n## Verification\n\n\
+            ```\n## Checklist\n```\n\n## Checklist\n";
+        assert_eq!(
+            section(body, "Verification"),
+            Some("\n```\n## Checklist\n```\n\n")
+        );
+    }
+
+    #[test]
+    fn a_checked_box_inside_a_comment_does_not_count() {
+        let body = filled(" ", "x", "ran it").replace(
+            "<!-- Check exactly one box. -->",
+            "<!-- Check exactly one box, as in:\n- [x] A person wrote this change.\n-->",
+        );
+        check_body(&body).unwrap();
+    }
+
+    #[test]
+    fn a_breaking_change_line_needs_a_marked_title() {
+        let body = filled(" ", "x", "ran it\nBREAKING CHANGE: the flag is gone");
+        let err = check_breaking("docs: reword", &body)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("BREAKING CHANGE"), "{err}");
+        assert!(check_breaking("fix(notes): x", "  BREAKING-CHANGE: y").is_err());
+        check_breaking("feat(notes)!: drop the flag", &body).unwrap();
+        check_breaking("feat!: drop the flag", &body).unwrap();
+        check_breaking("docs: reword", "no breaking change here").unwrap();
     }
 
     #[test]

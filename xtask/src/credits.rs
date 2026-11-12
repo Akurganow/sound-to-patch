@@ -15,14 +15,15 @@ const BEGIN: &str = "<!-- ANCHOR: credits -->";
 const END: &str = "<!-- ANCHOR_END: credits -->";
 
 /// Licence ids whose family is not permissive, matched as whole ids or
-/// with a version suffix (`GPL-3.0-or-later`).
+/// with a version suffix (`GPL-3.0-or-later`, `GPLv3`, `GPL3`).
 const COPYLEFT_IDS: [&str; 4] = ["gpl", "lgpl", "agpl", "mpl"];
 
 /// Creative Commons parts that restrict reuse (`BY-NC`, `BY-SA`).
 const CC_PARTS: [&str; 3] = ["nc", "nd", "sa"];
 
-/// Phrases for a missing or closed licence, matched as whole words.
-const PHRASES: [&[&str]; 8] = [
+/// Phrases for a missing, closed or unchecked licence, matched as whole
+/// words.
+const PHRASES: [&[&str]; 11] = [
     &["no", "license"],
     &["no", "licence"],
     &["not", "stated"],
@@ -31,6 +32,9 @@ const PHRASES: [&[&str]; 8] = [
     &["non-exclusive"],
     &["non-commercial"],
     &["unclear"],
+    &["all", "rights", "reserved"],
+    &["not", "checked"],
+    &["unlicensed"],
 ];
 
 /// Whether a licence text names a non-permissive or unknown licence. Words
@@ -44,9 +48,9 @@ fn restricted(licence: &str) -> bool {
     let copyleft = |word: &str| {
         COPYLEFT_IDS.iter().any(|id| {
             word == *id
-                || word
-                    .strip_prefix(id)
-                    .is_some_and(|rest| rest.starts_with('-'))
+                || word.strip_prefix(id).is_some_and(|rest| {
+                    rest.starts_with(['-', 'v']) || rest.starts_with(|c: char| c.is_ascii_digit())
+                })
         })
     };
     let cc = |word: &str| word.split('-').any(|part| CC_PARTS.contains(&part));
@@ -327,6 +331,42 @@ mod tests {
             "arXiv non-exclusive license",
         ] {
             assert!(restricted(closed), "{closed}");
+        }
+    }
+
+    #[test]
+    fn flags_versioned_copyleft_ids_without_a_dash() {
+        for closed in ["GPLv3", "GPL3", "LGPLv2.1", "AGPL3", "MPLv2", "GPLv3+"] {
+            assert!(restricted(closed), "{closed}");
+        }
+    }
+
+    #[test]
+    fn flags_closed_and_unchecked_licence_phrases() {
+        for closed in [
+            "all rights reserved",
+            "All Rights Reserved",
+            "license not checked",
+            "licence not checked",
+            "unlicensed",
+            "Unlicensed, no stated terms",
+        ] {
+            assert!(restricted(closed), "{closed}");
+        }
+    }
+
+    #[test]
+    fn keeps_permissive_licences_unflagged() {
+        for open in [
+            "MIT",
+            "Apache-2.0",
+            "BSD-3-Clause",
+            "CC BY 4.0",
+            "MIT, the songs keep their copyright",
+            "BSD-2-Clause \"Simplified\"",
+            "MIT OR Apache-2.0",
+        ] {
+            assert!(!restricted(open), "{open}");
         }
     }
 

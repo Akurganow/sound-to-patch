@@ -24,6 +24,12 @@ pub(crate) const REFERENCE: &str = "reference";
 /// Files above this many lines open with a table of contents.
 pub(crate) const CONTENTS_ABOVE: usize = 100;
 
+/// Whether a file of `lines` lines opens with a `## Contents` list. The
+/// generators and `check-plugins` share this one rule.
+pub(crate) fn needs_contents(lines: usize) -> bool {
+    lines > CONTENTS_ABOVE
+}
+
 /// The section that collects groups with one control each.
 const OTHER: &str = "other";
 
@@ -35,6 +41,13 @@ const FIELDS: [&str; 3] = ["Keys", "Effect", "Words"];
 
 /// The `Words` value of an entry that no technique word names.
 const NO_WORDS: &str = "none in the word lists";
+
+/// The one target of a `Words` link: the technique words of the word lists.
+const WORDS_TARGET: &str = "../core/words-lists.md#technique-words";
+
+/// The marks that give the source of an effect: a source file, a
+/// measurement or the plain statement that none exists.
+const SOURCE_MARKS: [&str; 3] = ["(source:", "measured on", "no source"];
 
 /// The hand-written part of a layer file, if the synth has one. The text
 /// sits in `dictionary/<synth>/`; edit it there.
@@ -122,24 +135,31 @@ fn text_problems(layer: Layer, text: &str, patterns: &[&str], words: &[String]) 
             }
         }
         if let Some(effect) = field("Effect")
-            && !["(source:", "measured", "no source"]
-                .iter()
-                .any(|mark| effect.contains(mark))
+            && !SOURCE_MARKS.iter().any(|mark| {
+                effect
+                    .match_indices(mark)
+                    .any(|(at, _)| !effect[..at].ends_with("not "))
+            })
         {
             problems.push(format!(
-                "{at} gives no source for its effect; end it with `(source: <file>)`, a measured law or `no source`"
+                "{at} gives no source for its effect; add `(source: <file>)`, `measured on <build>` or `no source` to it"
             ));
         }
         if let Some(value) = field("Words") {
-            let links = link_texts(value);
+            let links = links(value);
             if links.is_empty() && value != NO_WORDS {
                 problems.push(format!(
                     "{at} links no word; link technique words or write `{NO_WORDS}`"
                 ));
             }
-            for link in links {
+            for (link, target) in links {
                 if !words.iter().any(|word| word == link) {
                     problems.push(format!("{at} links {link:?}, which is no technique word"));
+                }
+                if target != WORDS_TARGET {
+                    problems.push(format!(
+                        "{at} links {link:?} to `{target}`; link it to `{WORDS_TARGET}`"
+                    ));
                 }
             }
         }
@@ -162,16 +182,83 @@ fn text_problems(layer: Layer, text: &str, patterns: &[&str], words: &[String]) 
             problems.push(format!("{layer}: no entry names `{pattern}`"));
         }
     }
+    for files in text.split("(source:").skip(1) {
+        let files = files.split_once(')').map_or(files, |(files, _)| files);
+        let files = files.split_once(';').map_or(files, |(files, _)| files);
+        for file in files.split(',').map(str::trim) {
+            if !source_file(file) {
+                problems.push(format!(
+                    "{layer}: `(source:{files})` names {file:?}, which is no source file; \
+                     name files such as `envelope.cpp` or `synth_constants.h`"
+                ));
+            }
+        }
+    }
     problems
 }
 
-/// The texts of the Markdown links in `value`, such as `reverb` in
+/// Whether `name` is a C++ source or header file name, such as
+/// `synth_constants.h`.
+fn source_file(name: &str) -> bool {
+    name.strip_suffix(".cpp")
+        .or_else(|| name.strip_suffix(".h"))
+        .is_some_and(|stem| {
+            !stem.is_empty()
+                && stem
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+        })
+}
+
+/// The problem of a preface that names no source commit, or another one
+/// than the registry was extracted from.
+fn commit_problem(synth: Synth, text: &str, commit: &str) -> Option<String> {
+    let preface = format!("\n{text}");
+    let preface = preface.split("\n## ").next().unwrap_or_default();
+    let named = preface
+        .split("(commit ")
+        .nth(1)
+        .and_then(|rest| rest.split_once(')'))
+        .map(|(named, _)| named.trim());
+    match named {
+        Some(named) if named.len() >= 7 && commit.starts_with(named) => None,
+        Some(named) => Some(format!(
+            "the preface names commit {named}, but the {synth} registry comes from commit \
+             {commit}: recheck the facts on that commit and name it"
+        )),
+        None => Some(format!(
+            "the preface names no source commit; open it with the facts line that ends \
+             `(commit {short})`",
+            short = commit.get(..7).unwrap_or(commit)
+        )),
+    }
+}
+
+/// The commit of the open source that the registry of `synth` was
+/// extracted from, if it has one.
+fn registry_commit(synth: Synth) -> crate::Result<Option<String>> {
+    let json = match synth {
+        Synth::Vital => include_str!("../../src/preset/vital/registry.json"),
+        Synth::Serum2 => return Ok(None),
+    };
+    let registry: serde_json::Value = serde_json::from_str(json)?;
+    Ok(registry["source"]["commit"].as_str().map(ToOwned::to_owned))
+}
+
+/// The text and target of each Markdown link in `value`, such as `reverb`
+/// and `../core/words-lists.md#technique-words` in
 /// `[reverb](../core/words-lists.md#technique-words)`.
-fn link_texts(value: &str) -> Vec<&str> {
+fn links(value: &str) -> Vec<(&str, &str)> {
     value
         .split('[')
         .skip(1)
-        .filter_map(|part| part.split_once("](").map(|(text, _)| text))
+        .filter_map(|part| {
+            let (text, rest) = part.split_once("](")?;
+            Some((
+                text,
+                rest.split_once(')').map_or(rest, |(target, _)| target),
+            ))
+        })
         .collect()
 }
 
@@ -179,8 +266,15 @@ fn link_texts(value: &str) -> Vec<&str> {
 pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
     let files = generate()?;
     crate::music::check_coverage()?;
+    sync(root, &files, check)
+}
+
+/// Writes `files` under `root` and deletes the files of the generated
+/// folders that the generator no longer writes. With `check`, fails and
+/// names each file that differs, is missing or is not generated.
+fn sync(root: &Path, files: &BTreeMap<PathBuf, String>, check: bool) -> crate::Result<()> {
     let mut stale = Vec::new();
-    for (relative, text) in &files {
+    for (relative, text) in files {
         let path = root.join(relative);
         if check {
             if fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
@@ -206,8 +300,13 @@ pub(crate) fn run(root: &Path, check: bool) -> crate::Result<()> {
             }
             let path = entry.path();
             let relative = path.strip_prefix(root)?.to_owned();
-            if !files.contains_key(&relative) {
+            if files.contains_key(&relative) {
+                continue;
+            }
+            if check {
                 stale.push(format!("{} (not generated; delete it)", relative.display()));
+            } else {
+                fs::remove_file(&path)?;
             }
         }
     }
@@ -244,6 +343,7 @@ fn synth_files(
     let mut files = BTreeMap::new();
     let dir = Path::new(REFERENCE).join(synth.as_str());
     let catalogue = Catalogue::of(synth)?;
+    let commit = registry_commit(synth)?;
     let mut problems = Vec::new();
     for layer in Layer::ALL {
         let text = written(synth, layer);
@@ -254,6 +354,12 @@ fn synth_files(
                 &catalogue.patterns(layer),
                 words,
             ));
+            if let Some(commit) = &commit {
+                problems.extend(
+                    commit_problem(synth, text, commit)
+                        .map(|problem| format!("{layer}: {problem}")),
+                );
+            }
         }
         files.insert(
             dir.join(format!("{layer}.md")),
@@ -421,10 +527,12 @@ impl Catalogue {
         }
         // The text above the first section, such as the build its facts were
         // checked on, opens the file; the sections follow the contents.
+        // A heading on the first line opens the first section, so the
+        // search runs over the text behind a newline.
         let (preface, written_body) = written.map_or(("", ""), |written| {
-            written
+            format!("\n{written}")
                 .find("\n## ")
-                .map_or(("", written), |at| written.split_at(at + 1))
+                .map_or(("", written), |at| written.split_at(at))
         });
         if !preface.trim().is_empty() {
             text.push('\n');
@@ -445,7 +553,7 @@ impl Catalogue {
                 let heading = heading(family, rows);
                 let _ = writeln!(text, "- [{heading}](#{})", anchor(&heading));
             }
-        } else if lines > CONTENTS_ABOVE && sections.len() > 1 {
+        } else if needs_contents(lines) {
             text.push_str("\n## Contents\n\n");
             for (family, rows) in &sections {
                 let heading = heading(family, rows);
@@ -782,8 +890,8 @@ mod tests {
     }
 
     const GOOD: &str = "### Glide\n- Keys: `portamento_time`\n- Effect: Slides. (source: a.cpp)\n\
-        - Words: [glide (portamento)](x.md)\n\n### Legato\n- Keys: `legato`\n\
-        - Effect: no source\n- Words: none in the word lists\n";
+        - Words: [glide (portamento)](../core/words-lists.md#technique-words)\n\n### Legato\n\
+        - Keys: `legato`\n- Effect: no source\n- Words: none in the word lists\n";
 
     #[test]
     fn every_vital_layer_text_passes_its_checks() {
@@ -821,14 +929,144 @@ mod tests {
         assert_eq!(
             pitch_problems(&text),
             [
-                "pitch: entry \"Glide\" gives no source for its effect; end it with `(source: <file>)`, a measured law or `no source`"
+                "pitch: entry \"Glide\" gives no source for its effect; add `(source: <file>)`, `measured on <build>` or `no source` to it"
+            ]
+        );
+        let text = GOOD.replace(
+            "Slides. (source: a.cpp)",
+            "Slides, not measured on any build.",
+        );
+        assert_eq!(
+            pitch_problems(&text).len(),
+            1,
+            "{:?}",
+            pitch_problems(&text)
+        );
+        let text = GOOD.replace("Slides. (source: a.cpp)", "Slides (measured on 1.0.7).");
+        assert!(
+            pitch_problems(&text).is_empty(),
+            "{:?}",
+            pitch_problems(&text)
+        );
+    }
+
+    #[test]
+    fn a_source_that_is_no_file_is_named() {
+        let text = GOOD.replace("(source: a.cpp)", "(source: nothing)");
+        assert_eq!(
+            pitch_problems(&text),
+            [
+                "pitch: `(source: nothing)` names \"nothing\", which is no source file; name files such as `envelope.cpp` or `synth_constants.h`"
+            ]
+        );
+        let text = GOOD.replace(
+            "(source: a.cpp)",
+            "(source: a.cpp, b_2.h; measured on 1.0.7)",
+        );
+        assert!(
+            pitch_problems(&text).is_empty(),
+            "{:?}",
+            pitch_problems(&text)
+        );
+    }
+
+    #[test]
+    fn a_word_link_to_another_target_is_named() {
+        let text = GOOD.replace(
+            "words-lists.md#technique-words",
+            "words-lst.md#technique-word",
+        );
+        assert_eq!(
+            pitch_problems(&text),
+            [
+                "pitch: entry \"Glide\" links \"glide (portamento)\" to `../core/words-lst.md#technique-word`; link it to `../core/words-lists.md#technique-words`"
             ]
         );
     }
 
     #[test]
+    fn the_preface_names_the_commit_of_the_registry() {
+        let commit = registry_commit(Synth::Vital).unwrap().unwrap();
+        for layer in Layer::ALL {
+            let text = written(Synth::Vital, layer).unwrap();
+            assert_eq!(commit_problem(Synth::Vital, text, &commit), None, "{layer}");
+        }
+        let text = "Facts checked on build 1.0.6 (commit 636ca0e).\n\n## Part\n";
+        assert_eq!(commit_problem(Synth::Vital, text, "636ca0ef517a"), None);
+        let other = commit_problem(Synth::Vital, text, "1234567890ab").unwrap();
+        assert!(other.contains("names commit 636ca0e"), "{other}");
+        let none = commit_problem(Synth::Vital, "## Part\n(commit 636ca0e)\n", "636ca0ef").unwrap();
+        assert!(none.contains("names no source commit"), "{none}");
+        let words = crate::words::technique_words().unwrap();
+        let stale = |_: Synth, layer: Layer| {
+            written(Synth::Vital, layer).map(|text| {
+                &*Box::leak(
+                    text.replace("(commit 636ca0e)", "(commit 0000000)")
+                        .into_boxed_str(),
+                )
+            })
+        };
+        let error = synth_files(Synth::Vital, &words, stale)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("pitch: the preface names commit 0000000"),
+            "{error}"
+        );
+    }
+
+    #[test]
+    fn a_written_part_that_opens_with_a_heading_keeps_its_first_section() {
+        let catalogue = Catalogue::of(Synth::Vital).unwrap();
+        let written = "## How it works\n\nText.\n\n## Control entries\n\nMore.\n";
+        let text = catalogue.layer_file(Some(Layer::Pitch), Some(written));
+        let contents = text.find("## Contents").unwrap();
+        assert!(text.find("## How it works").unwrap() > contents, "{text}");
+        assert!(text.contains("- [How it works](#how-it-works)\n"), "{text}");
+        assert!(
+            text.contains("- [Control entries](#control-entries)\n"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn sync_names_a_missing_a_stale_and_an_orphan_file_and_write_mode_fixes_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let core = root.join(REFERENCE).join(crate::music::CORE);
+        let files: BTreeMap<PathBuf, String> = [
+            (Path::new(REFERENCE).join("core/a.md"), "A\n".to_owned()),
+            (Path::new(REFERENCE).join("core/b.md"), "B\n".to_owned()),
+        ]
+        .into();
+
+        let missing = sync(root, &files, true).unwrap_err().to_string();
+        assert!(missing.contains("reference/core/a.md"), "{missing}");
+        assert!(missing.contains("reference/core/b.md"), "{missing}");
+
+        fs::create_dir_all(&core).unwrap();
+        fs::write(core.join("a.md"), "A\n").unwrap();
+        fs::write(core.join("b.md"), "stale\n").unwrap();
+        fs::write(core.join("old.md"), "old\n").unwrap();
+        let stale = sync(root, &files, true).unwrap_err().to_string();
+        assert!(!stale.contains("core/a.md"), "{stale}");
+        assert!(stale.contains("reference/core/b.md"), "{stale}");
+        assert!(
+            stale.contains("reference/core/old.md (not generated; delete it)"),
+            "{stale}"
+        );
+        assert_eq!(fs::read_to_string(core.join("b.md")).unwrap(), "stale\n");
+        assert!(core.join("old.md").exists());
+
+        sync(root, &files, false).unwrap();
+        assert_eq!(fs::read_to_string(core.join("b.md")).unwrap(), "B\n");
+        assert!(!core.join("old.md").exists());
+        sync(root, &files, true).unwrap();
+    }
+
+    #[test]
     fn a_word_that_is_no_technique_word_is_named() {
-        let text = GOOD.replace("[glide (portamento)](x.md)", "[slide](x.md)");
+        let text = GOOD.replace("[glide (portamento)]", "[slide]");
         assert_eq!(
             pitch_problems(&text),
             ["pitch: entry \"Glide\" links \"slide\", which is no technique word"]
