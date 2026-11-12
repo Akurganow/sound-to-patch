@@ -767,16 +767,12 @@ impl ParamSpec {
             stored
         };
         if !(self.stored_min..=self.stored_max).contains(&stored) {
+            // The limits are in the unit of the value, so the message
+            // names one scale.
             return Err(ParamError::new(
                 &self.key,
-                format!(
-                    "{value} is stored as {stored:?}, outside {}",
-                    self.range_text()
-                ),
-                format!(
-                    "Use a value from {limits}; the nearest is {}",
-                    nearest(stored > self.stored_max)
-                ),
+                format!("{value} is outside {limits}"),
+                format!("Use the nearest, {}", nearest(stored > self.stored_max)),
             ));
         }
         if self.kind != ParamKind::Float && stored.fract() != 0.0 {
@@ -826,8 +822,13 @@ pub trait ParamRegistry: fmt::Debug + Send + Sync {
     ///
     /// A key qualifies when its edit distance is at most
     /// `max(2, len / 3)` of the wrong key, or it contains the wrong text.
-    /// Ties sort by key.
+    /// Ties sort by key. A wrong key longer than 64 characters has none:
+    /// no key is that long, and the distance would cost its length times
+    /// every key.
     fn close_names(&self, wrong: &str, limit: usize) -> Vec<&str> {
+        if wrong.chars().nth(MAX_CLOSE_KEY).is_some() {
+            return Vec::new();
+        }
         let threshold = (wrong.chars().count() / 3).max(2);
         let mut ranked: Vec<(usize, &str)> = self
             .iter()
@@ -841,6 +842,9 @@ pub trait ParamRegistry: fmt::Debug + Send + Sync {
         ranked.into_iter().take(limit).map(|(_, key)| key).collect()
     }
 }
+
+/// The longest wrong key `close_names` compares.
+const MAX_CLOSE_KEY: usize = 64;
 
 /// The Levenshtein distance between two texts, by characters.
 fn edit_distance(a: &str, b: &str) -> usize {
@@ -1203,7 +1207,7 @@ pub(crate) mod tests {
             .unwrap_err()
             .to_string();
         assert!(
-            message.starts_with("env_1_attack: 40 s is stored as"),
+            message.starts_with("env_1_attack: 40 s is outside 0 s to 32"),
             "{message}"
         );
         assert!(message.contains("0 s to 32"), "{message}");

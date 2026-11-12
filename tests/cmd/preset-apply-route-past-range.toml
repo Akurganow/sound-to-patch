@@ -1,0 +1,10 @@
+# A route depth past 100% names the full range, in percent and in semitones.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/route-past-range.json", "-o", "target/Route.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/route-past-range.json: the edit list has 2 problem(s):
+  edit 1 (filter_1_cutoff): route amount "150%" is beyond the full range of filter_1_cutoff. Keep it within -100% to 100%, or ±128 st
+  edit 2 (osc_1_level): route amount "-150%" is beyond the full range of osc_1_level. Keep it within -100% to 100%
+"""

@@ -1,0 +1,1 @@
+{"synth": "vital", "edits": [{"route": {"source": "lfo_1", "dest": "filter_1_cutoff", "amount": "150%"}, "reason": "deep wobble"}, {"route": {"source": "lfo_2", "dest": "osc_1_level", "amount": "-150%"}, "reason": "deep tremolo"}]}
