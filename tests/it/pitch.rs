@@ -52,6 +52,9 @@ fn s(value: f64) -> Seconds {
     Seconds::new(value).unwrap()
 }
 
+/// The silence before a [`Signal::Scoop`], in seconds.
+const SCOOP_LEAD_S: f64 = 0.2;
+
 /// The level and the length in seconds of [`Signal::Dc`].
 const DC: (f64, f64) = (0.3, 1.0);
 
@@ -61,8 +64,8 @@ enum Signal {
     Glide(Glide),
     /// A glide at 44.1 kHz.
     Glide44(Glide),
-    /// A glide from silence: 0.2 s of silence, then the glide without its
-    /// first hold.
+    /// A glide from silence: [`SCOOP_LEAD_S`] of silence, then the glide
+    /// without its first hold.
     Scoop(Glide),
     Vibrato(Vibrato),
     Hits(Hits),
@@ -81,7 +84,7 @@ impl Signal {
             Self::Vibrato(vibrato) => vibrato.render(f64::from(RATE)),
             Self::Scoop(glide) => {
                 let rate = f64::from(RATE);
-                let mut out = vec![0.0; round_to_usize(0.2 * rate)];
+                let mut out = vec![0.0; round_to_usize(SCOOP_LEAD_S * rate)];
                 out.extend_from_slice(&glide.render(rate)[round_to_usize(glide.hold_s * rate)..]);
                 out
             }
@@ -131,7 +134,7 @@ impl Signal {
             }),
             Self::Scoop(g) => json!({
                 "kind": "scoop",
-                "lead_s": 0.2,
+                "lead_s": SCOOP_LEAD_S,
                 "start_hz": g.start_hz,
                 "semitones": g.semitones,
                 "full_s": g.full_s,
