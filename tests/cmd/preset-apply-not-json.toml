@@ -1,0 +1,9 @@
+# An edit list that is not JSON is named in the error.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/not-json.json", "-o", "target/NotJson.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/not-json.json: the edit list has 1 problem(s):
+  the edit list: it does not read: expected ident at line 1 column 2. Write one JSON object with `synth`, `edits` and an optional `ambiguities` list
+"""

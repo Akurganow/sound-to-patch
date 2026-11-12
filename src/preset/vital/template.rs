@@ -134,7 +134,7 @@ fn check_root(root: &Map<String, Value>) -> Vec<TemplateCheck> {
             match value.as_f64() {
                 None => checks.push(error(
                     format!("control `{key}` holds {value}, not a number"),
-                    "Vital throws on load; save the template again from Vital",
+                    "This writer keeps only numbers in a control; save the template again from Vital",
                 )),
                 // Vital loads such a value as it is, and factory presets
                 // hold some; the edits leave it unless one names the key.

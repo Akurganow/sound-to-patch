@@ -1,0 +1,9 @@
+# An edit list that is not UTF-8 is refused as an edit list, with the offset of the bad byte.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/latin1-edits.json", "-o", "target/Latin.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/latin1-edits.json: the edit list has 1 problem(s):
+  the edit list: byte 91 is not UTF-8 text. Save the file as UTF-8
+"""

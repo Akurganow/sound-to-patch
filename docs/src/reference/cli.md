@@ -305,6 +305,11 @@ Options:
 
 ```
 
+`preset inspect` refuses a file without a stamp, `settings` or sample, and
+a file with a known control that holds a text, a list, an object or null in
+place of a number. Vital fails to load a text in a control and loads a
+flag, so a flag reads. The message names the key.
+
 ## preset apply
 
 ```console
@@ -356,13 +361,21 @@ The output file:
 The output keeps the template's stamp, and the summary prints it. A stamp
 with a newer first or second number than the stable build 1.0.7, such as
 1.1.0, gives a warning: that build refuses it. The load gate ignores the
-third number, so 1.0.8 gives none. A failed run leaves no file. An
+third number, so 1.0.8 gives none. A run that ends with an error leaves no
+file. A run killed during the write leaves at most a temporary file whose name
+ends in `.partial` next to the output. A folder
+without hard links, such as one on an exFAT or FAT32 drive, gets the file
+too, and an existing file there is still replaced only with `--force`.
+There, without `--force`, the file is written in place: it is visible while
+it is written, an error removes it, and a run killed during the write
+leaves a partial output file. An
 empty `--name`, such as an unset shell variable, is a usage error.
 
 ## The edit list
 
 `preset apply` reads an edit list: a JSON object with the target synth and
-a list of edits. Each edit is one of four records, and each carries a
+a list of edits, in a UTF-8 file of at most 1 MiB. A leading byte order
+mark is skipped. Each edit is one of four records, and each carries a
 `reason`.
 
 | Record | Fields | Example |
@@ -382,13 +395,17 @@ a list of edits. Each edit is one of four records, and each carries a
 - A route may target a number, a count, a menu such as `lfo_1_tempo`, or
   the amount or power of another slot. A switch and the bipolar, stereo and
   bypass flags of a slot take no route.
+- A route amount lies within -100% to 100% of the destination's range.
 - A route that joins the same source and destination as an existing one
   edits it in place and keeps its polarity, curve and flags unless the edit
   sets them.
 - A raw key is written as it is, outside the registry, and the output lists
-  it as raw.
-- Every problem of a list is reported at once, each with the edit, the
-  cause and the fix.
+  it as raw. A raw edit never replaces a key of the template that holds a
+  list or an object.
+- A list edits each control once and each source and destination once. A
+  second edit of either is refused with the number of the first.
+- Every problem of a list is reported at once, up to 50, each with the
+  file, the edit, the cause and the fix.
 
 The [guide](../guide/preset.md) walks through one edit list.
 
