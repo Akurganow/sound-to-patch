@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.31.1](https://github.com/Akurganow/sound-to-patch/compare/5fa0c801bce8addc67b0674ceea035c2c7bce873..v0.31.1) - 2026-11-12
+#### Bug Fixes
+- (**preset**) refuse edits and presets with the right cause, and never damage a preset (#337) - ([5fa0c80](https://github.com/Akurganow/sound-to-patch/commit/5fa0c801bce8addc67b0674ceea035c2c7bce873)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.31.0](https://github.com/Akurganow/sound-to-patch/compare/6351c3dc31b8ec17dd17d2dc69122b53ba6f9d22..v0.31.0) - 2026-11-05
 #### Features
 - (**notes**) write the final notes.mid from the report (#324) - ([6351c3d](https://github.com/Akurganow/sound-to-patch/commit/6351c3dc31b8ec17dd17d2dc69122b53ba6f9d22)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
