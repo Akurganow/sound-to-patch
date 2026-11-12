@@ -35,7 +35,7 @@ fn set_with(
             Err(err) if err.kind() == ErrorKind::NotFound => None,
             Err(err) => {
                 return Err(format!(
-                    "cannot read {}: {err}. Fix its permissions and run set-version again",
+                    "cannot read {}: {err}. Fix or remove it and run set-version again",
                     path.display()
                 )
                 .into());

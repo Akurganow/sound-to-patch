@@ -71,7 +71,8 @@ commit. The check fails when:
   white space;
 - the description holds a breaking-change footer and the title has no
   `!`. A footer is a line of `BREAKING CHANGE` or `BREAKING-CHANGE`, after
-  any spaces, then `: ` or ` #` and a value: the form cog reads.
+  any spaces, then `:` or ` #`, with a value on that line or text on any
+  later line: the form cog reads.
 
 A section runs to the next heading of the template. Pasted output may
 hold other `## ` lines, such as the first line of `git status -sb`. The

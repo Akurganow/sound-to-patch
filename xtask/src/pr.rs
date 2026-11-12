@@ -44,16 +44,34 @@ pub(crate) fn check(title: &str, body: &str) -> crate::Result<()> {
     check_breaking(title, body)
 }
 
-/// Whether cog 7.0.0 reads `line` as a breaking-change footer: spaces, then
-/// `BREAKING CHANGE` or `BREAKING-CHANGE`, then `: ` or ` #`, then a value.
-/// A tab before the token, another separator or no value is plain text.
-fn breaking_footer(line: &str) -> bool {
-    let line = line.trim_start_matches(' ');
-    ["BREAKING CHANGE", "BREAKING-CHANGE"].iter().any(|token| {
-        line.strip_prefix(token)
-            .and_then(|rest| rest.strip_prefix(": ").or_else(|| rest.strip_prefix(" #")))
-            .is_some_and(|value| !value.trim().is_empty())
+/// The first line of `body` that cog 7.0.0 reads as a breaking-change
+/// footer: spaces, then `BREAKING CHANGE` or `BREAKING-CHANGE`, then `:` or
+/// ` #`. A value on the same line follows a space. With no value there, cog
+/// takes the next lines as the value, so the line is a footer when any
+/// later line holds text. A tab before the token or another separator is
+/// plain text.
+fn breaking_footer(body: &str) -> Option<&str> {
+    let lines: Vec<&str> = body.lines().collect();
+    lines.iter().enumerate().find_map(|(at, line)| {
+        let value = footer_value(line)?;
+        let later = || lines[at + 1..].iter().any(|line| !line.trim().is_empty());
+        (!value.trim().is_empty() || later()).then_some(*line)
     })
+}
+
+/// The text after the separator of a footer line, if `line` opens one.
+fn footer_value(line: &str) -> Option<&str> {
+    let line = line.trim_start_matches(' ');
+    ["BREAKING CHANGE", "BREAKING-CHANGE"]
+        .iter()
+        .find_map(|token| {
+            let rest = line.strip_prefix(token)?;
+            if rest == ":" {
+                Some("")
+            } else {
+                rest.strip_prefix(": ").or_else(|| rest.strip_prefix(" #"))
+            }
+        })
 }
 
 /// Fails on a breaking-change footer line in the description unless the
@@ -64,7 +82,7 @@ pub(crate) fn check_breaking(title: &str, body: &str) -> crate::Result<()> {
     let marked = title
         .split_once(':')
         .is_some_and(|(prefix, _)| prefix.trim_end().ends_with('!'));
-    let footer = body.lines().find(|line| breaking_footer(line));
+    let footer = breaking_footer(body);
     match footer {
         Some(line) if !marked => Err(format!(
             "the description has the line `{line}`, which cog reads as a breaking change, \
@@ -277,11 +295,22 @@ mod tests {
     }
 
     // Each case was run through `cog bump --auto --dry-run` 7.0.0 as the
-    // body of a `docs:` commit on a `v1.2.3` tag: the first list bumped to
-    // v2.0.0, the second bumped nothing.
+    // body of a `docs:` commit on a `v1.2.3` tag, kept byte for byte with
+    // `--cleanup=verbatim`: last in the body, and followed by more lines.
     #[test]
     fn a_footer_is_what_cog_reads_as_one() {
-        for footer in [
+        let ends = ["", "\n", "\n   \n"];
+        let follows = [
+            "\nmore text",
+            "\n\nmore text",
+            "\n- item",
+            "\n## Verification",
+        ];
+        let footer = |line: &str, tail: &str| {
+            breaking_footer(&format!("text\n{line}{tail}")).map(ToOwned::to_owned)
+        };
+        // A value on the line: a footer wherever it stands.
+        for line in [
             "BREAKING CHANGE: y",
             "BREAKING-CHANGE: y",
             "BREAKING CHANGE #y",
@@ -290,26 +319,63 @@ mod tests {
             "        BREAKING-CHANGE: y",
             "BREAKING CHANGE:  y",
         ] {
-            assert!(breaking_footer(footer), "{footer:?}");
-            let body = format!("text\n{footer}\nmore text");
-            assert!(check_breaking("docs: x", &body).is_err(), "{footer:?}");
+            for tail in ends.iter().chain(&follows) {
+                assert_eq!(
+                    footer(line, tail).as_deref(),
+                    Some(line),
+                    "{line:?} then {tail:?}"
+                );
+            }
         }
-        for prose in [
+        // No value on the line: cog reads the next text as the value.
+        for line in [
+            "BREAKING CHANGE:",
+            "BREAKING CHANGE: ",
+            "BREAKING CHANGE:  ",
+            "BREAKING CHANGE #",
+            "BREAKING-CHANGE:",
+            "BREAKING-CHANGE #",
+            "  BREAKING CHANGE:",
+        ] {
+            for tail in ends {
+                assert_eq!(footer(line, tail), None, "{line:?} then {tail:?}");
+            }
+            for tail in follows {
+                assert_eq!(
+                    footer(line, tail).as_deref(),
+                    Some(line),
+                    "{line:?} then {tail:?}"
+                );
+                let body = format!("text\n{line}{tail}");
+                assert!(
+                    check_breaking("docs: x", &body).is_err(),
+                    "{line:?} then {tail:?}"
+                );
+            }
+        }
+        // Plain text wherever it stands.
+        for line in [
+            "BREAKING CHANGE",
             "BREAKING CHANGE no colon",
             "BREAKING CHANGES are none",
             "BREAKING CHANGES: y",
+            "BREAKING CHANGES:",
             "BREAKING CHANGE:y",
             "BREAKING CHANGE : y",
-            "BREAKING CHANGE:",
+            "BREAKING CHANGE :",
             "BREAKING CHANGE#y",
+            "BREAKING CHANGE#",
             "\tBREAKING CHANGE: y",
+            "\tBREAKING CHANGE:",
             "breaking change: y",
             "- BREAKING CHANGE: y",
             "text BREAKING CHANGE: y",
             "`BREAKING CHANGE: y`",
         ] {
-            assert!(!breaking_footer(prose), "{prose:?}");
-            check_breaking("docs: x", &format!("text\n{prose}\n")).unwrap();
+            for tail in ends.iter().chain(&follows) {
+                assert_eq!(footer(line, tail), None, "{line:?} then {tail:?}");
+                check_breaking("docs: x", &format!("text\n{line}{tail}")).unwrap();
+            }
         }
         check_breaking("docs: x", TEMPLATE).unwrap();
     }

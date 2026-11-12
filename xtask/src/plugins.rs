@@ -921,9 +921,11 @@ mod tests {
         )
         .unwrap();
         set_source(&dir, "a..b", "./plugins/a..b");
-        if let Err(err) = check(dir.path()) {
-            assert!(!err.to_string().contains("marketplace entry"), "{err}");
-        }
+        let project_skill = dir.path().join(".claude/skills/synth-reference");
+        fs::remove_file(&project_skill).unwrap();
+        std::os::unix::fs::symlink("../../plugins/a..b/skills/synth-reference", &project_skill)
+            .unwrap();
+        check(dir.path()).unwrap();
     }
 
     #[test]

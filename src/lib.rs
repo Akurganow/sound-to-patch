@@ -10,7 +10,7 @@
 //! - [`audio`]: stem intake. Decodes a file at its native rate, mixes it to
 //!   mono and resamples it for a consumer with a fixed rate.
 //! - [`cli`]: the command-line definition, shared by the binary and by the
-//!   man page and completion generators.
+//!   generators of the man pages and the shell completions.
 //! - [`confidence`]: how far a layer trusts an estimate, as a level with
 //!   reasons and a spread, or no estimate.
 //! - [`dsp`]: the signal core: windows, STFT, peak picking, active frames,
