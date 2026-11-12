@@ -132,15 +132,44 @@ fn parse<T>(input: &str, unit: &'static str, suffixes: &[Suffix<T>]) -> Result<T
 /// Parses `number * 10^shift` by moving the decimal exponent in the text,
 /// so the value rounds once: `"1.001 kHz"` equals `"1001 Hz"`, where
 /// `1.001 * 1000.0` would be one ulp off.
+///
+/// A scaled suffix reads the same texts as the base suffix: the text must
+/// read as an `f64` first, `inf` and `NaN` keep their value for the range
+/// check, and an exponent beyond `i64` saturates as `f64::from_str`
+/// saturates the value, so `"1e-99999999999 kHz"` is 0 Hz as
+/// `"1e-99999999999 Hz"` is.
 fn parse_scaled(number: &str, shift: i32) -> Option<f64> {
-    if shift == 0 {
-        return f64::from_str(number).ok();
+    let value = f64::from_str(number).ok()?;
+    if shift == 0 || !number.bytes().any(|byte| byte.is_ascii_digit()) {
+        return Some(value);
     }
     let (mantissa, exponent) = match number.split_once(['e', 'E']) {
-        Some((mantissa, exponent)) => (mantissa, exponent.parse::<i32>().ok()?),
+        // The text read as an `f64`, so the exponent is a sign and digits,
+        // and only an overflow fails to parse.
+        Some((mantissa, exponent)) => (
+            mantissa,
+            exponent
+                .parse::<i64>()
+                .unwrap_or(if exponent.starts_with('-') {
+                    i64::MIN
+                } else {
+                    i64::MAX
+                }),
+        ),
         None => (number, 0),
     };
-    f64::from_str(&format!("{mantissa}e{}", exponent.checked_add(shift)?)).ok()
+    f64::from_str(&format!(
+        "{mantissa}e{}",
+        exponent.saturating_add(i64::from(shift))
+    ))
+    .ok()
+}
+
+/// `value * 10^shift`, rounded once as the unit string of `value` with a
+/// scaled suffix rounds: `{:e}` prints the shortest digits that read back
+/// to `value`, and [`parse_scaled`] moves their exponent.
+pub(super) fn shift_decimal(value: f64, shift: i32) -> f64 {
+    parse_scaled(&format!("{value:e}"), shift).unwrap_or(f64::NAN)
 }
 
 /// Implements `FromStr` from a suffix table and `Display` with the first
@@ -230,6 +259,35 @@ mod tests {
         assert_eq!(ms, s);
         assert!("1e Hz".parse::<Hz>().is_err());
         assert!("1e2147483647 kHz".parse::<Hz>().is_err());
+    }
+
+    /// The same number text means the same thing under every suffix of a
+    /// type: a scaled suffix gives the error or the value the base suffix
+    /// gives for the scaled text.
+    #[test]
+    fn a_huge_exponent_reads_alike_under_every_suffix() {
+        for exponent in ["-99999999999", "-99999999999999999999999", "-2147483648"] {
+            let hz: Hz = format!("1e{exponent} Hz").parse().unwrap();
+            let khz: Hz = format!("1e{exponent} kHz").parse().unwrap();
+            let ms: Seconds = format!("1e{exponent} ms").parse().unwrap();
+            assert_eq!(
+                (hz.get(), khz.get(), ms.get()),
+                (0.0, 0.0, 0.0),
+                "{exponent}"
+            );
+        }
+        for exponent in ["99999999999", "99999999999999999999999", "2147483647"] {
+            for text in [format!("1e{exponent} Hz"), format!("1e{exponent} kHz")] {
+                let error = text.parse::<Hz>().unwrap_err();
+                assert!(error.source().is_some(), "{text}: {error}");
+            }
+            let error = format!("1e{exponent} ms").parse::<Seconds>().unwrap_err();
+            assert!(error.source().is_some(), "{exponent} ms: {error}");
+        }
+        assert!("inf kHz".parse::<Hz>().unwrap_err().source().is_some());
+        assert!("NaN ms".parse::<Seconds>().unwrap_err().source().is_some());
+        assert_eq!("1e+3 kHz".parse::<Hz>().unwrap(), "1e6 Hz".parse().unwrap());
+        assert!("1e3.5 kHz".parse::<Hz>().unwrap_err().source().is_none());
     }
 
     #[test]

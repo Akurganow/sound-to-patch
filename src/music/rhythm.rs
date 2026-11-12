@@ -7,10 +7,13 @@
 //! use sound_to_patch::music::rhythm::{euclid, onsets, ticks_for_ms};
 //!
 //! assert_eq!(onsets(&euclid(3, 8)), [0, 3, 6]);
-//! assert_eq!(ticks_for_ms(5.0, 120.0), 5);
+//! assert_eq!(ticks_for_ms(5.0, 120.0), Some(5));
 //! ```
 
+use crate::audio::{self, Feel, NoteValue};
+use crate::cast;
 use crate::notes::TICKS_PER_BEAT;
+use crate::units::Bpm;
 
 /// The Euclidean pattern of `k` onsets over `n` steps.
 ///
@@ -107,17 +110,18 @@ pub fn sixteenth_ms(bpm: f64) -> f64 {
 
 /// The whole ticks that cover `ms` at a tempo, rounded up, so an overlap
 /// is never shorter than asked.
+///
+/// Returns `None` for a tempo outside the 4 to 1000 BPM of [`Bpm`], a
+/// length that is NaN or negative, or a tick count beyond `u32`.
 #[must_use]
-pub fn ticks_for_ms(ms: f64, bpm: f64) -> u32 {
-    let ticks = (ms / tick_ms(bpm) - 1e-9).ceil().max(0.0);
-    // At most a few thousand ticks for any musical length.
-    #[allow(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "non-negative and far below u32::MAX"
-    )]
-    let ticks = ticks as u32;
-    ticks
+pub fn ticks_for_ms(ms: f64, bpm: f64) -> Option<u32> {
+    Bpm::new(bpm).ok()?;
+    if ms.is_nan() || ms < 0.0 {
+        return None;
+    }
+    // The nanotick margin keeps a length of exactly n ticks at n.
+    let ticks = cast::ceil_to_usize((ms / tick_ms(bpm) - 1e-9).max(0.0))?;
+    u32::try_from(ticks).ok()
 }
 
 /// A note division and its length in ticks.
@@ -160,22 +164,37 @@ impl Division {
         Self::Bar,
     ];
 
-    /// The length in ticks at 480 per quarter.
+    /// The division of the stem analysis with the same length. This list
+    /// is the dictionary's named subset of [`audio::Division::ALL`], which
+    /// holds the lengths.
+    #[must_use]
+    pub fn division(self) -> audio::Division {
+        let (value, feel) = match self {
+            Self::ThirtySecond => (NoteValue::ThirtySecond, Feel::Straight),
+            Self::Sixteenth => (NoteValue::Sixteenth, Feel::Straight),
+            Self::SixteenthTriplet => (NoteValue::Sixteenth, Feel::Triplet),
+            Self::Eighth => (NoteValue::Eighth, Feel::Straight),
+            Self::EighthTriplet => (NoteValue::Eighth, Feel::Triplet),
+            Self::DottedEighth => (NoteValue::Eighth, Feel::Dotted),
+            Self::QuarterTriplet => (NoteValue::Quarter, Feel::Triplet),
+            Self::Quarter => (NoteValue::Quarter, Feel::Straight),
+            Self::DottedQuarter => (NoteValue::Quarter, Feel::Dotted),
+            Self::Bar => (NoteValue::Whole, Feel::Straight),
+        };
+        audio::Division { value, feel }
+    }
+
+    /// The length in ticks at 480 per quarter: the beats of
+    /// [`Self::division`] times 480.
     #[must_use]
     pub fn ticks(self) -> u32 {
-        let quarter = u32::from(TICKS_PER_BEAT);
-        match self {
-            Self::ThirtySecond => quarter / 8,
-            Self::Sixteenth => quarter / 4,
-            Self::SixteenthTriplet => quarter / 6,
-            Self::Eighth => quarter / 2,
-            Self::EighthTriplet => quarter / 3,
-            Self::DottedEighth => quarter * 3 / 4,
-            Self::QuarterTriplet => quarter * 2 / 3,
-            Self::Quarter => quarter,
-            Self::DottedQuarter => quarter * 3 / 2,
-            Self::Bar => quarter * 4,
-        }
+        // Every division here lasts a whole number of ticks, and the
+        // product is exact for each, as the tests pin; the fallback is
+        // never taken.
+        let ticks = self.division().beats_per_cycle() * f64::from(TICKS_PER_BEAT);
+        cast::round_to_usize(ticks)
+            .and_then(|ticks| u32::try_from(ticks).ok())
+            .unwrap_or(u32::MAX)
     }
 
     /// The name for people.
@@ -198,9 +217,14 @@ impl Division {
 
 /// The ticks of one slot of a bar of `grid` slots: 12, 16 or 24 slots give
 /// 160, 120 or 80 ticks.
+///
+/// Returns `None` for 0 slots and for a grid whose slots do not last a
+/// whole number of ticks, such as 7.
 #[must_use]
-pub fn slot_ticks(grid: u8) -> u32 {
-    Division::Bar.ticks() / u32::from(grid.max(1))
+pub fn slot_ticks(grid: u8) -> Option<u32> {
+    let bar = Division::Bar.ticks();
+    let grid = u32::from(grid);
+    (bar.checked_rem(grid)? == 0).then(|| bar / grid)
 }
 
 #[cfg(test)]
@@ -338,23 +362,55 @@ mod tests {
     }
 
     #[test]
+    fn ticks_for_ms_refuses_a_bad_tempo_or_length() {
+        for bpm in [0.0, -120.0, f64::NAN, f64::INFINITY, 3.9, 1000.5] {
+            assert_eq!(ticks_for_ms(5.0, bpm), None, "{bpm}");
+        }
+        for ms in [f64::NAN, -1.0, f64::INFINITY, 1e12] {
+            assert_eq!(ticks_for_ms(ms, 120.0), None, "{ms}");
+        }
+        assert_eq!(ticks_for_ms(0.0, 120.0), Some(0));
+        assert_eq!(ticks_for_ms(-0.0, 120.0), Some(0));
+        assert_eq!(ticks_for_ms(1000.0, 120.0), Some(960));
+        assert_eq!(ticks_for_ms(1000.0, 4.0), Some(32));
+    }
+
+    #[test]
+    fn slot_ticks_refuses_a_grid_that_does_not_split_the_bar() {
+        assert_eq!(slot_ticks(0), None);
+        assert_eq!(slot_ticks(7), None);
+        assert_eq!(slot_ticks(1), Some(1920));
+        assert_eq!(slot_ticks(32), Some(60));
+    }
+
+    #[test]
     fn ticks_and_milliseconds_match_the_published_values() {
         let ticks: Vec<u32> = Division::ALL
             .iter()
             .map(|division| division.ticks())
             .collect();
         assert_eq!(ticks, [60, 80, 120, 160, 240, 320, 360, 480, 720, 1920]);
+        for division in Division::ALL {
+            let beats = division.division().beats_per_cycle();
+            assert_eq!(
+                beats * f64::from(TICKS_PER_BEAT),
+                f64::from(division.ticks()),
+                "{}",
+                division.name()
+            );
+            assert!(audio::Division::ALL.contains(&division.division()));
+        }
         for (bpm, ms) in [(120.0, 1.042), (140.0, 0.893), (174.0, 0.718)] {
             assert!((tick_ms(bpm) - ms).abs() < 0.001, "{bpm}");
         }
         for (bpm, ms) in [(90.0, 166.7), (120.0, 125.0), (140.0, 107.1), (174.0, 86.2)] {
             assert!((sixteenth_ms(bpm) - ms).abs() < 0.05, "{bpm}");
         }
-        assert_eq!(ticks_for_ms(5.0, 120.0), 5);
-        assert_eq!(ticks_for_ms(5.0, 174.0), 7);
+        assert_eq!(ticks_for_ms(5.0, 120.0), Some(5));
+        assert_eq!(ticks_for_ms(5.0, 174.0), Some(7));
         assert_eq!(
             [slot_ticks(12), slot_ticks(16), slot_ticks(24)],
-            [160, 120, 80]
+            [Some(160), Some(120), Some(80)]
         );
         assert!([160, 120, 80].iter().all(|ticks| ticks % 20 == 0));
     }

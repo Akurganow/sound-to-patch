@@ -60,14 +60,8 @@ fn ratio(a: usize, b: usize) -> f64 {
     if b == 0 { 0.0 } else { count(a) / count(b) }
 }
 
-/// A count as `f64`; counts here stay far below 2^53.
-#[expect(
-    clippy::cast_precision_loss,
-    reason = "note counts stay far below 2^53"
-)]
-pub(crate) fn count(n: usize) -> f64 {
-    n as f64
-}
+/// A count as `f64`: the library's audited cast.
+pub(crate) use sound_to_patch::cast::usize_to_f64 as count;
 
 const ONSET_TOLERANCE: f64 = 0.05;
 const PITCH_TOLERANCE_CENTS: f64 = 50.0;
