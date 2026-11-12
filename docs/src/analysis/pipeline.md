@@ -699,9 +699,11 @@ its midpoint into two notes [fact]. `F1off` adds the offset within 20 %
 of the duration or 50 ms, as `mir_eval` does; `F1o20` drops the 50 ms
 floor, which accepts most of a short note; `F1rel` scores the offset at
 the end of the release of the dry render, the gate plus the release
-[fact]. That is not where the sound ends on the three reverb parts, whose
-tail runs on for about 1.5 s, nor on the pluck, kick and keys parts, whose
-sound decays before the release ends [fact]. Onset F1 with
+[fact]. That is where the dry render ends, not where the sound ends on the
+three reverb parts, whose tail runs on for about 1.5 s [fact]. On the lead
+plucks the model's offsets come 50 to 75 ms after the gate, against a
+tolerance of 50 ms, so the 20 ms release brings 13 more of the 16 notes
+within it: `F1off` reads 0.062 and `F1rel` 0.875 [synthetic]. Onset F1 with
 matched, estimated and reference notes, raw and after the cleanup
 [synthetic]:
 

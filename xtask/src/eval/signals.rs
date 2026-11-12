@@ -89,9 +89,8 @@ pub(crate) struct Part {
     pub(crate) notes: Vec<EvalNote>,
     /// The same notes with each offset at the end of its release in the
     /// dry render: the gate's end plus the voice's release. The first half
-    /// of a glide keeps its split. This is not the audible end of a reverb
-    /// part, whose tail runs on, nor of a pluck, a kick or keys, whose
-    /// sound decays before the release ends.
+    /// of a glide keeps its split. This is where the dry render ends, not
+    /// the audible end of a reverb part, whose tail runs on.
     pub(crate) releases: Vec<EvalNote>,
     /// Notes of a quiet second part mixed under the first, if any.
     pub(crate) bleed: Vec<EvalNote>,

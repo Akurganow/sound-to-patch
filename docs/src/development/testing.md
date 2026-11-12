@@ -514,7 +514,7 @@ unit test with the input bytes inline, next to the code it broke.
 - Each vector stores the SHA-256 of its script and of `requirements.txt`,
   with LF line ends, under `sources`. `cargo xtask golden` prints each
   value that changed, and fails after the rewrite when an issue figure's
-  outcome flipped, a `reproduced` flag or a bare boolean in `rows`: check
+  outcome flipped, a `reproduced` flag or any boolean in `rows`: check
   each flip against its issue before you commit it.
 - `requirements.in` lists the direct packages. To change a pin, edit it and
   regenerate the lock from the repository root:

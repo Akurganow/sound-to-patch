@@ -81,7 +81,7 @@ const VENV: &str = "target/golden-venv";
 /// Installs the pinned tools into `target/golden-venv` with `uv`, runs the
 /// generator's tests and the generator, which rewrites every vector, and
 /// prints which values changed. Fails after the rewrite when an issue
-/// figure's outcome flipped, a `reproduced` flag or a bare boolean in
+/// figure's outcome flipped, a `reproduced` flag or any boolean in
 /// `rows`, so that no flip goes in unseen.
 pub(crate) fn generate(root: &Path) -> crate::Result<()> {
     let generator = root.join(GENERATOR_DIR);
@@ -203,9 +203,9 @@ fn changes(before: &BTreeMap<String, Value>, after: &BTreeMap<String, Value>) ->
 }
 
 /// Whether `path` names an issue figure's outcome that changed: a
-/// `reproduced` flag, or a bare boolean in `rows`.
+/// `reproduced` flag, or any boolean in `rows`, bare or inside a row.
 fn is_flag(path: &str, old: Option<&Value>, new: Option<&Value>) -> bool {
-    let row = path.rsplit('/').nth(1) == Some("rows")
+    let row = path.split('/').any(|key| key == "rows")
         && old.is_some_and(Value::is_boolean)
         && new.is_some_and(Value::is_boolean);
     old != new && (path.ends_with("/reproduced") || row)
@@ -807,6 +807,28 @@ mod tests {
                 false.into())
             .len(),
             1
+        );
+    }
+
+    #[test]
+    fn a_flipped_check_inside_a_row_fails_a_regeneration() {
+        // As 67-drop-pyin row 0: one check flips while the row stays false.
+        let rows = serde_json::json!({"issue_figures": {"rows": [
+            {"df": false, "f_end": true, "tau": false, "reproduced": false}
+        ], "reproduced": false}});
+        assert_eq!(
+            flips(&rows, |v| v["issue_figures"]["rows"][0]["f_end"] =
+                false.into()),
+            ["v: /issue_figures/rows/0/f_end: true -> false"]
+        );
+        // A number in a row is no outcome.
+        let figures =
+            serde_json::json!({"issue_figures": {"rows": [{"tau_ms": 20.0, "reproduced": true}]}});
+        assert_eq!(
+            flips(&figures, |v| v["issue_figures"]["rows"][0]["tau_ms"] =
+                21.0.into())
+            .len(),
+            0
         );
     }
 
