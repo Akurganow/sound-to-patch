@@ -80,8 +80,9 @@ const VENV: &str = "target/golden-venv";
 
 /// Installs the pinned tools into `target/golden-venv` with `uv`, runs the
 /// generator's tests and the generator, which rewrites every vector, and
-/// prints which values changed. Fails after the rewrite when a
-/// `reproduced` flag flipped, so that no flip goes in unseen.
+/// prints which values changed. Fails after the rewrite when an issue
+/// figure's outcome flipped, a `reproduced` flag or a bare boolean in
+/// `rows`, so that no flip goes in unseen.
 pub(crate) fn generate(root: &Path) -> crate::Result<()> {
     let generator = root.join(GENERATOR_DIR);
     let python = toolchain(root)?;
@@ -104,7 +105,7 @@ pub(crate) fn generate(root: &Path) -> crate::Result<()> {
         Ok(())
     } else {
         Err(format!(
-            "the vectors are written, but {} `reproduced` flags flipped; check each against its issue before you commit:\n{}",
+            "the vectors are written, but {} issue-figure outcomes flipped; check each against its issue before you commit:\n{}",
             changes.flips.len(),
             changes.flips.join("\n")
         )
@@ -114,15 +115,10 @@ pub(crate) fn generate(root: &Path) -> crate::Result<()> {
 
 /// The SHA-256 of a text file with LF line ends, as the generator writes it.
 fn source_hash(path: &Path) -> std::io::Result<String> {
-    let text = fs::read(path)?;
-    let mut lf = Vec::with_capacity(text.len());
-    let mut bytes = text.iter().peekable();
-    while let Some(&byte) = bytes.next() {
-        if !(byte == b'\r' && bytes.peek() == Some(&&b'\n')) {
-            lf.push(byte);
-        }
-    }
-    Ok(crate::fetch::sha256_hex(&lf))
+    let text = fs::read_to_string(path)?;
+    Ok(crate::fetch::sha256_hex(
+        text.replace("\r\n", "\n").as_bytes(),
+    ))
 }
 
 /// Every vector file by its name under `tests/fixtures/golden/`, without
@@ -152,7 +148,7 @@ fn vector_name(dir: &Path, file: &Path) -> String {
 }
 
 /// What a regeneration changed: one line per changed vector and value, and
-/// the `reproduced` flags that flipped.
+/// the issue-figure outcomes that flipped.
 #[derive(Debug, Default)]
 struct Changes {
     lines: Vec<String>,
@@ -186,7 +182,7 @@ fn changes(before: &BTreeMap<String, Value>, after: &BTreeMap<String, Value>) ->
                     let (a, b) = (old.pointer(&path), new.pointer(&path));
                     out.lines
                         .push(format!("  {path}: {} -> {}", shown(a), shown(b)));
-                    if path.ends_with("/reproduced") && a != b {
+                    if is_flag(&path, a, b) {
                         out.flips
                             .push(format!("{name}: {path}: {} -> {}", shown(a), shown(b)));
                     }
@@ -204,6 +200,15 @@ fn changes(before: &BTreeMap<String, Value>, after: &BTreeMap<String, Value>) ->
         ));
     }
     out
+}
+
+/// Whether `path` names an issue figure's outcome that changed: a
+/// `reproduced` flag, or a bare boolean in `rows`.
+fn is_flag(path: &str, old: Option<&Value>, new: Option<&Value>) -> bool {
+    let row = path.rsplit('/').nth(1) == Some("rows")
+        && old.is_some_and(Value::is_boolean)
+        && new.is_some_and(Value::is_boolean);
+    old != new && (path.ends_with("/reproduced") || row)
 }
 
 fn shown(value: Option<&Value>) -> String {
@@ -332,7 +337,6 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
     let mut files = Vec::new();
     collect(&dir, &mut files)?;
     files.sort();
-    let mut hashes = BTreeMap::new();
     for file in &files {
         let name = vector_name(&dir, file);
         let shown = format!("{GOLDEN_DIR}/{name}.json");
@@ -346,7 +350,7 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
             .and_then(|text| serde_json::from_str::<Value>(&text).map_err(|err| err.to_string()))
         {
             Ok(vector) => problems.extend(
-                vector_problems(&vector, &pins, root, &mut hashes)
+                vector_problems(&vector, &pins, root)
                     .into_iter()
                     .map(|p| format!("{shown}: {p}")),
             ),
@@ -395,19 +399,14 @@ fn pins(generator: &Path) -> crate::Result<BTreeMap<String, String>> {
     Ok(pins)
 }
 
-fn vector_problems(
-    vector: &Value,
-    pins: &BTreeMap<String, String>,
-    root: &Path,
-    hashes: &mut BTreeMap<String, Option<String>>,
-) -> Vec<String> {
+fn vector_problems(vector: &Value, pins: &BTreeMap<String, String>, root: &Path) -> Vec<String> {
     let mut problems: Vec<String> = FIELDS
         .iter()
         .filter(|field| vector.get(**field).is_none_or(Value::is_null))
         .map(|field| format!("lacks `{field}`"))
         .collect();
     if let Some(sources) = vector.get("sources") {
-        problems.extend(source_problems(vector, sources, root, hashes));
+        problems.extend(source_problems(vector, sources, root));
     }
     flag_problems(vector, "", &mut problems);
     if let Some(tools) = vector.get("tools") {
@@ -446,12 +445,7 @@ fn vector_problems(
 
 /// Whether `sources` names the vector's script and the pins, each with the
 /// hash of the file as it is now.
-fn source_problems(
-    vector: &Value,
-    sources: &Value,
-    root: &Path,
-    hashes: &mut BTreeMap<String, Option<String>>,
-) -> Vec<String> {
+fn source_problems(vector: &Value, sources: &Value, root: &Path) -> Vec<String> {
     let Some(sources) = sources.as_object() else {
         return vec!["`sources` is not an object".to_owned()];
     };
@@ -466,10 +460,7 @@ fn source_problems(
         }
     }
     for (file, stored) in sources {
-        let now = hashes
-            .entry(file.clone())
-            .or_insert_with(|| source_hash(&root.join(file)).ok());
-        match (now, stored.as_str()) {
+        match (source_hash(&root.join(file)).ok(), stored.as_str()) {
             (Some(now), Some(stored)) if now == stored => {}
             (Some(_), _) => problems.push(format!(
                 "made from another version of {file}: run `cargo xtask golden`"
@@ -786,6 +777,51 @@ mod tests {
         assert_eq!(
             changes.flips,
             ["a: /issue_figures/reproduced: true -> false"]
+        );
+    }
+
+    /// The flips a regeneration reports when `edit` changes one vector.
+    fn flips(old: &Value, edit: impl Fn(&mut Value)) -> Vec<String> {
+        let mut new = old.clone();
+        edit(&mut new);
+        let before = BTreeMap::from([("v".to_owned(), old.clone())]);
+        let after = BTreeMap::from([("v".to_owned(), new)]);
+        changes(&before, &after).flips
+    }
+
+    #[test]
+    fn a_flipped_bare_row_fails_a_regeneration() {
+        // As 69-attack: rows of bare booleans beside a false aggregate, which
+        // stays false when one more row turns false.
+        let list =
+            serde_json::json!({"issue_figures": {"rows": [true, false], "reproduced": false}});
+        assert_eq!(
+            flips(&list, |v| v["issue_figures"]["rows"][0] = false.into()),
+            ["v: /issue_figures/rows/0: true -> false"]
+        );
+        // As 61-glide: rows keyed by glide.
+        let keyed =
+            serde_json::json!({"issue_figures": {"rows": {"50.0": true}, "reproduced": true}});
+        assert_eq!(
+            flips(&keyed, |v| v["issue_figures"]["rows"]["50.0"] =
+                false.into())
+            .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_flipped_flag_without_rows_fails_a_regeneration() {
+        // As 53-drop-time and 59-min-note-length: one flag, no rows.
+        let single = serde_json::json!({"issue_figures": {"figures": [0.4], "reproduced": false}});
+        assert_eq!(
+            flips(&single, |v| v["issue_figures"]["reproduced"] = true.into()),
+            ["v: /issue_figures/reproduced: false -> true"]
+        );
+        // A changed figure that is no flag is no flip.
+        assert_eq!(
+            flips(&single, |v| v["issue_figures"]["figures"][0] = 0.5.into()).len(),
+            0
         );
     }
 

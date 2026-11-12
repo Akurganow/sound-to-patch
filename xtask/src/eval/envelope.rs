@@ -1037,59 +1037,38 @@ fn tail_cases(
 impl Tally {
     fn rows(&self) -> Vec<String> {
         let mut rows = vec!["\nAcceptance (passed / cases)".to_owned()];
-        for (name, (p, n), unread) in [
-            (
-                "attack 10-90 % within 15 % above 4 periods",
-                self.attack,
-                None,
-            ),
-            (
-                "upper bound under 1.5 periods, none above 4",
-                self.bound,
-                None,
-            ),
-            ("pooled decay within 20 %", self.decay, None),
-            ("pooled sustain within 2 dB", self.sustain, None),
-            ("knee within 15 ms of the note-off", self.knee, None),
-            (
-                "same, sustain shorter than the decay",
-                self.knee_short,
-                None,
-            ),
+        for (name, (p, n)) in [
+            ("attack 10-90 % within 15 % above 4 periods", self.attack),
+            ("upper bound under 1.5 periods, none above 4", self.bound),
+            ("pooled decay within 20 %", self.decay),
+            ("pooled sustain within 2 dB", self.sustain),
+            ("knee within 15 ms of the note-off", self.knee),
+            ("same, sustain shorter than the decay", self.knee_short),
             (
                 "same, dry tremolo with a release from 200 ms",
                 self.knee_tremolo,
-                None,
             ),
-            ("pluck has no knee", self.pluck, None),
-            ("level spread within 1 dB", self.spread, None),
-            (
-                "pump depth within 5 dB below the truth",
-                self.pump_depth,
-                None,
-            ),
-            (
-                "pump recovery within 30 % of the truth",
-                self.pump_back,
-                None,
-            ),
-            ("lock as expected", self.lock, None),
-            ("tail parts that write a release", self.release_read, None),
-            (
-                "written release within 50 %",
-                self.release,
-                Some(self.release_read.1 - self.release_read.0),
-            ),
-            ("reverb parts that read a tail RT60", self.rt60_read, None),
-            (
-                "tail RT60 within 25 % where read",
-                self.rt60,
-                Some(self.rt60_read.1 - self.rt60_read.0),
-            ),
-            ("dry tail parts that read no tail RT60", self.dry_rt60, None),
+            ("pluck has no knee", self.pluck),
+            ("level spread within 1 dB", self.spread),
+            ("pump depth within 5 dB below the truth", self.pump_depth),
+            ("pump recovery within 30 % of the truth", self.pump_back),
+            ("lock as expected", self.lock),
+            ("tail parts that write a release", self.release_read),
+            ("written release within 50 %", self.release),
+            ("reverb parts that read a tail RT60", self.rt60_read),
+            ("tail RT60 within 25 % where read", self.rt60),
+            ("dry tail parts that read no tail RT60", self.dry_rt60),
         ] {
-            let unread = unread.map_or_else(String::new, |u| format!(", {u} unread"));
-            rows.push(format!("{name:<48} {p:>5} / {n}{unread}"));
+            rows.push(format!("{name:<48} {p:>5} / {n}"));
+        }
+        // The rows that score only the parts that read a value.
+        for (name, (p, n)) in [
+            ("written release", self.release_read),
+            ("tail RT60 within", self.rt60_read),
+        ] {
+            if let Some(row) = rows.iter_mut().find(|row| row.starts_with(name)) {
+                let _ = write!(row, ", {} unread", n - p);
+            }
         }
         rows.push("\nRead minus true, dB: median (min to max) over the cases of a row".to_owned());
         rows.push(format!(

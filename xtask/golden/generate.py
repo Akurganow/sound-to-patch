@@ -1351,12 +1351,6 @@ def glide_signal(r, glide_ms, rate):
     return 0.5 * x
 
 
-def rise_ms(f0, r, hop_s):
-    """The rise of a glide, or None when no voiced frame reaches 10 % or 90 %
-    of the step before the other: the rule of `glide_rise`."""
-    return glide_rise(f0, r, hop_s)
-
-
 def pitch_track():
     r = TRACK_RECIPE
     settings = r["settings"]
@@ -1378,7 +1372,7 @@ def pitch_track():
         })
     glides = {}
     for ms in r["glides"]["glide_ms"]:
-        glides[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": rise_ms(track_f0(glide_signal(r["glides"], ms, rate), settings), r["glides"], hop_s)}
+        glides[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": glide_rise(track_f0(glide_signal(r["glides"], ms, rate), settings), r["glides"], hop_s)}
     return document(
         "pitch-track",
         113,
@@ -1529,7 +1523,7 @@ def glide_issue_table():
     hop_s = r["settings"]["hop_length"] / rate
     values = {}
     for ms in r["glides"]["glide_ms"]:
-        values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": rise_ms(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s)}
+        values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": glide_rise(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s)}
     issue = {"50.0": 29.0, "150.0": 116.0, "400.0": 319.0}
     hop_ms = hop_s * 1000.0
     rows = {k: within(values[k]["rise_ms"], v, 0.0, hop_ms) for k, v in issue.items()}

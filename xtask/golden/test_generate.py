@@ -38,16 +38,16 @@ class Rise(unittest.TestCase):
 
     def test_a_glide_that_never_reaches_90_percent_has_no_rise(self):
         f0 = self.track(np.linspace(0.0, 5.0, 40))
-        self.assertIsNone(generate.rise_ms(f0, self.R, 0.001))
+        self.assertIsNone(generate.glide_rise(f0, self.R, 0.001))
 
     def test_an_unvoiced_glide_has_no_rise(self):
         f0 = np.concatenate([self.track([0.0] * 10), np.zeros(10), self.track([7.0] * 10)])
-        self.assertIsNone(generate.rise_ms(f0, self.R, 0.001))
+        self.assertIsNone(generate.glide_rise(f0, self.R, 0.001))
 
     def test_a_full_glide_rises_from_10_to_90_percent(self):
         # 0.7 semitones (10 %) is first passed at frame 5, 6.3 (90 %) at frame 10.
         f0 = self.track([0.0] * 5 + [3.0] * 5 + [7.0] * 5)
-        self.assertAlmostEqual(generate.rise_ms(f0, self.R, 0.001), 5.0)
+        self.assertAlmostEqual(generate.glide_rise(f0, self.R, 0.001), 5.0)
 
 
 class Sources(unittest.TestCase):

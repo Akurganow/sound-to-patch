@@ -697,8 +697,11 @@ note is its gate: the onset comes before the attack, the offset before
 the release, a kick's pitch is the one it falls to, and a glide splits at
 its midpoint into two notes [fact]. `F1off` adds the offset within 20 %
 of the duration or 50 ms, as `mir_eval` does; `F1o20` drops the 50 ms
-floor, which accepts most of a short note; `F1end` scores the offset
-against the end of the sound, the gate plus the release [fact]. Onset F1 with
+floor, which accepts most of a short note; `F1rel` scores the offset at
+the end of the release of the dry render, the gate plus the release
+[fact]. That is not where the sound ends on the three reverb parts, whose
+tail runs on for about 1.5 s, nor on the pluck, kick and keys parts, whose
+sound decays before the release ends [fact]. Onset F1 with
 matched, estimated and reference notes, raw and after the cleanup
 [synthetic]:
 

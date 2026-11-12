@@ -87,10 +87,12 @@ pub(crate) struct Part {
     pub(crate) bpm: f64,
     /// The notes to find, with gate offsets.
     pub(crate) notes: Vec<EvalNote>,
-    /// The same notes with each offset at the end of its sound: the gate's
-    /// end plus the voice's release. The first half of a glide keeps its
-    /// split.
-    pub(crate) ends: Vec<EvalNote>,
+    /// The same notes with each offset at the end of its release in the
+    /// dry render: the gate's end plus the voice's release. The first half
+    /// of a glide keeps its split. This is not the audible end of a reverb
+    /// part, whose tail runs on, nor of a pluck, a kick or keys, whose
+    /// sound decays before the release ends.
+    pub(crate) releases: Vec<EvalNote>,
     /// Notes of a quiet second part mixed under the first, if any.
     pub(crate) bleed: Vec<EvalNote>,
     pub(crate) audio: Vec<f64>,
@@ -138,17 +140,17 @@ fn samples_to_usize(samples: f64) -> usize {
 }
 
 /// The reference notes of a render: with gate offsets, and with offsets
-/// at the end of the sound.
+/// at the end of the release.
 #[derive(Default)]
 struct Rendered {
     notes: Vec<EvalNote>,
-    ends: Vec<EvalNote>,
+    releases: Vec<EvalNote>,
 }
 
 impl Rendered {
     fn extend(&mut self, other: Self) {
         self.notes.extend(other.notes);
-        self.ends.extend(other.ends);
+        self.releases.extend(other.releases);
     }
 }
 
@@ -168,7 +170,7 @@ fn render(out: &mut Vec<f64>, bpm: f64, voice: Voice, level: f64, score: &[Score
     let rate = f64::from(RATE);
     let release = release_of(voice);
     let mut reference = Vec::with_capacity(score.len());
-    let mut ends = Vec::with_capacity(score.len());
+    let mut releases = Vec::with_capacity(score.len());
     for note in score {
         let onset = beats(bpm, note.start);
         let offset = beats(bpm, note.start + note.length);
@@ -189,13 +191,13 @@ fn render(out: &mut Vec<f64>, bpm: f64, voice: Voice, level: f64, score: &[Score
                 pitch: to,
             };
             reference.push(second);
-            ends.push(first);
-            ends.push(EvalNote {
+            releases.push(first);
+            releases.push(EvalNote {
                 offset: second.offset + release,
                 ..second
             });
         } else {
-            ends.push(EvalNote {
+            releases.push(EvalNote {
                 offset: first.offset + release,
                 ..first
             });
@@ -250,7 +252,7 @@ fn render(out: &mut Vec<f64>, bpm: f64, voice: Voice, level: f64, score: &[Score
     }
     Rendered {
         notes: reference,
-        ends,
+        releases,
     }
 }
 
@@ -331,14 +333,14 @@ pub(crate) fn convolve(x: &[f64], h: &[f64]) -> Vec<f64> {
 
 fn part(name: &str, class: Class, bpm: f64, voice: Voice, score: &[Score]) -> Part {
     let mut audio = Vec::new();
-    let Rendered { notes, ends } = render(&mut audio, bpm, voice, 0.3, score);
+    let Rendered { notes, releases } = render(&mut audio, bpm, voice, 0.3, score);
     audio.extend(std::iter::repeat_n(0.0, index(0.5)));
     Part {
         name: name.to_owned(),
         class,
         bpm,
         notes,
-        ends,
+        releases,
         bleed: Vec::new(),
         audio,
     }
@@ -350,7 +352,7 @@ fn with_reverb(part: &Part) -> Part {
         class: part.class,
         bpm: part.bpm,
         notes: part.notes.clone(),
-        ends: part.ends.clone(),
+        releases: part.releases.clone(),
         bleed: Vec::new(),
         audio: reverb(&part.audio, 1.5, -10.0, 6500),
     }
@@ -765,7 +767,7 @@ fn transient_parts() -> Vec<Part> {
         .into_iter()
         .map(|(name, event)| {
             let mut audio = Vec::new();
-            let Rendered { notes, ends } = render(&mut audio, 120.0, saw, 0.02, &line);
+            let Rendered { notes, releases } = render(&mut audio, 120.0, saw, 0.02, &line);
             audio.extend(std::iter::repeat_n(0.0, index(0.5)));
             let at = index(3.0);
             for (sample, x) in audio.iter_mut().skip(at).zip(&event) {
@@ -776,7 +778,7 @@ fn transient_parts() -> Vec<Part> {
                 class: Class::Bass,
                 bpm: 120.0,
                 notes,
-                ends,
+                releases,
                 bleed: Vec::new(),
                 audio,
             }
@@ -834,7 +836,7 @@ pub(crate) fn evaluation_set() -> Vec<Part> {
             class: Class::Bass,
             bpm: 120.0,
             notes: main.notes,
-            ends: main.ends,
+            releases: main.releases,
             bleed,
             audio,
         });
@@ -845,7 +847,7 @@ pub(crate) fn evaluation_set() -> Vec<Part> {
         class: Class::Silence,
         bpm: 120.0,
         notes: Vec::new(),
-        ends: Vec::new(),
+        releases: Vec::new(),
         bleed: Vec::new(),
         audio: vec![0.0; index(4.0)],
     });
@@ -912,21 +914,21 @@ mod tests {
     }
 
     #[test]
-    fn a_fading_voice_ends_its_sound_a_release_after_the_gate() {
+    fn a_release_reference_ends_a_release_after_the_gate() {
         use super::super::matcher::offset_score;
         let set = evaluation_set();
         let part = set
             .iter()
             .find(|p| p.name == "bass 110 Hz release 0.3 s")
             .unwrap();
-        for (gate, end) in part.notes.iter().zip(&part.ends) {
+        for (gate, end) in part.notes.iter().zip(&part.releases) {
             assert!((end.offset - gate.offset - 0.3).abs() < 1e-12);
         }
-        // An estimate that ends with the sound misses every gate offset.
-        assert_eq!(offset_score(&part.notes, &part.ends).matched, 0);
-        assert_eq!(offset_score(&part.ends, &part.ends).matched, 6);
+        // An estimate at the end of the release misses every gate offset.
+        assert_eq!(offset_score(&part.notes, &part.releases).matched, 0);
+        assert_eq!(offset_score(&part.releases, &part.releases).matched, 6);
         let glides = set.iter().find(|p| p.name == "lead glides").unwrap();
-        assert_eq!(glides.ends[0], glides.notes[0]);
-        assert!((glides.ends[1].offset - glides.notes[1].offset - 0.05).abs() < 1e-12);
+        assert_eq!(glides.releases[0], glides.notes[0]);
+        assert!((glides.releases[1].offset - glides.notes[1].offset - 0.05).abs() < 1e-12);
     }
 }

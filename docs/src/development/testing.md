@@ -513,8 +513,9 @@ unit test with the input bytes inline, next to the code it broke.
   byte-identical files.
 - Each vector stores the SHA-256 of its script and of `requirements.txt`,
   with LF line ends, under `sources`. `cargo xtask golden` prints each
-  value that changed, and fails after the rewrite when a `reproduced` flag
-  flipped: check each flip against its issue before you commit it.
+  value that changed, and fails after the rewrite when an issue figure's
+  outcome flipped, a `reproduced` flag or a bare boolean in `rows`: check
+  each flip against its issue before you commit it.
 - `requirements.in` lists the direct packages. To change a pin, edit it and
   regenerate the lock from the repository root:
 
@@ -530,7 +531,11 @@ unit test with the input bytes inline, next to the code it broke.
   its script or of `requirements.txt`. It also fails when a vector of
   `VECTORS` in `xtask/src/golden.rs` is missing, when a file is in no
   recipe, and when a `reproduced` flag beside its `rows` disagrees with
-  them. A test ties `VECTORS` to the recipes of `generate.py`. The same job runs `cargo xtask check-no-ort`, which fails
+  them. A test ties `VECTORS` to the recipes of `generate.py`. Two checks
+  run only inside `cargo xtask golden`, in no CI job: the generator's tests
+  in `xtask/golden/test_generate.py`, among them the rule of a glide's
+  rise, and the flips of the `reproduced` flags that have no `rows` beside
+  them, 42 of the 49. The same job runs `cargo xtask check-no-ort`, which fails
   when `Cargo.lock` holds the ONNX Runtime crate of the transcription
   model, and `cargo xtask check-fuzz-lock`, which fails when
   `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.

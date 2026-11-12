@@ -29,8 +29,9 @@ cargo run --release -p xtask -- eval --layer envelope --json records.jsonl
 
 `--json` writes one record per part, so two builds compare record by
 record [fact]. A part renders only when `--part` selects it, and the run
-holds one part at a time: the whole set takes about 45 s and 0.6 GB
-[synthetic].
+holds one part at a time: in a release build the whole set took 53.5 s
+and 56 s of wall time and 0.6 GB over two runs, against 160 to 179 s and
+4.4 GB before the change [synthetic].
 
 Each check pairs a read note with its true note by onset, and a note the
 layer skips fails its check [fact]. A row that scores only the parts that

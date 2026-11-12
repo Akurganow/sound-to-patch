@@ -6,8 +6,8 @@
 //! the right profile per part class, count the notes after each cleanup
 //! step, and show what the quiet-note guard does to a part with bleed.
 //! Beside the `mir_eval` offset score, two more score the offsets within
-//! 20 % of the duration with no 50 ms floor, and against the end of each
-//! note's sound instead of its gate.
+//! 20 % of the duration with no 50 ms floor, and at the end of each note's
+//! release in the dry render instead of its gate.
 //! The set and the results stay local; nothing here is committed.
 
 pub(crate) mod envelope;
@@ -48,8 +48,8 @@ struct Scores {
     offset: Score,
     /// Offsets within 20 % of the duration, with no 50 ms floor.
     ratio_offset: Score,
-    /// Offsets against the end of each note's sound.
-    sound_end: Score,
+    /// Offsets at the gate plus the release of the dry render.
+    release_end: Score,
     pitch_class: Score,
     octave_up: usize,
     octave_down: usize,
@@ -57,14 +57,14 @@ struct Scores {
 
 impl Scores {
     /// Scores `estimated` against the reference notes, with gate offsets in
-    /// `reference` and sound ends in `ends`.
-    fn of(reference: &[EvalNote], ends: &[EvalNote], estimated: &[EvalNote]) -> Self {
+    /// `reference` and release ends in `releases`.
+    fn of(reference: &[EvalNote], releases: &[EvalNote], estimated: &[EvalNote]) -> Self {
         let (octave_up, octave_down) = octave_errors(reference, estimated);
         Self {
             onset: onset_score(reference, estimated),
             offset: offset_score(reference, estimated),
             ratio_offset: ratio_offset_score(reference, estimated),
-            sound_end: offset_score(ends, estimated),
+            release_end: offset_score(releases, estimated),
             pitch_class: pitch_class_score(reference, estimated),
             octave_up,
             octave_down,
@@ -76,7 +76,7 @@ impl Scores {
             onset: self.onset.add(other.onset),
             offset: self.offset.add(other.offset),
             ratio_offset: self.ratio_offset.add(other.ratio_offset),
-            sound_end: self.sound_end.add(other.sound_end),
+            release_end: self.release_end.add(other.release_end),
             pitch_class: self.pitch_class.add(other.pitch_class),
             octave_up: self.octave_up + other.octave_up,
             octave_down: self.octave_down + other.octave_down,
@@ -92,7 +92,7 @@ impl Scores {
             self.onset.f1(),
             self.offset.f1(),
             self.ratio_offset.f1(),
-            self.sound_end.f1(),
+            self.release_end.f1(),
             self.pitch_class.f1(),
             self.octave_up + self.octave_down,
         )
@@ -182,13 +182,13 @@ impl Tally {
         }
         for (name, decode) in columns {
             let notes = model.decode(&decode)?;
-            let scores = Scores::of(&part.notes, &part.ends, &eval_notes(&notes));
+            let scores = Scores::of(&part.notes, &part.releases, &eval_notes(&notes));
             let voicing = Profile::ALL
                 .into_iter()
                 .find(|profile| profile.name() == name)
                 .map_or(detection.voicing, Profile::voicing);
             let (kept, steps) = clean_up(&notes, &model, &track, voicing, &part.audio, rate);
-            let clean = Scores::of(&part.notes, &part.ends, &eval_notes(&kept));
+            let clean = Scores::of(&part.notes, &part.releases, &eval_notes(&kept));
             println!(
                 "{:<28} {:<9} {} {:>4} {:>5.3} {:>5.3} {:>3}",
                 part.name,
@@ -347,7 +347,7 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
         .into());
     }
     println!(
-        "Scores per part (onset tolerance 50 ms, pitch 50 cents, offsets 20 % or 50 ms;\nF1o20: offsets 20 % alone; F1end: offsets against the end of the sound, the gate plus the release)\n"
+        "Scores per part (onset tolerance 50 ms, pitch 50 cents, offsets 20 % or 50 ms;\nF1o20: offsets 20 % alone; F1rel: offsets at the gate plus the release of the dry render)\n"
     );
     println!(
         "{:<28} {:<9} {:>4} {:>5} {:>5} {:>5} {:>5} {:>5} {:>5} {:>5} {:>3} {:>4} {:>5} {:>5} {:>3}",
@@ -359,7 +359,7 @@ pub(crate) fn run(only: Option<&str>) -> crate::Result<()> {
         "F1",
         "F1off",
         "F1o20",
-        "F1end",
+        "F1rel",
         "F1pc",
         "oct",
         "kept",
