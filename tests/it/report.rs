@@ -1376,3 +1376,36 @@ fn a_backup_left_by_a_killed_run_is_named_before_any_write() {
     run(&wav, Some(&notes_file), &out);
     assert_eq!(entries(&out), [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]);
 }
+
+/// A plain run deletes no file it did not create: with every report file
+/// present, the backups next to them stay with their bytes. A forced run
+/// then removes them.
+#[test]
+fn a_plain_run_keeps_the_backups_and_a_forced_run_removes_them() {
+    let dir = tempfile::tempdir().unwrap();
+    let wav = stem(dir.path());
+    let notes_file = given(dir.path());
+    let out = dir.path().join("out");
+    run(&wav, Some(&notes_file), &out);
+    let backups = [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE].map(|file| {
+        let backup = out.join(format!(".{file}.a1B2c3.old"));
+        fs::write(&backup, format!("earlier {file}")).unwrap();
+        backup
+    });
+    run(&wav, Some(&notes_file), &out);
+    for (backup, file) in backups
+        .iter()
+        .zip([LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE])
+    {
+        assert_eq!(
+            fs::read_to_string(backup).unwrap(),
+            format!("earlier {file}")
+        );
+    }
+    let forced = AnalyzeRequest {
+        force: true,
+        ..request(&wav, Some(&notes_file), &out)
+    };
+    analyze(&forced, &transcriber()).unwrap();
+    assert_eq!(entries(&out), [LAYERS_FILE, NOTES_FILE, SPECTROGRAM_FILE]);
+}

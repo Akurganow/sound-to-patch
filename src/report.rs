@@ -995,9 +995,10 @@ fn guard(
 
 /// The backups of report files in the folder, `.<file>.<random>.old`,
 /// with the file each backs up. A run that was killed during its renames
-/// left them. Fails with every backup when, with `force` off, one of them
-/// stands for a file that the folder lacks. Otherwise returns them, so a
-/// forced run removes them once its new files are in place.
+/// left them. With `force` off, fails with every backup when one of them
+/// stands for a file that the folder lacks, and otherwise returns none, so
+/// a plain run removes no backup. With `force` on, returns every backup,
+/// so the forced run removes them once its new files are in place.
 fn check_backups(dir: &Path, force: bool) -> Result<Vec<PathBuf>, AnalyzeError> {
     // A folder that does not exist yet holds no backup.
     let Ok(entries) = std::fs::read_dir(dir) else {
@@ -1022,10 +1023,13 @@ fn check_backups(dir: &Path, force: bool) -> Result<Vec<PathBuf>, AnalyzeError> 
                 .map(move |name| (dir.join(name), file))
         })
         .collect();
-    if !force && backups.iter().any(|(_, file)| !dir.join(file).exists()) {
+    if force {
+        return Ok(backups.into_iter().map(|(path, _)| path).collect());
+    }
+    if backups.iter().any(|(_, file)| !dir.join(file).exists()) {
         return Err(AnalyzeError::Backup { backups });
     }
-    Ok(backups.into_iter().map(|(path, _)| path).collect())
+    Ok(Vec::new())
 }
 
 /// Removes the backups that a forced run replaced, after its new files
