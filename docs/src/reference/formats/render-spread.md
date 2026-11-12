@@ -111,15 +111,32 @@ its peak, to its end, the last sample above the recipe's tail floor of
 
 The other rows come from the [layer report](layers.md) of each render,
 which `analyze` writes with the render's MIDI file and the exact tempo.
-A row's name is the path of the number, such as `stem.rms_dbfs` or
-`stem.band_share[1].share`, without its `value` or `median` key. Its unit
-comes from the field name's suffix: `_hz`, `_s`, `_db`, `_dbfs` or
-`_deg`. `centroid_over_f0`, `flatness`, `rho` and `share` are ratios. A
-field with neither fails the run, so a new field gets a unit before it
-gets a spread. Confidences, IQRs, band edges and the run's inputs,
-`bpm`, `bpm_given`, `bpm_refined` and `sample_rate_hz`, have no row. Nor
-does a number that some render left without an estimate. A layer that a
-later release adds to the report gets its rows the same way.
+Every group gives rows: `stem`, `notes`, `pitch`, `voices` and
+`envelope`. The groups `schema`, `source`, `synth`, `transcription` and
+`conventions` hold no estimate and give none. A row's name is the path
+of the number, such as `stem.rms_dbfs`, `stem.band_share[1].share` or
+`envelope.values.attack_s`, without its `value` or `median` key.
+
+A row's unit comes from the field name's suffix: `_hz` (Hz), `_s` (s),
+`_ms` (ms), `_db` or `_dbfs` (dB), `_deg` (deg), `_st` (st) or `_ct`
+(ct). A name without a suffix has its unit in a fixed list:
+
+| Unit | Fields |
+| :-- | :-- |
+| `ratio` | `centroid_change`, `centroid_over_f0`, `curve`, `extent_factor`, `flatness`, `overlap_fraction`, `residual`, `rho`, `share`, `tail_weight` |
+| `count` | `bend_events`, `dropped`, `max_polyphony`, `mean_polyphony`, `n_notes_used`, `pump_beats`, `tail_vote_count` |
+| `st` | `key`, a MIDI key, whose distances are semitones |
+| `velocity` | `velocity`, a MIDI velocity |
+| `BPM` | `pump_bpm` |
+
+A field with no unit fails the run, so a new field gets a unit before it
+gets a spread. A test runs the walk on a report that holds every number
+the layer schema defines, so a field or group a later release adds fails
+that test first. Confidences, IQRs, band edges, the run's inputs (`bpm`,
+`bpm_given`, `bpm_refined` and `sample_rate_hz`), the file constant
+`ticks_per_beat` and the mapper's `suggested_edits` and
+`unrepresentable` have no row. Nor does a number that some render left
+without an estimate, such as a list record that one render lacks.
 
 ## Comparing with the spread
 

@@ -201,6 +201,9 @@ uv pip install --python /tmp/vita-env/bin/python --require-hashes -r tools/vita/
 VITA_PYTHON=/tmp/vita-env/bin/python cargo nextest run --test it --run-ignored only -E 'test(/open_engine/)'
 ```
 
+Each run of the script stops after 120 s, so a Python that hangs fails
+the test with the script's last line of output.
+
 The CI job `open-engine` runs the same commands on each pull request:
 
 - `written_presets_load_in_the_open_engine` writes the load-check variants

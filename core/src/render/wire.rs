@@ -24,8 +24,9 @@ pub const PROTOCOL_VERSION: u32 = 1;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Request {
-    /// Loads the plug-in at `plugin` as `synth`, with the recipe's sample
-    /// rate, block size and process mode.
+    /// Loads the plug-in at `plugin` as `synth`. The host builds the recipe
+    /// itself and takes its sample rate, block size and process mode from
+    /// it; the request carries none of them.
     Open {
         /// The synth the plug-in must be.
         synth: Synth,
@@ -187,6 +188,42 @@ mod tests {
             r#"{"op":"open","synth":"vital","plugin":"Vital.vst3"}"#
         );
         assert_eq!(serde_json::from_str::<Request>(&line).unwrap(), open);
+    }
+
+    #[test]
+    fn a_render_request_carries_its_controls_through_json() {
+        let render = Request::Render {
+            state: None,
+            notes: vec![WireNote {
+                key: 60,
+                onset: 0.0,
+                offset: 0.5,
+                velocity: 100,
+            }],
+            controls: vec![
+                WireControl {
+                    time: 0.5,
+                    kind: WireControlKind::PitchBend { value: 8192 },
+                },
+                WireControl {
+                    time: 0.25,
+                    kind: WireControlKind::ModWheel { value: 64 },
+                },
+            ],
+            bpm: 120.0,
+            audio: PathBuf::from("clip.wav"),
+        };
+        let line = serde_json::to_string(&render).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&line).unwrap();
+        assert_eq!(
+            serde_json::to_string(&value["controls"][0]).unwrap(),
+            r#"{"time":0.5,"kind":"pitch_bend","value":8192}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&value["controls"][1]).unwrap(),
+            r#"{"time":0.25,"kind":"mod_wheel","value":64}"#
+        );
+        assert_eq!(serde_json::from_str::<Request>(&line).unwrap(), render);
     }
 
     #[test]

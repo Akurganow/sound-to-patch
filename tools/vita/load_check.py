@@ -12,11 +12,18 @@ Prints one JSON object per file on its own line:
   keep within 1e-6 relative or one 32-bit float step.
 - dropped and added: settings keys of the file the engine dropped, and
   keys it added.
-- peak, rms and finite: a render of note 60 at velocity 0.8 for 1 s.
-- bands: the energy of the render in 24 bands, in dB.
+- peak, rms and finite: a render of note 60 at velocity 0.8 for 1 s. peak
+  is the largest absolute sample of either channel. rms is the root mean
+  square of the mean of the two channels, so it never exceeds peak. finite
+  is false when any sample of either channel is NaN or infinite.
+- bands: the energy of the mean of the two channels in 24 bands, in dB.
+
+A number that is NaN or infinite prints as null, because JSON has no
+spelling for it.
 """
 
 import json
+import math
 import sys
 
 import numpy as np
@@ -28,6 +35,16 @@ SAMPLE_RATE = 44100
 def close(written, read):
     step = float(np.spacing(np.float32(abs(written))))
     return abs(written - read) <= max(1e-6 * abs(written), step)
+
+
+def finite_or_none(value):
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, list):
+        return [finite_or_none(item) for item in value]
+    if isinstance(value, dict):
+        return {key: finite_or_none(item) for key, item in value.items()}
+    return value
 
 
 def bands(audio):
@@ -58,7 +75,7 @@ def check(path):
         and not close(value, read[key])
     ]
     audio = synth.render(60, 0.8, 1.0, 1.5)
-    mono = audio[0] + audio[1]
+    mono = (audio[0] + audio[1]) / 2
     return {
         "file": path,
         "loaded": True,
@@ -74,7 +91,7 @@ def check(path):
 
 def main():
     for path in sys.argv[1:]:
-        print(json.dumps(check(path)), flush=True)
+        print(json.dumps(finite_or_none(check(path)), allow_nan=False), flush=True)
 
 
 if __name__ == "__main__":

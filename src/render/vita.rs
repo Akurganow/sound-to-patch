@@ -18,12 +18,16 @@
 //! The engine reads no `tuning` from a preset, so a state with a custom
 //! tuning is refused rather than rendered in the default tuning. A preset
 //! the engine does not load, or samples that are not finite, come back as
-//! [`RenderError::State`]; a Python that does not run as
-//! [`RenderError::Host`].
+//! [`RenderError::State`]; a Python that does not run, a script that
+//! fails, hangs past [`SCRIPT_TIMEOUT`] or gives a reply this program
+//! cannot read, as [`RenderError::Engine`].
 
-use std::io::Write as _;
+use std::io::{Read, Write as _};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serde_json::{Value, json};
 
@@ -41,6 +45,12 @@ pub const VITA_PYTHON_ENV: &str = "VITA_PYTHON";
 const DEFAULT_BPM: f64 = 120.0;
 /// The exit code of the script for a refusal of the engine.
 const REFUSED: i32 = 3;
+/// How long one run of the script may take: a Python start, the import of
+/// the engine and the render of one note take a few seconds.
+pub const SCRIPT_TIMEOUT: Duration = Duration::from_secs(120);
+/// How long the pipe readers may run on after the script ended. A reader
+/// whose pipe a child of the script still holds open is left behind.
+const READER_WAIT: Duration = Duration::from_secs(1);
 
 /// Plays single notes through the open engine in a Python process.
 #[derive(Debug)]
@@ -61,7 +71,7 @@ impl VitaRenderer {
     ///
     /// # Errors
     ///
-    /// Returns [`RenderError::Host`] when the script does not run or names
+    /// Returns [`RenderError::Engine`] when the script does not run or names
     /// no `vita` version.
     pub fn start(python: &Path, script: &Path) -> Result<Self, RenderError> {
         let scratch = tempfile::tempdir().map_err(|source| {
@@ -96,7 +106,7 @@ impl VitaRenderer {
     /// path.
     fn state_file(&self, state: &[u8]) -> Result<PathBuf, RenderError> {
         let root = saved_preset(state)
-            .ok_or_else(|| RenderError::State("the state holds no preset JSON".to_owned()))?;
+            .ok_or_else(|| RenderError::Internal("the state holds no preset JSON".to_owned()))?;
         if let Some(tuning) = root.get("tuning")
             && tuning.get("default").and_then(Value::as_bool) != Some(true)
         {
@@ -105,8 +115,9 @@ impl VitaRenderer {
             ));
         }
         let path = self.scratch.path().join("state.json");
-        let text = serde_json::to_vec(&Value::Object(root))
-            .map_err(|source| RenderError::State(source.to_string()))?;
+        let text = serde_json::to_vec(&Value::Object(root)).map_err(|source| {
+            RenderError::Internal(format!("cannot encode the preset state ({source})"))
+        })?;
         std::fs::write(&path, text).map_err(|source| {
             vita_error(
                 format!("cannot write {} ({source})", path.display()),
@@ -160,9 +171,10 @@ impl VitaRenderer {
         }
         self.bpm = job.bpm().get();
         let decoded = decode(&out).map_err(|source| {
-            RenderError::Crashed(format!(
-                "the script wrote a clip that does not decode ({source})"
-            ))
+            vita_error(
+                format!("the script wrote a clip that does not decode ({source})"),
+                FIX_SCRIPT,
+            )
         });
         let _ = std::fs::remove_file(&out);
         let note_audio = decoded?.into_audio();
@@ -170,11 +182,14 @@ impl VitaRenderer {
         if replied != u64::try_from(render_frames).ok()
             || u64::try_from(note_audio.frames()).ok() != replied
         {
-            return Err(RenderError::Crashed(format!(
-                "the script was asked for {render_frames} frames, replied {}, and wrote {}",
-                reply["frames"],
-                note_audio.frames()
-            )));
+            return Err(vita_error(
+                format!(
+                    "the script was asked for {render_frames} frames, replied {}, and wrote {}",
+                    reply["frames"],
+                    note_audio.frames()
+                ),
+                FIX_SCRIPT,
+            ));
         }
         let mut channels: Vec<Vec<f64>> = note_audio
             .channels()
@@ -234,14 +249,25 @@ fn single_note(job: &RenderJob) -> Result<&RenderNote, RenderError> {
     Ok(note)
 }
 
-/// Runs `script` with `python` on one request and reads its reply.
+/// Runs `script` with `python` on one request and reads its reply, within
+/// [`SCRIPT_TIMEOUT`].
+fn ask(python: &Path, script: &Path, request: &Value) -> Result<Value, RenderError> {
+    ask_within(python, script, request, SCRIPT_TIMEOUT)
+}
+
+/// Runs `script` with `python` on one request and reads its reply. A
+/// script that runs longer than `timeout` is stopped.
 ///
 /// An exit of [`REFUSED`] is a refusal of the engine, which comes back as
 /// [`RenderError::State`] with the script's message. A Python that does
-/// not start or a script that fails otherwise is [`RenderError::Host`].
-fn ask(python: &Path, script: &Path, request: &Value) -> Result<Value, RenderError> {
-    // shortcut: no time-out on the script, which only tests and CI run;
-    // add one if a user-facing command renders through it.
+/// not start, a script that fails otherwise or runs too long, and a reply
+/// that is not JSON are [`RenderError::Engine`].
+fn ask_within(
+    python: &Path,
+    script: &Path,
+    request: &Value,
+    timeout: Duration,
+) -> Result<Value, RenderError> {
     let mut child = Command::new(python)
         .arg("-I")
         .arg(script)
@@ -258,30 +284,102 @@ fn ask(python: &Path, script: &Path, request: &Value) -> Result<Value, RenderErr
     if let Some(mut stdin) = child.stdin.take() {
         let _ = stdin.write_all(request.to_string().as_bytes());
     }
-    let output = child.wait_with_output().map_err(|source| {
-        RenderError::Crashed(format!("the open-engine script did not finish ({source})"))
-    })?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
+    // The pipes are read on threads, so a script that writes much output
+    // cannot block on a full pipe while this waits for its exit.
+    let stdout = read(child.stdout.take().map(|pipe| Box::new(pipe) as _));
+    let stderr = read(child.stderr.take().map(|pipe| Box::new(pipe) as _));
+    let deadline = Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break Some(status),
+            Ok(None) if Instant::now() < deadline => thread::sleep(Duration::from_millis(10)),
+            Ok(None) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                break None;
+            }
+            Err(source) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(vita_error(
+                    format!("the open-engine script did not finish ({source})"),
+                    &fix_python(),
+                ));
+            }
+        }
+    };
+    let readers = Instant::now() + READER_WAIT;
+    while !(stdout.1.is_finished() && stderr.1.is_finished()) && Instant::now() < readers {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let take =
+        |buffer: &Mutex<Vec<u8>>| buffer.lock().map(|bytes| bytes.clone()).unwrap_or_default();
+    let stdout = take(&stdout.0);
+    let stderr = take(&stderr.0);
+    let stderr = String::from_utf8_lossy(&stderr);
     let last = stderr
         .lines()
         .rev()
         .find(|line| !line.trim().is_empty())
         .unwrap_or("")
         .to_owned();
-    if output.status.code() == Some(REFUSED) {
-        return Err(RenderError::State(last));
-    }
-    if !output.status.success() {
+    let Some(status) = status else {
+        let output = if last.is_empty() { "none" } else { &last };
         return Err(vita_error(
-            format!("the open-engine script failed ({}): {last}", output.status),
+            format!(
+                "the open-engine script ran for more than {} s and was stopped; its last output: {output}",
+                timeout.as_secs_f64()
+            ),
+            &format!(
+                "Check that {VITA_PYTHON_ENV} names a Python whose `import vita` finishes, with the packages of tools/vita/requirements.txt"
+            ),
+        ));
+    };
+    if status.code() == Some(REFUSED) {
+        return Err(RenderError::State(if last.is_empty() {
+            format!("the open engine refused it with {status} and printed no message")
+        } else {
+            last
+        }));
+    }
+    if !status.success() {
+        return Err(vita_error(
+            format!("the open-engine script failed ({status}): {last}"),
             &fix_python(),
         ));
     }
-    serde_json::from_slice(&output.stdout).map_err(|source| {
-        RenderError::Crashed(format!(
-            "the open-engine script gave a reply that is not JSON ({source})"
-        ))
+    serde_json::from_slice(&stdout).map_err(|source| {
+        vita_error(
+            format!("the open-engine script gave a reply that is not JSON ({source})"),
+            FIX_SCRIPT,
+        )
     })
+}
+
+/// Reads `pipe` to its end on a thread into a shared buffer, so the bytes
+/// read so far stay readable when a child of the script holds the pipe
+/// open and the thread is left behind. A read that a signal interrupts is
+/// retried.
+fn read(pipe: Option<Box<dyn Read + Send>>) -> (Arc<Mutex<Vec<u8>>>, thread::JoinHandle<()>) {
+    let buffer = Arc::new(Mutex::new(Vec::new()));
+    let into = Arc::clone(&buffer);
+    let reader = thread::spawn(move || {
+        let Some(mut pipe) = pipe else { return };
+        let mut chunk = [0; 8192];
+        loop {
+            match pipe.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(read) => {
+                    if let Ok(mut bytes) = into.lock() {
+                        bytes.extend_from_slice(&chunk[..read]);
+                    }
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+                Err(_) => break,
+            }
+        }
+    });
+    (buffer, reader)
 }
 
 /// The warm-up request: the recipe's warm-up note, in a render as long as
@@ -319,8 +417,11 @@ fn fix_python() -> String {
 
 const FIX_TEMP: &str = "Check that the temporary folder is writable";
 
+const FIX_SCRIPT: &str =
+    "Run the tools/vita/render.py of this release, which speaks the same requests";
+
 fn vita_error(cause: String, fix: &str) -> RenderError {
-    RenderError::Host {
+    RenderError::Engine {
         cause,
         fix: fix.to_owned(),
     }
@@ -365,7 +466,7 @@ impl Renderer for VitaRenderer {
         let mut saved: Value = reply["state"]
             .as_str()
             .and_then(|state| serde_json::from_str(state).ok())
-            .ok_or_else(|| RenderError::Crashed(format!("the script saved no state: {reply}")))?;
+            .ok_or_else(|| vita_error(format!("the script saved no state: {reply}"), FIX_SCRIPT))?;
         // The engine saves no tuning, but it plays the default tuning, the
         // only one a loaded state may hold here.
         let tuning = self
@@ -376,7 +477,9 @@ impl Renderer for VitaRenderer {
         if let (Some(tuning), Some(root)) = (tuning, saved.as_object_mut()) {
             root.insert("tuning".to_owned(), tuning);
         }
-        serde_json::to_vec(&saved).map_err(|source| RenderError::State(source.to_string()))
+        serde_json::to_vec(&saved).map_err(|source| {
+            RenderError::Internal(format!("cannot encode the saved state ({source})"))
+        })
     }
 }
 
@@ -520,7 +623,7 @@ mod tests {
     }
 
     #[test]
-    fn a_refusal_of_the_engine_is_a_state_error_and_other_failures_a_host_error() {
+    fn a_refusal_of_the_engine_is_a_state_error_and_other_failures_an_engine_error() {
         let Some(python) = python3() else { return };
         let dir = tempfile::tempdir().unwrap();
         let request = json!({ "op": "render" });
@@ -532,13 +635,102 @@ mod tests {
         );
         let failed = ask(python, &stub(dir.path(), 1, "no module"), &request);
         assert!(
-            matches!(&failed, Err(RenderError::Host { fix, .. }) if fix.contains(VITA_PYTHON_ENV)),
+            matches!(&failed, Err(RenderError::Engine { fix, .. }) if fix.contains(VITA_PYTHON_ENV)),
             "{failed:?}"
         );
         let missing = ask(Path::new("no-such-python"), Path::new("x.py"), &request);
         assert!(
-            matches!(&missing, Err(RenderError::Host { cause, .. }) if cause.starts_with("cannot start")),
+            matches!(&missing, Err(RenderError::Engine { cause, .. }) if cause.starts_with("cannot start")),
             "{missing:?}"
+        );
+    }
+
+    #[test]
+    fn a_refusal_without_a_message_names_the_exit_code() {
+        let Some(python) = python3() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let silent = script(dir.path(), "silent.py", "import sys\nsys.exit(3)\n");
+        let message = ask(python, &silent, &json!({ "op": "render" }))
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains("exit status: 3"), "{message}");
+        assert!(!message.contains("preset: ."), "{message}");
+    }
+
+    #[test]
+    fn a_failure_of_the_script_names_the_open_engine() {
+        let Some(python) = python3() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let request = json!({ "op": "render" });
+        let not_json = script(dir.path(), "not-json.py", "print('hello')\n");
+        for error in [
+            ask(python, &stub(dir.path(), 1, "no module"), &request),
+            ask(python, &not_json, &request),
+            ask(Path::new("no-such-python"), Path::new("x.py"), &request),
+        ] {
+            let message = error.unwrap_err().to_string();
+            assert!(message.contains("open engine"), "{message}");
+            assert!(!message.contains("plug-in host"), "{message}");
+        }
+    }
+
+    #[test]
+    fn a_script_that_hangs_is_stopped_and_reported() {
+        let Some(python) = python3() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let hang = script(
+            dir.path(),
+            "hang.py",
+            "import sys, time\nprint('importing', file=sys.stderr, flush=True)\ntime.sleep(30)\n",
+        );
+        let before = std::time::Instant::now();
+        let message = ask_within(
+            python,
+            &hang,
+            &json!({ "op": "render" }),
+            std::time::Duration::from_millis(500),
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            before.elapsed() < std::time::Duration::from_secs(10),
+            "{:?}",
+            before.elapsed()
+        );
+        assert!(message.contains("was stopped"), "{message}");
+        assert!(message.contains("importing"), "{message}");
+    }
+
+    #[test]
+    fn a_child_that_holds_the_pipes_does_not_hold_the_reply() {
+        let Some(python) = python3() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        // The child inherits the script's output pipes and outlives the
+        // reader wait of 1 s, but only by about a second after the test.
+        let child = "import subprocess, sys, time\nsubprocess.Popen(['sleep', '3'])\n";
+        let hang = script(dir.path(), "hang.py", &format!("{child}time.sleep(30)\n"));
+        let done = script(dir.path(), "done.py", &format!("{child}print('{{}}')\n"));
+        let request = json!({ "op": "render" });
+        let short = std::time::Duration::from_millis(500);
+        let before = std::time::Instant::now();
+        let message = ask_within(python, &hang, &request, short)
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains("was stopped"), "{message}");
+        assert!(
+            before.elapsed() < std::time::Duration::from_secs(4),
+            "{:?}",
+            before.elapsed()
+        );
+        let before = std::time::Instant::now();
+        assert_eq!(
+            ask_within(python, &done, &request, short * 10).unwrap(),
+            json!({})
+        );
+        assert!(
+            before.elapsed() < std::time::Duration::from_secs(4),
+            "{:?}",
+            before.elapsed()
         );
     }
 
@@ -555,7 +747,7 @@ mod tests {
     }
 
     #[test]
-    fn a_clip_of_another_length_than_asked_is_a_crash() {
+    fn a_clip_of_another_length_than_asked_is_an_engine_error() {
         let Some(python) = python3() else { return };
         let dir = tempfile::tempdir().unwrap();
         // Writes a clip of 10 stereo frames and says so, whatever it was
@@ -576,7 +768,7 @@ mod tests {
         let job = RenderJob::for_material(probe(|_| {}), Material::Lead, bpm());
         let error = renderer.render(&job).unwrap_err();
         assert!(
-            matches!(&error, RenderError::Crashed(cause) if cause.contains("replied 10, and wrote 10")),
+            matches!(&error, RenderError::Engine { cause, .. } if cause.contains("replied 10, and wrote 10")),
             "{error}"
         );
     }

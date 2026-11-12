@@ -72,8 +72,11 @@ fn vital_state(preset: &[u8], recipe: &Recipe) -> Result<PresetState, RenderErro
     let bytes = vital::FORMAT
         .write(model.as_ref())
         .map_err(RenderError::Preset)?;
-    let mut root: Map<String, Value> =
-        serde_json::from_slice(&bytes).map_err(|source| RenderError::State(source.to_string()))?;
+    let mut root: Map<String, Value> = serde_json::from_slice(&bytes).map_err(|source| {
+        RenderError::Internal(format!(
+            "the preset this program wrote does not parse ({source})"
+        ))
+    })?;
     match root.get_mut(TUNING) {
         Some(tuning) => {
             check_tuning(tuning)?;
@@ -92,8 +95,9 @@ fn vital_state(preset: &[u8], recipe: &Recipe) -> Result<PresetState, RenderErro
             root.insert(TUNING.to_owned(), default_tuning());
         }
     }
-    let mut bytes =
-        serde_json::to_vec(&root).map_err(|source| RenderError::State(source.to_string()))?;
+    let mut bytes = serde_json::to_vec(&root).map_err(|source| {
+        RenderError::Internal(format!("cannot encode the preset state ({source})"))
+    })?;
     bytes.push(0);
     Ok(PresetState::new(Synth::Vital, bytes))
 }
@@ -245,14 +249,16 @@ fn short(value: &Value) -> String {
 ///
 /// # Errors
 ///
-/// Returns [`RenderError::State`] when either state holds no preset JSON.
+/// Returns [`RenderError::Internal`] when the sent state, which this
+/// program built, holds no preset JSON, and [`RenderError::State`] when
+/// the saved state holds none.
 pub fn readback_mismatches(
     sent: &PresetState,
     saved: &[u8],
     bpm: Bpm,
 ) -> Result<Vec<Mismatch>, RenderError> {
     let sent = saved_preset(sent.bytes())
-        .ok_or_else(|| RenderError::State("the sent state holds no preset JSON".to_owned()))?;
+        .ok_or_else(|| RenderError::Internal("the sent state holds no preset JSON".to_owned()))?;
     let saved = saved_preset(saved).ok_or_else(|| {
         RenderError::State("the state the plug-in saved holds no preset JSON".to_owned())
     })?;
@@ -575,6 +581,19 @@ mod tests {
             readback_mismatches(&state(), b"VstW\0\0{", bpm()),
             Err(RenderError::State(_))
         ));
+    }
+
+    #[test]
+    fn a_sent_state_with_no_json_is_a_fault_of_this_program() {
+        let sent = PresetState::new(Synth::Vital, b"no preset".to_vec());
+        let message = readback_mismatches(&sent, &wrapped(&serde_json::json!({})), bpm())
+            .unwrap_err()
+            .to_string();
+        assert!(message.contains("fault of this program"), "{message}");
+        assert!(
+            !message.contains("Check that the preset loads"),
+            "{message}"
+        );
     }
 
     #[test]

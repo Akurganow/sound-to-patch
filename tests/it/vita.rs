@@ -9,7 +9,7 @@ use sound_to_patch::preset::format::{PresetFormat, Stored};
 use sound_to_patch::preset::vital::FORMAT;
 
 use crate::support::apply::{run, write};
-use crate::support::vita::{load_check, variants};
+use crate::support::vita::{load_check, load_check_stub, variants};
 
 #[test]
 #[ignore = "needs vita: set VITA_PYTHON to a Python with tools/vita/requirements.txt"]
@@ -64,6 +64,53 @@ fn written_presets_load_in_the_open_engine() {
     assert!(
         moved > 1.0,
         "the edits did not change the sound: {moved} dB"
+    );
+}
+
+#[test]
+#[ignore = "needs vita: set VITA_PYTHON to a Python with tools/vita/requirements.txt"]
+fn the_open_engine_load_check_reports_the_level_of_the_channel_mean() {
+    // Two identical channels of a sine of amplitude 1: the peak is 1, and
+    // the mean square of a whole number of cycles is 1/2. A sum of the
+    // channels would give an rms of sqrt(2) and bands 6 dB high.
+    let line = load_check_stub("pass");
+    assert_eq!(line["finite"], true, "{line}");
+    let peak = line["peak"].as_f64().unwrap();
+    let rms = line["rms"].as_f64().unwrap();
+    assert!((peak - 1.0).abs() < 1e-9, "peak {peak}");
+    assert!(rms <= peak, "rms {rms} is above peak {peak}");
+    assert!((rms - 0.5_f64.sqrt()).abs() < 1e-9, "rms {rms}");
+    // A sine of amplitude 1 on 44 100 samples puts all its power in one
+    // bin of magnitude N / 2, and the 1 Hz bins fall on its frequency.
+    let loudest = line["bands"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|band| band.as_f64().unwrap())
+        .fold(f64::MIN, f64::max);
+    let expected = 20.0 * (44_100.0_f64 / 2.0).log10();
+    assert!(
+        (loudest - expected).abs() < 0.01,
+        "loudest band {loudest} dB, expected {expected} dB"
+    );
+}
+
+#[test]
+#[ignore = "needs vita: set VITA_PYTHON to a Python with tools/vita/requirements.txt"]
+fn the_open_engine_load_check_reports_a_nan_render_as_not_finite() {
+    // JSON has no NaN. The line must still parse, with finite false and
+    // null for every level the NaN reaches.
+    let line = load_check_stub("wave[100] = np.nan");
+    assert_eq!(line["finite"], false, "{line}");
+    assert!(line["peak"].is_null(), "{line}");
+    assert!(line["rms"].is_null(), "{line}");
+    assert!(
+        line["bands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(serde_json::Value::is_null),
+        "{line}"
     );
 }
 

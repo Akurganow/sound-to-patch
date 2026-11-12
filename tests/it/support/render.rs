@@ -112,7 +112,8 @@ pub(crate) fn check_renderer(renderer: &mut dyn Renderer, state: &PresetState, s
         }
     }
 
-    // A note at 1 s: silence before it, sound after it, in both channels.
+    // A note at 1 s: silence before it, sound within 10 ms after it, in
+    // both channels.
     let job = RenderJob::new(state.clone(), vec![note(60, 1.0, 2.0)], bpm).unwrap();
     let output = renderer.render(&job).unwrap();
     let rate = output.audio.sample_rate().get() as usize;
@@ -122,13 +123,13 @@ pub(crate) fn check_renderer(renderer: &mut dyn Renderer, state: &PresetState, s
     {
         assert!(peak < SOUND, "channel {channel} sounds before the note-on");
     }
-    for (channel, peak) in peaks(&output.audio, rate..rate * 3 / 2)
+    for (channel, peak) in peaks(&output.audio, rate..rate * 101 / 100)
         .into_iter()
         .enumerate()
     {
         assert!(
             peak > SOUND,
-            "channel {channel} is silent after the note-on"
+            "channel {channel} is silent in the 10 ms after the note-on"
         );
     }
 
