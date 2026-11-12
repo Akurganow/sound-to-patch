@@ -81,5 +81,11 @@ failed.
   publish run, or start the publish workflow by hand with the tag name.
   It skips a release that already exists. Never delete and re-create a
   tag.
-- **The push of the version commit fails** because `main` moved on. The
-  run of the newer commit releases both.
+- **Two merges land close together.** The `release` job first checks
+  that `main` still points at the commit its run tested. When another
+  merge, or the version commit of its release, landed in between, the job
+  ends green with a notice, and the run of the newer commit releases both.
+  The same notice ends the job when its push fails because `main` moved
+  during the job. A push that fails while `main` is unchanged stays red:
+  re-run the job. When the newer run fails a check, nothing is released
+  until a later merge passes or its failed jobs are re-run.

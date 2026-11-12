@@ -15,13 +15,15 @@ Each file names its generator and carries its signal's recipe, the notes
 and the track frames. The f0 track takes about half a second per second
 of audio in a debug build, which adds up over the signals, so the pitch
 tests read these files.
-`pitch_fixtures_are_current`, an ignored test, rebuilds every file in a
-release build and fails when one differs:
-`cargo nextest run --release --run-ignored only -E 'test(pitch_fixtures_are_current)'`,
+`pitch_fixtures_are_current`, an ignored test that the `pitch-fixtures` CI
+job runs, rebuilds every file in a release build and fails when one
+differs:
+`cargo nextest run --release --test it --run-ignored only -E 'test(pitch_fixtures_are_current)'`,
 with `UPDATE_PITCH_FIXTURES=1` to rewrite them. MIT, like the code. The
-comparison is byte for byte on the printed floats, so it holds on one
-platform and toolchain; another CPU or libm can round a track frame
-differently and report a fixture stale without a change in the method.
+comparison allows 1e-9 on every number, so another CPU or libm that rounds
+a track frame differently in the last bits does not report a fixture
+stale. Every pitch test that reads a file also checks that its recipe and
+sample rate are those of its signal.
 The row `pitch/*.json` gives the SHA-256 of the set's manifest,
 `cd tests/fixtures/pitch && LC_ALL=C shasum -a 256 *.json | shasum -a 256`.
 

@@ -5,10 +5,12 @@
 //! build, which adds up over the generated signals, so the glide and
 //! vibrato cases read committed fixtures: the notes and the
 //! track that the transcriber and the f0 track give for each generated
-//! signal. `pitch_fixtures_are_current` rebuilds them in a release build
-//! and fails when one differs. It compares the printed floats byte for
-//! byte, which holds on one platform and toolchain: another CPU or libm can
-//! round a track frame differently.
+//! signal. Each read checks that the fixture's recipe and sample rate are
+//! those of its signal, so a changed generator setting fails at once.
+//! `pitch_fixtures_are_current` rebuilds the fixtures in a release build,
+//! and CI runs it on every pull request. It compares every number within
+//! [`FIXTURE_TOLERANCE`], because another CPU or libm can round a track
+//! frame differently in the last bits.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -39,6 +41,8 @@ const RATE: u32 = 22_050;
 /// The rate of the fixtures that check the unison glides at 44.1 kHz.
 const RATE_44: u32 = 44_100;
 const FIXTURES: &str = "tests/fixtures/pitch";
+/// How far a rebuilt fixture number may sit from the committed one.
+const FIXTURE_TOLERANCE: f64 = 1e-9;
 
 fn rate() -> SampleRate {
     SampleRate::new(RATE).unwrap()
@@ -398,10 +402,23 @@ fn document(name: &str, signal: Signal, notes: &NoteList, track: &PitchTrack) ->
     })
 }
 
-/// The notes and the track of a fixture.
-fn fixture(name: &str) -> (NoteList, PitchTrack) {
+/// The notes and the track of the fixture of `signal`.
+///
+/// # Panics
+///
+/// When the fixture was made from another recipe or sample rate.
+fn fixture(name: &str, signal: Signal) -> (NoteList, PitchTrack) {
     let text = fs::read_to_string(fixture_path(name)).unwrap();
     let doc: Value = serde_json::from_str(&text).unwrap();
+    assert!(
+        doc["recipe"] == signal.recipe() && doc["sample_rate"] == signal.hz(),
+        "the fixture {name} was made from another signal: it holds {} at {} Hz, \
+         the generator gives {} at {} Hz. Refresh the fixtures with {REFRESH}",
+        doc["recipe"],
+        doc["sample_rate"],
+        signal.recipe(),
+        signal.hz(),
+    );
     let notes = doc["notes"]
         .as_array()
         .unwrap()
@@ -430,7 +447,7 @@ fn fixture(name: &str) -> (NoteList, PitchTrack) {
 
 /// The pitch layer of a fixture, on the audio of its signal.
 fn layer(name: &str, signal: Signal) -> PitchLayer {
-    let (notes, track) = fixture(name);
+    let (notes, track) = fixture(name, signal);
     let mono = signal.render();
     PitchLayer::of(&PitchInput {
         mono: &mono,
@@ -446,8 +463,69 @@ fn case(name: &str) -> Signal {
     cases().into_iter().find(|(n, _)| n == name).unwrap().1
 }
 
+/// The command that rebuilds the pitch fixtures.
+const REFRESH: &str = "UPDATE_PITCH_FIXTURES=1 cargo nextest run --release --test it --run-ignored only -E 'test(pitch_fixtures_are_current)'";
+
+/// Whether two fixture documents agree: the same shape and text, and every
+/// number within `tolerance`.
+fn agrees(stored: &Value, fresh: &Value, tolerance: f64) -> bool {
+    match (stored, fresh) {
+        (Value::Number(a), Value::Number(b)) => match (a.as_f64(), b.as_f64()) {
+            (Some(a), Some(b)) => (a - b).abs() <= tolerance,
+            _ => a == b,
+        },
+        (Value::Array(a), Value::Array(b)) => {
+            a.len() == b.len() && a.iter().zip(b).all(|(a, b)| agrees(a, b, tolerance))
+        }
+        (Value::Object(a), Value::Object(b)) => {
+            a.len() == b.len()
+                && a.iter()
+                    .all(|(key, a)| b.get(key).is_some_and(|b| agrees(a, b, tolerance)))
+        }
+        _ => stored == fresh,
+    }
+}
+
 #[test]
-#[ignore = "runs the model and the f0 track; refresh with UPDATE_PITCH_FIXTURES=1 cargo nextest run --release --run-ignored only -E 'test(pitch_fixtures_are_current)'"]
+fn fixture_documents_agree_within_the_tolerance() {
+    let stored = json!({"notes": [[0.5, 1.0, 60.0]], "frames": [[0.0, 220.0], [0.01, null]]});
+    let near = json!({"notes": [[0.5 + 1e-10, 1.0, 60.0]], "frames": [[0.0, 220.0], [0.01, null]]});
+    assert!(agrees(&stored, &near, FIXTURE_TOLERANCE));
+    let far = json!({"notes": [[0.5 + 1e-8, 1.0, 60.0]], "frames": [[0.0, 220.0], [0.01, null]]});
+    assert!(!agrees(&stored, &far, FIXTURE_TOLERANCE));
+    let voiced = json!({"notes": [[0.5, 1.0, 60.0]], "frames": [[0.0, 220.0], [0.01, 220.0]]});
+    assert!(!agrees(&stored, &voiced, FIXTURE_TOLERANCE));
+    let shorter = json!({"notes": [], "frames": [[0.0, 220.0], [0.01, null]]});
+    assert!(!agrees(&stored, &shorter, FIXTURE_TOLERANCE));
+    let extra =
+        json!({"notes": [[0.5, 1.0, 60.0]], "frames": [[0.0, 220.0], [0.01, null]], "x": 1});
+    assert!(!agrees(&stored, &extra, FIXTURE_TOLERANCE));
+}
+
+#[test]
+fn every_pitch_fixture_holds_the_recipe_of_its_signal() {
+    let mut files: Vec<String> = fs::read_dir(FIXTURES)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    files.sort();
+    let mut names: Vec<String> = cases()
+        .into_iter()
+        .chain(std::iter::once(bass_case()))
+        .map(|(name, signal)| {
+            fixture(&name, signal);
+            format!("{name}.json")
+        })
+        .collect();
+    names.sort();
+    assert_eq!(
+        files, names,
+        "a fixture without a signal, or a signal without a fixture"
+    );
+}
+
+#[test]
+#[ignore = "runs the model and the f0 track; refresh with UPDATE_PITCH_FIXTURES=1 cargo nextest run --release --test it --run-ignored only -E 'test(pitch_fixtures_are_current)'"]
 fn pitch_fixtures_are_current() {
     let transcriber = Transcriber::new().unwrap();
     let update = std::env::var_os("UPDATE_PITCH_FIXTURES").is_some();
@@ -462,17 +540,27 @@ fn pitch_fixtures_are_current() {
             None,
         )
         .unwrap();
-        let mut text = serde_json::to_string(&document(&name, signal, &t.notes, &t.track)).unwrap();
-        text.push('\n');
+        let fresh = document(&name, signal, &t.notes, &t.track);
         let path = fixture_path(&name);
         if update {
+            let mut text = serde_json::to_string(&fresh).unwrap();
+            text.push('\n');
             fs::create_dir_all(FIXTURES).unwrap();
             fs::write(&path, &text).unwrap();
-        } else if fs::read_to_string(&path).ok().as_deref() != Some(text.as_str()) {
+            continue;
+        }
+        let stored = fs::read_to_string(&path)
+            .ok()
+            .and_then(|text| serde_json::from_str::<Value>(&text).ok());
+        if !stored.is_some_and(|stored| agrees(&stored, &fresh, FIXTURE_TOLERANCE)) {
             stale.push(name);
         }
     }
-    assert!(stale.is_empty(), "stale fixtures: {stale:?}");
+    assert!(
+        stale.is_empty(),
+        "stale fixtures: {stale:?}. The transcriber or the f0 track now gives other notes or \
+         frames for these signals. Refresh them with {REFRESH} and review the diff"
+    );
 }
 
 /// The bass line of the report test, with its fixture.
@@ -486,7 +574,7 @@ const BASS: &str = "bass-line";
 /// it reads.
 #[expect(clippy::unnecessary_wraps, reason = "the signature of a tracker")]
 fn bass_track(_: &[f64], _: SampleRate) -> Result<PitchTrack, TrackError> {
-    Ok(fixture(BASS).1)
+    Ok(fixture(BASS, Signal::Bass).1)
 }
 
 /// Writes the bass line as a WAV file and its notes as a MIDI file.

@@ -24,10 +24,11 @@ jobs:
     # The main ruleset requires this exact name.
     name: Analyze (rust)
     runs-on: ubuntu-latest
+    # `actions: read` is needed only in a private repository; this one is
+    # public.
     permissions:
       contents: read
       security-events: write
-      actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

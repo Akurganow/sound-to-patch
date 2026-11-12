@@ -84,9 +84,22 @@ Three workflows run on a pull request.
 
 | Workflow | Jobs | Starts on |
 | :-- | :-- | :-- |
-| `ci.yml` | `fmt`, `clippy`, `test`, `doc`, `licenses`, `docs`, `test-linux` | a pull request that is opened, pushed to or reopened, and a push to `main` |
+| `ci.yml` | `fmt`, `clippy`, `test`, `doc`, `licenses`, `docs`, `test-linux`, `open-engine`, `pitch-fixtures`, `vital-registry` | a pull request that is opened, pushed to or reopened, and a push to `main` |
 | `commits.yml` | `commits` | the same events, and a change of the title or description |
 | `codeql.yml` | `Analyze (rust)` | a pull request to `main`, a push to `main`, weekly, and by hand |
+
+Two jobs of `ci.yml` check generated files that a normal test cannot
+rebuild. Neither is a required check.
+
+- `pitch-fixtures` runs `pitch_fixtures_are_current` in a release build on
+  macOS. It fails when the transcriber or the cleanup now gives other
+  notes or frames for a signal of `tests/fixtures/pitch/`.
+- `vital-registry` downloads the Vital source at the commit that
+  `src/preset/vital/registry.json` names, through `cargo xtask fetch` with
+  its SHA-256 pin, and runs `cargo xtask vital-registry --check`. It fails
+  when a change to the generator leaves the committed registry stale. A
+  registry made from a newer Vital commit needs a new commit and SHA-256 in
+  the job.
 
 `commits` has its own workflow because it reads only the title and the
 description. Editing them runs that one Linux job and none of the heavy
@@ -131,6 +144,20 @@ both builds.
   carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
+- These ignored tests run in no CI job. Each needs something a hosted
+  runner lacks, so run them locally before a change that touches their
+  code:
+
+  | Tests | Why not in CI | Command |
+  | :-- | :-- | :-- |
+  | the 21 `render_vital` tests | they need the retail Vital plug-in, which needs a licence, and an x86_64 host under Rosetta | see [Rendering](#rendering) |
+  | `vita::a_preset_saved_by_vital_keeps_the_edits` | it needs a copy of a written preset saved by the Vital app | `VITAL_SAVED_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(a_preset_saved_by_vital_keeps_the_edits)'` |
+  | `preset::a_retail_default_preset_matches_the_builtin_template` | it needs the default preset of the Vital app | `VITAL_DEFAULT_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(a_retail_default_preset_matches_the_builtin_template)'` |
+  | `reference::the_catalogue_covers_every_key_of_a_saved_preset` | it needs a preset saved by the Vital app | `VITAL_PROBE_PRESET=<file> cargo nextest run --test it --run-ignored only -E 'test(the_catalogue_covers_every_key_of_a_saved_preset)'` |
+  | `vital::tests::the_committed_registry_matches_the_checkout` in `xtask` | it needs a Vital checkout; the `vital-registry` job runs the same comparison through the command | `VITAL_SOURCE=<checkout> cargo nextest run -p xtask --run-ignored only -E 'test(the_committed_registry_matches_the_checkout)'` |
+
+  The 11 open-engine tests run in the `open-engine` job, and
+  `pitch_fixtures_are_current` runs in the `pitch-fixtures` job.
 - Never skip a test at run time with an early `return`. It reports a pass
   that never happened.
 - Never gate a test behind a Cargo feature. CI builds with `--all-features`,
@@ -482,14 +509,23 @@ keeps the comparison as recorded on all five outputs for information.
 
 The fuzz targets live in `fuzz/`, a workspace of its own pinned to a dated
 nightly in `fuzz/rust-toolchain.toml`. CI lints them on stable, and a
-scheduled job runs each one for five minutes. Run one locally from the
-repository root, seeded from the fixtures:
+scheduled job runs each one for five minutes. A failed scheduled run opens
+an issue titled "The weekly scheduled run failed", or comments on the open
+one, so the failure reaches the repository's watchers without a visit to
+the Actions page. Run one target locally from the repository root, seeded
+from the fixtures:
 
 ```sh
 mkdir -p fuzz/corpus/vital_read
 cp tests/fixtures/vital/*.vital fuzz/corpus/vital_read/
-cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
+RUSTFLAGS=-Cllvm-args=-asan-globals=0 cargo +nightly-2026-10-20 fuzz run vital_read -- -max_total_time=600
 ```
+
+`RUSTFLAGS` turns off the AddressSanitizer checks of globals; stack and
+heap checks stay on. Without it the link fails on macOS with
+`initializer pointer has no target`: the sanitizer pads each constructor
+pointer that the tract crates register, and the linker reads the padding
+as pointers.
 
 Seed `edits_apply`, which runs edit lists through `preset apply` on the
 routes fixture, from `tests/cmd/data/*.json`. The corpus and the crash

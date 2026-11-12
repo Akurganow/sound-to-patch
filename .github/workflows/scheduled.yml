@@ -53,7 +53,14 @@ jobs:
           done
           mkdir -p fuzz/corpus/edits_apply
           cp tests/cmd/data/*.json fuzz/corpus/edits_apply/
+      # AddressSanitizer pads every global with a redzone, the constructor
+      # pointers in `__mod_init_func` that tract registers with `ctor`
+      # included. Apple's linker then reads the zero padding as pointers
+      # with no target and stops. Globals go uninstrumented; stack and heap
+      # checks stay on. cargo-fuzz adds RUSTFLAGS to its own flags.
       - working-directory: fuzz
+        env:
+          RUSTFLAGS: -Cllvm-args=-asan-globals=0
         run: |
           for target in vital_read vital_roundtrip vital_write edits_apply; do
             cargo fuzz run --fuzz-dir . "$target" -- -max_total_time=300
@@ -63,3 +70,29 @@ jobs:
         with:
           name: fuzz-artifacts
           path: fuzz/artifacts
+
+  # A failed scheduled run opens an issue, or comments on the open one, so
+  # the failure reaches the repository's watchers by notification.
+  report:
+    needs: [coverage, fuzz]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COVERAGE: ${{ needs.coverage.result }}
+          FUZZ: ${{ needs.fuzz.result }}
+        run: |
+          title="The weekly scheduled run failed"
+          body="$(printf 'Run: %s\n\n- coverage: %s\n- fuzz: %s\n\nA fuzz crash uploads its input as the `fuzz-artifacts` artifact of the run.\n' "$RUN_URL" "$COVERAGE" "$FUZZ")"
+          number="$(gh issue list --state open --search "\"$title\" in:title" --json number,title \
+            --jq "map(select(.title == \"$title\")) | first | .number // empty")"
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body" --label kind:bug --label area:ci
+          fi
