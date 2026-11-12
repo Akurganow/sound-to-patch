@@ -6,6 +6,10 @@
 //! are compared after rounding to 4 decimals, so exactly 50 ms is a hit.
 //! The score uses a maximum bipartite matching, not a greedy one, so a
 //! crowded run of repeated notes scores as `mir_eval` scores it.
+//!
+//! The 50 ms floor accepts most of a short note: for a 69 ms note any
+//! offset from 19 ms to 119 ms after the onset matches. A second offset
+//! score drops the floor and keeps 20 % of the duration alone.
 
 /// One note: onset and offset in seconds, and a MIDI pitch.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -75,15 +79,24 @@ fn round4(x: f64) -> f64 {
     (x * 1e4).round_ties_even() / 1e4
 }
 
+/// Whether offsets count, and the least offset tolerance when they do.
+#[derive(Clone, Copy)]
+enum Offsets {
+    Ignored,
+    Floor(f64),
+}
+
 /// Whether the reference and the estimate match, with the estimate's
 /// pitch moved by `shift` semitones first.
-fn hit(reference: &EvalNote, estimate: &EvalNote, offsets: bool, shift: f64) -> bool {
+fn hit(reference: &EvalNote, estimate: &EvalNote, offsets: Offsets, shift: f64) -> bool {
     let onset = round4((reference.onset - estimate.onset).abs()) <= ONSET_TOLERANCE;
     let pitch = (100.0 * (reference.pitch - estimate.pitch - shift)).abs() <= PITCH_TOLERANCE_CENTS;
-    let offset = !offsets || {
-        let tolerance =
-            (OFFSET_RATIO * (reference.offset - reference.onset)).max(OFFSET_MIN_TOLERANCE);
-        round4((reference.offset - estimate.offset).abs()) <= tolerance
+    let offset = match offsets {
+        Offsets::Ignored => true,
+        Offsets::Floor(floor) => {
+            let tolerance = (OFFSET_RATIO * (reference.offset - reference.onset)).max(floor);
+            round4((reference.offset - estimate.offset).abs()) <= tolerance
+        }
     };
     onset && pitch && offset
 }
@@ -93,7 +106,7 @@ fn hit(reference: &EvalNote, estimate: &EvalNote, offsets: bool, shift: f64) -> 
 fn max_matching(
     reference: &[EvalNote],
     estimated: &[EvalNote],
-    offsets: bool,
+    offsets: Offsets,
     shift: f64,
 ) -> usize {
     let edges: Vec<Vec<usize>> = reference
@@ -141,7 +154,7 @@ pub(crate) fn onset_score(reference: &[EvalNote], estimated: &[EvalNote]) -> Sco
     score(
         reference,
         estimated,
-        max_matching(reference, estimated, false, 0.0),
+        max_matching(reference, estimated, Offsets::Ignored, 0.0),
     )
 }
 
@@ -150,7 +163,22 @@ pub(crate) fn offset_score(reference: &[EvalNote], estimated: &[EvalNote]) -> Sc
     score(
         reference,
         estimated,
-        max_matching(reference, estimated, true, 0.0),
+        max_matching(
+            reference,
+            estimated,
+            Offsets::Floor(OFFSET_MIN_TOLERANCE),
+            0.0,
+        ),
+    )
+}
+
+/// Onsets, pitches and offsets within 20 % of the reference duration, with
+/// no 50 ms floor.
+pub(crate) fn ratio_offset_score(reference: &[EvalNote], estimated: &[EvalNote]) -> Score {
+    score(
+        reference,
+        estimated,
+        max_matching(reference, estimated, Offsets::Floor(0.0), 0.0),
     )
 }
 
@@ -169,15 +197,15 @@ pub(crate) fn pitch_class_score(reference: &[EvalNote], estimated: &[EvalNote]) 
     score(
         &reference,
         &estimated,
-        max_matching(&reference, &estimated, false, 0.0),
+        max_matching(&reference, &estimated, Offsets::Ignored, 0.0),
     )
 }
 
 /// Estimates an octave above and below their reference, by onset.
 pub(crate) fn octave_errors(reference: &[EvalNote], estimated: &[EvalNote]) -> (usize, usize) {
     (
-        max_matching(reference, estimated, false, -12.0),
-        max_matching(reference, estimated, false, 12.0),
+        max_matching(reference, estimated, Offsets::Ignored, -12.0),
+        max_matching(reference, estimated, Offsets::Ignored, 12.0),
     )
 }
 
@@ -256,5 +284,23 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn the_ratio_score_rejects_an_offset_the_floor_lets_through() {
+        // A 175 BPM sixteenth of 0.2 beats, 68.6 ms, ended 45 ms late.
+        let length = 0.2 * 60.0 / 175.0;
+        let reference = [EvalNote {
+            onset: 1.0,
+            offset: 1.0 + length,
+            pitch: 38.0,
+        }];
+        let late = [EvalNote {
+            offset: 1.0 + length + 0.045,
+            ..reference[0]
+        }];
+        assert_eq!(offset_score(&reference, &late).matched, 1);
+        assert_eq!(ratio_offset_score(&reference, &late).matched, 0);
+        assert_eq!(ratio_offset_score(&reference, &reference).matched, 1);
     }
 }

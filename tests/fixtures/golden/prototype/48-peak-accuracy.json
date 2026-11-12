@@ -5,6 +5,7 @@
  "issue_figures": {
   "blackman_harris_no_padding_bias_bins": 0.003,
   "bound_mhz": 0.73,
+  "bound_why": "the issue's 0.73 mHz takes A^2 / sigma^2, twice the SNR of the recipe; the bound with A^2 / (2 sigma^2) is 1.04 mHz",
   "hann_4x_padding_bias_hz": 0.001,
   "hann_no_padding_bias_bins": 0.016,
   "hann_std_mhz": 1.55,
@@ -25,6 +26,10 @@
   "trials": 300
  },
  "rounding": "the issue prints mHz to two decimals and bins to three",
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tag": "[own, synthetic]",
  "tolerance": {
   "abs": 0.0,
@@ -36,7 +41,7 @@
   "scipy": "1.18.1"
  },
  "values": {
-  "bound_std_hz": 0.0007332455468300255,
+  "bound_std_hz": 0.0010369657968766985,
   "max_noiseless_bias": {
    "blackman_harris_no_padding_bins": 0.003193911207286016,
    "hann_4x_padding_hz": 0.001080158363649275,

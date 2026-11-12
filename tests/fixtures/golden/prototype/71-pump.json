@@ -42,6 +42,7 @@
  },
  "name": "71-pump",
  "recipe": {
+  "back_db": 1.5,
   "beats": 16,
   "beats_counted": "a beat counts when it starts 50 ms or more after 0 s and ends by the end",
   "bpm": 128.0,
@@ -53,7 +54,7 @@
   ],
   "curve": "64 phase bins per beat, each beat minus its 90th percentile, the median over the beats",
   "duck": "gain 1 - (1 - 10^(-depth / 20)) exp(-(t mod beat) / release) on every beat from 0 s",
-  "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within 1.5 dB, linear between bins",
+  "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within back_db, linear between bins; back_db is PUMP_BACK of the envelope layer, and a test of the eval ties the two",
   "rows": [
    [
     0.0,
@@ -83,6 +84,10 @@
   "sample_rate": 22050,
   "seed": 1,
   "track": "centred RMS in dB over two periods of 110 Hz on a 1 ms hop from 0 s to the end"
+ },
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
  },
  "tag": "[own, synthetic]",
  "tolerance": {

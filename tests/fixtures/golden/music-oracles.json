@@ -3,6 +3,10 @@
   "issue": 264,
   "description": "Which chord spellings of the music dictionary get the same pitch classes from each oracle library, which differ and which it cannot parse.",
   "generator": "xtask/golden/music_oracle.py",
+  "sources": {
+    "xtask/golden/music_oracle.py": "7a95f13bfc4cb49c942f51bf5a3a020b9c0a892ae16cd7c1f321d3b5bd06b4a4",
+    "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+  },
   "tools": {
     "music21": "10.5.2",
     "pychord": "1.4.1",

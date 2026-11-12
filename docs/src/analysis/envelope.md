@@ -28,7 +28,14 @@ cargo run --release -p xtask -- eval --layer envelope --json records.jsonl
 ```
 
 `--json` writes one record per part, so two builds compare record by
-record [fact].
+record [fact]. A part renders only when `--part` selects it, and the run
+holds one part at a time: in a release build the whole set took 53.5 s
+and 56 s of wall time and 0.6 GB over two runs, against 160 to 179 s and
+4.4 GB before the change [synthetic].
+
+Each check pairs a read note with its true note by onset, and a note the
+layer skips fails its check [fact]. A row that scores only the parts that
+read a value prints how many read none [fact].
 
 ## What the layer reads
 
@@ -601,7 +608,9 @@ over the notes, it strips, and no knee remains [synthetic].
 
 A constant three-note saw chord reads 1.64 to 1.94 dB from its own beating,
 so the 3 dB floor sits above it [synthetic]. Over all 1191 parts, all 826
-locks read as built [synthetic].
+locks read as built [synthetic]. A part with no pump reads as no lock, and a
+3 dB duck counts as right when it locks to the beat or reads no pump, never
+when it reads free [fact].
 
 ### Depth bias
 

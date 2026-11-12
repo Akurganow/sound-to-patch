@@ -6,8 +6,9 @@ does. The license text follows the table, under a heading for each
 fixture or set.
 
 Golden vectors under `golden/` are generated, not taken from another
-project. Each carries its own provenance: recipe, generator, tool versions
-and tolerance. `cargo xtask golden-check` enforces it.
+project. Each carries its own provenance: recipe, generator, the SHA-256
+of its script and of the pins, tool versions and tolerance.
+`cargo xtask golden-check` enforces it.
 
 Pitch fixtures under `pitch/` are generated too, by this repository's own
 transcriber and f0 track on generated glides, vibratos and a bass line.

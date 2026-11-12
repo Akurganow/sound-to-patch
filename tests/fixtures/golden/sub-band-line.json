@@ -75,6 +75,10 @@
   "sample_rate": 22050,
   "signal": "0.8 sin(2 pi (f_end t + df tau (1 - exp(-t / tau)))) exp(-t / decay_s) from lead_s on, silence before, length_s in all"
  },
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tolerance": {
   "abs": 0.0005,
   "rel": 1e-05
