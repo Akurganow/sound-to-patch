@@ -7,22 +7,34 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use sound_to_patch::words::check::CONTROL_GROUPS;
-use sound_to_patch::words::{AXES, Axis, Entry, Tag, Value, Words, dictionary};
+use sound_to_patch::words::{AXES, Axis, Entry, KNOWN_FROM, Tag, Value, Words, dictionary};
 
-use crate::music::{CORE, page};
+use crate::music::{CORE, cell, page};
 use crate::reference::REFERENCE;
 
-const CONVENTIONS: &str = "Each row is one sense of a producer word, with no synth control: \
+/// The agreement from which a class reads high, as `Class::of` sets it.
+const HIGH_FROM: f64 = 0.45;
+
+/// The agreement from which a class reads medium, as `Class::of` sets it.
+const MEDIUM_FROM: f64 = 0.20;
+
+/// The introduction of each axis page.
+fn conventions() -> String {
+    format!(
+        "Each row is one sense of a producer word, with no synth control: \
 the synth reference binds the sense to controls. Agreement tells how alike the EQ curves were \
 that listeners drew for the word: 1 means every listener drew the same curve shape, 0 means no \
-shared shape. It reads high from 0.45, medium from 0.20 and low below. `n` is the number of \
-curves, and the class is known only from 8; `few` marks fewer, so treat that word as a guess. \
+shared shape. It reads high from {HIGH_FROM:.2}, medium from {MEDIUM_FROM:.2} and low below. \
+`n` is the number of curves, and the class is known only from {KNOWN_FROM}; `few` marks fewer, \
+so treat that word as a guess. \
 Reverb numbers show how listeners set a reverb for the word: how far each setting (delay, \
 decay, stereo spread, cutoff, wet gain) moved from the average, in standard deviations, and \
 the spread, which is low when listeners agreed and 1 when they did not. Numbers carry their \
 source ids and a tag: `source states` (two or more sources), `single source`, `snippet` \
 (search excerpts only), `crowd data` (the listener data alone, which counts as no source) or \
-`inferred` (no source). Source ids are listed in `dictionary/sources.json`.";
+`inferred` (no source). Source ids are listed in `dictionary/sources.json`."
+    )
+}
 
 /// Every word file, by path relative to the repository root.
 pub(crate) fn files() -> crate::Result<BTreeMap<PathBuf, String>> {
@@ -50,10 +62,6 @@ fn title(axis: Axis) -> &'static str {
         Axis::Envelope => "Envelope words: attack, decay and dynamics",
         Axis::Mood => "Mood words: character with no control",
     }
-}
-
-fn cell(text: &str) -> String {
-    text.replace('|', "\\|").replace('\n', " ")
 }
 
 fn tag(tag: Tag) -> &'static str {
@@ -197,7 +205,7 @@ fn axis_page(words: &Words, axis: Axis) -> String {
         }
         sections.push(("Questions".to_owned(), questions));
     }
-    page(title(axis), CONVENTIONS, &sections)
+    page(title(axis), &conventions(), &sections)
 }
 
 fn lists_page(words: &Words) -> String {
@@ -275,7 +283,19 @@ fn ranked_word(row: &sound_to_patch::words::Ranked) -> String {
 
 #[cfg(test)]
 mod tests {
+    use sound_to_patch::words::Class;
+
     use super::*;
+
+    #[test]
+    fn the_stated_class_bounds_are_the_bounds_of_the_code() {
+        let class = |value: f64, n: u32| Class::of(Some(value), n);
+        assert_eq!(class(HIGH_FROM, KNOWN_FROM), Class::High);
+        assert_eq!(class(HIGH_FROM - 0.01, KNOWN_FROM), Class::Medium);
+        assert_eq!(class(MEDIUM_FROM, KNOWN_FROM), Class::Medium);
+        assert_eq!(class(MEDIUM_FROM - 0.01, KNOWN_FROM), Class::Low);
+        assert_eq!(class(HIGH_FROM, KNOWN_FROM - 1), Class::Unknown);
+    }
 
     #[test]
     fn a_value_prints_its_range_unit_tag_and_sources() {

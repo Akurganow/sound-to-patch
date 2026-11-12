@@ -21,16 +21,27 @@ the toolkit in the cloud.
 The hook checks each local commit message. It lives in `.git/hooks`, so
 every clone installs it once.
 
-The checks CI runs, in the order a pull request should pass them:
+The checks CI runs, in the order a pull request should pass them. The
+fuzz crate is a workspace of its own, so it gets its own format and lint
+commands:
 
 ```sh
 cargo fmt --all --check
+cargo fmt --manifest-path fuzz/Cargo.toml --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
+rustup target add x86_64-apple-darwin
+cargo clippy -p sound-to-patch-host --all-targets --target x86_64-apple-darwin -- -D warnings
+cargo clippy --manifest-path fuzz/Cargo.toml --all-targets -- -D warnings
 cargo nextest run --workspace
 cargo test --workspace --doc
+cargo xtask golden-check
+cargo xtask check-no-ort
+cargo xtask check-fuzz-lock
+cargo xtask reference --check
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items
 cargo about generate --locked --fail --workspace -c about.toml about.hbs -o THIRD-PARTY-LICENSES.html
+grep -q '>vst3-host ' THIRD-PARTY-LICENSES.html
 ```
 
 The book check needs mdBook, its KaTeX preprocessor and lychee:
@@ -43,13 +54,31 @@ cp -R target/doc docs/book/api
 lychee --offline --no-progress --include-fragments --exclude-path docs/book/api --exclude-path docs/book/404.html docs/book
 cargo xtask check-architecture
 cargo xtask check-credits
+cargo xtask check-plugins
 cargo xtask check-rust-version
 ```
 
-The `commits` check also runs `cargo xtask check-pr-body`, which reads the
-pull request description and title from the `PR_BODY` and `PR_TITLE`
-variables. They become the squash commit, so the check also rejects the
-markers that make GitHub skip workflows, such as the bracketed "skip ci":
+The `commits` check verifies the title with `cog verify` and then runs
+`cargo xtask check-pr-body`, which reads the pull request description and
+title from the `PR_BODY` and `PR_TITLE` variables. They become the squash
+commit. The check fails when:
+
+- the title or the description holds a marker that makes GitHub skip
+  workflows, such as the bracketed "skip ci";
+- `## Authorship` is missing, or does not hold exactly one checked box
+  outside HTML comments;
+- `## Verification` is missing, or holds nothing but HTML comments and
+  white space;
+- the description holds a breaking-change footer and the title has no
+  `!`. A footer is a line of `BREAKING CHANGE` or `BREAKING-CHANGE`, after
+  any spaces, then `:` or ` #`, with a value on that line or text on any
+  later line: the form cog reads.
+
+A section runs to the next heading of the template. Pasted output may
+hold other `## ` lines, such as the first line of `git status -sb`. The
+check reads nothing else: the `Closes` line, the summary and the checklist
+are for the reviewer. Dependabot writes its own description, so its pull
+requests get the `cog verify` title check only.
 
 ```sh
 PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-body
@@ -68,9 +97,10 @@ PR_BODY="$(cat description.md)" PR_TITLE="fix: the title" cargo xtask check-pr-b
 - Expected test values never come from an AI. Take them from a formula in
   the facts, a file saved by the target synth, a render, or an independent
   reference.
-- A test that needs a synth carries `#[ignore = "needs Vital"]` or
-  `#[ignore = "needs Serum 2"]`. No default test needs a synth or the
-  network.
+- A test that needs a synth, another outside tool or file, or a long run
+  is ignored with a reason that names what it needs, such as
+  `#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]`. No default test
+  needs a synth or the network.
 - Estimators report measured values in unit types and never round to what
   one synth offers. A mapper picks the nearest option and reports the
   residual.
@@ -103,9 +133,14 @@ checks.
 - Commit messages follow Conventional Commits: `type(scope): subject`. The
   scope is optional; the allowed scopes are in `cog.toml`. Write the subject
   for users: `fix(notes): keep pitch bends within two semitones`.
-- `feat` releases a minor version, `fix` a patch. A breaking change uses `!`
-  after the scope or a `BREAKING CHANGE:` footer. Other types release
-  nothing on their own.
+- `feat` releases a minor version, `fix` a patch. Other types release
+  nothing on their own. A breaking change puts `!` after the type or
+  scope. Below 1.0 the mark changes no bump: `feat!` still releases a
+  minor version, `fix!` a patch, and `chore!` nothing. From 1.0 on, any
+  commit with `!` or a breaking-change footer line, such as
+  `BREAKING CHANGE: the flag is gone`, releases a major version, whatever
+  its type. So `cargo xtask check-pr-body` rejects such a line in a
+  description whose title has no `!`.
 - `main` takes pull requests only, and squash is the only merge method. The
   pull request title becomes the commit subject and the changelog entry, and
   the description becomes the commit body. The `commits` check verifies the
@@ -116,9 +151,10 @@ checks.
 
 Agents may write changes. Such a pull request follows these rules:
 
-- The description checks the agent box under Authorship.
+- The description checks the agent box under Authorship. The check
+  counts one checked box; the reviewer confirms it is the agent box.
 - The Verification section shows the commands that were run and their
-  output.
+  output. The check only requires text there; the reviewer reads it.
 - The maintainer reviews every agent-written pull request before it
   merges. An agent never merges, approves or enables auto-merge on a pull
   request.

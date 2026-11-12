@@ -18,6 +18,7 @@ const OUTPUT: &str = "src/preset/vital/registry.json";
 const REAL: Expect = Expect {
     keys: 794,
     legacy: 22,
+    overrides: 5,
     all_rules_used: true,
 };
 
@@ -25,6 +26,8 @@ const REAL: Expect = Expect {
 struct Expect {
     keys: usize,
     legacy: usize,
+    /// Default values the constructor sets after the groups are added.
+    overrides: usize,
     /// Every name rule and legacy rule must match a control.
     all_rules_used: bool,
 }
@@ -32,6 +35,12 @@ struct Expect {
 /// Writes the registry, or with `check` compares it with the committed file.
 pub(crate) fn run(root: &Path, source: &Path, check: bool) -> crate::Result<()> {
     let text = render(source, &REAL)?;
+    publish(root, source, &text, check)
+}
+
+/// Writes `text` under `root`, or with `check` compares it with the committed
+/// file. `source` only names the checkout in the error.
+fn publish(root: &Path, source: &Path, text: &str, check: bool) -> crate::Result<()> {
     let out = root.join(OUTPUT);
     if check {
         let committed = fs::read_to_string(&out).map_err(|err| {
@@ -1090,10 +1099,11 @@ fn ctor_number(ctor: &[Tok], name: &str) -> crate::Result<String> {
         .ok_or_else(|| format!("the constructor does not set `{name}`").into())
 }
 
-/// The default values the constructor sets after the groups are added.
+/// The default values the constructor sets after the groups are added. A
+/// leading `-` gives a negative default.
 fn default_overrides(ctor: &[Tok]) -> crate::Result<Vec<(String, f64)>> {
     let mut found = Vec::new();
-    for w in ctor.windows(10) {
+    for i in 0..ctor.len() {
         let [
             Tok::Ident(table),
             Tok::Punct('['),
@@ -1102,18 +1112,21 @@ fn default_overrides(ctor: &[Tok]) -> crate::Result<Vec<(String, f64)>> {
             Tok::Punct('.'),
             Tok::Ident(field),
             Tok::Punct('='),
-            Tok::Num(value),
-            Tok::Punct(';'),
-            _,
-        ] = w
+            tail @ ..,
+        ] = &ctor[i..]
         else {
             continue;
+        };
+        let (negative, value) = match tail {
+            [Tok::Num(value), Tok::Punct(';'), ..] => (false, value),
+            [Tok::Punct('-'), Tok::Num(value), Tok::Punct(';'), ..] => (true, value),
+            _ => continue,
         };
         if table == "details_lookup_" && field == "default_value" {
             let Num::Float(v) = literal(value)? else {
                 return Err(format!("the default of `{key}` is not a decimal number").into());
             };
-            found.push((key.clone(), v));
+            found.push((key.clone(), if negative { -v } else { v }));
         }
     }
     if found.is_empty() {
@@ -1400,7 +1413,9 @@ struct Tally {
     /// Key to (min, max, default).
     keys: BTreeMap<String, (f64, f64, f64)>,
     legacy: usize,
+    overrides: usize,
     named_used: BTreeSet<(String, String)>,
+    legacy_used: BTreeSet<(String, String)>,
 }
 
 fn control(group: &Group, t: &Template, tally: &mut Tally) -> crate::Result<Value> {
@@ -1437,6 +1452,9 @@ fn control(group: &Group, t: &Template, tally: &mut Tally) -> crate::Result<Valu
     if let Some((value, count)) = legacy(&group.prefix, &t.name, &group.ids)? {
         c.insert("legacy".into(), value);
         tally.legacy += count;
+        tally
+            .legacy_used
+            .insert((group.prefix.clone(), t.name.clone()));
     }
     Ok(Value::Object(c))
 }
@@ -1488,6 +1506,7 @@ fn build(parsed: &Parsed, commit: &str, expect: &Expect) -> crate::Result<Value>
         slot.2 = *value;
         defaults.insert(key.clone(), *value);
     }
+    tally.overrides = parsed.overrides.len();
     check_totals(&tally, expect)?;
     Ok(json!({
         "source": {
@@ -1514,6 +1533,13 @@ fn check_totals(tally: &Tally, expect: &Expect) -> crate::Result<()> {
         return Err(format!(
             "expected {} legacy controls, found {}. Update the legacy list in xtask/src/vital.rs",
             expect.legacy, tally.legacy
+        )
+        .into());
+    }
+    if tally.overrides != expect.overrides {
+        return Err(format!(
+            "expected {} default overrides, found {}. Update the default overrides in xtask/src/vital.rs",
+            expect.overrides, tally.overrides
         )
         .into());
     }
@@ -1544,6 +1570,22 @@ fn check_totals(tally: &Tally, expect: &Expect) -> crate::Result<()> {
         if !unused.is_empty() {
             return Err(format!(
                 "these name rules match no control: {}. Rename them in xtask/src/vital.rs",
+                unused.join(", ")
+            )
+            .into());
+        }
+        let unused: Vec<_> = LEGACY
+            .iter()
+            .filter(|(p, n, _)| {
+                !tally
+                    .legacy_used
+                    .contains(&((*p).to_owned(), (*n).to_owned()))
+            })
+            .map(|(p, n, _)| format!("{p}/{n}"))
+            .collect();
+        if !unused.is_empty() {
+            return Err(format!(
+                "these legacy rules match no control: {}. Rename or remove them in xtask/src/vital.rs",
                 unused.join(", ")
             )
             .into());
@@ -1758,6 +1800,21 @@ mod tests {
         assert_eq!(ctor_number(&t, "kOld").unwrap(), "2");
         assert!(ctor_number(&t, "kNone").is_err());
         assert_eq!(default_overrides(&t).unwrap(), [("gain".to_owned(), 1.5)]);
+    }
+
+    #[test]
+    fn a_negative_default_override_keeps_its_sign() {
+        let t = toks(
+            r#"details_lookup_["pan"].default_value = -0.5f;
+               details_lookup_["gain"].default_value = 1.5f;
+               other_["x"].default_value = -2.0f;"#,
+        );
+        assert_eq!(
+            default_overrides(&t).unwrap(),
+            [("pan".to_owned(), -0.5), ("gain".to_owned(), 1.5)]
+        );
+        let whole = toks(r#"details_lookup_["pan"].default_value = -1;"#);
+        assert!(default_overrides(&whole).is_err());
     }
 
     #[test]
@@ -2014,6 +2071,7 @@ mod tests {
     const MINI: Expect = Expect {
         keys: 3,
         legacy: 1,
+        overrides: 1,
         all_rules_used: false,
     };
 
@@ -2052,6 +2110,17 @@ mod tests {
             err.contains("expected 22 legacy controls, found 1"),
             "{err}"
         );
+        let wrong_overrides = Expect {
+            overrides: 5,
+            ..MINI
+        };
+        let err = build(&mini(0.5), "abc", &wrong_overrides)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("expected 5 default overrides, found 1"),
+            "{err}"
+        );
         let err = build(&mini(2.0), "abc", &MINI).unwrap_err().to_string();
         assert!(err.contains("outside min..max for: gain"), "{err}");
         let mut stray = mini(0.5);
@@ -2063,6 +2132,72 @@ mod tests {
         };
         let err = build(&mini(0.5), "abc", &strict).unwrap_err().to_string();
         assert!(err.contains("filter/cutoff"), "{err}");
+    }
+
+    #[test]
+    fn a_legacy_rule_that_matches_no_control_fails_the_totals() {
+        let mut tally = Tally {
+            named_used: NAMED
+                .iter()
+                .map(|(p, n, _)| ((*p).to_owned(), (*n).to_owned()))
+                .collect(),
+            legacy_used: LEGACY
+                .iter()
+                .map(|(p, n, _)| ((*p).to_owned(), (*n).to_owned()))
+                .collect(),
+            ..Tally::default()
+        };
+        let strict = Expect {
+            keys: 0,
+            legacy: 0,
+            overrides: 0,
+            all_rules_used: true,
+        };
+        check_totals(&tally, &strict).unwrap();
+        tally
+            .legacy_used
+            .remove(&("filter".to_owned(), "osc2_input".to_owned()));
+        let err = check_totals(&tally, &strict).unwrap_err().to_string();
+        assert!(err.contains("legacy rules match no control"), "{err}");
+        assert!(err.contains("filter/osc2_input"), "{err}");
+        assert!(!err.contains("osc1_input"), "{err}");
+        let lax = Expect {
+            all_rules_used: false,
+            ..strict
+        };
+        check_totals(&tally, &lax).unwrap();
+    }
+
+    #[test]
+    fn publish_reports_a_missing_file_and_a_stale_file_and_writes() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = Path::new("/vital");
+        let out = dir.path().join(OUTPUT);
+
+        let err = publish(dir.path(), source, "new\n", true)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("cannot read"), "{err}");
+        assert!(err.contains(&out.display().to_string()), "{err}");
+        assert!(
+            err.contains("cargo xtask vital-registry --source <checkout>"),
+            "{err}"
+        );
+        assert!(!out.exists());
+
+        publish(dir.path(), source, "old\n", false).unwrap();
+        assert_eq!(fs::read_to_string(&out).unwrap(), "old\n");
+
+        publish(dir.path(), source, "old\n", true).unwrap();
+        let err = publish(dir.path(), source, "new\n", true)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains(&format!("{OUTPUT} differs")), "{err}");
+        assert!(err.contains("/vital"), "{err}");
+        assert_eq!(fs::read_to_string(&out).unwrap(), "old\n");
+
+        publish(dir.path(), source, "new\n", false).unwrap();
+        assert_eq!(fs::read_to_string(&out).unwrap(), "new\n");
     }
 
     #[test]

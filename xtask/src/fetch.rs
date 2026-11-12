@@ -51,7 +51,9 @@ pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
 /// `expected`.
 ///
 /// A file already at `out` with the right digest is kept and not fetched
-/// again. A download with the wrong digest is deleted.
+/// again. A download with the wrong digest is deleted. Only `https://` and
+/// `file://` URLs work, and a redirect must stay on `https://`. The connect
+/// step times out after 30 seconds and the whole transfer after an hour.
 pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Result<()> {
     if out.exists() && digest_of(out)? == *expected {
         return Ok(());
@@ -66,16 +68,25 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
             "--location",
             "--silent",
             "--show-error",
+            "--proto",
+            "=https,file",
+            "--proto-redir",
+            "=https",
+            "--connect-timeout",
+            CONNECT_SECONDS,
+            "--max-time",
+            TRANSFER_SECONDS,
             "--output",
         ])
         .arg(&partial)
+        .arg("--")
         .arg(url)
         .status()
         .map_err(|err| format!("could not run curl: {err}. Install curl and retry"))?;
     if !status.success() {
         // curl may leave a partial file behind; a missing one is fine.
         let _ = fs::remove_file(&partial);
-        return Err(format!("curl failed on {url} with {status}").into());
+        return Err(curl_failure(url, &status.to_string(), status.code()).into());
     }
     let actual = digest_of(&partial)?;
     if actual != *expected {
@@ -88,6 +99,27 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
     }
     fs::rename(&partial, out)?;
     Ok(())
+}
+
+/// The seconds curl may take to connect.
+const CONNECT_SECONDS: &str = "30";
+
+/// The seconds curl may take for the whole transfer.
+const TRANSFER_SECONDS: &str = "3600";
+
+/// The exit code curl gives when a time limit ends the transfer.
+const CURL_TIMED_OUT: i32 = 28;
+
+/// The error of a failed curl run, with the cause where the code names one.
+fn curl_failure(url: &str, status: &str, code: Option<i32>) -> String {
+    if code == Some(CURL_TIMED_OUT) {
+        format!(
+            "curl timed out on {url}: the connection took over {CONNECT_SECONDS} seconds \
+             or the transfer over {TRANSFER_SECONDS}. Check the network and retry on a faster link"
+        )
+    } else {
+        format!("curl failed on {url} with {status}")
+    }
 }
 
 fn digest_of(path: &Path) -> io::Result<Sha256Digest> {
@@ -152,6 +184,55 @@ mod tests {
         let wrong = "00".repeat(32).parse().unwrap();
         let err = fetch(&source(dir.path()), &wrong, &out).unwrap_err();
         assert!(err.to_string().contains(ABC), "{err}");
+        assert!(!out.exists());
+        assert!(!out.with_extension("part").exists());
+    }
+
+    #[test]
+    fn a_timeout_names_its_cause_and_the_fix() {
+        let message = curl_failure("https://x", "exit status: 28", Some(28));
+        assert!(message.contains("timed out"), "{message}");
+        assert!(message.contains("over 30 seconds"), "{message}");
+        assert!(message.contains("over 3600"), "{message}");
+        assert!(message.contains("retry"), "{message}");
+        let other = curl_failure("https://x", "exit status: 22", Some(22));
+        assert_eq!(other, "curl failed on https://x with exit status: 22");
+    }
+
+    #[test]
+    fn fetch_refuses_a_plain_http_url() {
+        use std::io::Write;
+        use std::net::TcpListener;
+
+        // A live server that sends the pinned bytes: only the protocol
+        // rule can make the call fail.
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            while let Ok((mut stream, _)) = listener.accept() {
+                let _ = stream.write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Length: 3\r\nConnection: close\r\n\r\nabc",
+                );
+            }
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("abc.txt");
+        let url = format!("http://127.0.0.1:{port}/x");
+        let err = fetch(&url, &ABC.parse().unwrap(), &out).unwrap_err();
+        assert!(err.to_string().contains("curl failed"), "{err}");
+        assert!(!out.exists());
+        assert!(!out.with_extension("part").exists());
+    }
+
+    #[test]
+    fn fetch_does_not_read_a_url_that_starts_with_a_dash_as_an_option() {
+        let dir = tempfile::tempdir().unwrap();
+        let out = dir.path().join("abc.txt");
+        let err = fetch("--version", &ABC.parse().unwrap(), &out).unwrap_err();
+        assert!(
+            err.to_string().contains("curl failed on --version"),
+            "{err}"
+        );
         assert!(!out.exists());
         assert!(!out.with_extension("part").exists());
     }

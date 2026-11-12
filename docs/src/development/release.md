@@ -13,11 +13,14 @@ one tags or uploads by hand.
    the last tag:
    - a `feat` commit bumps the minor version;
    - a `fix` commit bumps the patch version;
-   - a breaking change (`!` after the type or scope, or a `BREAKING CHANGE:`
-     footer) bumps the major version, and the minor version while the
-     project is below 1.0;
    - any other type alone bumps nothing. The job ends green and the change
-     ships with the next release.
+     ships with the next release;
+   - a breaking change (`!` after the type or scope) bumps nothing more
+     while the project is below 1.0: `feat!` bumps the minor version,
+     `fix!` the patch version, and `chore!` nothing. From 1.0 on, a commit
+     of any type with `!`, or with a body line such as
+     `BREAKING CHANGE: the flag is gone` or `BREAKING-CHANGE: ...`, bumps
+     the major version.
 3. A bump runs `cargo xtask set-version` as its pre-bump hook, which
    writes the version into `Cargo.toml`, `Cargo.lock` and
    `fuzz/Cargo.lock`. Cog then updates `CHANGELOG.md` and creates the
@@ -29,7 +32,7 @@ one tags or uploads by hand.
    read it.
 5. The tag starts the publish workflow. It stops unless the tag is
    `vX.Y.Z` and its commit is on `main`. It builds the macOS arm64
-   binary, the universal plug-in host, the man page, the shell
+   binary, the universal plug-in host, the man pages, the shell
    completions and `THIRD-PARTY-LICENSES.html`. It checks that the host
    holds both slices and that both binaries print the tag's version. The
    host's x86_64 slice runs only where the runner has Rosetta; without
@@ -55,7 +58,9 @@ library or its core.
 - `sound-to-patch-host`, the plug-in host that `render` starts, a
   universal binary for Apple silicon and Intel: Vital 1.0.7 holds Intel
   code only, so the host runs as Intel under Rosetta for it;
-- `man/sound-to-patch.1`;
+- `man/`, one page per command: `sound-to-patch.1` and
+  `sound-to-patch-<subcommand>.1` for each subcommand, such as
+  `sound-to-patch-analyze.1` and `sound-to-patch-preset-apply.1`;
 - `completions/` for bash, zsh and fish;
 - `THIRD-PARTY-LICENSES.html`;
 - `LICENSE`.

@@ -15,8 +15,9 @@ use sound_to_patch::music::rhythm::{
     Division, euclid, onsets, rotate, swing_delay, swing_ratio, swing_ticks, tick_ms,
 };
 use sound_to_patch::music::{Dictionary, TOPICS, dictionary};
+use sound_to_patch::notes::TICKS_PER_BEAT;
 
-use crate::reference::{CONTENTS_ABOVE, HEADER, REFERENCE, anchor};
+use crate::reference::{HEADER, REFERENCE, anchor, needs_contents};
 
 /// The folder of the files every synth shares.
 pub(crate) const CORE: &str = "core";
@@ -66,7 +67,8 @@ pub(crate) fn files() -> crate::Result<BTreeMap<PathBuf, String>> {
     Ok(files)
 }
 
-/// The coverage report, and an error when an M1 or M2 group falls short.
+/// The coverage report, and an error when a group of any tier falls short
+/// of its floor.
 pub(crate) fn check_coverage() -> crate::Result<()> {
     let rows = coverage(dictionary()?);
     let gaps: Vec<String> = rows
@@ -96,7 +98,7 @@ pub(crate) fn page(title: &str, intro: &str, sections: &[(String, String)]) -> S
     for (heading, section) in sections {
         let _ = write!(body, "\n## {heading}\n\n{section}");
     }
-    if text.lines().count() + body.lines().count() > CONTENTS_ABOVE && sections.len() > 1 {
+    if needs_contents(text.lines().count() + body.lines().count()) {
         text.push_str("\n## Contents\n\n");
         for (heading, _) in sections {
             let _ = writeln!(text, "- [{heading}](#{})", anchor(heading));
@@ -135,7 +137,8 @@ fn group_title(group: Group) -> &'static str {
     }
 }
 
-fn cell(text: &str) -> String {
+/// `text` as one Markdown table cell: pipes escaped, line breaks as spaces.
+pub(crate) fn cell(text: &str) -> String {
     text.replace('|', "\\|").replace('\n', " ")
 }
 
@@ -578,8 +581,9 @@ fn swing_table() -> String {
 }
 
 fn tick_table() -> String {
-    let mut text = String::from(
-        "480 ticks per quarter note. One tick lasts `60000 / (BPM * 480)` ms.\n\n\
+    let mut text = format!(
+        "{TICKS_PER_BEAT} ticks per quarter note. One tick lasts \
+         `60000 / (BPM * {TICKS_PER_BEAT})` ms.\n\n\
          | Division | Ticks |\n| :-- | --: |\n",
     );
     for division in Division::ALL {
@@ -696,16 +700,47 @@ fn topic_title(prefix: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::reference::CONTENTS_ABOVE;
+
     use super::*;
 
     #[test]
     fn music_files_stay_under_the_line_cap() {
         for (path, text) in files().unwrap() {
             assert!(text.lines().count() <= 300, "{}", path.display());
-            if text.lines().count() > CONTENTS_ABOVE {
+            if needs_contents(text.lines().count()) {
                 assert!(text.contains("\n## Contents\n"), "{}", path.display());
             }
         }
+    }
+
+    #[test]
+    fn a_long_page_with_one_section_opens_with_contents() {
+        let section = "line\n".repeat(CONTENTS_ABOVE);
+        let text = page("Title", "Intro.", &[("Only".to_owned(), section)]);
+        assert!(
+            text.contains("\n## Contents\n\n- [Only](#only)\n"),
+            "{text}"
+        );
+        let short = page(
+            "Title",
+            "Intro.",
+            &[("Only".to_owned(), "line\n".to_owned())],
+        );
+        assert!(!short.contains("## Contents"), "{short}");
+    }
+
+    #[test]
+    fn the_tick_table_states_the_tick_count_of_the_code() {
+        let table = tick_table();
+        assert!(
+            table.starts_with(&format!("{TICKS_PER_BEAT} ticks per quarter note.")),
+            "{table}"
+        );
+        assert!(
+            table.contains(&format!("(BPM * {TICKS_PER_BEAT})")),
+            "{table}"
+        );
     }
 
     #[test]
