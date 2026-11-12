@@ -21,7 +21,7 @@ pub use recipe::{
 };
 
 /// The highest MIDI key.
-const MAX_KEY: u8 = 127;
+pub const MAX_KEY: u8 = 127;
 /// The latest time a note may end: 10 minutes. A clip holds every sample
 /// in memory, and a longer part than a stem takes splits into several
 /// renders.
@@ -170,6 +170,8 @@ pub enum ControlKind {
 
 /// The largest pitch bend value: 14 bits.
 pub const MAX_PITCH_BEND: u16 = 16_383;
+/// The pitch bend value of no bend, the centre of the 14-bit range.
+pub const PITCH_BEND_CENTRE: u16 = 8192;
 /// The largest value of a MIDI controller: 7 bits.
 pub const MAX_CONTROLLER: u8 = 127;
 
@@ -183,7 +185,7 @@ impl ControlKind {
     pub fn checked(self) -> Result<Self, PlayError> {
         match self {
             Self::PitchBend(value) if value > MAX_PITCH_BEND => Err(PlayError::Control(format!(
-                "pitch bend {value} is above {MAX_PITCH_BEND}; pass 0 to {MAX_PITCH_BEND}, with the centre at 8192"
+                "pitch bend {value} is above {MAX_PITCH_BEND}; pass 0 to {MAX_PITCH_BEND}, with the centre at {PITCH_BEND_CENTRE}"
             ))),
             Self::ModWheel(value) if value > MAX_CONTROLLER => Err(PlayError::Control(format!(
                 "mod wheel {value} is above {MAX_CONTROLLER}; pass 0 to {MAX_CONTROLLER}"
@@ -320,5 +322,15 @@ mod tests {
         assert!(error.to_string().contains("pass 0 to 127"), "{error}");
         assert!(ControlKind::PitchBend(MAX_PITCH_BEND).checked().is_ok());
         assert!(ControlKind::ModWheel(MAX_CONTROLLER).checked().is_ok());
+    }
+
+    #[test]
+    fn the_midi_limits_keep_their_values() {
+        assert_eq!(
+            (MAX_KEY, MAX_CONTROLLER, MAX_PITCH_BEND, PITCH_BEND_CENTRE),
+            (127, 127, 16_383, 8192)
+        );
+        assert_eq!(PITCH_BEND_CENTRE, 1 << 13);
+        assert_eq!(MAX_PITCH_BEND - PITCH_BEND_CENTRE, 8191);
     }
 }

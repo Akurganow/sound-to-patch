@@ -10,10 +10,10 @@
 //! assert_eq!(ticks_for_ms(5.0, 120.0), Some(5));
 //! ```
 
-use crate::audio::{self, Feel, NoteValue};
+use crate::audio::{self, BeatGrid, Feel, NoteValue};
 use crate::cast;
-use crate::notes::TICKS_PER_BEAT;
-use crate::units::Bpm;
+use crate::notes::{TICKS_PER_BEAT, ticks_per_second};
+use crate::units::{Bpm, Seconds};
 
 /// The Euclidean pattern of `k` onsets over `n` steps.
 ///
@@ -71,41 +71,88 @@ pub fn rotate(pattern: &[bool], rotation: usize) -> Vec<bool> {
 
 /// The delay of the second note of a swung pair, in sixteenths, for a pair
 /// percent `pct` (50 is straight) and a pair of sixteenths.
+///
+/// Returns `None` where the delay is negative or not finite: for a pair
+/// percent below 50, an infinity or NaN.
 #[must_use]
-pub fn swing_delay(pct: f64) -> f64 {
-    (pct / 100.0 - 0.5) * 2.0
+pub fn swing_delay(pct: f64) -> Option<f64> {
+    non_negative((pct / 100.0 - 0.5) * 2.0)
 }
 
 /// The long-to-short ratio of a pair percent.
+///
+/// Returns `None` where the ratio is negative or not finite: for a pair
+/// percent below 0, of 100 or more, or NaN.
 #[must_use]
-pub fn swing_ratio(pct: f64) -> f64 {
-    pct / (100.0 - pct)
+pub fn swing_ratio(pct: f64) -> Option<f64> {
+    non_negative(pct / (100.0 - pct))
 }
 
 /// The pair percent of a long-to-short ratio.
+///
+/// Returns `None` for a negative ratio, which no pair has, and where the
+/// percent is not finite: for an infinity or NaN.
 #[must_use]
-pub fn swing_pct(ratio: f64) -> f64 {
-    100.0 * ratio / (ratio + 1.0)
+pub fn swing_pct(ratio: f64) -> Option<f64> {
+    if ratio < 0.0 {
+        return None;
+    }
+    non_negative(100.0 * ratio / (ratio + 1.0))
 }
 
-/// The delay of the second note of a swung pair in ticks. `note` is 16 for
-/// a pair of sixteenths (240 ticks) and 8 for a pair of eighths (480).
-#[must_use]
-pub fn swing_ticks(pct: f64, note: u8) -> f64 {
-    let pair = if note == 8 { 2.0 } else { 1.0 } * f64::from(TICKS_PER_BEAT) / 2.0;
-    (pct / 100.0 - 0.5) * pair
+/// The two notes of a swung pair.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Pair {
+    /// A pair of sixteenths, 240 ticks.
+    Sixteenths,
+    /// A pair of eighths, 480 ticks.
+    Eighths,
 }
 
-/// The length of one tick in ms.
-#[must_use]
-pub fn tick_ms(bpm: f64) -> f64 {
-    60_000.0 / (bpm * f64::from(TICKS_PER_BEAT))
+impl Pair {
+    /// The length of the pair in ticks.
+    #[must_use]
+    pub fn ticks(self) -> u32 {
+        let note = match self {
+            Self::Sixteenths => Division::Sixteenth,
+            Self::Eighths => Division::Eighth,
+        };
+        2 * note.ticks()
+    }
 }
 
-/// The length of a sixteenth in ms.
+/// The delay of the second note of a swung pair in ticks.
+///
+/// Returns `None` where the delay is negative or not finite: for a pair
+/// percent below 50, an infinity or NaN.
 #[must_use]
-pub fn sixteenth_ms(bpm: f64) -> f64 {
-    60_000.0 / bpm / 4.0
+pub fn swing_ticks(pct: f64, pair: Pair) -> Option<f64> {
+    non_negative((pct / 100.0 - 0.5) * f64::from(pair.ticks()))
+}
+
+/// The length of one tick in ms, `1000 / ticks per second`, the tick the
+/// MIDI writer uses.
+///
+/// Returns `None` for a tempo outside the 4 to 1000 BPM of [`Bpm`].
+#[must_use]
+pub fn tick_ms(bpm: f64) -> Option<f64> {
+    let bpm = Bpm::new(bpm).ok()?;
+    Some(1000.0 / ticks_per_second(bpm))
+}
+
+/// The length of a sixteenth in ms: a quarter of the beat period of the
+/// stem's beat grid.
+///
+/// Returns `None` for a tempo outside the 4 to 1000 BPM of [`Bpm`].
+#[must_use]
+pub fn sixteenth_ms(bpm: f64) -> Option<f64> {
+    let grid = BeatGrid::new(Bpm::new(bpm).ok()?, Seconds::from_const(0.0));
+    Some(grid.beat_period().get() / 4.0 * 1000.0)
+}
+
+/// `value` when it is finite and not negative.
+fn non_negative(value: f64) -> Option<f64> {
+    (value.is_finite() && value >= 0.0).then_some(value)
 }
 
 /// The whole ticks that cover `ms` at a tempo, rounded up, so an overlap
@@ -115,12 +162,12 @@ pub fn sixteenth_ms(bpm: f64) -> f64 {
 /// length that is NaN or negative, or a tick count beyond `u32`.
 #[must_use]
 pub fn ticks_for_ms(ms: f64, bpm: f64) -> Option<u32> {
-    Bpm::new(bpm).ok()?;
+    let tick = tick_ms(bpm)?;
     if ms.is_nan() || ms < 0.0 {
         return None;
     }
     // The nanotick margin keeps a length of exactly n ticks at n.
-    let ticks = cast::ceil_to_usize((ms / tick_ms(bpm) - 1e-9).max(0.0))?;
+    let ticks = cast::ceil_to_usize((ms / tick - 1e-9).max(0.0))?;
     u32::try_from(ticks).ok()
 }
 
@@ -348,17 +395,71 @@ mod tests {
             (75.0, 3.00, 0.50, 60.0, [83.3, 62.5, 53.6]),
         ];
         for (pct, ratio, delay, ticks, ms) in rows {
-            assert!((swing_ratio(pct) - ratio).abs() < 0.006, "{pct}");
-            assert!((swing_delay(pct) - delay).abs() < 0.006, "{pct}");
-            assert!((swing_ticks(pct, 16) - ticks).abs() < 0.1, "{pct}");
+            assert!((swing_ratio(pct).unwrap() - ratio).abs() < 0.006, "{pct}");
+            assert!((swing_delay(pct).unwrap() - delay).abs() < 0.006, "{pct}");
+            assert!(
+                (swing_ticks(pct, Pair::Sixteenths).unwrap() - ticks).abs() < 0.1,
+                "{pct}"
+            );
             for (bpm, late) in [90.0, 120.0, 140.0].into_iter().zip(ms) {
-                let computed = swing_ticks(pct, 16) * tick_ms(bpm);
+                let computed = swing_ticks(pct, Pair::Sixteenths).unwrap() * tick_ms(bpm).unwrap();
                 assert!((computed - late).abs() < 0.1, "{pct} at {bpm}: {computed}");
             }
-            assert!((swing_pct(swing_ratio(pct)) - pct).abs() < 1e-9);
+            assert!((swing_pct(swing_ratio(pct).unwrap()).unwrap() - pct).abs() < 1e-9);
         }
-        assert!(swing_delay(50.0).abs() < 1e-12);
-        assert!((swing_ticks(66.7, 8) - 80.16).abs() < 0.01);
+        assert_eq!(swing_delay(50.0), Some(0.0));
+        assert!((swing_ticks(66.7, Pair::Eighths).unwrap() - 80.16).abs() < 0.01);
+        assert_eq!(
+            [Pair::Sixteenths.ticks(), Pair::Eighths.ticks()],
+            [240, 480]
+        );
+    }
+
+    #[test]
+    fn swing_refuses_a_negative_or_infinite_result() {
+        for pct in [49.9, 0.0, -10.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(swing_delay(pct), None, "{pct}");
+            assert_eq!(swing_ticks(pct, Pair::Sixteenths), None, "{pct}");
+            assert_eq!(swing_ticks(pct, Pair::Eighths), None, "{pct}");
+        }
+        for pct in [100.0, 150.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert_eq!(swing_ratio(pct), None, "{pct}");
+        }
+        assert_eq!(swing_ratio(0.0), Some(0.0));
+        assert_eq!(swing_ratio(75.0), Some(3.0));
+        for ratio in [-1.0, -2.0, -0.5, f64::NAN, f64::INFINITY] {
+            assert_eq!(swing_pct(ratio), None, "{ratio}");
+        }
+        assert_eq!(swing_pct(0.0), Some(0.0));
+        assert_eq!(swing_pct(3.0), Some(75.0));
+        assert_eq!(swing_pct(1e300), Some(100.0));
+    }
+
+    #[test]
+    fn tempo_lengths_refuse_a_tempo_outside_the_bpm_range() {
+        for bpm in [0.0, -120.0, f64::NAN, f64::INFINITY, 3.9, 1000.5] {
+            assert_eq!(tick_ms(bpm), None, "{bpm}");
+            assert_eq!(sixteenth_ms(bpm), None, "{bpm}");
+        }
+        assert_eq!(tick_ms(120.0), Some(1000.0 / 960.0));
+        assert_eq!(sixteenth_ms(120.0), Some(125.0));
+    }
+
+    /// The tick and the sixteenth come from the MIDI writer and the beat
+    /// grid. They stay within two ulp of the published formulas
+    /// `60000 / (BPM * 480)` and `60000 / BPM / 4`.
+    #[test]
+    fn tempo_lengths_match_the_published_formulas_to_two_ulp() {
+        let ulps = |a: f64, b: f64| a.to_bits().abs_diff(b.to_bits());
+        for hundredths in 400_u32..=100_000 {
+            let bpm = f64::from(hundredths) / 100.0;
+            let tick = 60_000.0 / (bpm * f64::from(TICKS_PER_BEAT));
+            assert!(ulps(tick_ms(bpm).unwrap(), tick) <= 2, "{bpm}");
+            assert!(
+                ulps(sixteenth_ms(bpm).unwrap(), 60_000.0 / bpm / 4.0) <= 2,
+                "{bpm}"
+            );
+        }
     }
 
     #[test]
@@ -401,10 +502,10 @@ mod tests {
             assert!(audio::Division::ALL.contains(&division.division()));
         }
         for (bpm, ms) in [(120.0, 1.042), (140.0, 0.893), (174.0, 0.718)] {
-            assert!((tick_ms(bpm) - ms).abs() < 0.001, "{bpm}");
+            assert!((tick_ms(bpm).unwrap() - ms).abs() < 0.001, "{bpm}");
         }
         for (bpm, ms) in [(90.0, 166.7), (120.0, 125.0), (140.0, 107.1), (174.0, 86.2)] {
-            assert!((sixteenth_ms(bpm) - ms).abs() < 0.05, "{bpm}");
+            assert!((sixteenth_ms(bpm).unwrap() - ms).abs() < 0.05, "{bpm}");
         }
         assert_eq!(ticks_for_ms(5.0, 120.0), Some(5));
         assert_eq!(ticks_for_ms(5.0, 174.0), Some(7));

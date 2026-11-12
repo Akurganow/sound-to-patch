@@ -17,8 +17,8 @@ use sound_to_patch_core::render::wire::{
     PROTOCOL_VERSION, Reply, Request, WireControl, WireControlKind, WireNote,
 };
 use sound_to_patch_core::render::{
-    ControlKind, EventKind, PreRoll, ProcessMode as RecipeProcessMode, RECIPE_VERSION, Recipe,
-    RenderNote, TailWatch, frame_of, note_events,
+    ControlKind, EventKind, PITCH_BEND_CENTRE, PreRoll, ProcessMode as RecipeProcessMode,
+    RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of, note_events,
 };
 use sound_to_patch_core::synth::Synth;
 use sound_to_patch_core::units::Seconds;
@@ -274,7 +274,9 @@ impl Session {
         let reset = [
             (
                 0,
-                control_event(WireControlKind::PitchBend { value: CENTRE }),
+                control_event(WireControlKind::PitchBend {
+                    value: PITCH_BEND_CENTRE,
+                }),
             ),
             (0, control_event(WireControlKind::ModWheel { value: 0 })),
         ];
@@ -395,9 +397,6 @@ fn note_on(key: u8, velocity: u8) -> MidiEvent {
         velocity,
     }
 }
-
-/// The centre of the pitch bend range.
-const CENTRE: u16 = 8192;
 
 fn control_event(kind: WireControlKind) -> MidiEvent {
     match kind {

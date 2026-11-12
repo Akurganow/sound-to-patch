@@ -76,9 +76,12 @@ joins `READY` when its adapter lands.
   a fixed rate. The `Tempo` refines the given BPM from the
   onsets. The `Stem` adds the beat grid and note divisions, the band
   edge, the flat-top flag and the stereo screen.
-- `cast`: the audited numeric casts. Every `as` between number types goes
-  through one function here, with its reason and a test. It lives in
-  `core`.
+- `cast`: the audited numeric casts. Every `as` between number types in
+  the library and the host goes through one function here, with the reason
+  it is sound and a test of its edge cases. It lives in `core`. The library
+  re-exports it for the developer tools and the integration tests. The
+  developer tools keep four local casts, each under an `expect` attribute
+  with its reason.
 - `cli`: the command-line definition, one module per command. The binary
   parses it, and `xtask` renders the man pages and the shell completions
   from the same tree.

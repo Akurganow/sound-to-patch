@@ -40,9 +40,9 @@ pub mod vita;
 
 #[doc(inline)]
 pub use sound_to_patch_core::render::{
-    ClipEnd, ControlKind, EventKind, MAX_CONTROLLER, MAX_NOTE_END, MAX_PITCH_BEND, Material,
-    NoteEvent, Oversampling, PlayError, PreRoll, ProcessMode, RECIPE_VERSION, Recipe, RenderNote,
-    TailWatch, frame_of, note_events, recipe, wire,
+    ClipEnd, ControlKind, EventKind, MAX_CONTROLLER, MAX_KEY, MAX_NOTE_END, MAX_PITCH_BEND,
+    Material, NoteEvent, Oversampling, PITCH_BEND_CENTRE, PlayError, PreRoll, ProcessMode,
+    RECIPE_VERSION, Recipe, RenderNote, TailWatch, frame_of, note_events, recipe, wire,
 };
 
 /// How far a pitch from a note list may lie from a whole key. The MIDI

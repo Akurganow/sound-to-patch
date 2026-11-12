@@ -32,6 +32,7 @@ mod stem;
 mod track;
 mod transcribe;
 mod write;
+pub(crate) use write::ticks_per_second;
 
 pub use cleanup::{
     ATTACK_AFTER, ATTACK_BEFORE, ATTACK_DIP, COPY_SLACK, FUNDAMENTAL_DIP, HARMONIC_DIP,

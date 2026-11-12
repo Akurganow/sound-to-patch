@@ -325,7 +325,7 @@ mod tests {
         (0..rate)
             .map(|n| {
                 let t = f64::from(n) / f64::from(rate);
-                if (n as usize) < start {
+                if usize::try_from(n).unwrap() < start {
                     0.0
                 } else {
                     (std::f64::consts::TAU * frequency * t).sin()

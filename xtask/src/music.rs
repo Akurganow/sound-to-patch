@@ -12,7 +12,7 @@ use sound_to_patch::music::entry::{ArpOrder, Entry, Group, LengthUnit, Rule, Voi
 use sound_to_patch::music::key::{Camelot, Mode};
 use sound_to_patch::music::pitch::{OctaveLabel, Spelling, note_name};
 use sound_to_patch::music::rhythm::{
-    Division, euclid, onsets, rotate, swing_delay, swing_ratio, swing_ticks, tick_ms,
+    Division, Pair, euclid, onsets, rotate, swing_delay, swing_ratio, swing_ticks, tick_ms,
 };
 use sound_to_patch::music::{Dictionary, TOPICS, dictionary};
 use sound_to_patch::notes::TICKS_PER_BEAT;
@@ -564,16 +564,23 @@ fn swing_table() -> String {
          | --: | --: | --: | --: | :-- |\n",
     );
     for pct in [54.0, 58.0, 62.0, 66.7, 75.0] {
-        let ticks = swing_ticks(pct, 16);
+        // Every pair percent and tempo of the table is in range, so no
+        // row is skipped; `cargo xtask reference --check` would see one.
+        let (Some(ticks), Some(ratio), Some(delay)) = (
+            swing_ticks(pct, Pair::Sixteenths),
+            swing_ratio(pct),
+            swing_delay(pct),
+        ) else {
+            continue;
+        };
         let ms: Vec<String> = [90.0, 120.0, 140.0]
             .iter()
-            .map(|bpm| format!("{:.1}", ticks * tick_ms(*bpm)))
+            .filter_map(|bpm| tick_ms(*bpm))
+            .map(|tick| format!("{:.1}", ticks * tick))
             .collect();
         let _ = writeln!(
             text,
-            "| {pct} | {:.2}:1 | {:.2} | {ticks:.1} | {} |",
-            swing_ratio(pct),
-            swing_delay(pct),
+            "| {pct} | {ratio:.2}:1 | {delay:.2} | {ticks:.1} | {} |",
             ms.join(" / ")
         );
     }

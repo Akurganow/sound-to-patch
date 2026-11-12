@@ -2,10 +2,9 @@
 //! library and the host goes through one function here, with the reason it
 //! is sound and a test of its edge cases.
 //!
-//! The library re-exports this module
-//! for the developer tools and the integration tests, which call it too;
-//! the few local casts left in the developer tools each carry an `expect`
-//! attribute with its reason.
+//! The library re-exports this module for the developer tools and the
+//! integration tests. The developer tools keep four local casts, each under
+//! an `expect` attribute with its reason.
 
 /// An integer count as `f64`. Exact up to 2^53, far above any count of
 /// samples, keys or slots this crate handles.
