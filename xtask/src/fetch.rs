@@ -73,9 +73,9 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
             "--proto-redir",
             "=https",
             "--connect-timeout",
-            "30",
+            CONNECT_SECONDS,
             "--max-time",
-            "3600",
+            TRANSFER_SECONDS,
             "--output",
         ])
         .arg(&partial)
@@ -86,7 +86,7 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
     if !status.success() {
         // curl may leave a partial file behind; a missing one is fine.
         let _ = fs::remove_file(&partial);
-        return Err(format!("curl failed on {url} with {status}").into());
+        return Err(curl_failure(url, &status.to_string(), status.code()).into());
     }
     let actual = digest_of(&partial)?;
     if actual != *expected {
@@ -99,6 +99,27 @@ pub(crate) fn fetch(url: &str, expected: &Sha256Digest, out: &Path) -> crate::Re
     }
     fs::rename(&partial, out)?;
     Ok(())
+}
+
+/// The seconds curl may take to connect.
+const CONNECT_SECONDS: &str = "30";
+
+/// The seconds curl may take for the whole transfer.
+const TRANSFER_SECONDS: &str = "3600";
+
+/// The exit code curl gives when a time limit ends the transfer.
+const CURL_TIMED_OUT: i32 = 28;
+
+/// The error of a failed curl run, with the cause where the code names one.
+fn curl_failure(url: &str, status: &str, code: Option<i32>) -> String {
+    if code == Some(CURL_TIMED_OUT) {
+        format!(
+            "curl timed out on {url}: the connection took over {CONNECT_SECONDS} seconds \
+             or the transfer over {TRANSFER_SECONDS}. Check the network and retry on a faster link"
+        )
+    } else {
+        format!("curl failed on {url} with {status}")
+    }
 }
 
 fn digest_of(path: &Path) -> io::Result<Sha256Digest> {
@@ -165,6 +186,17 @@ mod tests {
         assert!(err.to_string().contains(ABC), "{err}");
         assert!(!out.exists());
         assert!(!out.with_extension("part").exists());
+    }
+
+    #[test]
+    fn a_timeout_names_its_cause_and_the_fix() {
+        let message = curl_failure("https://x", "exit status: 28", Some(28));
+        assert!(message.contains("timed out"), "{message}");
+        assert!(message.contains("over 30 seconds"), "{message}");
+        assert!(message.contains("over 3600"), "{message}");
+        assert!(message.contains("retry"), "{message}");
+        let other = curl_failure("https://x", "exit status: 22", Some(22));
+        assert_eq!(other, "curl failed on https://x with exit status: 22");
     }
 
     #[test]

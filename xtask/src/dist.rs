@@ -1,4 +1,4 @@
-//! The man page and the shell completions, rendered from the command tree in
+//! The man pages and the shell completions, rendered from the command tree in
 //! `sound_to_patch::cli`.
 
 use std::fs;
@@ -114,7 +114,7 @@ mod tests {
             }
             other => other,
         }
-        .expect("needs mandoc or man-db to render the man page");
+        .expect("needs mandoc or man-db to render the man pages");
         assert!(output.status.success(), "{output:?}");
         let text = String::from_utf8_lossy(&output.stdout);
         assert!(text.contains("sound-to-patch"), "{text}");

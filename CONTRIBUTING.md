@@ -69,8 +69,9 @@ commit. The check fails when:
   outside HTML comments;
 - `## Verification` is missing, or holds nothing but HTML comments and
   white space;
-- a description line starts with `BREAKING CHANGE` or `BREAKING-CHANGE`
-  and the title has no `!`.
+- the description holds a breaking-change footer and the title has no
+  `!`. A footer is a line of `BREAKING CHANGE` or `BREAKING-CHANGE`, after
+  any spaces, then `: ` or ` #` and a value: the form cog reads.
 
 A section runs to the next heading of the template. Pasted output may
 hold other `## ` lines, such as the first line of `git status -sb`. The
@@ -135,9 +136,10 @@ checks.
   nothing on their own. A breaking change puts `!` after the type or
   scope. Below 1.0 the mark changes no bump: `feat!` still releases a
   minor version, `fix!` a patch, and `chore!` nothing. From 1.0 on, any
-  commit with `!` or a line that starts with `BREAKING CHANGE:` releases a
-  major version, whatever its type. So `cargo xtask check-pr-body`
-  rejects such a line in a description whose title has no `!`.
+  commit with `!` or a breaking-change footer line, such as
+  `BREAKING CHANGE: the flag is gone`, releases a major version, whatever
+  its type. So `cargo xtask check-pr-body` rejects such a line in a
+  description whose title has no `!`.
 - `main` takes pull requests only, and squash is the only merge method. The
   pull request title becomes the commit subject and the changelog entry, and
   the description becomes the commit body. The `commits` check verifies the

@@ -80,7 +80,7 @@ joins `READY` when its adapter lands.
   through one function here, with its reason and a test. It lives in
   `core`.
 - `cli`: the command-line definition, one module per command. The binary
-  parses it, and `xtask` renders the man page and the shell completions
+  parses it, and `xtask` renders the man pages and the shell completions
   from the same tree.
 - `dsp`: the signal core: periodic windows, the centred STFT, the peak
   picker, active frames with median and interquartile range, the analytic
@@ -179,7 +179,7 @@ joins `READY` when its adapter lands.
   render holds the state several times over: the preset, its JSON, the
   base64 request and the host's copies. Memory peaks at about 20 times
   the preset size, about 800 MB for a 40 MB preset.
-- `xtask`: development tasks. It generates the man page and completions,
+- `xtask`: development tasks. It generates the man pages and completions,
   fetches pinned datasets, runs the pinned golden-number generator and
   checks its vectors, scores the notes step on generated parts, checks
   the lock file for the ONNX Runtime crate, checks the credits, this code

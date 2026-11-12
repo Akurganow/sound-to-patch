@@ -1,11 +1,14 @@
 <!--
 Title: a Conventional Commit, `type(scope): subject`, written for users.
 The squash merge turns the title into the commit subject and the changelog
-entry, and this description into the commit body. The `commits` check fails
-on a workflow skip marker such as the bracketed "skip ci" in the title or
-here, on an Authorship section without exactly one checked box, on an empty
-Verification section, and on a line that starts with `BREAKING CHANGE`
-when the title has no `!`. It checks nothing else. See CONTRIBUTING.md.
+entry, and this description into the commit body. The `commits` check runs
+`cog verify` on the title, so the title must be a Conventional Commit whose
+scope, if any, is listed in `cog.toml`. It then fails on a workflow skip
+marker such as the bracketed "skip ci" in the title or here, on an
+Authorship section without exactly one checked box, on an empty
+Verification section, and on a footer line `BREAKING CHANGE: ...` or
+`BREAKING-CHANGE: ...` when the title has no `!`. It checks nothing else.
+See CONTRIBUTING.md.
 -->
 
 ## Summary

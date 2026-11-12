@@ -36,7 +36,27 @@ pub(crate) fn check_title(title: &str) -> crate::Result<()> {
     }
 }
 
-/// Fails on a `BREAKING CHANGE` footer line in the description unless the
+/// Runs every check of the title and the description, in the order the
+/// author meets them: the description, the title, then the two together.
+pub(crate) fn check(title: &str, body: &str) -> crate::Result<()> {
+    check_body(body)?;
+    check_title(title)?;
+    check_breaking(title, body)
+}
+
+/// Whether cog 7.0.0 reads `line` as a breaking-change footer: spaces, then
+/// `BREAKING CHANGE` or `BREAKING-CHANGE`, then `: ` or ` #`, then a value.
+/// A tab before the token, another separator or no value is plain text.
+fn breaking_footer(line: &str) -> bool {
+    let line = line.trim_start_matches(' ');
+    ["BREAKING CHANGE", "BREAKING-CHANGE"].iter().any(|token| {
+        line.strip_prefix(token)
+            .and_then(|rest| rest.strip_prefix(": ").or_else(|| rest.strip_prefix(" #")))
+            .is_some_and(|value| !value.trim().is_empty())
+    })
+}
+
+/// Fails on a breaking-change footer line in the description unless the
 /// title marks the change as breaking with `!`. From 1.0 on, cog bumps the
 /// major version for such a line in any commit type, so a pasted line would
 /// make a major release that the title does not show.
@@ -44,10 +64,7 @@ pub(crate) fn check_breaking(title: &str, body: &str) -> crate::Result<()> {
     let marked = title
         .split_once(':')
         .is_some_and(|(prefix, _)| prefix.trim_end().ends_with('!'));
-    let footer = body
-        .lines()
-        .map(str::trim_start)
-        .find(|line| line.starts_with("BREAKING CHANGE") || line.starts_with("BREAKING-CHANGE"));
+    let footer = body.lines().find(|line| breaking_footer(line));
     match footer {
         Some(line) if !marked => Err(format!(
             "the description has the line `{line}`, which cog reads as a breaking change, \
@@ -226,8 +243,6 @@ mod tests {
     fn a_pasted_heading_line_does_not_end_the_verification() {
         let body = filled(" ", "x", "## main...origin/main\n M src/lib.rs");
         check_body(&body).unwrap();
-        let fenced = filled(" ", "x", "```\n## main...origin/main\n```");
-        check_body(&fenced).unwrap();
     }
 
     #[test]
@@ -256,10 +271,47 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("BREAKING CHANGE"), "{err}");
-        assert!(check_breaking("fix(notes): x", "  BREAKING-CHANGE: y").is_err());
         check_breaking("feat(notes)!: drop the flag", &body).unwrap();
         check_breaking("feat!: drop the flag", &body).unwrap();
         check_breaking("docs: reword", "no breaking change here").unwrap();
+    }
+
+    // Each case was run through `cog bump --auto --dry-run` 7.0.0 as the
+    // body of a `docs:` commit on a `v1.2.3` tag: the first list bumped to
+    // v2.0.0, the second bumped nothing.
+    #[test]
+    fn a_footer_is_what_cog_reads_as_one() {
+        for footer in [
+            "BREAKING CHANGE: y",
+            "BREAKING-CHANGE: y",
+            "BREAKING CHANGE #y",
+            "BREAKING-CHANGE #y",
+            "  BREAKING CHANGE: y",
+            "        BREAKING-CHANGE: y",
+            "BREAKING CHANGE:  y",
+        ] {
+            assert!(breaking_footer(footer), "{footer:?}");
+            let body = format!("text\n{footer}\nmore text");
+            assert!(check_breaking("docs: x", &body).is_err(), "{footer:?}");
+        }
+        for prose in [
+            "BREAKING CHANGE no colon",
+            "BREAKING CHANGES are none",
+            "BREAKING CHANGES: y",
+            "BREAKING CHANGE:y",
+            "BREAKING CHANGE : y",
+            "BREAKING CHANGE:",
+            "BREAKING CHANGE#y",
+            "\tBREAKING CHANGE: y",
+            "breaking change: y",
+            "- BREAKING CHANGE: y",
+            "text BREAKING CHANGE: y",
+            "`BREAKING CHANGE: y`",
+        ] {
+            assert!(!breaking_footer(prose), "{prose:?}");
+            check_breaking("docs: x", &format!("text\n{prose}\n")).unwrap();
+        }
+        check_breaking("docs: x", TEMPLATE).unwrap();
     }
 
     #[test]

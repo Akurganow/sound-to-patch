@@ -128,7 +128,7 @@ both builds.
 ## CI versus local
 
 - A test that needs a synth (Vital or Serum 2), `vita` or a dataset
-  carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital"]`.
+  carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
 - Never skip a test at run time with an early `return`. It reports a pass

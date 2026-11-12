@@ -18,8 +18,9 @@ one tags or uploads by hand.
    - a breaking change (`!` after the type or scope) bumps nothing more
      while the project is below 1.0: `feat!` bumps the minor version,
      `fix!` the patch version, and `chore!` nothing. From 1.0 on, a commit
-     of any type with `!`, or with a body line that starts with
-     `BREAKING CHANGE:`, bumps the major version.
+     of any type with `!`, or with a body line such as
+     `BREAKING CHANGE: the flag is gone` or `BREAKING-CHANGE: ...`, bumps
+     the major version.
 3. A bump runs `cargo xtask set-version` as its pre-bump hook, which
    writes the version into `Cargo.toml`, `Cargo.lock` and
    `fuzz/Cargo.lock`. Cog then updates `CHANGELOG.md` and creates the

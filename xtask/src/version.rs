@@ -24,15 +24,25 @@ fn set_with(
     let manifest = root.join("Cargo.toml");
     let text = fs::read_to_string(&manifest)?;
     let new_text = with_version(&text, version)?;
-    // Every file the steps below can change, kept byte for byte.
-    let saved: Vec<(PathBuf, Option<Vec<u8>>)> = ["Cargo.toml", "Cargo.lock", "fuzz/Cargo.lock"]
-        .into_iter()
-        .map(|name| {
-            let path = root.join(name);
-            let bytes = fs::read(&path).ok();
-            (path, bytes)
-        })
-        .collect();
+    // Every file the steps below can change, kept byte for byte. Only a
+    // missing file counts as absent: an unreadable one stops the run here,
+    // before the rollback could delete it.
+    let mut saved: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
+    for name in ["Cargo.toml", "Cargo.lock", "fuzz/Cargo.lock"] {
+        let path = root.join(name);
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(err) if err.kind() == ErrorKind::NotFound => None,
+            Err(err) => {
+                return Err(format!(
+                    "cannot read {}: {err}. Fix its permissions and run set-version again",
+                    path.display()
+                )
+                .into());
+            }
+        };
+        saved.push((path, bytes));
+    }
     fs::write(&manifest, new_text)?;
     update_locks(root, &mut update).map_err(|err| {
         let failed: Vec<String> = saved
@@ -422,5 +432,48 @@ mod tests {
         for (name, text) in files {
             assert_eq!(fs::read_to_string(root.join(name)).unwrap(), text, "{name}");
         }
+    }
+
+    #[test]
+    fn a_failed_update_deletes_a_lock_file_it_created() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("fuzz")).unwrap();
+        fs::write(root.join("Cargo.toml"), MANIFEST).unwrap();
+        fs::write(root.join("Cargo.lock"), "# workspace lock\n").unwrap();
+        fs::write(root.join("fuzz/Cargo.toml"), "[package]\n").unwrap();
+        let err = set_with(root, "0.1.0", |root, args| {
+            if args.contains(&"--workspace") {
+                return Ok(());
+            }
+            fs::write(root.join("fuzz/Cargo.lock"), "new fuzz lock\n")?;
+            Err("cargo update failed: no network".into())
+        })
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("no network"), "{err}");
+        assert!(!root.join("fuzz/Cargo.lock").exists());
+        assert_eq!(
+            fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            MANIFEST
+        );
+    }
+
+    #[test]
+    fn an_unreadable_lock_file_stops_the_run_before_any_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::write(root.join("Cargo.toml"), MANIFEST).unwrap();
+        // A folder in place of the lock file cannot be read as a file.
+        fs::create_dir_all(root.join("Cargo.lock")).unwrap();
+        let err = set_with(root, "0.1.0", |_, _| Ok(()))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("cannot read"), "{err}");
+        assert!(root.join("Cargo.lock").is_dir());
+        assert_eq!(
+            fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            MANIFEST
+        );
     }
 }

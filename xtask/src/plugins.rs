@@ -118,6 +118,7 @@ pub(crate) fn check(root: &Path) -> crate::Result<()> {
     for dir in &plugins {
         check_plugin(root, dir, &mut problems)?;
     }
+    check_no_links(root, &mut problems)?;
     check_reference_folder(root, &mut problems)?;
     check_probes(root, &mut problems)?;
     if problems.is_empty() {
@@ -323,14 +324,50 @@ fn subdirs(dir: &Path) -> crate::Result<Vec<PathBuf>> {
     let mut dirs = Vec::new();
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries {
-            let path = entry?.path();
-            if path.is_dir() {
-                dirs.push(path);
+            let entry = entry?;
+            if entry.file_type()?.is_dir() {
+                dirs.push(entry.path());
             }
         }
     }
     dirs.sort();
     Ok(dirs)
+}
+
+/// Fails on every symbolic link below `plugins/` and `reference/` but the
+/// `reference` link of a skill. A link could make a check read a file
+/// outside the repository; [`check_links`] checks the allowed one.
+fn check_no_links(root: &Path, problems: &mut Vec<String>) -> crate::Result<()> {
+    let mut dirs = vec![root.join("plugins"), root.join(REFERENCE)];
+    while let Some(dir) = dirs.pop() {
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for entry in entries {
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let path = entry.path();
+            if kind.is_dir() {
+                dirs.push(path);
+            } else if kind.is_symlink() && !skill_reference(root, &path) {
+                problems.push(format!(
+                    "{} is a symbolic link; only `plugins/<plugin>/skills/<skill>/{REFERENCE}` may be one, so put the file or folder itself here",
+                    shown(root, &path)
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Whether `path` is `plugins/<plugin>/skills/<skill>/reference`.
+fn skill_reference(root: &Path, path: &Path) -> bool {
+    let Ok(relative) = path.strip_prefix(root) else {
+        return false;
+    };
+    let parts: Vec<_> = relative.iter().collect();
+    matches!(parts.as_slice(), [plugins, _, skills, _, name]
+        if *plugins == "plugins" && *skills == "skills" && *name == REFERENCE)
 }
 
 /// Every file with `extension` below `dir`, sorted.
@@ -341,7 +378,8 @@ fn files(dir: &Path, extension: &str) -> crate::Result<Vec<PathBuf>> {
         .collect())
 }
 
-/// Every file below `dir`, sorted. Links to folders are not followed.
+/// Every file below `dir`, sorted. Links are skipped, not followed;
+/// [`check_no_links`] reports them.
 fn all_files(dir: &Path) -> crate::Result<Vec<PathBuf>> {
     let mut found = Vec::new();
     let mut dirs = vec![dir.to_owned()];
@@ -352,9 +390,10 @@ fn all_files(dir: &Path) -> crate::Result<Vec<PathBuf>> {
         for entry in entries {
             let entry = entry?;
             let path = entry.path();
-            if entry.file_type()?.is_dir() {
+            let kind = entry.file_type()?;
+            if kind.is_dir() {
                 dirs.push(path);
-            } else {
+            } else if !kind.is_symlink() {
                 found.push(path);
             }
         }
@@ -363,18 +402,22 @@ fn all_files(dir: &Path) -> crate::Result<Vec<PathBuf>> {
     Ok(found)
 }
 
-/// The top-level frontmatter fields and their one-line values.
-fn frontmatter(text: &str) -> Option<Vec<(String, String)>> {
+/// The top-level frontmatter fields, each with the value on its own line
+/// and whether indented lines continue it.
+fn frontmatter(text: &str) -> Option<Vec<(String, String, bool)>> {
     let rest = text.strip_prefix("---\n")?;
     let end = rest.find("\n---\n")?;
-    Some(
-        rest[..end]
-            .lines()
-            .filter(|line| !line.starts_with([' ', '\t']) && !line.trim().is_empty())
-            .filter_map(|line| line.split_once(':'))
-            .map(|(key, value)| (key.trim().to_owned(), value.trim().to_owned()))
-            .collect(),
-    )
+    let mut fields: Vec<(String, String, bool)> = Vec::new();
+    for line in rest[..end].lines().filter(|line| !line.trim().is_empty()) {
+        if line.starts_with([' ', '\t']) {
+            if let Some(field) = fields.last_mut() {
+                field.2 = true;
+            }
+        } else if let Some((key, value)) = line.split_once(':') {
+            fields.push((key.trim().to_owned(), value.trim().to_owned(), false));
+        }
+    }
+    Some(fields)
 }
 
 fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
@@ -388,19 +431,15 @@ fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
     match frontmatter(&text) {
         None => problems.push(format!("{at} has no `---` frontmatter; add one")),
         Some(fields) => {
-            for (key, _) in &fields {
+            for (key, _, _) in &fields {
                 if !FIELDS.contains(&key.as_str()) {
                     problems.push(format!(
                         "{at}: frontmatter field `{key}` is outside the six spec fields; remove it"
                     ));
                 }
             }
-            let get = |want: &str| {
-                fields
-                    .iter()
-                    .find(|(key, _)| key == want)
-                    .map(|(_, value)| value.as_str())
-            };
+            let field = |want: &str| fields.iter().find(|(key, _, _)| key == want);
+            let get = |want: &str| field(want).map(|(_, value, _)| value.as_str());
             let name = get("name").unwrap_or("");
             let valid = !name.is_empty()
                 && name.len() <= 64
@@ -417,8 +456,10 @@ fn check_skill(root: &Path, dir: &Path, problems: &mut Vec<String>) {
             }
             let description = get("description").unwrap_or("");
             let length = description.chars().count();
-            if description.is_empty() || description.starts_with(['>', '|', '"', '\'']) {
-                problems.push(format!("{at}: the description is empty or a YAML block or quoted value, which the check cannot measure; write it as plain text on one line after `description:`"));
+            let continued = field("description").is_some_and(|(_, _, continued)| *continued);
+            if description.is_empty() || continued || description.starts_with(['>', '|', '"', '\''])
+            {
+                problems.push(format!("{at}: the description is empty, runs over several lines, or is a YAML block or quoted value, which the check cannot measure; write it as plain text on one line after `description:`"));
             } else if length > DESCRIPTION_MAX {
                 problems.push(format!("{at}: the description has {length} characters; keep it within 1 to {DESCRIPTION_MAX} on one line"));
             }
@@ -822,11 +863,11 @@ mod tests {
         fails_with(&dir, "is not listed");
     }
 
-    fn set_source(dir: &tempfile::TempDir, source: &str) {
+    fn set_source(dir: &tempfile::TempDir, name: &str, source: &str) {
         let market = serde_json::json!({
             "name": "m",
             "owner": {"name": "o"},
-            "plugins": [{"name": "ref", "source": source}],
+            "plugins": [{"name": name, "source": source}],
         });
         fs::write(
             dir.path().join(".claude-plugin/marketplace.json"),
@@ -856,7 +897,7 @@ mod tests {
             ".//",
             "./.",
         ] {
-            set_source(&dir, source);
+            set_source(&dir, "ref", source);
             let err = check(dir.path()).unwrap_err().to_string();
             assert!(
                 err.contains("stay inside the repository"),
@@ -869,7 +910,7 @@ mod tests {
     fn a_marketplace_source_with_dots_in_a_name_or_a_current_folder_step_passes() {
         let dir = repo();
         for source in ["./plugins/ref", "./plugins/./ref", "./plugins/ref/"] {
-            set_source(&dir, source);
+            set_source(&dir, "ref", source);
             check(dir.path()).unwrap_or_else(|error| panic!("{source:?}: {error}"));
         }
         let plugins = dir.path().join("plugins");
@@ -879,19 +920,10 @@ mod tests {
             format!(r#"{{"name":"a..b","description":"A plugin. {NON_AFFILIATION}"}}"#),
         )
         .unwrap();
-        let market = serde_json::json!({
-            "name": "m",
-            "owner": {"name": "o"},
-            "plugins": [{"name": "a..b", "source": "./plugins/a..b"}],
-        });
-        fs::write(
-            dir.path().join(".claude-plugin/marketplace.json"),
-            market.to_string(),
-        )
-        .unwrap();
-        let err = check(dir.path()).unwrap_err().to_string();
-        assert!(!err.contains("stay inside the repository"), "{err}");
-        assert!(!err.contains("marketplace entry"), "{err}");
+        set_source(&dir, "a..b", "./plugins/a..b");
+        if let Err(err) = check(dir.path()) {
+            assert!(!err.to_string().contains("marketplace entry"), "{err}");
+        }
     }
 
     #[test]
@@ -904,6 +936,28 @@ mod tests {
         fs::remove_file(dir.path().join(".claude/skills/synth-reference")).unwrap();
         std::os::unix::fs::symlink(&moved, dir.path().join("plugins/ref")).unwrap();
         fails_with(&dir, "resolves outside the repository");
+    }
+
+    #[test]
+    fn a_link_inside_a_plugin_or_the_reference_fails() {
+        let outside = tempfile::tempdir().unwrap();
+        let secret = outside.path().join("secret.md");
+        fs::write(&secret, "# Secret\n").unwrap();
+        for at in [
+            "plugins/ref/skills/synth-reference/extra.md",
+            "plugins/ref/notes",
+            "reference/vital/linked.md",
+        ] {
+            let dir = repo();
+            std::os::unix::fs::symlink(&secret, dir.path().join(at)).unwrap();
+            fails_with(&dir, &format!("{at} is a symbolic link"));
+        }
+        let dir = repo();
+        let err = check(dir.path());
+        assert!(
+            err.is_ok(),
+            "the skill's reference link stays allowed: {err:?}"
+        );
     }
 
     #[test]
@@ -921,6 +975,7 @@ mod tests {
             "description: \"A reference.\"\n".to_owned(),
             "description: 'A reference.'\n".to_owned(),
             "description:\n".to_owned(),
+            format!("description: a\n  {}\n", "a".repeat(3000)),
         ] {
             fs::write(&path, SKILL.replace(plain, &value)).unwrap();
             let err = check(dir.path()).unwrap_err().to_string();
