@@ -97,7 +97,9 @@ pub fn swing_pct(ratio: f64) -> Option<f64> {
     if ratio < 0.0 {
         return None;
     }
-    non_negative(100.0 * ratio / (ratio + 1.0))
+    // Dividing first keeps a huge ratio finite: `100 * ratio` overflows
+    // from about 1.8e306.
+    non_negative(ratio / (ratio + 1.0) * 100.0)
 }
 
 /// The two notes of a swung pair.
@@ -111,8 +113,7 @@ pub enum Pair {
 
 impl Pair {
     /// The length of the pair in ticks.
-    #[must_use]
-    pub fn ticks(self) -> u32 {
+    fn ticks(self) -> u32 {
         let note = match self {
             Self::Sixteenths => Division::Sixteenth,
             Self::Eighths => Division::Eighth,
@@ -150,9 +151,10 @@ pub fn sixteenth_ms(bpm: f64) -> Option<f64> {
     Some(grid.beat_period().get() / 4.0 * 1000.0)
 }
 
-/// `value` when it is finite and not negative.
+/// `value` when it is finite and not negative, with `-0.0` stored as
+/// `+0.0`.
 fn non_negative(value: f64) -> Option<f64> {
-    (value.is_finite() && value >= 0.0).then_some(value)
+    (value.is_finite() && value >= 0.0).then_some(value + 0.0)
 }
 
 /// The whole ticks that cover `ms` at a tempo, rounded up, so an overlap
@@ -214,8 +216,7 @@ impl Division {
     /// The division of the stem analysis with the same length. This list
     /// is the dictionary's named subset of [`audio::Division::ALL`], which
     /// holds the lengths.
-    #[must_use]
-    pub fn division(self) -> audio::Division {
+    fn division(self) -> audio::Division {
         let (value, feel) = match self {
             Self::ThirtySecond => (NoteValue::ThirtySecond, Feel::Straight),
             Self::Sixteenth => (NoteValue::Sixteenth, Feel::Straight),
@@ -231,8 +232,8 @@ impl Division {
         audio::Division { value, feel }
     }
 
-    /// The length in ticks at 480 per quarter: the beats of
-    /// [`Self::division`] times 480.
+    /// The length in ticks at 480 per quarter: the beats of the same
+    /// division in [`audio::Division::ALL`] times 480.
     #[must_use]
     pub fn ticks(self) -> u32 {
         // Every division here lasts a whole number of ticks, and the
@@ -433,6 +434,11 @@ mod tests {
         assert_eq!(swing_pct(0.0), Some(0.0));
         assert_eq!(swing_pct(3.0), Some(75.0));
         assert_eq!(swing_pct(1e300), Some(100.0));
+        assert_eq!(swing_pct(1e307), Some(100.0));
+        assert_eq!(swing_pct(f64::MAX), Some(100.0));
+        for zero in [swing_ratio(-0.0), swing_pct(-0.0)] {
+            assert!(zero.is_some_and(f64::is_sign_positive), "{zero:?}");
+        }
     }
 
     #[test]
@@ -443,6 +449,12 @@ mod tests {
         }
         assert_eq!(tick_ms(120.0), Some(1000.0 / 960.0));
         assert_eq!(sixteenth_ms(120.0), Some(125.0));
+        for bpm in [4.0, 1000.0] {
+            assert!(tick_ms(bpm).is_some(), "{bpm}");
+            assert!(sixteenth_ms(bpm).is_some(), "{bpm}");
+        }
+        assert_eq!(tick_ms(4.0), Some(31.25));
+        assert_eq!(sixteenth_ms(1000.0), Some(15.0));
     }
 
     /// The tick and the sixteenth come from the MIDI writer and the beat

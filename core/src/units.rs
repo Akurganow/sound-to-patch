@@ -465,8 +465,7 @@ unit!(
 impl Seconds {
     /// Converts milliseconds, such as a reverb pre-delay, to seconds. The
     /// value equals the `ms` unit string of the same number: both move the
-    /// decimal exponent and round once, where `millis / 1000.0` would round
-    /// twice and miss by one ulp for about a quarter of three-decimal inputs.
+    /// decimal exponent and round once.
     ///
     /// # Errors
     ///

@@ -18,7 +18,8 @@ pub(crate) fn pcm16(x: f64) -> i16 {
     (x * 32_768.0).round().clamp(-32_768.0, 32_767.0) as i16
 }
 
-/// Rounds a non-negative count, such as seconds times a rate, to `usize`.
+/// Rounds a count, such as seconds times a rate, to `usize`. A value above
+/// -0.5 rounds to 0.
 ///
 /// # Panics
 ///

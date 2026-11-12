@@ -330,7 +330,6 @@ mod tests {
             (MAX_KEY, MAX_CONTROLLER, MAX_PITCH_BEND, PITCH_BEND_CENTRE),
             (127, 127, 16_383, 8192)
         );
-        assert_eq!(PITCH_BEND_CENTRE, 1 << 13);
         assert_eq!(MAX_PITCH_BEND - PITCH_BEND_CENTRE, 8191);
     }
 }

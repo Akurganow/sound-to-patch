@@ -80,8 +80,8 @@ joins `READY` when its adapter lands.
   the library and the host goes through one function here, with the reason
   it is sound and a test of its edge cases. It lives in `core`. The library
   re-exports it for the developer tools and the integration tests. The
-  developer tools keep four local casts, each under an `expect` attribute
-  with its reason.
+  developer tools keep two local casts, under an `expect` attribute with
+  its reason.
 - `cli`: the command-line definition, one module per command. The binary
   parses it, and `xtask` renders the man pages and the shell completions
   from the same tree.
