@@ -58,12 +58,12 @@ output file unless you pass `--force`. It never writes over its edit list or
 its template, and it refuses a path inside Vital's own `Factory` folder.
 
 A wrong unit stops the command before it writes anything. The message names
-the edit, the cause and the fix:
+the edit list, the edit, the cause and the fix:
 
 ```console
 $ sound-to-patch preset apply typo.json -o Typo.vital
 ? failed
-error: the edit list has 1 problem(s):
+error: typo.json: the edit list has 1 problem(s):
   edit 1 (env_1_attack): env_1_attack: cannot read "5 Hz" as Seconds: unknown suffix "Hz". Write a number followed by one of: s, ms, such as "800 ms"
 
 ```

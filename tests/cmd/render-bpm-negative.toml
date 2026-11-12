@@ -1,0 +1,10 @@
+# A negative tempo is a range error, not an unknown option.
+bin.name = "sound-to-patch"
+args = ["render", "tests/fixtures/vital/routes.vital", "--midi", "tests/cmd/data/three-notes.mid", "--bpm", "-5", "-o", "target/render-bpm-negative.wav"]
+status.code = 2
+stdout = ""
+stderr = """
+error: invalid value '-5' for '--bpm <BPM>': Bpm out of range: got -5.0, expected 4.0 to 1000.0
+
+For more information, try '--help'.
+"""

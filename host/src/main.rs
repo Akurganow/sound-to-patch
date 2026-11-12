@@ -15,6 +15,11 @@ use std::process::ExitCode;
 
 use sound_to_patch_core::render::wire::{Reply, Request, reply_line};
 
+#[cfg_attr(
+    all(not(target_os = "macos"), not(test)),
+    expect(dead_code, reason = "only the macOS session calls it")
+)]
+mod order;
 #[cfg(target_os = "macos")]
 mod session;
 

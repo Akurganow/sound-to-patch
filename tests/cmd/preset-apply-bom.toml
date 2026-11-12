@@ -1,0 +1,9 @@
+# An edit list saved with a UTF-8 byte order mark reads.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/bom-edits.json", "-o", "target/Bom.vital", "--force"]
+stdout = """
+wrote target/Bom.vital ("Bom") from built-in default
+  build 1.0.6, kept from the template
+  set filter_1_cutoff = 400 Hz, stored 67.34995771509334
+  warning: filter_1_cutoff is edited, but its module is off (filter_1_on = 0), so the edit is not heard; set filter_1_on to on
+"""

@@ -10,7 +10,8 @@ use sound_to_patch::cli::Cli;
 fn main() -> ExitCode {
     match Cli::parse().command.run() {
         Ok(output) => {
-            eprint!("{}", output.stderr);
+            // A closed stderr is ignored like a closed stdout, so the exit code stays.
+            let _ = write!(std::io::stderr(), "{}", output.stderr);
             let mut stdout = std::io::stdout().lock();
             match stdout
                 .write_all(output.stdout.as_bytes())
@@ -18,7 +19,8 @@ fn main() -> ExitCode {
             {
                 // A closed pipe, as with `| head`, is not an error of the command.
                 Err(error) if error.kind() != ErrorKind::BrokenPipe => {
-                    eprintln!(
+                    let _ = writeln!(
+                        std::io::stderr(),
                         "error: cannot write the output: {error}. Check the disk or the pipe the output goes to"
                     );
                     ExitCode::FAILURE
@@ -27,7 +29,7 @@ fn main() -> ExitCode {
             }
         }
         Err(error) => {
-            eprintln!("error: {error}");
+            let _ = writeln!(std::io::stderr(), "error: {error}");
             ExitCode::FAILURE
         }
     }

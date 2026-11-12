@@ -252,6 +252,21 @@ fn validate(root: &Map<String, Value>) -> Result<(), FormatError> {
             "Save the preset again from Vital",
         ));
     };
+    // A text in a control fails the load, and a bool loads; a list, an
+    // object or null is no number either.
+    if let Ok(registry) = registry()
+        && let Some((key, value)) = settings.iter().find(|(key, value)| {
+            !(value.is_number() || value.is_boolean()) && registry.get(key).is_some()
+        })
+    {
+        return Err(read_error(
+            format!(
+                "the control `settings.{key}` holds {}, not a number",
+                json_kind(value)
+            ),
+            "Write a number, or save the preset again from Vital",
+        ));
+    }
     let Some(Value::Object(sample)) = settings.get("sample") else {
         return Err(read_error(
             "`settings.sample` is missing or not an object",
@@ -295,6 +310,18 @@ fn validate(root: &Map<String, Value>) -> Result<(), FormatError> {
         }
     }
     Ok(())
+}
+
+/// The kind of a JSON value, for a message.
+fn json_kind(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a flag",
+        Value::Number(_) => "a number",
+        Value::String(_) => "a text",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "an object",
+    }
 }
 
 /// The inputs of the header, read the same way from a model and from raw
@@ -583,7 +610,7 @@ fn number_value(key: &str, value: &Stored) -> Result<Value, FormatError> {
         Stored::Int(number) => Ok(Value::from(*number)),
         Stored::Flag(_) | Stored::Text(_) => Err(edit_error(
             format!("{key}: a control holds a number, not {value}"),
-            "Write a number; Vital throws on a flag or a text in a control",
+            "Write a number; this writer puts only numbers into a control",
         )),
     }
 }
@@ -605,7 +632,16 @@ impl PresetModel for VitalModel {
             ));
         }
         let value = number_value(key, &value)?;
-        self.settings_mut()?.insert(key.to_owned(), value);
+        let settings = self.settings_mut()?;
+        // A retail-only part such as `custom_warps`, or any unknown key,
+        // can hold a structure; a number would replace it.
+        if let Some(have @ (Value::Array(_) | Value::Object(_))) = settings.get(key) {
+            return Err(edit_error(
+                format!("`{key}` holds {}, not a number", json_kind(have)),
+                "Leave the key out; an edit writes only numbers, and this one would replace a structure of the preset",
+            ));
+        }
+        settings.insert(key.to_owned(), value);
         Ok(())
     }
 
@@ -849,8 +885,9 @@ fn control_mark(
             "unknown key".to_owned()
         });
     };
+    // The reader refuses every other non-number in a control.
     let Some(number) = value.as_f64() else {
-        return Some("not a number; Vital throws on load".to_owned());
+        return Some("a flag, not a number; Vital loads it".to_owned());
     };
     if !spec.accepts_saved(number) {
         let whole = if spec.kind == ParamKind::Float {
@@ -932,6 +969,58 @@ mod tests {
     }
 
     #[test]
+    fn a_control_that_holds_no_number_is_refused_by_name() {
+        for (value, kind) in [
+            (r#""loud""#, "a text"),
+            ("null", "null"),
+            ("[1,2]", "a list"),
+            (r#"{"x":1}"#, "an object"),
+        ] {
+            let text = format!(
+                r#"{{"synth_version":"1.0.6","settings":{{"filter_1_cutoff":{value},"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+            );
+            let error = read(&text).unwrap_err().to_string();
+            assert_eq!(
+                error,
+                format!(
+                    "cannot read the .vital preset: the control `settings.filter_1_cutoff` holds {kind}, not a number. Write a number, or save the preset again from Vital"
+                )
+            );
+        }
+        // A bool loads in Vital, and an unknown key may hold anything.
+        for value in ["true", r#""loud""#] {
+            let key = if value == "true" {
+                "filter_1_cutoff"
+            } else {
+                "zz"
+            };
+            let text = format!(
+                r#"{{"synth_version":"1.0.6","settings":{{"{key}":{value},"sample":{{"length":1,"sample_rate":44100,"samples":"AAA="}}}}}}"#
+            );
+            assert!(read(&text).is_ok(), "{text}");
+        }
+    }
+
+    #[test]
+    fn a_number_never_replaces_a_structure() {
+        let mut model = model(
+            r#"{"synth_version":"1.5.5","settings":{"custom_warps":[[0,1]],"random_values":{"a":1},"zz":"text","sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#,
+        );
+        for (key, kind) in [("custom_warps", "a list"), ("random_values", "an object")] {
+            let error = model.set(key, Stored::Float(2.0)).unwrap_err().to_string();
+            assert!(
+                error.contains(&format!("`{key}` holds {kind}, not a number")),
+                "{error}"
+            );
+        }
+        assert!(model.root["settings"]["custom_warps"].is_array());
+        assert!(model.root["settings"]["random_values"].is_object());
+        // A scalar of an unknown key is a value, and a raw edit replaces it.
+        model.set("zz", Stored::Float(2.0)).unwrap();
+        assert_eq!(model.get("zz"), Some(Stored::Float(2.0)));
+    }
+
+    #[test]
     fn a_minimal_file_reads_and_writes_compact() {
         let model = model(MINIMAL);
         assert_eq!(write(&model), MINIMAL);
@@ -996,15 +1085,14 @@ mod tests {
     }
 
     #[test]
-    fn lists_and_objects_in_control_slots_are_marked() {
-        let text = r#"{"synth_version":"1.0.6","zz_top":{"a":1},"settings":{"filter_1_cutoff":[1,2],"osc_1_level":{"x":1},"zz":[3],"sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#;
+    fn lists_and_objects_in_unknown_keys_are_marked() {
+        let text = r#"{"synth_version":"1.0.6","zz_top":{"a":1},"settings":{"zz":[1,2],"zz_object":{"x":1},"sample":{"length":1,"sample_rate":44100,"samples":"AAA="}}}"#;
         let shown = model(text)
             .describe(&DescribeOptions::default())
             .to_string();
         for line in [
-            "filter_1_cutoff: list of 2  (not a number; Vital throws on load)",
-            "osc_1_level: object of 1 keys  (not a number; Vital throws on load)",
-            "zz: list of 1  (unknown key)",
+            "zz: list of 2  (unknown key)",
+            "zz_object: object of 1 keys  (unknown key)",
             "zz_top: object of 1 keys  (unknown key)",
         ] {
             assert!(shown.contains(line), "{line}\n{shown}");
@@ -1016,10 +1104,7 @@ mod tests {
                 shown: 0,
             })
             .to_string();
-        assert!(
-            full.contains("filter_1_cutoff: [1,2]  (not a number"),
-            "{full}"
-        );
+        assert!(full.contains("zz: [1,2]  (unknown key)"), "{full}");
     }
 
     #[test]
@@ -1227,7 +1312,7 @@ mod tests {
 
     #[test]
     fn describe_marks_odd_controls_and_elides() {
-        let text = r#"{"synth_version":"1.0.6","settings":{"filter_1_cutoff":200.0,"filter_1_model":2.5,"osc_1_level":"x","sub_on":0.0,"zz":1,"sample":{"length":1,"sample_rate":44100,"samples":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"modulations":[{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""}]}}"#;
+        let text = r#"{"synth_version":"1.0.6","settings":{"filter_1_cutoff":200.0,"filter_1_model":2.5,"osc_1_level":true,"sub_on":0.0,"zz":1,"sample":{"length":1,"sample_rate":44100,"samples":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},"modulations":[{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""},{"source":"","destination":""}]}}"#;
         let shown = model(text)
             .describe(&DescribeOptions::default())
             .to_string();
@@ -1240,7 +1325,7 @@ mod tests {
             "{shown}"
         );
         assert!(
-            shown.contains("osc_1_level: \"x\"  (not a number; Vital throws on load)"),
+            shown.contains("osc_1_level: true  (a flag, not a number; Vital loads it)"),
             "{shown}"
         );
         assert!(shown.contains("sub_on: 0.0  (legacy control)"), "{shown}");

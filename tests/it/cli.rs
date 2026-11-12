@@ -49,6 +49,20 @@ fn a_closed_pipe_is_not_an_error() {
     assert!(child.wait().unwrap().success());
 }
 
+/// A closed stderr pipe does not change the exit code. The command writes its
+/// error to stderr, so a panic there would give 101 instead of 1.
+#[test]
+fn a_closed_stderr_pipe_keeps_the_exit_code() {
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .args(["analyze", "no-such-stem.wav", "--bpm", "120"])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stderr.take());
+    assert_eq!(child.wait().unwrap().code(), Some(1));
+}
+
 /// The success case of `analyze`, on a generated WAV in a temporary
 /// folder, which a trycmd case cannot name: the tempo line, the pitch
 /// lines, then the three written files. The notes come from a file, so the
@@ -390,4 +404,166 @@ fn notes_with_a_profile_and_force_replaces_the_notes_of_another_stem() {
         std::fs::read_to_string(out.join("layers.json")).unwrap(),
         r#"{"source": "other.wav"}"#
     );
+}
+
+/// Runs the command with `args` and the bytes of `stem` on standard input,
+/// through a pipe.
+#[cfg(unix)]
+fn run_with_piped_stem(args: &[&std::ffi::OsStr], stem: &std::path::Path) -> std::process::Output {
+    use std::io::Write as _;
+    let bytes = std::fs::read(stem).unwrap();
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .args(args)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let writer = std::thread::spawn(move || {
+        // The command may stop reading early on an error; the exit code
+        // then tells.
+        let _ = stdin.write_all(&bytes);
+    });
+    let output = child.wait_with_output().unwrap();
+    writer.join().unwrap();
+    output
+}
+
+/// A stem read through a pipe, here `/dev/stdin`, decodes in both commands:
+/// the stem is read once, so its checksum and the decoder see the same
+/// bytes, and the report records the checksum.
+#[cfg(unix)]
+#[test]
+fn a_stem_through_a_pipe_decodes() {
+    use std::ffi::OsStr;
+    let dir = tempfile::tempdir().unwrap();
+    let (rate, samples) = crate::tempo::bass_line(120.0, 9);
+    let stem = dir.path().join("line.wav");
+    crate::support::signals::write_wav16(&stem, rate, &[samples]);
+    let notes = crate::report::given(dir.path());
+    let out = dir.path().join("analyze");
+    let output = run_with_piped_stem(
+        &[
+            OsStr::new("analyze"),
+            OsStr::new("/dev/stdin"),
+            OsStr::new("--bpm"),
+            OsStr::new("120"),
+            OsStr::new("--notes"),
+            notes.as_os_str(),
+            OsStr::new("--out"),
+            out.as_os_str(),
+        ],
+        &stem,
+    );
+    assert!(output.status.success(), "{output:?}");
+    let report: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(out.join("layers.json")).unwrap()).unwrap();
+    assert_eq!(report["source"], "stdin");
+    assert_eq!(report["source_sha256"].as_str().map(str::len), Some(64));
+    let out = dir.path().join("notes");
+    let output = run_with_piped_stem(
+        &[
+            OsStr::new("notes"),
+            OsStr::new("/dev/stdin"),
+            OsStr::new("--bpm"),
+            OsStr::new("120"),
+            OsStr::new("--bpm-exact"),
+            OsStr::new("--profile"),
+            OsStr::new("bass"),
+            OsStr::new("--out"),
+            out.as_os_str(),
+        ],
+        &stem,
+    );
+    assert!(output.status.success(), "{output:?}");
+    assert!(out.join("notes.mid").is_file());
+}
+
+/// The rate bound and the channel warning hold for a stem through a pipe.
+#[cfg(unix)]
+#[test]
+fn a_piped_stem_keeps_the_rate_bound_and_the_channel_warning() {
+    use std::ffi::OsStr;
+    let dir = tempfile::tempdir().unwrap();
+    let notes = crate::report::given(dir.path());
+    let slow = dir.path().join("slow.wav");
+    crate::decode::raw_wav(&slow, 1, 1, 4000, None);
+    let out = dir.path().join("slow");
+    let args = |out: &std::path::Path| -> Vec<std::ffi::OsString> {
+        let mut args: Vec<std::ffi::OsString> =
+            ["analyze", "/dev/stdin", "--bpm", "120", "--notes"]
+                .into_iter()
+                .map(Into::into)
+                .collect();
+        args.extend([
+            notes.clone().into_os_string(),
+            "--out".into(),
+            out.as_os_str().to_owned(),
+        ]);
+        args
+    };
+    let piped = |out: &std::path::Path, stem: &std::path::Path| {
+        let args = args(out);
+        let refs: Vec<&OsStr> = args.iter().map(std::ffi::OsString::as_os_str).collect();
+        run_with_piped_stem(&refs, stem)
+    };
+    let output = piped(&out, &slow);
+    assert!(!output.status.success(), "{output:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("a sample rate of 1 Hz, outside the 8000 Hz to 192000 Hz"),
+        "{stderr}"
+    );
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw: Vec<f64> = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0)
+        .iter()
+        .map(|x| 0.3 * x)
+        .collect();
+    let three = dir.path().join("three.wav");
+    crate::support::signals::write_wav16(&three, 22_050, &[saw.clone(), saw.clone(), saw]);
+    let output = piped(&dir.path().join("three"), &three);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        "warning: the file has 3 channels; the analysis reads the first two and ignores the other 1\n"
+    );
+}
+
+/// A failed write into a new output folder removes the folders the run
+/// created. A umask of 222 makes each new folder read-only: one new folder
+/// takes no temporary file, and a second level cannot be created.
+#[cfg(unix)]
+#[test]
+fn a_failed_write_removes_the_new_output_folder() {
+    let dir = tempfile::tempdir().unwrap();
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0);
+    let stem = dir.path().join("lead.wav");
+    crate::support::signals::write_wav16(&stem, 22_050, &[saw.iter().map(|x| 0.3 * x).collect()]);
+    let notes = crate::report::given(dir.path());
+    for out in [dir.path().join("new"), dir.path().join("deep").join("new")] {
+        let output = std::process::Command::new("sh")
+            .args(["-c", "umask 222 && exec \"$0\" \"$@\""])
+            .arg(env!("CARGO_BIN_EXE_sound-to-patch"))
+            .arg("analyze")
+            .arg(&stem)
+            .args(["--bpm", "120", "--notes"])
+            .arg(&notes)
+            .arg("--out")
+            .arg(&out)
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(1), "{output:?}");
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.starts_with("error: cannot write "), "{stderr}");
+        let mut names: Vec<String> = std::fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        assert_eq!(names, ["bass.mid", "lead.wav"], "{}", out.display());
+    }
 }

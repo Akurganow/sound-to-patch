@@ -55,7 +55,8 @@ impl SynthArg {
     /// on the command line.
     ///
     /// 1. The flag and no hint: the flag.
-    /// 2. The flag and a hint with a known extension: both must agree.
+    /// 2. The flag and a hint with a known extension: both must agree,
+    ///    unless the extension has no adapter (see [`SynthError::FileNotReady`]).
     /// 3. A hint with a known extension and no flag: the extension.
     /// 4. Neither: Vital.
     ///
@@ -63,10 +64,10 @@ impl SynthArg {
     ///
     /// # Errors
     ///
-    /// [`SynthError::Mismatch`] when the flag and the extension disagree,
     /// [`SynthError::FileNotReady`] when the extension names a synth
-    /// without an adapter, and [`SynthError::NotBuilt`] for a synth without
-    /// an adapter.
+    /// without an adapter, with or without the flag, [`SynthError::Mismatch`]
+    /// when the flag and an extension with an adapter disagree, and
+    /// [`SynthError::NotBuilt`] for a synth without an adapter.
     pub fn resolve(&self, hint: Option<&Path>) -> Result<Synth, SynthError> {
         let from_hint = hint.and_then(|path| {
             path.extension()
@@ -75,18 +76,18 @@ impl SynthArg {
                 .map(|synth| (path, synth))
         });
         let synth = match (self.synth, from_hint) {
-            (Some(flag), Some((path, extension))) if flag != extension => {
-                return Err(SynthError::Mismatch {
-                    flag,
-                    path: path.display().to_string(),
-                    extension,
-                });
-            }
             // Suggesting another --synth would only end in a mismatch.
             (_, Some((path, extension))) if !Synth::READY.contains(&extension) => {
                 return Err(SynthError::FileNotReady {
                     path: path.display().to_string(),
                     synth: extension,
+                });
+            }
+            (Some(flag), Some((path, extension))) if flag != extension => {
+                return Err(SynthError::Mismatch {
+                    flag,
+                    path: path.display().to_string(),
+                    extension,
                 });
             }
             (Some(flag), _) => flag,
@@ -305,6 +306,7 @@ mod tests {
             (&none, "lead.SerumPreset"),
             (&none, "lead.serumpreset"),
             (&serum, "lead.SerumPreset"),
+            (&vital, "lead.SerumPreset"),
         ] {
             let error = arg.resolve(Some(Path::new(name))).unwrap_err();
             assert_eq!(

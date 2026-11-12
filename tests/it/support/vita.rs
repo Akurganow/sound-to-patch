@@ -100,6 +100,76 @@ pub(crate) fn load_check(files: &[PathBuf]) -> Vec<Value> {
         .collect()
 }
 
+/// The Python of the stub run below: a `vita` module whose engine keeps any
+/// JSON and renders `audio`, then `load_check.py` loaded by its path.
+/// `WAVE_EDIT`, `SCRIPT_PATH` and `PRESET_PATH` are replaced before the run.
+/// The wave has 441 cycles in 44 100 samples, so its mean square is exact.
+const STUB_ENGINE: &str = r#"
+import importlib.util
+import sys
+import types
+
+import numpy as np
+
+wave = np.sin(2 * np.pi * 441 * np.arange(44100) / 44100)
+WAVE_EDIT
+audio = np.tile(wave, (2, 1))
+
+
+class Synth:
+    def set_sample_rate(self, rate):
+        pass
+
+    def load_json(self, text):
+        self.text = text
+        return True
+
+    def to_json(self):
+        return self.text
+
+    def render(self, *args):
+        return audio
+
+
+stub = types.ModuleType("vita")
+stub.Synth = Synth
+sys.modules["vita"] = stub
+spec = importlib.util.spec_from_file_location("load_check", SCRIPT_PATH)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+sys.argv = ["load_check", PRESET_PATH]
+module.main()
+"#;
+
+/// Runs `tools/vita/load_check.py` against a stub engine that renders two
+/// identical channels of a sine of amplitude 1, after `wave_edit` (one
+/// line of Python, or `pass`) changed the one-channel wave `wave`. Returns
+/// the one line it printed, parsed.
+pub(crate) fn load_check_stub(wave_edit: &str) -> Value {
+    let dir = tempfile::tempdir().unwrap();
+    let preset = write(dir.path(), "stub.vital", r#"{"settings": {}}"#);
+    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/vita/load_check.py");
+    let code = STUB_ENGINE
+        .replace("WAVE_EDIT", wave_edit)
+        .replace("SCRIPT_PATH", &format!("{:?}", script.to_string_lossy()))
+        .replace("PRESET_PATH", &format!("{:?}", preset.to_string_lossy()));
+    let output = Command::new(python())
+        .arg("-I")
+        .arg("-c")
+        .arg(code)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "the load check failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert_eq!(text.lines().count(), 1, "one line per file: {text}");
+    serde_json::from_str(&text)
+        .unwrap_or_else(|error| panic!("the line is not JSON ({error}): {text}"))
+}
+
 fn vital(model: &dyn PresetModel) -> VitalModel {
     model.as_any().downcast_ref::<VitalModel>().unwrap().clone()
 }

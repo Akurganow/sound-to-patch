@@ -121,12 +121,13 @@ pub fn measure(
         states.push(load.get());
     }
     drop(renderer);
-    let mut rows = vec![
-        row(TimingKind::PluginLoad, None, &loads),
-        row(TimingKind::StateLoad, None, &states),
-        row(TimingKind::Render, None, &renders),
-        row(TimingKind::ClipLength, None, &clips),
-    ];
+    let mut rows = single_rows(&Samples {
+        loads: &loads,
+        states: &states,
+        renders: &renders,
+        clips: &clips,
+    })
+    .to_vec();
     for workers in WORKER_COUNTS {
         let count = NonZeroUsize::new(workers).unwrap_or(NonZeroUsize::MIN);
         let session = RenderSession::new(count, {
@@ -151,13 +152,7 @@ pub fn measure(
                     .unwrap_or_else(|| timing_error("a render failed", "Time it again")));
             }
         }
-        let time = row(TimingKind::RendersPerSecond, Some(workers), &times);
-        let rate = |seconds: f64| cast::usize_to_f64(workers) / seconds;
-        rows.push(TimingRow {
-            median: rate(time.median),
-            p95: rate(time.p95),
-            ..time
-        });
+        rows.push(rate_row(workers, &times));
     }
     Ok(TimingTable {
         identity: identity.ok_or_else(|| timing_error("no renderer started", "Time it again"))?,
@@ -165,6 +160,35 @@ pub fn measure(
         runs,
         rows,
     })
+}
+
+/// The measurements behind the four rows of a single worker.
+struct Samples<'a> {
+    loads: &'a [f64],
+    states: &'a [f64],
+    renders: &'a [f64],
+    clips: &'a [f64],
+}
+
+fn single_rows(samples: &Samples) -> [TimingRow; 4] {
+    [
+        row(TimingKind::PluginLoad, None, samples.loads),
+        row(TimingKind::StateLoad, None, samples.states),
+        row(TimingKind::Render, None, samples.renders),
+        row(TimingKind::ClipLength, None, samples.clips),
+    ]
+}
+
+/// The throughput row of `workers` workers from the time of each batch, in
+/// s. A batch holds one job per worker.
+fn rate_row(workers: usize, batch_seconds: &[f64]) -> TimingRow {
+    let time = row(TimingKind::RendersPerSecond, Some(workers), batch_seconds);
+    let rate = |seconds: f64| cast::usize_to_f64(workers) / seconds;
+    TimingRow {
+        median: rate(time.median),
+        p95: rate(time.p95),
+        ..time
+    }
 }
 
 fn row(kind: TimingKind, workers: Option<usize>, values: &[f64]) -> TimingRow {
@@ -182,5 +206,64 @@ fn timing_error(cause: impl Into<String>, fix: &str) -> RenderError {
     RenderError::Host {
         cause: cause.into(),
         fix: fix.to_owned(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_single_row_takes_its_own_list() {
+        // Every list has one value, so each row holds exactly that value.
+        let rows = single_rows(&Samples {
+            loads: &[1.0],
+            states: &[2.0],
+            renders: &[3.0],
+            clips: &[4.0],
+        });
+        let seen: Vec<(TimingKind, Option<usize>, f64, f64)> = rows
+            .iter()
+            .map(|row| (row.kind, row.workers, row.median, row.p95))
+            .collect();
+        assert_eq!(
+            seen,
+            [
+                (TimingKind::PluginLoad, None, 1.0, 1.0),
+                (TimingKind::StateLoad, None, 2.0, 2.0),
+                (TimingKind::Render, None, 3.0, 3.0),
+                (TimingKind::ClipLength, None, 4.0, 4.0),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_row_sorts_its_values_before_it_takes_the_quantiles() {
+        let row = row(TimingKind::Render, None, &[3.0, 1.0, 2.0]);
+        // Sorted 1 2 3: the median sits at 2, the 95th percentile at
+        // position 0.95 * 2 = 1.9, so at 2 + 0.9 * (3 - 2).
+        assert_eq!(row.median, 2.0);
+        assert!((row.p95 - 2.9).abs() < 1e-12, "{row:?}");
+    }
+
+    #[test]
+    fn the_rate_is_the_workers_over_the_batch_time() {
+        for workers in WORKER_COUNTS {
+            let row = rate_row(workers, &[0.5]);
+            assert_eq!(row.kind, TimingKind::RendersPerSecond);
+            assert_eq!(row.workers, Some(workers));
+            // One batch of 0.5 s gives workers / 0.5 renders per second.
+            let expected = cast::usize_to_f64(workers) / 0.5;
+            assert_eq!((row.median, row.p95), (expected, expected));
+        }
+    }
+
+    #[test]
+    fn the_p95_rate_comes_from_the_slow_end_of_the_batch_times() {
+        let row = rate_row(4, &[2.0, 1.0, 3.0]);
+        // The median batch takes 2 s and the 95th percentile 2.9 s.
+        assert_eq!(row.median, 4.0 / 2.0);
+        assert!((row.p95 - 4.0 / 2.9).abs() < 1e-12, "{row:?}");
+        assert!(row.p95 < row.median);
     }
 }

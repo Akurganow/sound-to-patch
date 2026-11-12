@@ -827,7 +827,7 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(
-            message.starts_with("filter_1_cutoff: 5 Hz is stored as"),
+            message.starts_with("filter_1_cutoff: 5 Hz is outside 12.97"),
             "{message}"
         );
     }

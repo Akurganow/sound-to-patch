@@ -8,8 +8,9 @@ use sound_to_patch::notes::Velocity;
 use sound_to_patch::render::fake::{FakePatch, FakeRenderer};
 use sound_to_patch::render::session::{BoxedRenderer, RESTART_AFTER, RenderSession};
 use sound_to_patch::render::spread::{
-    ClipMetrics, ClipOutput, FittedComparison, MIN_RUNS, SPREAD_RUNS, SpreadError, clip_rows,
-    compare, compare_fitted, distinct, draw, envelope_distance, tolerance_rank,
+    ClipMetrics, ClipOutput, FittedComparison, MIN_RUNS, NAMED_UNITS, SPREAD_RUNS, SpreadError,
+    clip_rows, compare, compare_fitted, distinct, draw, envelope_distance, layer_rows,
+    layer_values, tolerance_rank,
 };
 use sound_to_patch::render::{Material, RenderJob, RenderNote, Rendered};
 use sound_to_patch::synth::Synth;
@@ -687,4 +688,141 @@ fn the_reference_page_counts_follow_the_report() {
         missing.len(),
         lines.join("\n")
     );
+}
+
+/// The top-level groups of a layer report that hold no estimate, as the
+/// spread walk skips them.
+const NON_ESTIMATE_GROUPS: [&str; 5] =
+    ["schema", "source", "synth", "transcription", "conventions"];
+
+/// The layer rows read a report that the current `analyze` writes, with
+/// every group it holds.
+#[test]
+fn the_layer_rows_read_a_report_of_the_current_analyze() {
+    let dir = tempfile::tempdir().unwrap();
+    let report = crate::report::run(
+        &crate::report::stem(dir.path()),
+        Some(&crate::report::given(dir.path())),
+        &dir.path().join("out"),
+    );
+    let rows = layer_rows(&[report.clone(), report.clone(), report]).unwrap();
+    for group in ["stem", "notes", "voices", "envelope"] {
+        assert!(
+            rows.iter()
+                .any(|row| row.output.starts_with(&format!("{group}."))),
+            "no row of {group}"
+        );
+    }
+}
+
+/// A report that holds every number the schema defines, each as 1, with
+/// one record in each list and the object branch of each nullable group.
+fn every_number(
+    node: &serde_json::Value,
+    defs: &serde_json::Value,
+    depth: usize,
+) -> Option<serde_json::Value> {
+    use serde_json::{Map, Value, json};
+    assert!(depth < 40, "the schema nests deeper than its groups");
+    let mut object: Option<Map<String, Value>> = None;
+    let mut number = false;
+    let mut merge = |value: Value| match value {
+        Value::Object(map) => {
+            let into = object.get_or_insert_with(Map::new);
+            for (key, inner) in map {
+                into.insert(key, inner);
+            }
+        }
+        _ => number = true,
+    };
+    if let Some(name) = node["$ref"].as_str() {
+        let name = name.trim_start_matches("#/$defs/");
+        if let Some(value) = every_number(&defs[name], defs, depth + 1) {
+            merge(value);
+        }
+    }
+    for key in ["allOf", "oneOf", "anyOf"] {
+        for branch in node[key].as_array().into_iter().flatten() {
+            if let Some(value) = every_number(branch, defs, depth + 1) {
+                merge(value);
+            }
+        }
+    }
+    if let Some(properties) = node["properties"].as_object() {
+        let mut map = Map::new();
+        for (key, inner) in properties {
+            if let Some(value) = every_number(inner, defs, depth + 1) {
+                map.insert(key.clone(), value);
+            }
+        }
+        merge(Value::Object(map));
+    }
+    if node.get("items").is_some()
+        && let Some(value) = every_number(&node["items"], defs, depth + 1)
+    {
+        return Some(json!([value]));
+    }
+    let types: Vec<&str> = match &node["type"] {
+        Value::String(one) => vec![one.as_str()],
+        Value::Array(many) => many.iter().filter_map(Value::as_str).collect(),
+        _ => Vec::new(),
+    };
+    if types
+        .iter()
+        .any(|kind| matches!(*kind, "number" | "integer"))
+        || node["const"].is_number()
+    {
+        number = true;
+    }
+    match object {
+        Some(map) if !map.is_empty() => Some(Value::Object(map)),
+        _ => number.then(|| json!(1.0)),
+    }
+}
+
+/// Every number of every group that `schemas/layers.schema.json` defines
+/// has a unit or is left out, so a group or field that a later release
+/// adds fails here, not after the 20 renders of a spread.
+#[test]
+fn every_number_of_the_layer_schema_has_a_unit() {
+    let schema: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string("schemas/layers.schema.json").unwrap())
+            .unwrap();
+    let report = every_number(&schema, &schema["$defs"], 0).unwrap();
+    let values = layer_values(&report).unwrap();
+    let groups = schema["properties"].as_object().unwrap().keys();
+    for group in groups.filter(|group| !NON_ESTIMATE_GROUPS.contains(&group.as_str())) {
+        assert!(
+            values
+                .iter()
+                .any(|(path, _, _)| path.starts_with(&format!("{group}."))),
+            "the walk reads no number of {group}"
+        );
+    }
+}
+
+/// The unit table of the spread page lists the names of `NAMED_UNITS`, each
+/// under its unit, and no other.
+#[test]
+fn the_spread_page_lists_the_named_units() {
+    use std::collections::BTreeSet;
+    let page = std::fs::read_to_string("docs/src/reference/formats/render-spread.md").unwrap();
+    let mut listed = BTreeSet::new();
+    let rows = page
+        .lines()
+        .skip_while(|line| *line != "| Unit | Fields |")
+        .skip(2)
+        .take_while(|line| line.starts_with('|'));
+    for row in rows {
+        let cells: Vec<&str> = row.split('|').map(str::trim).collect();
+        let unit = cells[1].trim_matches('`');
+        for name in cells[2].split('`').skip(1).step_by(2) {
+            listed.insert((name.to_owned(), unit.to_owned()));
+        }
+    }
+    let named: BTreeSet<(String, String)> = NAMED_UNITS
+        .iter()
+        .map(|(name, unit)| ((*name).to_owned(), (*unit).to_owned()))
+        .collect();
+    assert_eq!(listed, named);
 }

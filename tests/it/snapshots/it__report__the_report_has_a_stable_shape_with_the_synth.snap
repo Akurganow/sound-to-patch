@@ -5,6 +5,7 @@ expression: "serde_json::to_string_pretty(&shape(&report)).unwrap()"
 {
   "schema": "layers/1",
   "source": "bass.wav",
+  "source_sha256": "02f9e88c315f89918d42c0dd5578da54c6e5f4c54a0aab377e0ae42f829a4bb9",
   "synth": "vital",
   "stem": {
     "bpm": "<number>",

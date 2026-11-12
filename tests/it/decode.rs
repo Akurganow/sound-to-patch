@@ -270,7 +270,7 @@ fn too_many_corrupt_packets_fail_and_name_the_first() {
 
 /// A 16-bit PCM WAV whose header declares `rate` and `claimed` data bytes,
 /// followed by `frames` frames of silence in `channels` channels.
-fn raw_wav(path: &Path, rate: u32, channels: u16, frames: usize, claimed: Option<u32>) {
+pub(crate) fn raw_wav(path: &Path, rate: u32, channels: u16, frames: usize, claimed: Option<u32>) {
     let block = channels * 2;
     let data = vec![0u8; frames * usize::from(block)];
     let size = claimed.unwrap_or_else(|| u32::try_from(data.len()).unwrap());

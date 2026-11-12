@@ -1,0 +1,9 @@
+# A value out of range gives its range in the unit it is written in.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/out-of-range.json", "-o", "target/Range.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/out-of-range.json: the edit list has 1 problem(s):
+  edit 1 (filter_1_cutoff): filter_1_cutoff: 30000 Hz is outside 12.978271799303903 Hz to 21096.16364231088 Hz. Use the nearest, 21096.16364231088 Hz. The control takes Hz
+"""

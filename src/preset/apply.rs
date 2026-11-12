@@ -2,6 +2,8 @@
 //! applier is synth-neutral: the registry supplies keys, ranges and
 //! defaults, and the format supplies the route rules and the final scan.
 
+use std::collections::HashMap;
+
 use crate::preset::edits::{EditError, EditErrors, Resolved};
 use crate::preset::format::{FormatError, PresetFormat, PresetModel, Route, RoutePolarity, Stored};
 use crate::preset::registry::ParamRegistry;
@@ -78,14 +80,18 @@ pub fn place_route(model: &mut dyn PresetModel, route: Route) -> Result<usize, F
 
 /// Applies resolved edits in order, then runs the format scan.
 ///
-/// A parameter equal to the value already in the model changes nothing. A
+/// A parameter or route equal to what the model already holds changes
+/// nothing. Its skip says `equals the template` when the model held it
+/// before the run, and `equals an earlier edit` when an edit of the same
+/// run set it, such as a route that wrote the amount of its slot. A
 /// parameter equal to its default is skipped when the key is absent and
 /// the format reads an absent key as the default.
 ///
 /// # Errors
 ///
 /// [`EditErrors`] with one entry per edit the format refuses, or with the
-/// scan error. The model may hold the edits before the failing one.
+/// scan error. The model then holds every edit that succeeded, before and
+/// after a failing one.
 pub fn apply(
     format: &dyn PresetFormat,
     registry: &dyn ParamRegistry,
@@ -94,6 +100,16 @@ pub fn apply(
 ) -> Result<ApplyReport, EditErrors> {
     let mut report = ApplyReport::default();
     let mut errors = Vec::new();
+    // What the model held before the run, so a skip can tell the template
+    // from an earlier edit.
+    let held: HashMap<&str, Option<Stored>> = resolved
+        .iter()
+        .filter_map(|edit| match edit {
+            Resolved::Param { key, .. } => Some((key.as_str(), model.get(key))),
+            Resolved::Route { .. } | Resolved::Raw { .. } => None,
+        })
+        .collect();
+    let routes_held = model.routes();
     for (index, edit) in resolved.iter().enumerate() {
         let result = match edit {
             Resolved::Param {
@@ -101,7 +117,16 @@ pub fn apply(
                 stored,
                 uncalibrated,
                 reason,
-            } => apply_param(format, registry, model, key, *stored, &mut report).map(|changed| {
+            } => apply_param(
+                format,
+                registry,
+                model,
+                key,
+                *stored,
+                held.get(key.as_str()),
+                &mut report,
+            )
+            .map(|changed| {
                 if changed {
                     let physical = registry.get(key).map_or_else(String::new, |spec| {
                         shown_value(spec, *stored)
@@ -133,7 +158,7 @@ pub fn apply(
                     }),
                     None => report.skipped.push(Skipped {
                         target: format!("{source} -> {destination}"),
-                        why: "equals the template".to_owned(),
+                        why: route_skip(&routes_held, &model.routes(), source, destination),
                     }),
                 }
             }),
@@ -202,12 +227,43 @@ fn shown_value(spec: &crate::preset::registry::ParamSpec, stored: f64) -> Option
     }
 }
 
+/// The skip text of an edit equal to the model: the model held the value
+/// before the run, or an earlier edit of the run set it.
+fn skip_why(held_before: bool) -> String {
+    if held_before {
+        "equals the template"
+    } else {
+        "equals an earlier edit"
+    }
+    .to_owned()
+}
+
+/// The skip text of a route equal to the model's: the same route, amount
+/// and polarity stood in the model before the run, or an earlier edit
+/// set its amount or polarity.
+fn route_skip(
+    before: &[Option<Route>],
+    now: &[Option<Route>],
+    source: &str,
+    destination: &str,
+) -> String {
+    let find = |routes: &[Option<Route>]| {
+        routes
+            .iter()
+            .flatten()
+            .find(|have| have.source == source && have.destination == destination)
+            .map(|have| (have.amount.to_bits(), have.polarity))
+    };
+    skip_why(find(before).is_some() && find(before) == find(now))
+}
+
 fn apply_param(
     format: &dyn PresetFormat,
     registry: &dyn ParamRegistry,
     model: &mut dyn PresetModel,
     key: &str,
     stored: f64,
+    held: Option<&Option<Stored>>,
     report: &mut ApplyReport,
 ) -> Result<bool, FormatError> {
     format.check_value(key, stored)?;
@@ -219,7 +275,7 @@ fn apply_param(
     {
         report.skipped.push(Skipped {
             target: key.to_owned(),
-            why: "equals the template".to_owned(),
+            why: skip_why(held.is_none_or(|held| *held == current)),
         });
         return Ok(false);
     }

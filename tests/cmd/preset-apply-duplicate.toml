@@ -1,0 +1,9 @@
+# A second edit of one control is refused with the number of the first.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/duplicate-edits.json", "-o", "target/Duplicate.vital"]
+status.code = 1
+stdout = ""
+stderr = """
+error: tests/cmd/data/duplicate-edits.json: the edit list has 1 problem(s):
+  edit 2 (filter_1_cutoff): it edits filter_1_cutoff again, after edit 1. Keep one of the two edits; the second would override the first
+"""

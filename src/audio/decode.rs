@@ -140,12 +140,53 @@ impl fmt::Display for SkippedPacket {
 /// [`MIN_SAMPLE_RATE`] to [`MAX_SAMPLE_RATE`], or a NaN or infinite sample
 /// with its offset.
 pub fn decode(path: &Path) -> Result<Decoded, DecodeError> {
+    let file = File::open(path).map_err(|source| DecodeError {
+        path: path.to_path_buf(),
+        kind: Kind::Open(source),
+    })?;
+    decode_source(path, Box::new(file))
+}
+
+/// Reads a stem file into memory. [`decode_bytes`] then decodes the same
+/// bytes that a checksum reads, so a file that allows one read only, such
+/// as a pipe, still decodes.
+///
+/// # Errors
+///
+/// The [`DecodeError`] that [`decode`] gives when the file cannot be opened
+/// or read.
+pub(crate) fn read_stem(path: &Path) -> Result<Vec<u8>, DecodeError> {
+    use std::io::Read as _;
     let fail = |kind| DecodeError {
         path: path.to_path_buf(),
         kind,
     };
-    let file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
-    let stream = MediaSourceStream::new(Box::new(file), MediaSourceStreamOptions::default());
+    let mut file = File::open(path).map_err(|source| fail(Kind::Open(source)))?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .map_err(|source| fail(Kind::Read(source)))?;
+    Ok(bytes)
+}
+
+/// [`decode`] of a file that [`read_stem`] read; errors name `path`.
+///
+/// # Errors
+///
+/// As [`decode`].
+pub(crate) fn decode_bytes(path: &Path, bytes: Vec<u8>) -> Result<Decoded, DecodeError> {
+    decode_source(path, Box::new(io::Cursor::new(bytes)))
+}
+
+/// [`decode`] of an open source; errors name `path`.
+fn decode_source(
+    path: &Path,
+    source: Box<dyn symphonia::core::io::MediaSource>,
+) -> Result<Decoded, DecodeError> {
+    let fail = |kind| DecodeError {
+        path: path.to_path_buf(),
+        kind,
+    };
+    let stream = MediaSourceStream::new(source, MediaSourceStreamOptions::default());
     let mut hint = Hint::new();
     if let Some(extension) = path.extension().and_then(|ext| ext.to_str()) {
         hint.with_extension(extension);

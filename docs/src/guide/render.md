@@ -86,7 +86,11 @@ Each failure has its own message, and the command writes no file.
 
 A third check only warns. Each clip is measured as its level in octave
 bands, and the distance from the init render is the largest band
-difference in dB. A clip within three times the distance between the two
+difference in dB. Only the bands within 30 dB of the loudest band count,
+and only those above a floor of -90 dB of mean bin power. That floor is
+not a level in dBFS: a band of many bins reads lower than a band of few
+for one tone, so the floor passes a sine above about -50 dBFS in the top
+band and above about -74 dBFS in the lowest band at 44.1 kHz. A clip within three times the distance between the two
 init renders, and within at least 0.1 dB, sounds like the init patch. The
 render still counts, and `render` prints a warning. Mean band levels miss
 a change of envelope or modulation: a slower attack on the init patch can
