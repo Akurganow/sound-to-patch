@@ -692,8 +692,14 @@ fn the_reference_page_counts_follow_the_report() {
 
 /// The top-level groups of a layer report that hold no estimate, as the
 /// spread walk skips them.
-const NON_ESTIMATE_GROUPS: [&str; 5] =
-    ["schema", "source", "synth", "transcription", "conventions"];
+const NON_ESTIMATE_GROUPS: [&str; 6] = [
+    "schema",
+    "source",
+    "source_sha256",
+    "synth",
+    "transcription",
+    "conventions",
+];
 
 /// The layer rows read a report that the current `analyze` writes, with
 /// every group it holds.
