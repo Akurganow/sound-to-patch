@@ -51,7 +51,7 @@ struct Xtask {
 
 #[derive(Debug, Subcommand)]
 enum Task {
-    /// Write the man page and the shell completions.
+    /// Write the man pages and the shell completions.
     Dist {
         /// Directory that receives `man/` and `completions/`.
         #[arg(long, default_value = "target/dist")]
@@ -237,12 +237,11 @@ fn main() -> ExitCode {
         Task::CheckRustVersion => version::check_rust_version(root()),
         Task::CheckPrBody => std::env::var("PR_BODY")
             .map_err(|_| "set PR_BODY to the pull request description".into())
-            .and_then(|body| pr::check_body(&body))
-            .and_then(|()| {
+            .and_then(|body| {
                 std::env::var("PR_TITLE")
                     .map_err(|_| "set PR_TITLE to the pull request title".into())
-            })
-            .and_then(|title| pr::check_title(&title)),
+                    .and_then(|title| pr::check(&title, &body))
+            }),
         Task::VitalRegistry { source, check } => vital::run(root(), &source, check),
         Task::Reference { check } => reference::run(root(), check),
         Task::SetVersion { version } => version::set(root(), &version),

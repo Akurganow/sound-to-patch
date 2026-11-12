@@ -140,7 +140,7 @@ both builds.
 ## CI versus local
 
 - A test that needs a synth (Vital or Serum 2), `vita` or a dataset
-  carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital"]`.
+  carries `#[ignore = "needs <thing>"]`, such as `#[ignore = "needs Vital and SOUND_TO_PATCH_HOST"]`.
   When its input is missing, it panics with a message that names the input
   and how to get it. Run such tests with `cargo nextest run --run-ignored only`.
 - These ignored tests run in no CI job. Each needs something a hosted
@@ -542,9 +542,15 @@ unit test with the input bytes inline, next to the code it broke.
   tool versions, the values and the tolerance.
 - `xtask/golden/.python-version` pins the interpreter and
   `xtask/golden/requirements.txt` pins every package with its hashes.
-  `cargo xtask golden` installs them with uv into `target/golden-venv` and
+  `cargo xtask golden` installs them with uv into `target/golden-venv`,
+  runs the generator's tests in `xtask/golden/test_generate.py`, and
   rewrites every vector. A second run with the same pins writes
   byte-identical files.
+- Each vector stores the SHA-256 of its script and of `requirements.txt`,
+  with LF line ends, under `sources`. `cargo xtask golden` prints each
+  value that changed, and fails after the rewrite when an issue figure's
+  outcome flipped, a `reproduced` flag or any boolean in `rows`: check
+  each flip against its issue before you commit it.
 - `requirements.in` lists the direct packages. To change a pin, edit it and
   regenerate the lock from the repository root:
 
@@ -557,11 +563,19 @@ unit test with the input bytes inline, next to the code it broke.
 - CI never runs Python. The `test` job runs the xtask test
   `the_committed_vectors_match_the_pins`, which fails when a vector lacks a
   field, lacks the Python version in `tools`, names a version other than
-  the pin, or when a prototype table has no recipe file. The same job runs
-  `the_workspace_lock_has_no_ort`, which fails when `Cargo.lock` holds the
-  ONNX Runtime crate of the transcription model, and
-  `the_fuzz_lock_names_the_workspace_version`, which fails when
-  `fuzz/Cargo.lock` names another version of the crate than `Cargo.lock`.
+  the pin, or was made from another version of its script or of
+  `requirements.txt`. It also fails when a vector of `VECTORS` in
+  `xtask/src/golden.rs` is missing, when a file is in no recipe, and when
+  a `reproduced` flag beside its `rows` disagrees with them. A test ties
+  `VECTORS` to the recipes of `generate.py`. Two checks run only inside
+  `cargo xtask golden`, in no CI job: the generator's tests in
+  `xtask/golden/test_generate.py`, among them the rule of a glide's rise,
+  and the flips of the `reproduced` flags that have no `rows` beside them,
+  42 of the 49. The same job runs `the_workspace_lock_has_no_ort`, which
+  fails when `Cargo.lock` holds the ONNX Runtime crate of the
+  transcription model, and `the_fuzz_lock_names_the_workspace_version`,
+  which fails when `fuzz/Cargo.lock` names another version of the crate
+  than `Cargo.lock`.
   `cargo xtask golden-check`, `check-no-ort` and `check-fuzz-lock` run the
   same checks locally.
 - `cargo run --release -p xtask -- eval` scores the notes step on generated
@@ -570,7 +584,8 @@ unit test with the input bytes inline, next to the code it broke.
   the f0 tracker is part of our crate, so a debug run costs about 15
   times the CPU time: 160 s against 10 s for the whole table.
   `--part TEXT` runs the matching parts and prints their notes, raw and
-  clean. It fails when a golden of the cleanup breaks. The dry 110 Hz saw
+  clean. With `--layer envelope`, `--part` renders only the matching
+  parts. It fails when a golden of the cleanup breaks. The dry 110 Hz saw
   must show its octave copy at MIDI 57 before the cleanup, and all 6 of
   its true notes after it: the model misses the fourth onset, and the
   attack split restores it. Its six notes through reverb must give the

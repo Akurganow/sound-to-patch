@@ -15,6 +15,7 @@ the issue's method on the recipe given here.
 A second run with the same pins writes byte-identical files.
 """
 
+import hashlib
 import json
 import math
 import sys
@@ -28,6 +29,21 @@ import scipy.optimize
 import scipy.signal
 
 GENERATOR = "xtask/golden/generate.py"
+REQUIREMENTS = "xtask/golden/requirements.txt"
+HERE = Path(__file__).resolve().parent
+
+
+def sha256(path):
+    """The SHA-256 of a text file with LF line ends, as `cargo xtask golden-check` reads it."""
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+
+# The files that make every vector. `cargo xtask golden-check` hashes them
+# again and fails on a vector made from another version of either.
+SOURCES = {
+    GENERATOR: sha256(HERE / "generate.py"),
+    REQUIREMENTS: sha256(HERE / "requirements.txt"),
+}
 TOOLS = {
     "python": ".".join(str(part) for part in sys.version_info[:3]),
     "numpy": np.__version__,
@@ -110,6 +126,7 @@ def document(name, issue, description, function, tools, recipe, values, toleranc
         "issue": issue,
         "description": description,
         "generator": f"{GENERATOR}:{function}",
+        "sources": SOURCES,
         "tools": {tool: TOOLS[tool] for tool in tools},
         "recipe": recipe,
         "values": values,
@@ -256,6 +273,13 @@ PEAK_RECIPE = {
 }
 
 
+def cramer_rao_cycles(snr, n):
+    """The Cramer-Rao bound on the frequency of one real sine in white
+    noise, in cycles per sample, with frequency, phase and amplitude
+    unknown: var >= 12 / ((2 pi)^2 SNR N (N^2 - 1)), SNR = A^2 / (2 sigma^2)."""
+    return math.sqrt(12.0 / ((2.0 * math.pi) ** 2 * snr * n * (n * n - 1)))
+
+
 def peak_accuracy():
     r = PEAK_RECIPE
     n, rate, trials = r["frame_len"], r["sample_rate"], r["trials"]
@@ -275,8 +299,7 @@ def peak_accuracy():
         x = x + sigma * gaussian(r["seed"] + 1 + i, n)
         for name, window in windows.items():
             errors[name].append(estimate_frequency(x, rate, window, r["oversample"]) - frequency)
-    eta = r["amplitude"] ** 2 / sigma**2
-    bound_cycles = math.sqrt(12.0 / ((2.0 * math.pi) ** 2 * eta * n * (n * n - 1)))
+    bound_cycles = cramer_rao_cycles(r["amplitude"] ** 2 / (2.0 * sigma**2), n)
     values = {
         "std_hz": {name: float(np.std(e)) for name, e in errors.items()},
         "bound_std_hz": bound_cycles * rate,
@@ -312,6 +335,7 @@ def peak_accuracy():
         issue_figures={
             "hann_std_mhz": 1.55,
             "bound_mhz": 0.73,
+            "bound_why": "the issue's 0.73 mHz takes A^2 / sigma^2, twice the SNR of the recipe; the bound with A^2 / (2 sigma^2) is 1.04 mHz",
             "rectangular_std_mhz": 21.7,
             "hann_no_padding_bias_bins": 0.016,
             "hann_4x_padding_bias_hz": 0.001,
@@ -749,10 +773,10 @@ def stereo_screen():
         ["python", "numpy", "scipy", "librosa"],
         r,
         values,
-        {"abs": 2.0, "rel": 0.1},
+        {"abs": 0.0, "rel": 0.1, "ipd_deg": {"abs": 2.0, "rel": 0.1}},
         tag="[own, synthetic]",
         rounding="the issue prints rho to three decimals, dB to one and degrees to one",
-        tolerance_note="10 % or 2 degrees, whichever is larger, as the issue states",
+        tolerance_note="rho and sm_db within 10 % of the value; ipd_deg within the larger of 10 % and 2 degrees, as the issue states and tests/it/stereo.rs applies",
         issue_figures=issue_figures_47_stereo(values),
     )
 
@@ -805,7 +829,7 @@ def two_saw_peaks():
         {"abs": 0.125, "rel": 0.0},
         tag="[own, synthetic]",
         rounding="the issue prints Hz to two decimals",
-        tolerance_note="the rate rule of the issue: within 1 / T, 0.125 Hz for 8 s",
+        tolerance_note="the rate rule of the issue: within 1 / T, 0.125 Hz for 8 s; for harmonic 1 that is 39 % of the predicted 0.32 Hz, and the window reaches the 0.2 Hz edge of the search band",
     )
 
 
@@ -1327,12 +1351,6 @@ def glide_signal(r, glide_ms, rate):
     return 0.5 * x
 
 
-def rise_ms(f0, r, hop_s):
-    semis = np.where(f0 > 0, 12.0 * np.log2(np.maximum(f0, 1e-9) / r["start_hz"]), np.nan)
-    above = lambda level: int(np.argmax(np.nan_to_num(semis, nan=-1e9) >= level))
-    return (above(0.9 * r["semitones"]) - above(0.1 * r["semitones"])) * hop_s * 1000.0
-
-
 def pitch_track():
     r = TRACK_RECIPE
     settings = r["settings"]
@@ -1354,7 +1372,7 @@ def pitch_track():
         })
     glides = {}
     for ms in r["glides"]["glide_ms"]:
-        glides[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": float(rise_ms(track_f0(glide_signal(r["glides"], ms, rate), settings), r["glides"], hop_s))}
+        glides[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": glide_rise(track_f0(glide_signal(r["glides"], ms, rate), settings), r["glides"], hop_s)}
     return document(
         "pitch-track",
         113,
@@ -1505,7 +1523,7 @@ def glide_issue_table():
     hop_s = r["settings"]["hop_length"] / rate
     values = {}
     for ms in r["glides"]["glide_ms"]:
-        values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": float(rise_ms(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s))}
+        values[repr(ms)] = {"true_rise_ms": 0.8 * ms, "rise_ms": glide_rise(track_f0(glide_signal(r["glides"], ms, rate), r["settings"]), r["glides"], hop_s)}
     issue = {"50.0": 29.0, "150.0": 116.0, "400.0": 319.0}
     hop_ms = hop_s * 1000.0
     rows = {k: within(values[k]["rise_ms"], v, 0.0, hop_ms) for k, v in issue.items()}
@@ -1948,7 +1966,8 @@ PUMP_RECIPE = {
     "track": "centred RMS in dB over two periods of 110 Hz on a 1 ms hop from 0 s to the end",
     "beats_counted": "a beat counts when it starts 50 ms or more after 0 s and ends by the end",
     "curve": "64 phase bins per beat, each beat minus its 90th percentile, the median over the beats",
-    "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within 1.5 dB, linear between bins",
+    "back_db": 1.5,
+    "recovery": "from the curve's minimum, over the beat's wrap, until it comes back within back_db, linear between bins; back_db is PUMP_BACK of the envelope layer, and a test of the eval ties the two",
 }
 
 # The rows that #71 prints at 128 BPM: depth read in dB and time back in s.
@@ -1979,14 +1998,14 @@ def pump_curve(db, period):
     return np.median(np.array(curves), axis=0), len(curves)
 
 
-def pump_recovery(curve, period):
+def pump_recovery(curve, period, back_db):
     bins = len(curve)
     low = int(np.argmin(curve))
     at = lambda k: curve[(low + k) % bins]
     for k in range(1, bins):
-        if at(k) >= -1.5:
+        if at(k) >= -back_db:
             a, b = at(k - 1), at(k)
-            w = (-1.5 - a) / (b - a) if b > a else 1.0
+            w = (-back_db - a) / (b - a) if b > a else 1.0
             return (k - 1 + min(max(w, 0.0), 1.0)) * period / bins
     return None
 
@@ -2008,7 +2027,7 @@ def pump_table():
         db = centred_rms_db(x * gain, rate, 110.0, 2.0, 0.002, 0.0, length / rate)
         curve, beats = pump_curve(db, period)
         read = float(-min(curve.min(), 0.0))
-        back = pump_recovery(curve, period)
+        back = pump_recovery(curve, period, r["back_db"])
         rows.append({"depth_db": depth, "release_s": release, "read_depth_db": read, "back_s": back if depth > 0 else None, "beats": beats})
         ok = abs(read - figure) <= 0.5 and (back_figure is None or abs(back / back_figure - 1.0) <= 0.3)
         reproduced.append(bool(ok))

@@ -4,23 +4,85 @@
 //! [`check_rust_version`] keeps the docs on the manifest's `rust-version`.
 
 use std::fs;
-use std::path::Path;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 /// Sets `version` in `[workspace.package]` of `root/Cargo.toml`, then
 /// refreshes the workspace entries of `Cargo.lock` and, when the fuzz crate
 /// exists, the entries of the library and its core in `fuzz/Cargo.lock`.
 pub(crate) fn set(root: &Path, version: &str) -> crate::Result<()> {
+    set_with(root, version, cargo_update)
+}
+
+/// [`set`] with the `cargo update` step passed in.
+fn set_with(
+    root: &Path,
+    version: &str,
+    mut update: impl FnMut(&Path, &[&str]) -> crate::Result<()>,
+) -> crate::Result<()> {
     let manifest = root.join("Cargo.toml");
     let text = fs::read_to_string(&manifest)?;
-    fs::write(&manifest, with_version(&text, version)?)?;
-    cargo_update(root, &["--workspace", "--offline"])?;
+    let new_text = with_version(&text, version)?;
+    // Every file the steps below can change, kept byte for byte. Only a
+    // missing file counts as absent: an unreadable one stops the run here,
+    // before the rollback could delete it.
+    let mut saved: Vec<(PathBuf, Option<Vec<u8>>)> = Vec::new();
+    for name in ["Cargo.toml", "Cargo.lock", "fuzz/Cargo.lock"] {
+        let path = root.join(name);
+        let bytes = match fs::read(&path) {
+            Ok(bytes) => Some(bytes),
+            Err(err) if err.kind() == ErrorKind::NotFound => None,
+            Err(err) => {
+                return Err(format!(
+                    "cannot read {}: {err}. Fix or remove it and run set-version again",
+                    path.display()
+                )
+                .into());
+            }
+        };
+        saved.push((path, bytes));
+    }
+    fs::write(&manifest, new_text)?;
+    update_locks(root, &mut update).map_err(|err| {
+        let failed: Vec<String> = saved
+            .iter()
+            .filter_map(|(path, bytes)| {
+                let undone = match bytes {
+                    Some(bytes) => fs::write(path, bytes),
+                    None => fs::remove_file(path).or_else(|e| match e.kind() {
+                        ErrorKind::NotFound => Ok(()),
+                        _ => Err(e),
+                    }),
+                };
+                undone.err().map(|e| format!("{}: {e}", path.display()))
+            })
+            .collect();
+        if failed.is_empty() {
+            err
+        } else {
+            format!(
+                "{err}; and the old files could not be restored ({}): \
+                 run `git checkout Cargo.toml Cargo.lock fuzz/Cargo.lock`",
+                failed.join(", ")
+            )
+            .into()
+        }
+    })
+}
+
+/// Refreshes the lock files after the manifest changed.
+fn update_locks(
+    root: &Path,
+    update: &mut impl FnMut(&Path, &[&str]) -> crate::Result<()>,
+) -> crate::Result<()> {
+    update(root, &["--workspace", "--offline"])?;
     if root.join("fuzz/Cargo.toml").exists() {
         // Online: the release job has never fetched the fuzz-only crates.
         // `-p` keeps every other entry as locked. From the root, so rustup
         // keeps the release toolchain instead of the nightly that
         // fuzz/rust-toolchain.toml pins.
-        cargo_update(
+        update(
             root,
             &[
                 "--manifest-path",
@@ -48,20 +110,16 @@ fn cargo_update(root: &Path, args: &[&str]) -> crate::Result<()> {
     }
 }
 
-/// Replaces the `version` line of `[workspace.package]`.
+/// Replaces the `version` line of `[workspace.package]`, keeping every line
+/// ending as it was.
 fn with_version(manifest: &str, version: &str) -> crate::Result<String> {
-    let valid = !version.is_empty()
-        && version
-            .split('.')
-            .all(|part| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit()))
-        && version.split('.').count() == 3;
-    if !valid {
-        return Err(format!("`{version}` is not a version: give MAJOR.MINOR.PATCH").into());
-    }
+    check_version(version)?;
     let mut in_section = false;
     let mut replaced = false;
     let mut out = String::with_capacity(manifest.len());
-    for line in manifest.lines() {
+    for raw in manifest.split_inclusive('\n') {
+        let line = raw.trim_end_matches(['\r', '\n']);
+        let ending = &raw[line.len()..];
         if line.starts_with('[') {
             in_section = line.trim() == "[workspace.package]";
         }
@@ -73,13 +131,43 @@ fn with_version(manifest: &str, version: &str) -> crate::Result<String> {
         } else {
             out.push_str(line);
         }
-        out.push('\n');
+        out.push_str(ending);
     }
     if replaced {
         Ok(out)
     } else {
         Err("Cargo.toml has no `version = ` line in [workspace.package]".into())
     }
+}
+
+/// Accepts the `MAJOR.MINOR.PATCH` numbers that cargo accepts: no leading
+/// zero, and each part fits a `u64`.
+fn check_version(version: &str) -> crate::Result<()> {
+    let parts: Vec<&str> = version.split('.').collect();
+    if parts.len() != 3
+        || parts
+            .iter()
+            .any(|part| part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()))
+    {
+        return Err(format!("`{version}` is not a version: give MAJOR.MINOR.PATCH").into());
+    }
+    for part in parts {
+        if part.len() > 1 && part.starts_with('0') {
+            return Err(format!(
+                "`{version}` has a leading zero in `{part}`, which cargo rejects: \
+                 write the number without it"
+            )
+            .into());
+        }
+        if part.parse::<u64>().is_err() {
+            return Err(format!(
+                "`{version}` has `{part}`, which does not fit a 64-bit number: \
+                 give a smaller number"
+            )
+            .into());
+        }
+    }
+    Ok(())
 }
 
 /// Fails when a doc names a Rust version, as `Rust 1.NN`, other than the
@@ -278,5 +366,114 @@ mod tests {
     #[test]
     fn fails_without_a_workspace_version() {
         assert!(with_version("[package]\nversion = \"1.0.0\"\n", "0.1.0").is_err());
+    }
+
+    #[test]
+    fn rejects_a_leading_zero() {
+        for bad in ["01.0.0", "0.01.0", "0.0.00", "00.0.0"] {
+            let err = with_version(MANIFEST, bad).unwrap_err().to_string();
+            assert!(err.contains("leading zero"), "{bad}: {err}");
+        }
+        for good in ["0.0.0", "10.0.0", "0.10.100"] {
+            assert!(with_version(MANIFEST, good).is_ok(), "{good}");
+        }
+    }
+
+    #[test]
+    fn rejects_a_component_that_overflows_u64() {
+        for bad in ["99999999999999999999.0.0", "0.18446744073709551616.0"] {
+            assert!(with_version(MANIFEST, bad).is_err(), "{bad}");
+        }
+        assert!(with_version(MANIFEST, "18446744073709551615.0.0").is_ok());
+    }
+
+    #[test]
+    fn keeps_crlf_line_endings() {
+        let crlf = MANIFEST.replace('\n', "\r\n");
+        let out = with_version(&crlf, "0.1.0").unwrap();
+        assert_eq!(out, crlf.replace("\"0.0.0\"", "\"0.1.0\""));
+    }
+
+    #[test]
+    fn keeps_a_missing_final_newline() {
+        let bare = MANIFEST.trim_end_matches('\n');
+        let out = with_version(bare, "0.1.0").unwrap();
+        assert_eq!(out, bare.replace("\"0.0.0\"", "\"0.1.0\""));
+    }
+
+    #[test]
+    fn a_failed_update_leaves_every_file_as_it_was() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("fuzz")).unwrap();
+        let files = [
+            ("Cargo.toml", MANIFEST),
+            ("Cargo.lock", "# workspace lock\r\n"),
+            ("fuzz/Cargo.toml", "[package]\n"),
+            ("fuzz/Cargo.lock", "# fuzz lock"),
+        ];
+        for (name, text) in files {
+            fs::write(root.join(name), text).unwrap();
+        }
+        let mut calls = 0;
+        let err = set_with(root, "0.1.0", |root, _| {
+            calls += 1;
+            if calls == 1 {
+                fs::write(root.join("Cargo.lock"), "new workspace lock\n")?;
+                Ok(())
+            } else {
+                fs::write(root.join("fuzz/Cargo.lock"), "half written")?;
+                Err("cargo update failed: no network".into())
+            }
+        })
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("no network"), "{err}");
+        for (name, text) in files {
+            assert_eq!(fs::read_to_string(root.join(name)).unwrap(), text, "{name}");
+        }
+    }
+
+    #[test]
+    fn a_failed_update_deletes_a_lock_file_it_created() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("fuzz")).unwrap();
+        fs::write(root.join("Cargo.toml"), MANIFEST).unwrap();
+        fs::write(root.join("Cargo.lock"), "# workspace lock\n").unwrap();
+        fs::write(root.join("fuzz/Cargo.toml"), "[package]\n").unwrap();
+        let err = set_with(root, "0.1.0", |root, args| {
+            if args.contains(&"--workspace") {
+                return Ok(());
+            }
+            fs::write(root.join("fuzz/Cargo.lock"), "new fuzz lock\n")?;
+            Err("cargo update failed: no network".into())
+        })
+        .unwrap_err()
+        .to_string();
+        assert!(err.contains("no network"), "{err}");
+        assert!(!root.join("fuzz/Cargo.lock").exists());
+        assert_eq!(
+            fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            MANIFEST
+        );
+    }
+
+    #[test]
+    fn an_unreadable_lock_file_stops_the_run_before_any_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::write(root.join("Cargo.toml"), MANIFEST).unwrap();
+        // A folder in place of the lock file cannot be read as a file.
+        fs::create_dir_all(root.join("Cargo.lock")).unwrap();
+        let err = set_with(root, "0.1.0", |_, _| Ok(()))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("cannot read"), "{err}");
+        assert!(root.join("Cargo.lock").is_dir());
+        assert_eq!(
+            fs::read_to_string(root.join("Cargo.toml")).unwrap(),
+            MANIFEST
+        );
     }
 }

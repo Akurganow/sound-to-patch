@@ -10,6 +10,10 @@
   "signal": "1.5 + sin(2 pi 4 t + 0.4), kept while (t mod 1) < 0.5",
   "track_rate_hz": 200.0
  },
+ "sources": {
+  "xtask/golden/generate.py": "b9445be062e22ca15f6755e4efa4c05b60d2939bc1704e3fa90d5a44b727c8c1",
+  "xtask/golden/requirements.txt": "9b8f2a9c3f3da9da16a5550025177b8838dadd6d5ebfebbd1492c725d82c350a"
+ },
  "tolerance": {
   "abs": 1e-09,
   "rel": 1e-09

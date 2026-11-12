@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.32.1](https://github.com/Akurganow/sound-to-patch/compare/4c008691bb9b9525de1fe949a2d7454c39461126..v0.32.1) - 2026-11-12
+#### Bug Fixes
+- ship a man page for every subcommand (#342) - ([f7890ec](https://github.com/Akurganow/sound-to-patch/commit/f7890ec6a8c38955fdc5c6512e4fb8ef922038df)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.32.0](https://github.com/Akurganow/sound-to-patch/compare/35065944ef5fca7d9589d61f58e81c1446aa0470..v0.32.0) - 2026-11-12
 #### Features
 - (**analyze**) keep the old report when a write fails and tell stems apart by checksum (#336) - ([3506594](https://github.com/Akurganow/sound-to-patch/commit/35065944ef5fca7d9589d61f58e81c1446aa0470)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
