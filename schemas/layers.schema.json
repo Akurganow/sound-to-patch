@@ -5,7 +5,7 @@
   "description": "The analysis report of one stem, version layers/1. Field names are snake_case and carry their unit as a suffix (_hz, _s, _ms, _db, _dbfs, _deg, _st, _ct) where the value has one; a field without a suffix is a count, a ratio, a share, a power, a flag or a tempo. The conventions group names the convention of every number in the stem group and of every record in the layer groups.",
   "type": "object",
   "required": [
-    "schema", "source", "synth", "stem", "transcription", "notes", "pitch", "voices", "envelope",
+    "schema", "source", "source_sha256", "synth", "stem", "transcription", "notes", "pitch", "voices", "envelope",
     "conventions"
   ],
   "additionalProperties": false,
@@ -15,6 +15,11 @@
       "description": "The file name of the stem, without its folder. A later run into the same folder refuses a report of another source unless forced.",
       "type": "string",
       "minLength": 1
+    },
+    "source_sha256": {
+      "description": "The SHA-256 of the stem file's bytes in lower-case hex. A later run into the same folder refuses a report of another file with the same name unless forced.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "synth": { "enum": ["vital", "serum2"] },
     "stem": { "$ref": "#/$defs/stem" },

@@ -82,7 +82,8 @@ first; a host must set a bend range of 2 semitones";
 /// Renders the report of a stem as pretty-printed JSON with a final
 /// newline. The same stem always gives the same bytes.
 ///
-/// `source` is the stem's file name without its folder, `tempo` the
+/// `source` is the stem's file name without its folder and the SHA-256 of
+/// the file's bytes in lower-case hex, `tempo` the
 /// given and refined tempo, `transcription` the record of the
 /// transcriber that gave the notes, or `None` when none ran, and
 /// `notes` the final note list that `notes.mid` holds, or `None` without
@@ -97,7 +98,7 @@ pub fn layers_json(
     stem: &Stem,
     descriptors: &Descriptors,
     synth: Synth,
-    source: &str,
+    (source, source_sha256): (&str, &str),
     tempo: &Tempo,
     (transcription, notes): (Option<&TranscriptionRecord>, Option<&FinalNotes>),
     ((pitch, envelope, voices), mapped): ((&PitchLayer, &EnvelopeLayer, &VoicesLayer), &Mapped),
@@ -105,6 +106,7 @@ pub fn layers_json(
     let report = Layers {
         schema: SCHEMA,
         source,
+        source_sha256,
         synth,
         stem: StemGroup::new(stem, descriptors, tempo),
         transcription,
@@ -124,6 +126,9 @@ struct Layers<'a> {
     schema: &'static str,
     /// The file name of the stem, without its folder.
     source: &'a str,
+    /// The SHA-256 of the stem file's bytes, which tells apart two stems
+    /// of one file name.
+    source_sha256: &'a str,
     synth: Synth,
     stem: StemGroup<'a>,
     /// The transcriber's model and settings, `null` when none ran.

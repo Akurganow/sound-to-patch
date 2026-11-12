@@ -1,0 +1,10 @@
+# An empty `--name` is a usage error; it would write an unnamed preset.
+bin.name = "sound-to-patch"
+args = ["preset", "apply", "tests/cmd/data/three-edits.json", "--template", "tests/fixtures/vital/routes.vital", "-o", "target/empty-name.vital", "--force", "--name", ""]
+status.code = 2
+stdout = ""
+stderr = """
+error: a value is required for '--name <NAME>' but none was supplied
+
+For more information, try '--help'.
+"""

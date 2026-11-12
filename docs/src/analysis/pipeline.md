@@ -987,16 +987,21 @@ frames [fact].
   the `conventions` group; the
   [layer report page](../reference/formats/layers.md) lists them [fact].
 - Output is deterministic: two runs on the same input write the same bytes
-  [fact]. `layers.json` names its stem in `source`, and a run of another
-  stem into the same folder stops unless forced [fact].
-- Each file is written to a temporary sibling and renamed into place:
-  `notes.mid` first, then `spectrogram.png`, and `layers.json` last, after
-  the old one is removed. A run without notes removes the old
-  `notes.mid`. A `layers.json` that exists therefore always belongs to the
-  spectrogram and the `notes.mid` next to it, and no file is ever cut
-  short [fact]. `notes` keeps that true: it stops before it replaces a
-  `notes.mid` that a `layers.json` describes, and `--force` removes that
-  report [fact].
+  [fact]. `layers.json` names its stem in `source` and the SHA-256 of
+  the stem file in `source_sha256`. A run of another stem, or of a stem of
+  the same name with other content, into the same folder stops unless
+  forced [fact].
+- Each file is written to a hidden temporary sibling and renamed into
+  place: `notes.mid` first, then `spectrogram.png`, and `layers.json`
+  last. The old `layers.json` moves to a hidden backup before any file
+  changes, and each old file moves aside before its new one lands. A run
+  without notes removes the old `notes.mid`. A `layers.json` that exists
+  therefore always belongs to the spectrogram and the `notes.mid` next to
+  it, and no file is ever cut short [fact]. A failed write renames the
+  backups back, so the folder keeps the old files [fact]. `notes` keeps
+  that true: it stops before it replaces a `notes.mid` that a
+  `layers.json` describes, and `--force` removes that report once the new
+  `notes.mid` is in place [fact].
 - `spectrogram.png` is 1500 by 512 pixels, below the size at which a
   hosted image reader downscales [fact]. The image gives coarse shape; the
   numbers live in the JSON [fact].

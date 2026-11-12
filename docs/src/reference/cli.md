@@ -63,7 +63,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Replace a report of another stem in the output folder
+          Replace files in the output folder that this stem's report does not own: a report or notes of another stem, a report of the same name with other content, a file this tool did not write, or a spectrogram.png without a report
 
       --synth <SYNTH>
           The target synth that the report names [default: vital]
@@ -90,27 +90,53 @@ and writes three files into the output folder, which it creates:
   It replaces the first file of [`notes`](#notes). A stem without notes
   writes none.
 
-The files are replaced on the next run of the same stem; nothing else in
-the folder changes. The same stem and flags give the same bytes. Each file
-is written to a temporary sibling and renamed into place, `notes.mid`
-first and `layers.json` last, so an interrupted run never leaves a
-cut-short file, and a `layers.json` that exists belongs to the files next
-to it. The
+The files are replaced on the next run of the same stem file; nothing else
+in the folder changes. A stem of the same name with other bytes, such as a
+new export, needs `--force`, below. The same stem and flags give the same
+bytes. The stem is read once, so a pipe such as `/dev/stdin` works as a
+stem. Each file
+is written to a hidden temporary sibling and renamed into place,
+`notes.mid` first and `layers.json` last; the old `layers.json` moves
+aside before any file changes. So no run leaves a cut-short file, and a
+`layers.json` that exists belongs to the files next to it. A write that
+fails, such as on a full disk, puts the old files back, leaves no
+temporary file and removes a folder the run created. A run killed during
+the renames, such as by a power loss, can leave the old files as hidden
+backups named `.<file>.<random>.old`, such as
+`.layers.json.a1B2c3.old`, with no `layers.json`. The next run stops and
+names every backup: rename each backup back to its file name to keep the
+old report, or pass `--force` to write new files and remove the backups
+once they are in place. The
 command prints one `wrote <path>` line per file to standard output, and a
 warning line for each corrupt packet that became silence to standard
 error.
 
-`layers.json` records the stem's file name in `source`. When the folder
-already holds the report of another stem, such as `bass.aiff` next to
-`bass.wav` sharing `bass/`, the command stops and names both; `--out`
-picks another folder, and `--force` replaces the report. A `notes.mid` of
-another stem, by its track name, stops the command the same way, as in
-[`notes`](#notes). An output folder
-path that is a file, such as the default folder of a stem without an
-extension, stops the command with a request for `--out`.
+`layers.json` records the stem's file name in `source` and the SHA-256 of
+its bytes in `source_sha256`. The command stops before it decodes, names
+the file and asks for `--out` or `--force` when the folder holds:
+
+- the report of another stem, such as `bass.aiff` next to `bass.wav`
+  sharing `bass/`;
+- a report of the same name with other content: another stem of that
+  name, such as the `bass.wav` of another song in a shared `--out`
+  folder, or this stem changed since that run, such as a new export; a
+  report from release 0.31 or earlier has no checksum and is matched by
+  its name;
+- a `layers.json` that is not a report of this tool: it cannot be read,
+  is not JSON or names no `source`;
+- a `spectrogram.png` and no `layers.json`, a file no report owns;
+- a `notes.mid` of another stem by its track name, or one with no track
+  name, as in [`notes`](#notes).
+
+`--out` picks another folder, and `--force` replaces the files. An
+output folder that is a file, by default or by `--out`, such as a file
+`bass` next to `bass.wav`, stops the command with a request for `--out`.
 
 Without `--out`, the folder is named after the stem file and sits next to
-it: `stems/bass.wav` writes `stems/bass/`.
+it: `stems/bass.wav` writes `stems/bass/`. A stem whose name without the
+extension is `.` or `..`, such as `..wav`, would name its own folder or the
+one above, and a stem without an extension, such as `bass` or `.wav`,
+would name the stem file itself, so each needs `--out`.
 
 - Tempo: `--bpm` is refined from the stem's onsets, from 2.91 % below to
   3.09 % above it, as the [tempo section](../analysis/pipeline.md#tempo)
@@ -133,7 +159,7 @@ it: `stems/bass.wav` writes `stems/bass/`.
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | The files were written. |
-| 1 | The stem or the note file cannot be read or is invalid, the notes step fails, the selected synth has no adapter yet, the output folder is a file or holds the report of another stem, an output cannot be written, or the analysis fails internally. The message names the cause and the fix, and the file when one is involved. |
+| 1 | The stem or the note file cannot be read or is invalid, the notes step fails, the selected synth has no adapter yet, the output folder is a file, has no name of its own or holds a file the run does not own, an output cannot be written, or the analysis fails internally. A refusal and a failure share this code. The message names the cause and the fix, and the file when one is involved. |
 | 2 | A usage error, such as a missing `--bpm`, a tempo outside 4 to 1000, or `--profile` with `--notes`. |
 
 ## notes
@@ -171,7 +197,7 @@ Options:
           The output folder [default: a folder named after the stem, next to it]
 
       --force
-          Write next to a report of another stem, or replace the final notes and remove the report that describes them
+          Write next to a report that is not this stem's, replace a notes.mid of another stem or with no track name, or replace the final notes and remove the report that describes them
 
   -h, --help
           Print help (see a summary with '-h')
@@ -198,25 +224,32 @@ gives each step.
 - The file: a format 0 MIDI file with 480 ticks per beat, the stem's file
   name as the track name, the printed tempo and 4/4 at tick 0, and
   every note on channel 1 at velocity 100.
-  It is written to a temporary sibling and renamed into place. Only
+  It is written to a hidden temporary sibling and renamed into place. A
+  failed write leaves the old files and no temporary file. Only
   `notes.mid` is replaced; nothing else in the folder changes, except the
   report that `--force` removes, below.
 - The folder: as for `analyze`, `stems/bass.wav` writes into `stems/bass/`
-  without `--out`. When the folder holds a `notes.mid` whose track name is
-  another stem, or none, the command stops before it decodes and names
-  both; `--force` replaces that file. When it holds a `layers.json` of
-  another stem, it stops the same way; `--force` writes `notes.mid` next
-  to that report and leaves it. When it holds a `layers.json` with a
+  without `--out`, and a stem such as `..wav`, `.wav` or `bass` needs
+  `--out`.
+  When the folder holds a `notes.mid` whose track name is another stem,
+  or none, the command stops before it decodes and names the file;
+  `--force` replaces that file. When it holds a `layers.json` of another
+  stem, of the same name with other content, or one that is not a report,
+  it stops the same way; `--force` writes `notes.mid` next to that file
+  and leaves it. When it holds a `layers.json` with a
   `notes` group, the report of `analyze` that describes the final
   `notes.mid`, it stops whatever the stem, because the first list would
   replace the file the report describes; `--force` replaces `notes.mid`
-  and removes that report, so no report describes a file that is gone.
+  and removes that report once the new file is in place, so no report
+  describes a file that is gone. A backup that a killed run left, as
+  for `analyze`, stops it too; `--force` writes `notes.mid` and then
+  removes the backups.
   `--out` picks another folder in every case.
 
 | Exit code | Meaning |
 | :-- | :-- |
 | 0 | `notes.mid` was written. |
-| 1 | The stem cannot be read, gives no note (digital silence, for one), or cannot be transcribed; the output folder is a file or holds the notes or the report of another stem; or the file cannot be written. Nothing is written. The message names the cause and the fix. |
+| 1 | The stem cannot be read, gives no note (digital silence, for one), or cannot be transcribed; the output folder is a file, has no name of its own or holds a file the run does not own; or the file cannot be written. Nothing is written. A refusal and a failure share this code. The message names the cause and the fix. |
 | 2 | A usage error: a missing `--bpm`, a tempo outside 4 to 1000 or not a number, or a profile other than `bass`, `lead` and `pad`. |
 
 ## preset
@@ -335,7 +368,8 @@ without hard links, such as one on an exFAT or FAT32 drive, gets the file
 too, and an existing file there is still replaced only with `--force`.
 There, without `--force`, the file is written in place: it is visible while
 it is written, an error removes it, and a run killed during the write
-leaves a partial output file.
+leaves a partial output file. An
+empty `--name`, such as an unset shell variable, is a usage error.
 
 ## The edit list
 

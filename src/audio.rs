@@ -26,6 +26,7 @@ mod stereo;
 mod tempo;
 
 pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
+pub(crate) use decode::{decode_bytes, read_stem};
 pub use resample::{ResampleError, resample};
 #[doc(inline)]
 pub use sound_to_patch_core::audio::{
