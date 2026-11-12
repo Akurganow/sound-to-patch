@@ -159,10 +159,13 @@ impl Audio {
         self.sample_rate.seconds(self.frames())
     }
 
-    /// Returns the mono mix: the mean of the channels in `f64`.
+    /// Returns the mono mix in `f64`: the mean of the first two channels,
+    /// or the one channel of a mono file. The stereo measures read the same
+    /// two, so further channels, such as the centre of a 5.1 file, are left
+    /// out.
     #[must_use]
     pub fn mono(&self) -> Vec<f64> {
-        mono_mean(&self.channels)
+        mono_mean(&self.channels[..self.channels.len().min(2)])
     }
 }
 
@@ -270,6 +273,18 @@ mod tests {
             error.to_string(),
             "the sample at frame 1 of channel 1 is NaN or infinite; every sample must be finite"
         );
+    }
+
+    #[test]
+    fn mono_mixes_only_the_first_two_channels() {
+        let audio = Audio::new(
+            rate(48_000),
+            vec![vec![0.5, 1.0], vec![0.25, -1.0], vec![1.0, 1.0]],
+        )
+        .unwrap();
+        assert_eq!(audio.mono(), vec![0.375, 0.0]);
+        let one = Audio::new(rate(48_000), vec![vec![0.5, -0.25]]).unwrap();
+        assert_eq!(one.mono(), vec![0.5, -0.25]);
     }
 
     #[test]

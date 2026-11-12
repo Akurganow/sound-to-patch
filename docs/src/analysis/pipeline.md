@@ -30,6 +30,19 @@ releases call [fact].
 - The stem decodes at its native sample rate with every channel kept, as
   `f64` samples [fact]. The default audio track is the one the container
   flags as default, else the first with a known codec [fact].
+- The rate must lie between 8000 and 192000 Hz, or the file is refused
+  with its rate and the range [fact]. The band-edge rule looks for its
+  fall above 2 kHz, so it needs a Nyquist frequency well above that
+  [fact]. 192 kHz is the highest standard export rate [fact].
+- The cost of the analysis grows with the sample rate and with the number
+  of notes, so a stem of many short notes costs far more than a sustained
+  one [synthetic]. Examples from a release build on generated 4 s mono
+  stems of a 55 Hz band-limited sawtooth [synthetic]:
+  - Sustained: 0.08 s per second of audio at 48 kHz and 0.17 s at
+    192 kHz.
+  - Notes of 0.2 s, four per second: 0.28 s per second of audio at
+    48 kHz and 1.6 s at 192 kHz. With the bound lifted, the same stem
+    cost 1.8 s at 200 kHz, 2.5 s at 256 kHz and 5.1 s at 384 kHz.
 - The build reads WAV, AIFF, FLAC, MP3, AAC (ADTS), MP4 or M4A, Ogg, MKV
   and WebM containers [fact]. A missing codec fails with its name and, if
   one exists, the decoder feature that adds it [fact].
@@ -37,7 +50,9 @@ releases call [fact].
   samples keep their time, and the command prints a warning [fact]. More
   than 4 such packets fail the file [proposal].
 - Mono is the channel mean, $m = (L + R) / 2$, with no gain normalisation
-  [fact]. Analysis never resamples [fact].
+  [fact]. A file of three or more channels mixes only the first two, as
+  the stereo measures read them, and the command warns with the channel
+  count [fact]. Analysis never resamples [fact].
 - Resampling serves only a consumer with a fixed input rate, such as the
   22050 Hz transcription model [fact]. It is a band-limited FFT conversion
   with $\lceil n \cdot f_{to} / f_{from} \rceil$ output samples [fact]. Some
@@ -85,13 +100,18 @@ reads it: the minimum note length, the MIDI tempo and the beat grid
     (`beat_periodicity`). The sparse share reads the same sum on every
     second or every fourth beat lag alone, the better of the two, and needs
     0.75 (`sparse_periodicity`), with at most 0.8 peaks of the onset
-    strength per beat (`onsets_per_beat`). Both shares stop at 1.
+    strength per beat at the slowest tempo of the search
+    (`onsets_per_beat`). Both shares stop at 1.
 
   The sparse share is read once the stem holds 4 such lags, 12 beats for
   every second lag and 20 for every fourth [fact]. Otherwise the tempo is
   reported at low confidence and `--bpm` stays [fact]. A stem of fewer
-  than 8 beats, or one without onsets, keeps `--bpm` and reports no
-  refined tempo [fact].
+  than 8 whole beats, or one without onsets, keeps `--bpm` and reports no
+  refined tempo [fact]. The beats are counted at the slowest tempo of the
+  search, `--bpm` / 1.03, so the longest lag keeps 4 beats of overlap at
+  every candidate: a 4 s stem at 120 BPM holds 8 beats, but 7.77 at
+  116.51 BPM, and keeps `--bpm` [fact]. `cycles_in_span` reports that
+  count [fact].
 - Generated drum, bass and lead parts at 70.3, 97.55, 123.4, 147.81 and
   178.2 BPM, 37 beats each at 22,050 Hz, with `--bpm` off by -3, -1, +1
   and +3 %: every refined tempo lies within 0.05 BPM of the truth
@@ -739,9 +759,15 @@ process per stage, the median of five runs of a release build
   one-channel file's mid is its channel and it has no side [fact].
 - The beat grid takes the period $60 / \text{BPM}$ seconds from `--bpm`
   and an offset of 0. The offset is given, never estimated [fact].
-- The frame length of harmonic analysis is 8192 samples when the note list
-  has a median f0 below 100 Hz, else 4096 [fact]. A Hann main lobe is about
-  4 bins wide, so harmonics $f_0$ apart need $N \ge 4 f_s / f_0$ [fact].
+- The frame length of harmonic analysis at 44.1 kHz is 8192 samples when
+  the note list has a median f0 below 100 Hz, else 4096 [fact]. A Hann
+  main lobe is about 4 bins wide, so harmonics $f_0$ apart need
+  $N \ge 4 f_s / f_0$ [fact]. At another rate the length is the power of
+  two nearest, in log, to that length times $f_s / 44100$, so the frame
+  keeps its duration within a factor of $\sqrt{2}$: 32 and 48 kHz keep
+  4096 and 8192, 88.2 and 96 kHz take 8192 and 16384, 176.4 and 192 kHz
+  16384 and 32768 [fact]. The long frame meets the rule down to 30.5 Hz at
+  every rate, and to 23.4 Hz or lower at the standard ones [fact].
 
 ### Band edge
 
@@ -778,8 +804,8 @@ cut [fact].
 ### Flat tops
 
 `hard_limited` is true when runs of at least 1 ms of samples within 1e-5
-of the channel peak cover at least 0.1 % of a channel [fact, proposal for
-the thresholds]. A run counts only when the samples on both sides lie at
+of the channel peak cover at least 0.1 % of one of the first two
+channels [fact, proposal for the thresholds]. A run counts only when the samples on both sides lie at
 least half the peak on the same side: clipping runs into the ceiling,
 while a square or pulse wave jumps to it [fact]. Square and pulse waves at
 55 and 220 Hz do not flag [synthetic]. The level descriptors carry the

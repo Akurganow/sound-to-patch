@@ -722,8 +722,10 @@ impl Conventions {
             frame_size,
             statistics: STATISTICS_CONVENTION,
             spectral: "magnitude weights for shape, power for band shares; periodic Hann frames \
-of frame_size samples, hop frame_size / 4, centred and zero-padded; frame_size is 8192 when the \
-note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list",
+of frame_size samples, hop frame_size / 4, centred and zero-padded; at 44.1 kHz frame_size is \
+8192 when the note list has a median f0 below 100 Hz, else 4096, and 4096 without a note list; at \
+another rate it is the power of two nearest, in log, to that length times the rate over 44100 Hz, \
+the same at 32 and 48 kHz and twice it at 88.2 and 96 kHz",
             bpm: "the tempo of the beat grid and of every later step: bpm_refined when its \
 confidence is high, else bpm_given",
             bpm_given: "given by --bpm",

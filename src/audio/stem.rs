@@ -13,9 +13,12 @@ use crate::units::{Bpm, Decibels, Hz, Normalized, Seconds};
 use super::stereo::{StereoScreen, stereo_screen};
 use super::{Audio, SampleRate};
 
-/// Harmonic analysis uses 8192-sample frames below this median f0, else
-/// 4096: a Hann main lobe is about 4 bins wide, so harmonics `f0` apart
-/// need `N >= 4 fs / f0`.
+/// The median f0 below which harmonic analysis uses its long frame.
+///
+/// At 44.1 kHz the frame is 8192 samples below it, else 4096: a Hann main
+/// lobe is about 4 bins wide, so harmonics `f0` apart need
+/// `N >= 4 fs / f0`. At another rate the length scales with the rate, see
+/// [`Stem::frame_len`].
 pub const LONG_FRAME_BELOW_HZ: Hz = Hz::from_const(100.0);
 /// A fall of at least this much over one semitone marks a cutoff, and the
 /// band edge sits at its half-depth point. Synthetic cuts fall 57 to 91 dB
@@ -58,7 +61,7 @@ frequency when no bin above 1 kHz is";
 /// The convention of the flat-top flag.
 pub const HARD_LIMITED_CONVENTION: &str = "true when runs of at least 1 ms of samples \
 within 1e-5 of the channel peak, each with its neighbours on both sides at least half the \
-peak on the same side, cover at least 0.1 % of a channel";
+peak on the same side, cover at least 0.1 % of one of the first two channels";
 
 /// The length of a note division in beats, before its feel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -120,6 +123,19 @@ pub enum Feel {
     Dotted,
 }
 
+impl Feel {
+    /// The length of a cycle against the plain value, as `(num, den)`.
+    /// Both [`Division::beats_per_cycle`] and [`Division::rate`] read it,
+    /// so a new feel changes one place.
+    fn stretch(self) -> (f64, f64) {
+        match self {
+            Self::Straight => (1.0, 1.0),
+            Self::Triplet => (2.0, 3.0),
+            Self::Dotted => (3.0, 2.0),
+        }
+    }
+}
+
 /// A note division, such as a dotted eighth, that an LFO rate can lock to.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Division {
@@ -167,24 +183,18 @@ impl Division {
     /// for a triplet and 3/2 for a dotted note.
     #[must_use]
     pub fn beats_per_cycle(self) -> f64 {
-        let beats = self.value.beats();
-        match self.feel {
-            Feel::Straight => beats,
-            Feel::Triplet => beats * 2.0 / 3.0,
-            Feel::Dotted => beats * 1.5,
-        }
+        let (num, den) = self.feel.stretch();
+        self.value.beats() * num / den
     }
 
     /// Returns the rate of one cycle per division at a tempo,
     /// `(BPM / 60) / beats_per_cycle`.
     #[must_use]
     pub fn rate(self, bpm: Bpm) -> Hz {
-        let beat_hz = bpm.get() / 60.0;
-        Hz::clamped(match self.feel {
-            Feel::Straight => beat_hz / self.value.beats(),
-            Feel::Triplet => beat_hz / self.value.beats() * 1.5,
-            Feel::Dotted => beat_hz / self.value.beats() * 2.0 / 3.0,
-        })
+        // Dividing by `beats_per_cycle` would round once more and move some
+        // rates by one ulp; this order keeps the earlier values bit for bit.
+        let (num, den) = self.feel.stretch();
+        Hz::clamped(bpm.get() / 60.0 / self.value.beats() * den / num)
     }
 }
 
@@ -275,12 +285,14 @@ impl Stem {
     ) -> Result<Self, ConfidenceError> {
         let mid = audio.mono();
         let median_f0 = notes.and_then(median_f0);
-        let frame_len = frame_len_for(median_f0);
         let rate = audio.sample_rate();
+        let frame_len = frame_len_for(median_f0, rate);
         let band_edge = band_edge(&mid, rate, StftParams::fixed(frame_len))?;
+        // The first two channels, the pair the mid and the stereo screen read.
         let hard_limited = audio
             .channels()
             .iter()
+            .take(2)
             .any(|channel| is_flat_topped(channel, rate));
         let stereo = match audio.channels() {
             [left, right, ..] => stereo_screen(left, right, rate, median_f0)?,
@@ -317,7 +329,9 @@ impl Stem {
     }
 
     /// Returns the mid, `M = (L + R) / 2`: the mono signal of every
-    /// non-stereo estimate. A one-channel file's mid is its channel.
+    /// non-stereo estimate. A one-channel file's mid is its channel; a file
+    /// of three or more channels mixes only the first two, as the side and
+    /// the stereo screen read them.
     #[must_use]
     pub fn mid(&self) -> &[f64] {
         &self.mid
@@ -345,8 +359,12 @@ impl Stem {
         self.median_f0
     }
 
-    /// Returns the frame length of harmonic analysis: 8192 below a median
-    /// f0 of 100 Hz, else 4096, and 4096 without a note list.
+    /// Returns the frame length of harmonic analysis: at 44.1 kHz 8192
+    /// below a median f0 of 100 Hz, else 4096, and 4096 without a note
+    /// list. At another rate the length is the power of two nearest, in log,
+    /// to that length times `fs / 44100`, so the frame keeps its duration
+    /// within a factor of the square root of 2: 32 and 48 kHz keep 4096 and
+    /// 8192, 96 kHz takes 8192 and 16384.
     #[must_use]
     pub fn frame_len(&self) -> usize {
         self.frame_len
@@ -361,7 +379,7 @@ impl Stem {
     }
 
     /// Returns whether the stem is flat-topped at its peak, as a limiter or
-    /// clipping leaves it.
+    /// clipping leaves it, in either of its first two channels.
     #[must_use]
     pub fn hard_limited(&self) -> bool {
         self.hard_limited
@@ -383,10 +401,25 @@ fn median_f0(notes: &NoteList) -> Option<Hz> {
     Summary::of(&frequencies).map(|summary| Hz::clamped(summary.median()))
 }
 
-fn frame_len_for(median_f0: Option<Hz>) -> usize {
-    match median_f0 {
-        Some(f0) if f0 < LONG_FRAME_BELOW_HZ => 8192,
-        _ => 4096,
+/// The rate whose frame lengths are 4096 and 8192 samples.
+const FRAME_BASE_RATE_HZ: f64 = 44_100.0;
+
+fn frame_len_for(median_f0: Option<Hz>, rate: SampleRate) -> usize {
+    let base = match median_f0 {
+        Some(f0) if f0 < LONG_FRAME_BELOW_HZ => 8192.0,
+        _ => 4096.0,
+    };
+    let wanted = base * rate.hz().get() / FRAME_BASE_RATE_HZ;
+    let up = cast::ceil_to_usize(wanted)
+        .unwrap_or(1)
+        .max(1)
+        .next_power_of_two();
+    // Nearest in log: halve when the power above lies more than a factor of
+    // the square root of 2 above the wanted length.
+    if cast::usize_to_f64(up) > wanted * std::f64::consts::SQRT_2 {
+        (up / 2).max(1)
+    } else {
+        up
     }
 }
 
@@ -626,6 +659,29 @@ mod tests {
     }
 
     #[test]
+    fn rate_and_beats_per_cycle_read_one_ratio() {
+        for tempo in [60.0, 97.3, 120.0, 128.0, 174.25] {
+            let beat_hz = tempo / 60.0;
+            for division in Division::ALL {
+                let rate = division.rate(bpm(tempo)).get();
+                let product = rate * division.beats_per_cycle();
+                assert!(
+                    (product / beat_hz - 1.0).abs() < 1e-12,
+                    "{division} at {tempo}"
+                );
+                // The rates of 2a219a0, bit for bit.
+                let base = beat_hz / division.value.beats();
+                let earlier = match division.feel {
+                    Feel::Straight => base,
+                    Feel::Triplet => base * 1.5,
+                    Feel::Dotted => base * 2.0 / 3.0,
+                };
+                assert_eq!(rate.to_bits(), earlier.to_bits(), "{division} at {tempo}");
+            }
+        }
+    }
+
+    #[test]
     fn divisions_are_sorted_slowest_first_and_named() {
         let rates: Vec<f64> = Division::ALL
             .iter()
@@ -671,6 +727,59 @@ mod tests {
         let opposite =
             Stem::new(Audio::new(rate(), vec![x, negated]).unwrap(), grid, None).unwrap();
         assert!(opposite.mid().iter().all(|&m| m == 0.0));
+    }
+
+    #[test]
+    fn the_harmonic_frame_keeps_its_duration_at_every_rate() {
+        let low = Some(Hz::new(55.0).unwrap());
+        let high = Some(Hz::new(220.0).unwrap());
+        let lens = |hz| {
+            let rate = SampleRate::new(hz).unwrap();
+            (
+                frame_len_for(high, rate),
+                frame_len_for(low, rate),
+                frame_len_for(None, rate),
+            )
+        };
+        assert_eq!(lens(44_100), (4096, 8192, 4096));
+        assert_eq!(lens(48_000), (4096, 8192, 4096));
+        assert_eq!(lens(32_000), (4096, 8192, 4096));
+        assert_eq!(lens(88_200), (8192, 16_384, 8192));
+        assert_eq!(lens(96_000), (8192, 16_384, 8192));
+        assert_eq!(lens(192_000), (16_384, 32_768, 16_384));
+        assert_eq!(lens(22_050), (2048, 4096, 2048));
+        assert_eq!(lens(8_000), (1024, 2048, 1024));
+        // The square root of 2 bounds the duration's ratio to 44.1 kHz's,
+        // so the long frame meets N >= 4 fs / f0 down to 30.5 Hz.
+        for hz in (8_000..=192_000).step_by(50) {
+            let rate = SampleRate::new(hz).unwrap();
+            let seconds = |len| cast::usize_to_f64(len) / f64::from(hz);
+            let ratio = seconds(frame_len_for(low, rate)) / (8192.0 / 44_100.0);
+            assert!(
+                (1.0 / std::f64::consts::SQRT_2..=std::f64::consts::SQRT_2).contains(&ratio),
+                "{hz}: {ratio}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_stem_at_96_khz_keeps_the_frame_duration_of_44_1_khz() {
+        let at = |hz: u32| {
+            let rate = SampleRate::new(hz).unwrap();
+            let samples: Vec<f64> = (0..usize::try_from(hz).unwrap())
+                .map(|n| (cast::usize_to_f64(n) * 0.05).sin())
+                .collect();
+            let stem = Stem::new(
+                Audio::new(rate, vec![samples]).unwrap(),
+                BeatGrid::new(bpm(120.0), Seconds::new(0.0).unwrap()),
+                None,
+            )
+            .unwrap();
+            rate.seconds(stem.frame_len()).get()
+        };
+        // 8192 samples at 96 kHz last 85.3 ms, 4096 at 44.1 kHz 92.9 ms.
+        assert!((at(96_000) - 8192.0 / 96_000.0).abs() < 1e-12);
+        assert!((at(44_100) - 4096.0 / 44_100.0).abs() < 1e-12);
     }
 
     #[test]

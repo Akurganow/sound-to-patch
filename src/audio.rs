@@ -5,8 +5,8 @@
 //! flag and the stereo screen.
 //!
 //! Samples are `f64` from the decoder on. Every channel is kept, because the
-//! stereo statistics need both. Mono is the channel mean, with no gain
-//! normalisation. Only a consumer with a fixed input rate, such as the
+//! stereo statistics need both. Mono is the mean of the first two channels,
+//! the pair the stereo statistics read, with no gain normalisation. Only a consumer with a fixed input rate, such as the
 //! transcription model, resamples; analysis stays at the native rate.
 //!
 //! ```no_run
@@ -25,7 +25,10 @@ mod stem;
 mod stereo;
 mod tempo;
 
-pub use decode::{DecodeError, Decoded, MAX_SKIPPED_PACKETS, SkippedPacket, decode};
+pub use decode::{
+    DecodeError, Decoded, MAX_SAMPLE_RATE, MAX_SKIPPED_PACKETS, MIN_SAMPLE_RATE, SkippedPacket,
+    decode,
+};
 pub(crate) use decode::{decode_bytes, read_stem};
 pub use resample::{ResampleError, resample};
 #[doc(inline)]

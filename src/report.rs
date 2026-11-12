@@ -145,6 +145,8 @@ pub struct Analysis {
     pub envelope: EnvelopeLayer,
     /// The packets that did not decode and became silence.
     pub skipped: Vec<SkippedPacket>,
+    /// What the analysis leaves out of the file; see [`audio::Decoded::warnings`].
+    pub warnings: Vec<String>,
 }
 
 impl Analysis {
@@ -229,6 +231,7 @@ pub fn analyze_with(
         guard(&dir, request.stem, &source, request.force, Guarded::Report)?;
     let decoded = audio::decode_bytes(request.stem, bytes).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
+    let warnings = decoded.warnings();
     let stem_audio = decoded.into_audio();
     let mono = stem_audio.mono();
     let tempo = tempo_of(
@@ -325,6 +328,7 @@ pub fn analyze_with(
         voices,
         envelope,
         skipped,
+        warnings,
     })
 }
 
@@ -795,6 +799,8 @@ pub struct NotesReport {
     pub transcription: Transcription,
     /// The packets that did not decode and became silence.
     pub skipped: Vec<SkippedPacket>,
+    /// What the analysis leaves out of the file; see [`audio::Decoded::warnings`].
+    pub warnings: Vec<String>,
 }
 
 impl NotesReport {
@@ -907,6 +913,7 @@ pub fn notes(
     )?;
     let decoded = audio::decode_bytes(request.stem, stem_bytes).map_err(AnalyzeError::Decode)?;
     let skipped = decoded.skipped().to_vec();
+    let warnings = decoded.warnings();
     let stem_audio = decoded.into_audio();
     let mono = stem_audio.mono();
     let tempo = tempo_of(
@@ -948,6 +955,7 @@ pub fn notes(
         tempo,
         transcription,
         skipped,
+        warnings,
     })
 }
 

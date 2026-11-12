@@ -25,11 +25,14 @@ the rectangular window exist for comparison only [fact].
 ## The frame rule
 
 - Frames are centred and zero-padded, with hop $N / 4$ [fact].
-- The frame length is 8192 samples when the note list has a median f0
-  below 100 Hz, else 4096, and 4096 without a note list [fact]. Harmonics
-  $f_0$ apart need $N \ge 4 f_s / f_0$ for the 4-bin Hann main lobe; at
-  48 kHz, 4096 points resolve harmonics down to 47 Hz, and 8192 down to
-  23 Hz [fact].
+- At 44.1 kHz the frame length is 8192 samples when the note list has a
+  median f0 below 100 Hz, else 4096, and 4096 without a note list [fact].
+  At another rate the length is the power of two nearest, in log, to that
+  length times $f_s / 44100$: the same at 32 and 48 kHz, twice it at 88.2
+  and 96 kHz, four times at 176.4 and 192 kHz, half at 22.05 kHz [fact].
+  Harmonics $f_0$ apart need $N \ge 4 f_s / f_0$ for the 4-bin Hann main
+  lobe; at 48 kHz, 4096 points resolve harmonics down to 47 Hz, and 8192
+  down to 23 Hz, as do 16384 points at 96 kHz [fact].
 - The stereo screen uses 8192 points for every f0, and the spectrogram's
   zoom panel 16384 [fact].
 - `layers.json` records the length used as `conventions.frame_size`

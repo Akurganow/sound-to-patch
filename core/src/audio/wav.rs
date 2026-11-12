@@ -19,7 +19,8 @@ const SAMPLE_BYTES: u16 = 4;
 /// # Errors
 ///
 /// Returns the I/O error of the write, or [`io::ErrorKind::InvalidInput`]
-/// for audio too long for the 4 GB size field of a WAV file.
+/// for audio too long for the 4 GB size field of a WAV file or too fast
+/// for its 32-bit byte-rate field.
 pub fn write_wav(path: &Path, audio: &Audio) -> io::Result<()> {
     let mut out = BufWriter::new(File::create(path)?);
     write_wav_to(&mut out, audio)?;
@@ -41,6 +42,12 @@ pub fn write_wav_to(mut out: impl Write, audio: &Audio) -> io::Result<()> {
         .ok_or_else(too_long)?;
     let riff = data.checked_add(36).ok_or_else(too_long)?;
     let rate = audio.sample_rate().get();
+    let byte_rate = rate.checked_mul(u32::from(block)).ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{channels}-channel audio at {rate} Hz needs more bytes per second than the 32-bit byte-rate field of WAV holds"),
+        )
+    })?;
     out.write_all(b"RIFF")?;
     out.write_all(&riff.to_le_bytes())?;
     out.write_all(b"WAVEfmt ")?;
@@ -48,7 +55,7 @@ pub fn write_wav_to(mut out: impl Write, audio: &Audio) -> io::Result<()> {
     out.write_all(&IEEE_FLOAT.to_le_bytes())?;
     out.write_all(&channels.to_le_bytes())?;
     out.write_all(&rate.to_le_bytes())?;
-    out.write_all(&(rate * u32::from(block)).to_le_bytes())?;
+    out.write_all(&byte_rate.to_le_bytes())?;
     out.write_all(&block.to_le_bytes())?;
     out.write_all(&(SAMPLE_BYTES * 8).to_le_bytes())?;
     out.write_all(b"data")?;
@@ -76,5 +83,18 @@ mod tests {
         assert_eq!(&bytes[24..28], &48_000_u32.to_le_bytes());
         assert_eq!(&bytes[40..44], &12_u32.to_le_bytes());
         assert_eq!(&bytes[44..48], &0.5_f32.to_le_bytes());
+    }
+
+    #[test]
+    fn a_byte_rate_beyond_the_header_field_is_an_error() {
+        // 2e9 frames per second of 4-byte samples is 8e9 bytes per second,
+        // above the u32 byte-rate field.
+        let audio = Audio::new(SampleRate::new(2_000_000_000).unwrap(), vec![vec![0.0]]).unwrap();
+        let error = write_wav_to(Vec::new(), &audio).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
+        assert_eq!(
+            error.to_string(),
+            "1-channel audio at 2000000000 Hz needs more bytes per second than the 32-bit byte-rate field of WAV holds"
+        );
     }
 }

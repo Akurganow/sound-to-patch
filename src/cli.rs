@@ -126,7 +126,8 @@ impl Command {
                         )
                         .map(line)
                         .collect(),
-                    stderr: skipped_warnings(&analysis.skipped),
+                    stderr: skipped_warnings(&analysis.skipped)
+                        + &warnings(analysis.warnings.clone()),
                 })
             }
             Self::Notes(args) => {
@@ -149,7 +150,7 @@ impl Command {
                         .chain([format!("wrote {}", report.path.display())])
                         .map(line)
                         .collect(),
-                    stderr: skipped_warnings(&report.skipped),
+                    stderr: skipped_warnings(&report.skipped) + &warnings(report.warnings.clone()),
                 })
             }
             Self::Render(args) => render(args),

@@ -166,7 +166,7 @@
         "bpm_given": { "type": "number", "minimum": 4, "maximum": 1000 },
         "bpm_refined": { "$ref": "#/$defs/value" },
         "duration_s": { "type": "number", "minimum": 0 },
-        "sample_rate_hz": { "type": "integer", "minimum": 1 },
+        "sample_rate_hz": { "type": "integer", "minimum": 8000, "maximum": 192000 },
         "band_edge_hz": { "$ref": "#/$defs/value" },
         "hard_limited": { "type": "boolean" },
         "peak_dbfs": { "$ref": "#/$defs/value" },
@@ -223,7 +223,7 @@
       ],
       "propertyNames": { "$ref": "#/$defs/name" },
       "properties": {
-        "frame_size": { "enum": [4096, 8192] }
+        "frame_size": { "enum": [1024, 2048, 4096, 8192, 16384, 32768] }
       },
       "additionalProperties": { "type": "string", "minLength": 1 }
     },

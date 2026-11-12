@@ -98,7 +98,7 @@ fn analyze_writes_its_files_for_a_generated_wav() {
     assert_eq!(
         stdout,
         format!(
-            "tempo: 120 BPM as given; the stem is shorter than one beat\n\
+            "tempo: 120 BPM as given; the stem is shorter than one beat at 116.51 BPM, the slowest tempo of the search\n\
              glides: 0, 0 too short\n\
              pitch drops: 0 of 1 low strikes\n\
              drop skips: 1 no strike\n\
@@ -152,6 +152,36 @@ fn analyze_warns_about_corrupt_packets_on_stderr() {
     );
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
     assert!(stderr.starts_with("warning: packet 5 "), "{stderr}");
+}
+
+/// A file of three channels is read from its first two, and standard
+/// error says so.
+#[test]
+fn analyze_warns_that_a_third_channel_is_ignored() {
+    let dir = tempfile::tempdir().unwrap();
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw: Vec<f64> = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0)
+        .iter()
+        .map(|x| 0.3 * x)
+        .collect();
+    let path = dir.path().join("three.wav");
+    crate::support::signals::write_wav16(&path, 22_050, &[saw.clone(), saw.clone(), saw]);
+    let notes = crate::report::given(dir.path());
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_sound-to-patch"))
+        .arg("analyze")
+        .arg(&path)
+        .args(["--bpm", "120", "--notes"])
+        .arg(&notes)
+        .arg("--out")
+        .arg(dir.path().join("out"))
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        "warning: the file has 3 channels; the analysis reads the first two and ignores the other 1\n"
+    );
 }
 
 /// Three dry saw notes above 110 Hz, A3, C4 and E4, at 120 BPM: 0.2 s on
@@ -448,6 +478,57 @@ fn a_stem_through_a_pipe_decodes() {
     );
     assert!(output.status.success(), "{output:?}");
     assert!(out.join("notes.mid").is_file());
+}
+
+/// The rate bound and the channel warning hold for a stem through a pipe.
+#[cfg(unix)]
+#[test]
+fn a_piped_stem_keeps_the_rate_bound_and_the_channel_warning() {
+    use std::ffi::OsStr;
+    let dir = tempfile::tempdir().unwrap();
+    let notes = crate::report::given(dir.path());
+    let slow = dir.path().join("slow.wav");
+    crate::decode::raw_wav(&slow, 1, 1, 4000, None);
+    let out = dir.path().join("slow");
+    let args = |out: &std::path::Path| -> Vec<std::ffi::OsString> {
+        let mut args: Vec<std::ffi::OsString> =
+            ["analyze", "/dev/stdin", "--bpm", "120", "--notes"]
+                .into_iter()
+                .map(Into::into)
+                .collect();
+        args.extend([
+            notes.clone().into_os_string(),
+            "--out".into(),
+            out.as_os_str().to_owned(),
+        ]);
+        args
+    };
+    let piped = |out: &std::path::Path, stem: &std::path::Path| {
+        let args = args(out);
+        let refs: Vec<&OsStr> = args.iter().map(std::ffi::OsString::as_os_str).collect();
+        run_with_piped_stem(&refs, stem)
+    };
+    let output = piped(&out, &slow);
+    assert!(!output.status.success(), "{output:?}");
+    let stderr = String::from_utf8(output.stderr).unwrap();
+    assert!(
+        stderr.contains("a sample rate of 1 Hz, outside the 8000 Hz to 192000 Hz"),
+        "{stderr}"
+    );
+    let rate = 22_050.0;
+    let t = crate::support::signals::times(rate, crate::support::cast::round_to_usize(0.3 * rate));
+    let saw: Vec<f64> = crate::support::signals::bandlimited_saw(220.0, rate, &t, |_| 0.0)
+        .iter()
+        .map(|x| 0.3 * x)
+        .collect();
+    let three = dir.path().join("three.wav");
+    crate::support::signals::write_wav16(&three, 22_050, &[saw.clone(), saw.clone(), saw]);
+    let output = piped(&dir.path().join("three"), &three);
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(
+        String::from_utf8(output.stderr).unwrap(),
+        "warning: the file has 3 channels; the analysis reads the first two and ignores the other 1\n"
+    );
 }
 
 /// A failed write into a new output folder removes the folders the run

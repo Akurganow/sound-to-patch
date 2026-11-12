@@ -10,15 +10,18 @@ before it writes an edit list for the [preset commands](preset.md). The
 
 ## Run it
 
-Export one instrument as a WAV, AIFF, FLAC, MP3 or AAC file and pass its
-tempo:
+Export one instrument as a WAV, AIFF, FLAC, MP3 or AAC file at 8000 to
+192000 Hz and pass its tempo. A file at another rate is refused with its
+rate and the range; 44.1 or 48 kHz is the usual export. A file of three or
+more channels is read from its first two, with a warning that names the
+channel count:
 
 ```sh
 sound-to-patch analyze bass.wav --bpm 120
 ```
 
 ```text
-tempo: 120 BPM as given; the stem holds 7 beats, too few to refine it
+tempo: 120 BPM as given; the stem holds 7 whole beats at 116.51 BPM, the slowest tempo of the search, and refining needs 8
 detected range: MIDI 30 to 36, from the f0 track
 detected voicing: monophonic, chord share 0.00
 register window: 20 dB
@@ -200,8 +203,9 @@ sound-to-patch analyze bass.wav --bpm 120 --notes bass.mid
 The file's notes replace the notes step, and the transcription model does
 not run. The f0 track still reads the stem for the pitch layer, unless the
 notes play chords.
-The notes set the frame length, 8192 samples for a bass below
-100 Hz, and let the report fill `centroid_over_f0` and the stereo phase
+The notes set the frame length: at 32 to 48 kHz, 8192 samples for a bass
+below 100 Hz and 4096 above, scaled with the rate at other rates, so
+96 kHz takes 16384 and 8192. They also let the report fill `centroid_over_f0` and the stereo phase
 `ipd_deg`. The file's tempo must match `--bpm` or the refined tempo, so a
 file that `notes` wrote at the refined tempo reads too. Notes on MIDI
 channel 10, the drum channel, are left out, because their keys name drums,
@@ -248,7 +252,7 @@ write, stops the run too.
 A statistic over frames gives the median and the interquartile range of the
 frames with sound, and its confidence names the evidence: here 94 active
 frames of 8192 samples, the frame length that a note list with a median f0
-below 100 Hz picks. A clip with fewer than 16 active frames gets no value
+below 100 Hz picks at 48 kHz. A clip with fewer than 16 active frames gets no value
 and the reason `too_few_frames`.
 
 ```json

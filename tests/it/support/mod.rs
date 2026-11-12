@@ -5,6 +5,7 @@
 
 pub(crate) mod apply;
 pub(crate) mod cast;
+pub(crate) mod containers;
 pub(crate) mod envelope;
 pub(crate) mod fixtures;
 pub(crate) mod golden;
