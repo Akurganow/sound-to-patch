@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [v0.32.0](https://github.com/Akurganow/sound-to-patch/compare/35065944ef5fca7d9589d61f58e81c1446aa0470..v0.32.0) - 2026-11-12
+#### Features
+- (**analyze**) keep the old report when a write fails and tell stems apart by checksum (#336) - ([3506594](https://github.com/Akurganow/sound-to-patch/commit/35065944ef5fca7d9589d61f58e81c1446aa0470)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+#### Bug Fixes
+- (**analyze**) bound the sample rate and keep the intake conventions true at every rate (#338) - ([45710a5](https://github.com/Akurganow/sound-to-patch/commit/45710a59f7efcdacd31c89f27368b027a7bc867f)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
+
+- - -
+
 ## [v0.31.2](https://github.com/Akurganow/sound-to-patch/compare/ca2d8fcf54e7b418c37afc89fd7b72614a9f3e73..v0.31.2) - 2026-11-12
 #### Bug Fixes
 - (**render**) repair the spread tool and name the real cause of a render failure (#339) - ([ca2d8fc](https://github.com/Akurganow/sound-to-patch/commit/ca2d8fcf54e7b418c37afc89fd7b72614a9f3e73)) - [@Akurganow](https://github.com/Akurganow), Claude Opus 5.5
