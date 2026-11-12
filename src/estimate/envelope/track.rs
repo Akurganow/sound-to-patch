@@ -14,6 +14,7 @@ pub const HOP: Seconds = LEVEL_HOP;
 pub(super) const fn frames(span: Seconds) -> usize {
     cast::round_to_usize_const(span.get() / HOP.get())
 }
+
 /// The RMS window of a note spans this many periods of its fundamental.
 ///
 /// A whole number of periods of a periodic wave leaves no ripple, and one
