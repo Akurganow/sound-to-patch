@@ -2,7 +2,7 @@
 
 use super::POOL_NOTES_MIN;
 use super::adsr::NoteEnvelope;
-use super::track::HOP;
+use super::track::{HOP, frames};
 use crate::audio::{Band, SampleRate, stereo_screen};
 use crate::cast;
 use crate::dsp::{StftParams, Summary, describe};
@@ -23,8 +23,8 @@ const RELEASE_STARTS: [f64; 4] = [0.02, 0.08, 0.3, 1.0];
 const RT60_STARTS: [f64; 3] = [0.4, 1.2, 3.0];
 /// The starting tail weight.
 const WEIGHT_START: f64 = 0.1;
-/// A tail reads every frame up to here.
-const DENSE_FRAMES: usize = 200;
+/// A tail reads every frame up to here, 200 ms.
+const DENSE_FRAMES: usize = frames(Seconds::from_const(0.2));
 /// Past [`DENSE_FRAMES`] a tail reads every this many frames.
 const SPARSE_STEP: usize = 5;
 /// The simplex steps of one fit.
@@ -159,11 +159,11 @@ pub const TAIL_RESIDUAL_MAX: Decibels = Decibels::from_const(3.0);
 pub const TAIL_WOBBLE_RESIDUAL: Decibels = Decibels::from_const(2.0);
 /// See [`TAIL_WOBBLE_RESIDUAL`].
 pub const TAIL_HOLD_BEND: Decibels = Decibels::from_const(0.3);
-/// The frames before the knee that [`TailFit::hold_bend`] reads.
-pub const TAIL_HOLD_FRAMES: usize = 300;
-/// The frames each way of [`TailFit::hold_bend`]. Slower than the knee's bend, to
-/// see a tremolo under 10 Hz.
-pub const TAIL_HOLD_LAG: usize = 25;
+/// The frames before the knee that [`TailFit::hold_bend`] reads, 300 ms.
+pub const TAIL_HOLD_FRAMES: usize = frames(Seconds::from_const(0.3));
+/// The frames each way of [`TailFit::hold_bend`], 25 ms. Slower than the knee's
+/// bend, to see a tremolo under 10 Hz.
+pub const TAIL_HOLD_LAG: usize = frames(Seconds::from_const(0.025));
 /// A tail over [`TAIL_WEIGHT_MAX`] that fits within this RMS reads as the note's
 /// own exponential release: a reverb's level wobbles more.
 pub const TAIL_SMOOTH: Decibels = Decibels::from_const(1.1);
@@ -430,5 +430,22 @@ mod tests {
         assert_eq!(majority(&[]), None);
         assert_eq!(majority(&[true, false]), Some(false));
         assert_eq!(majority(&[true, true, false]), Some(true));
+    }
+
+    #[test]
+    fn frame_counts_keep_their_typed_values() {
+        assert_eq!(
+            [DENSE_FRAMES, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG],
+            [200, 300, 25]
+        );
+    }
+
+    #[test]
+    fn frame_counts_are_spans_over_the_hop() {
+        let ms = |count: f64| super::super::track::frames(Seconds::new(count / 1000.0).unwrap());
+        assert_eq!(
+            [DENSE_FRAMES, TAIL_HOLD_FRAMES, TAIL_HOLD_LAG],
+            [ms(200.0), ms(300.0), ms(25.0)]
+        );
     }
 }

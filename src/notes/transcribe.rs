@@ -9,6 +9,7 @@ use std::error::Error;
 use std::fmt;
 use std::num::NonZeroUsize;
 
+use basic_pitch::constants::{AUDIO_SAMPLE_RATE, FFT_HOP};
 use basic_pitch::notes::{NoteEvent, frame_to_time, model_output_to_notes};
 use basic_pitch::{BasicPitch, Posteriorgrams};
 
@@ -19,11 +20,20 @@ use crate::audio::{ResampleError, SampleRate, resample};
 use crate::cast;
 use crate::units::{MidiPitch, Seconds};
 
-/// Samples between two model frames.
-const MODEL_HOP: u16 = 256;
+/// Samples between two model frames, 256, from the transcription crate.
+const MODEL_HOP: usize = FFT_HOP;
 
-/// The input rate of the model.
-pub const MODEL_RATE: SampleRate = SampleRate::from_const(22_050);
+/// The input rate of the model, 22,050 Hz, from the transcription crate.
+pub const MODEL_RATE: SampleRate = SampleRate::from_const(AUDIO_SAMPLE_RATE);
+
+/// The length of `count` model frames, `count * hop / rate`, for a `const`
+/// item.
+pub(super) const fn model_frames(count: f64) -> Seconds {
+    Seconds::from_const(count * cast::usize_to_f64(MODEL_HOP) / cast::u32_to_f64(AUDIO_SAMPLE_RATE))
+}
+
+/// The length of one model frame, 256 / 22,050 s, 11.61 ms.
+pub(super) const MODEL_FRAME: Seconds = model_frames(1.0);
 
 /// The f0 tracker that the notes step runs beside the model:
 /// [`PitchTrack::of`] unless [`Transcriber::with_tracker`] names another.
@@ -130,7 +140,7 @@ impl ModelRun {
         let onsets = &self.posteriorgrams.onset;
         let bin = cast::round_to_usize(pitch.get() - f64::from(LOWEST_MODEL_PITCH))
             .filter(|&bin| bin < onsets.n_bins())?;
-        let hop = f64::from(MODEL_HOP) / f64::from(MODEL_RATE.get());
+        let hop = MODEL_FRAME.get();
         (0..onsets.n_frames())
             .filter(|&frame| (frame_to_time(frame) - time.get()).abs() <= hop)
             .filter_map(|frame| onsets.get(frame, bin))
@@ -200,5 +210,28 @@ impl Error for TranscribeError {
             Self::Resample(source) => Some(source),
             Self::Model(source) => Some(source),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_model_frame_keeps_its_typed_values() {
+        assert_eq!(MODEL_HOP, 256);
+        assert_eq!(MODEL_RATE.get(), 22_050);
+        assert_eq!(
+            MODEL_FRAME.get().to_bits(),
+            (256.0_f64 / 22_050.0).to_bits()
+        );
+    }
+
+    #[test]
+    fn the_model_frame_follows_the_transcription_crate() {
+        assert_eq!(MODEL_HOP, basic_pitch::constants::FFT_HOP);
+        assert_eq!(MODEL_RATE.get(), basic_pitch::constants::AUDIO_SAMPLE_RATE);
+        let frame = cast::usize_to_f64(FFT_HOP) / f64::from(AUDIO_SAMPLE_RATE);
+        assert_eq!(MODEL_FRAME.get().to_bits(), frame.to_bits());
     }
 }

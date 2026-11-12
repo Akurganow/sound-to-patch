@@ -12,8 +12,10 @@
 //! in the stem, is the rest of that note. A note that holds an attack of
 //! its own in the stem holds a repeat the decoder missed, and splits there.
 
+use super::transcribe::model_frames;
 use super::{MODEL_RATE, ModelRun, Note, NoteList, PitchTrack, QUIET_FRAME, StemLevels};
 use crate::cast;
+use crate::dsp::{LEVEL_HOP, RISE_SHARES};
 use crate::units::Hz;
 use crate::units::{Decibels, MidiPitch, Seconds, Semitones};
 
@@ -32,7 +34,7 @@ pub const OCTAVE_FIX_CEILING: MidiPitch = MidiPitch::from_const(45.0);
 /// down only inside such a note,
 /// because the track can read the lower octave of a true note, and a late
 /// end of the decoder makes a true note's neighbour overlap it.
-pub const COPY_SLACK: Seconds = Seconds::from_const(2.0 * 256.0 / 22_050.0);
+pub const COPY_SLACK: Seconds = model_frames(2.0);
 /// The fewest voiced frames, 17 ms of track, that check a note.
 pub const OCTAVE_MIN_FRAMES: usize = 3;
 /// The onset activation below which a note that starts where a note of
@@ -42,7 +44,7 @@ pub const OCTAVE_MIN_FRAMES: usize = 3;
 /// less. The weakest repeated note, a sixteenth at 175 BPM, starts at 0.70.
 pub const SPLIT_ONSET: f64 = 0.68;
 /// The widest gap a split may leave: two model frames.
-pub const SPLIT_GAP: Seconds = Seconds::from_const(2.0 * 256.0 / 22_050.0);
+pub const SPLIT_GAP: Seconds = model_frames(2.0);
 /// The lowest key whose notes [`split_at_attacks`] splits: A1, 55 Hz.
 ///
 /// Below A1 the envelope window of one period lasts 19 ms or more, as long
@@ -102,11 +104,12 @@ pub const HARMONIC_DIP: Decibels = Decibels::from_const(22.0);
 /// One period reads a periodic tone steady. Two periods smooth the dip of
 /// a tremolo at A1 away, and a window between the two ripples.
 pub const RISE_WINDOW: Seconds = Seconds::from_const(0.004);
-/// The step between envelope readings of the rise test.
-pub const RISE_STEP: Seconds = Seconds::from_const(0.001);
+/// The step between envelope readings of the rise test, the hop of every
+/// level reading.
+pub const RISE_STEP: Seconds = LEVEL_HOP;
 /// The share of the loudest envelope reading a rise starts below, and the
-/// share it ends above.
-pub const RISE_SPAN: (f64, f64) = (0.1, 0.9);
+/// share it ends above: the shares of every rise.
+pub const RISE_SPAN: (f64, f64) = RISE_SHARES;
 /// How far after the onset a rise may start: the decoder starts a note up
 /// to 15 ms before its attack.
 pub const RISE_LATEST: Seconds = Seconds::from_const(0.02);
@@ -1899,5 +1902,28 @@ mod tests {
                 note(1.0, 1.5, 45.0)
             ]
         );
+    }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        let two_frames = (2.0_f64 * 256.0 / 22_050.0).to_bits();
+        assert_eq!(COPY_SLACK.get().to_bits(), two_frames);
+        assert_eq!(SPLIT_GAP.get().to_bits(), two_frames);
+        assert_eq!(RISE_STEP.get().to_bits(), 0.001_f64.to_bits());
+        assert_eq!(RISE_SPAN.0.to_bits(), 0.1_f64.to_bits());
+        assert_eq!(RISE_SPAN.1.to_bits(), 0.9_f64.to_bits());
+    }
+
+    #[test]
+    fn the_rise_test_reads_the_shares_and_the_hop_of_every_rise() {
+        assert_eq!(RISE_STEP, crate::dsp::LEVEL_HOP);
+        assert_eq!(RISE_SPAN.0.to_bits(), crate::dsp::RISE_SHARES.0.to_bits());
+        assert_eq!(RISE_SPAN.1.to_bits(), crate::dsp::RISE_SHARES.1.to_bits());
+    }
+
+    #[test]
+    fn the_slack_and_the_gap_are_two_model_frames() {
+        assert_eq!(COPY_SLACK, model_frames(2.0));
+        assert_eq!(SPLIT_GAP, model_frames(2.0));
     }
 }

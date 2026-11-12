@@ -40,7 +40,7 @@ use super::session::{BoxedRenderer, RESTART_AFTER, RenderOutcome, RenderSession}
 use super::{HostIdentity, Oversampling, RenderError, RenderJob, Rendered};
 use crate::audio::{Audio, AudioError, SampleRate};
 use crate::cast;
-use crate::dsp::{Summary, quantile};
+use crate::dsp::{ACTIVE_GATE_DB, Summary, quantile};
 use crate::units::{Bpm, Decibels};
 
 /// How many renders a spread takes.
@@ -48,14 +48,16 @@ pub const SPREAD_RUNS: usize = 20;
 /// The fewest renders a spread takes: fewer leave no leave-one-out median
 /// of two distances.
 pub const MIN_RUNS: usize = 3;
-/// The quantile of the pairwise distances.
-pub const SPREAD_QUANTILE: f64 = 0.95;
+/// The quantile of the pairwise distances, the coverage as a share.
+pub const SPREAD_QUANTILE: f64 = cast::usize_to_f64(COVERAGE_PERCENT) / 100.0;
 /// The share of clips of the same sound, in percent, that the tolerance
 /// covers.
 pub const COVERAGE_PERCENT: usize = 95;
-/// The name of the spread statistic, as the spread file records it.
+/// The name of the spread statistic, as the spread file records it. It
+/// names the coverage, and a test builds it from [`COVERAGE_PERCENT`].
 pub const STATISTIC: &str = "p95_pairwise_distance";
-/// The name of the comparison tolerance, as the spread file records it.
+/// The name of the comparison tolerance, as the spread file records it. It
+/// names the coverage, and a test builds it from [`COVERAGE_PERCENT`].
 pub const TOLERANCE: &str = "conformal_95_leave_one_out_median";
 /// A clip starts at its first sample within this many dB of its peak, so
 /// a lead-in of silence or latency does not count.
@@ -63,8 +65,8 @@ pub const ONSET_RANGE_DB: Decibels = Decibels::from_const(40.0);
 /// The envelope frames per second: one frame is 10 ms.
 pub const ENVELOPE_FRAMES_PER_S: u32 = 100;
 /// The envelope distance counts the frames within this many dB of the
-/// loudest frame of either clip.
-pub const ENVELOPE_RANGE_DB: Decibels = Decibels::from_const(40.0);
+/// loudest frame of either clip: the gate of an active frame.
+pub const ENVELOPE_RANGE_DB: Decibels = ACTIVE_GATE_DB;
 /// The floor of a tolerance in dB: a level difference below it counts as
 /// none.
 pub const LEVEL_FLOOR_DB: f64 = 0.01;
@@ -1403,5 +1405,31 @@ mod tests {
         .unwrap();
         let error = compare(&other, &renders, &rows).unwrap_err();
         assert!(matches!(error, SpreadError::SampleRate { .. }), "{error}");
+    }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        assert_eq!(SPREAD_QUANTILE.to_bits(), 0.95_f64.to_bits());
+        assert_eq!(COVERAGE_PERCENT, 95);
+        assert_eq!(ENVELOPE_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
+        assert_eq!(ONSET_RANGE_DB.get().to_bits(), 40.0_f64.to_bits());
+    }
+
+    #[test]
+    fn the_envelope_range_is_the_active_frame_gate() {
+        assert_eq!(ENVELOPE_RANGE_DB, crate::dsp::ACTIVE_GATE_DB);
+    }
+
+    #[test]
+    fn the_quantile_and_the_recorded_names_follow_the_coverage() {
+        assert_eq!(
+            SPREAD_QUANTILE.to_bits(),
+            (cast::usize_to_f64(COVERAGE_PERCENT) / 100.0).to_bits()
+        );
+        assert_eq!(STATISTIC, format!("p{COVERAGE_PERCENT}_pairwise_distance"));
+        assert_eq!(
+            TOLERANCE,
+            format!("conformal_{COVERAGE_PERCENT}_leave_one_out_median")
+        );
     }
 }

@@ -1472,4 +1472,10 @@ mod tests {
             prop_assert_eq!(pool(&rotated), pooled);
         }
     }
+
+    #[test]
+    fn the_spread_quantiles_keep_their_typed_values() {
+        assert_eq!(SPREAD_QUANTILES.0.to_bits(), 0.1_f64.to_bits());
+        assert_eq!(SPREAD_QUANTILES.1.to_bits(), 0.9_f64.to_bits());
+    }
 }

@@ -3,15 +3,17 @@
 
 use crate::audio::BeatGrid;
 use crate::cast;
-use crate::dsp::{ModulationSpectrum, SCAN_TOP_HZ, TRACK_RATE_HZ, Track, quantile, snap};
+use crate::dsp::{
+    FOLD_BINS, ModulationSpectrum, SCAN_TOP_HZ, TRACK_RATE_HZ, Track, quantile, snap,
+};
 use crate::notes::NoteList;
 use crate::units::{Bpm, Cents, Decibels, Hz, Seconds};
 
 use super::median;
 use super::track::{HOP, LevelTrack};
 
-/// The phase bins of one beat.
-pub const PUMP_BINS: usize = 64;
+/// The phase bins of one beat, the bins of a folded cycle.
+pub const PUMP_BINS: usize = FOLD_BINS;
 /// Each beat's curve is taken relative to this quantile of its bins, the
 /// level between dips.
 pub const PUMP_REFERENCE: f64 = 0.9;
@@ -1122,5 +1124,15 @@ mod tests {
             proptest::prop_assert_eq!(dips(&curve, depth), dips(&rotated, depth));
             proptest::prop_assert_eq!(recovery(&curve), recovery(&rotated));
         }
+    }
+
+    #[test]
+    fn the_pump_bins_keep_their_typed_value() {
+        assert_eq!(PUMP_BINS, 64);
+    }
+
+    #[test]
+    fn a_beat_has_the_bins_of_a_folded_cycle() {
+        assert_eq!(PUMP_BINS, crate::dsp::FOLD_BINS);
     }
 }

@@ -6,6 +6,7 @@ use super::fit::golden_section;
 use super::line::SubBandLine;
 use crate::audio::SampleRate;
 use crate::cast;
+use crate::dsp::RISE_SHARES;
 use crate::units::{Hz, Seconds, Semitones};
 
 /// The fit starts this long after the onset. The line of a tone switched
@@ -26,7 +27,8 @@ pub const DROP_MAX: Semitones = Semitones::from_const(36.0);
 /// `exp(-7 ms / tau) >= 0.1`. A faster fall ends before the span starts,
 /// and its `df` is extrapolated from the swing of the line at a
 /// retriggered or switched-on tone.
-pub const DROP_TAU_MIN: Seconds = Seconds::from_const(0.007 / std::f64::consts::LN_10);
+pub const DROP_TAU_MIN: Seconds =
+    Seconds::from_const(DROP_FIT_START.get() / std::f64::consts::LN_10);
 /// The largest RMS residual of an accepted fit, as a share of the fall the
 /// fit span shows.
 pub const DROP_MAX_RESIDUAL: f64 = 0.15;
@@ -35,9 +37,9 @@ pub const DROP_MAX_RESIDUAL: f64 = 0.15;
 pub const DROP_ONSET_SHARE: f64 = 0.5;
 /// The attack of a strike starts where the band envelope reaches this
 /// share of its peak.
-pub(crate) const ATTACK_FROM: f64 = 0.1;
+pub(crate) const ATTACK_FROM: f64 = RISE_SHARES.0;
 /// The attack ends where the band envelope reaches this share of its peak.
-pub(crate) const ATTACK_TO: f64 = 0.9;
+pub(crate) const ATTACK_TO: f64 = RISE_SHARES.1;
 /// The centred average of the band envelope that the onset search reads.
 pub const ONSET_SMOOTHING: Seconds = Seconds::from_const(0.01);
 /// The span, in periods of the note, of the band envelope average that
@@ -602,6 +604,31 @@ mod tests {
             }
             .df(),
             None
+        );
+    }
+
+    #[test]
+    fn derived_constants_keep_their_typed_values() {
+        assert_eq!(
+            DROP_TAU_MIN.get().to_bits(),
+            (0.007_f64 / std::f64::consts::LN_10).to_bits()
+        );
+        assert_eq!(
+            DROP_TAU_MIN.get().to_bits(),
+            0.003_040_061_373_322_762_6_f64.to_bits()
+        );
+        assert_eq!(ATTACK_FROM.to_bits(), 0.1_f64.to_bits());
+        assert_eq!(ATTACK_TO.to_bits(), 0.9_f64.to_bits());
+    }
+
+    #[test]
+    fn the_strike_and_the_smallest_tau_follow_their_sources() {
+        assert_eq!(ATTACK_FROM.to_bits(), crate::dsp::RISE_SHARES.0.to_bits());
+        assert_eq!(ATTACK_TO.to_bits(), crate::dsp::RISE_SHARES.1.to_bits());
+        // A tenth of the fall is left at the fit start: exp(-start / tau) = 0.1.
+        assert_eq!(
+            DROP_TAU_MIN.get().to_bits(),
+            (DROP_FIT_START.get() / std::f64::consts::LN_10).to_bits()
         );
     }
 }

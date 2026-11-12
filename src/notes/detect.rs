@@ -25,7 +25,7 @@ pub const REGISTER_WINDOW: Decibels = Decibels::from_const(20.0);
 /// How far below the reference level a probe note's median frame may lie
 /// and still count as a hold candidate. Half the register window, so bleed
 /// near -20 dB in a rest does not widen the range.
-pub const HOLD_WINDOW: Decibels = Decibels::from_const(10.0);
+pub const HOLD_WINDOW: Decibels = Decibels::from_const(REGISTER_WINDOW.get() / 2.0);
 /// The percentile of the voiced frames' levels that serves as the
 /// reference level. A short loud transient does not move it.
 pub const REFERENCE_PERCENTILE: f64 = 95.0;
@@ -722,5 +722,19 @@ mod tests {
         assert!((pair(1.0) - 1.0).abs() < 1e-12);
         assert!((pair(0.999) - 0.5).abs() < 1e-12);
         assert_eq!(chord_share(&NoteList::default()), 0.0);
+    }
+
+    #[test]
+    fn the_hold_window_keeps_its_typed_value() {
+        assert_eq!(HOLD_WINDOW.get().to_bits(), 10.0_f64.to_bits());
+        assert_eq!(REGISTER_WINDOW.get().to_bits(), 20.0_f64.to_bits());
+    }
+
+    #[test]
+    fn the_hold_window_is_half_the_register_window() {
+        assert_eq!(
+            HOLD_WINDOW.get().to_bits(),
+            (REGISTER_WINDOW.get() / 2.0).to_bits()
+        );
     }
 }

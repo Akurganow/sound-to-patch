@@ -13,7 +13,14 @@
     reason = "counts stay far below 2^53, where f64 is exact"
 )]
 #[must_use]
-pub fn usize_to_f64(n: usize) -> f64 {
+pub const fn usize_to_f64(n: usize) -> f64 {
+    n as f64
+}
+
+/// A sample rate or another `u32` as `f64`. Exact: every `u32` fits the 53
+/// bits of an `f64`. It gives what `f64::from` gives, in a `const` item too.
+#[must_use]
+pub const fn u32_to_f64(n: u32) -> f64 {
     n as f64
 }
 
@@ -91,10 +98,13 @@ const EXACT_LIMIT: f64 = 9_007_199_254_740_992.0;
     reason = "the guard admits only finite values in 0..2^53, which fit usize on 64-bit targets"
 )]
 #[must_use]
-pub fn floor_to_usize(value: f64) -> Option<usize> {
-    (0.0..EXACT_LIMIT)
-        .contains(&value)
-        .then(|| value.floor() as usize)
+pub const fn floor_to_usize(value: f64) -> Option<usize> {
+    // NaN fails both comparisons.
+    if value >= 0.0 && value < EXACT_LIMIT {
+        Some(value.floor() as usize)
+    } else {
+        None
+    }
 }
 
 /// Converts a non-negative `f64` to the nearest index, ties away from zero.
@@ -103,8 +113,44 @@ pub fn floor_to_usize(value: f64) -> Option<usize> {
 /// that rounds to `2^53` or more. A value above -0.5 rounds to `-0.0` and
 /// gives `Some(0)`.
 #[must_use]
-pub fn round_to_usize(value: f64) -> Option<usize> {
+pub const fn round_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.round())
+}
+
+/// The nearest count to `value`, such as a span over a hop, for `const`
+/// items only: [`round_to_usize`] where that gives a count. Code that runs
+/// handles the `None` of [`round_to_usize`] instead.
+///
+/// # Panics
+///
+/// Panics where [`round_to_usize`] gives `None`. In a `const` item that
+/// fails the build, as `from_const` of a unit type does:
+///
+/// ```
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::cast::count_from_const;
+///
+/// const FRAMES: usize = count_from_const(0.1 / 0.001);
+/// assert_eq!(FRAMES, 100);
+/// ```
+///
+/// ```compile_fail
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::cast::count_from_const;
+///
+/// const FRAMES: usize = count_from_const(-1.0);
+/// assert_eq!(FRAMES, 0);
+/// ```
+#[expect(
+    clippy::panic,
+    reason = "a panic in a const item fails the build, as `from_const` of a unit type does"
+)]
+#[must_use]
+pub const fn count_from_const(value: f64) -> usize {
+    match round_to_usize(value) {
+        Some(count) => count,
+        None => panic!("count_from_const: the value has no nearest count"),
+    }
 }
 
 /// Converts a non-negative `f64` to the next index up.
@@ -181,6 +227,58 @@ mod tests {
         assert_eq!(ceil_to_usize(2.0), Some(2));
         assert_eq!(ceil_to_usize(-0.5), Some(0));
         assert_eq!(round_to_usize(-0.6), None);
+    }
+
+    #[test]
+    fn a_u32_converts_as_from_does() {
+        const RATE: f64 = u32_to_f64(22_050);
+        assert_eq!(RATE.to_bits(), f64::from(22_050_u32).to_bits());
+        for n in [0, 1, 44_100, u32::MAX - 1, u32::MAX] {
+            assert_eq!(u32_to_f64(n).to_bits(), f64::from(n).to_bits(), "{n}");
+        }
+    }
+
+    // A `const` item evaluates the guard at compile time, so the arrays
+    // check the const path; the maps beside them check the run path.
+    #[test]
+    fn the_guard_gives_the_same_edges_in_a_const_item() {
+        const EDGES: [f64; 5] = [-0.0, f64::NAN, EXACT_LIMIT, EXACT_LIMIT - 1.0, -0.4];
+        const FLOORS: [Option<usize>; 5] = [
+            floor_to_usize(EDGES[0]),
+            floor_to_usize(EDGES[1]),
+            floor_to_usize(EDGES[2]),
+            floor_to_usize(EDGES[3]),
+            floor_to_usize(EDGES[4]),
+        ];
+        const ROUNDS: [Option<usize>; 5] = [
+            round_to_usize(EDGES[0]),
+            round_to_usize(EDGES[1]),
+            round_to_usize(EDGES[2]),
+            round_to_usize(EDGES[3]),
+            round_to_usize(EDGES[4]),
+        ];
+        const TOP: f64 = usize_to_f64(1 << 53);
+        let below = Some((1 << 53) - 1);
+        assert_eq!(FLOORS, [Some(0), None, None, below, None]);
+        assert_eq!(ROUNDS, [Some(0), None, None, below, Some(0)]);
+        assert_eq!(EDGES.map(floor_to_usize), FLOORS);
+        assert_eq!(EDGES.map(round_to_usize), ROUNDS);
+        assert_eq!(TOP.to_bits(), EXACT_LIMIT.to_bits());
+    }
+
+    #[test]
+    fn a_const_count_is_the_nearest_count() {
+        const FRAMES: usize = count_from_const(0.1 / 0.001);
+        assert_eq!(FRAMES, 100);
+        assert_eq!(count_from_const(2.5), 3);
+        assert_eq!(count_from_const(-0.4), 0);
+        assert_eq!(count_from_const(EXACT_LIMIT - 1.0), (1 << 53) - 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "no nearest count")]
+    fn a_const_count_rejects_a_value_without_a_count() {
+        let _ = count_from_const(f64::NAN);
     }
 
     #[test]
