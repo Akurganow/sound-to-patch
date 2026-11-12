@@ -12,7 +12,7 @@ pub const HOP: Seconds = LEVEL_HOP;
 /// The count of [`HOP`] frames nearest to `span`: a span that a doc or a
 /// convention gives in milliseconds, as a frame count of the tracks.
 pub(super) const fn frames(span: Seconds) -> usize {
-    cast::round_to_usize_const(span.get() / HOP.get())
+    cast::count_from_const(span.get() / HOP.get())
 }
 
 /// The RMS window of a note spans this many periods of its fundamental.

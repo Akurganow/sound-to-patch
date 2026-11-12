@@ -117,22 +117,39 @@ pub const fn round_to_usize(value: f64) -> Option<usize> {
     floor_to_usize(value.round())
 }
 
-/// The nearest index to `value` in a `const` item, such as a span over a
-/// hop: [`round_to_usize`] where that gives an index.
+/// The nearest count to `value`, such as a span over a hop, for `const`
+/// items only: [`round_to_usize`] where that gives a count. Code that runs
+/// handles the `None` of [`round_to_usize`] instead.
 ///
 /// # Panics
 ///
-/// Panics where [`round_to_usize`] gives `None`, which in a `const` item
-/// fails the build.
+/// Panics where [`round_to_usize`] gives `None`. In a `const` item that
+/// fails the build, as `from_const` of a unit type does:
+///
+/// ```
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::cast::count_from_const;
+///
+/// const FRAMES: usize = count_from_const(0.1 / 0.001);
+/// assert_eq!(FRAMES, 100);
+/// ```
+///
+/// ```compile_fail
+/// # extern crate sound_to_patch_core as sound_to_patch;
+/// use sound_to_patch::cast::count_from_const;
+///
+/// const FRAMES: usize = count_from_const(-1.0);
+/// assert_eq!(FRAMES, 0);
+/// ```
 #[expect(
     clippy::panic,
     reason = "a panic in a const item fails the build, as `from_const` of a unit type does"
 )]
 #[must_use]
-pub const fn round_to_usize_const(value: f64) -> usize {
+pub const fn count_from_const(value: f64) -> usize {
     match round_to_usize(value) {
-        Some(index) => index,
-        None => panic!("round_to_usize_const: the value has no nearest index"),
+        Some(count) => count,
+        None => panic!("count_from_const: the value has no nearest count"),
     }
 }
 
@@ -213,24 +230,55 @@ mod tests {
     }
 
     #[test]
-    fn the_const_casts_give_what_the_runtime_ones_give() {
+    fn a_u32_converts_as_from_does() {
         const RATE: f64 = u32_to_f64(22_050);
-        const COUNT: usize = round_to_usize_const(0.1 / 0.001);
         assert_eq!(RATE.to_bits(), f64::from(22_050_u32).to_bits());
-        assert_eq!(
-            u32_to_f64(u32::MAX).to_bits(),
-            f64::from(u32::MAX).to_bits()
-        );
-        assert_eq!(COUNT, 100);
-        assert_eq!(round_to_usize_const(2.5), 3);
-        assert_eq!(round_to_usize_const(-0.4), 0);
-        assert_eq!(round_to_usize_const(EXACT_LIMIT - 1.0), (1 << 53) - 1);
+        for n in [0, 1, 44_100, u32::MAX - 1, u32::MAX] {
+            assert_eq!(u32_to_f64(n).to_bits(), f64::from(n).to_bits(), "{n}");
+        }
+    }
+
+    // A `const` item evaluates the guard at compile time, so the arrays
+    // check the const path; the maps beside them check the run path.
+    #[test]
+    fn the_guard_gives_the_same_edges_in_a_const_item() {
+        const EDGES: [f64; 5] = [-0.0, f64::NAN, EXACT_LIMIT, EXACT_LIMIT - 1.0, -0.4];
+        const FLOORS: [Option<usize>; 5] = [
+            floor_to_usize(EDGES[0]),
+            floor_to_usize(EDGES[1]),
+            floor_to_usize(EDGES[2]),
+            floor_to_usize(EDGES[3]),
+            floor_to_usize(EDGES[4]),
+        ];
+        const ROUNDS: [Option<usize>; 5] = [
+            round_to_usize(EDGES[0]),
+            round_to_usize(EDGES[1]),
+            round_to_usize(EDGES[2]),
+            round_to_usize(EDGES[3]),
+            round_to_usize(EDGES[4]),
+        ];
+        const TOP: f64 = usize_to_f64(1 << 53);
+        let below = Some((1 << 53) - 1);
+        assert_eq!(FLOORS, [Some(0), None, None, below, None]);
+        assert_eq!(ROUNDS, [Some(0), None, None, below, Some(0)]);
+        assert_eq!(EDGES.map(floor_to_usize), FLOORS);
+        assert_eq!(EDGES.map(round_to_usize), ROUNDS);
+        assert_eq!(TOP.to_bits(), EXACT_LIMIT.to_bits());
     }
 
     #[test]
-    #[should_panic(expected = "no nearest index")]
-    fn the_const_round_rejects_a_value_without_an_index() {
-        let _ = round_to_usize_const(f64::NAN);
+    fn a_const_count_is_the_nearest_count() {
+        const FRAMES: usize = count_from_const(0.1 / 0.001);
+        assert_eq!(FRAMES, 100);
+        assert_eq!(count_from_const(2.5), 3);
+        assert_eq!(count_from_const(-0.4), 0);
+        assert_eq!(count_from_const(EXACT_LIMIT - 1.0), (1 << 53) - 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "no nearest count")]
+    fn a_const_count_rejects_a_value_without_a_count() {
+        let _ = count_from_const(f64::NAN);
     }
 
     #[test]
